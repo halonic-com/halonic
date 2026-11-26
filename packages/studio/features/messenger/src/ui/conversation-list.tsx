@@ -1,5 +1,5 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Avatar, clockTime, PlainList, PlainRow } from "@halonicjs/studio-kit";
+import { Avatar, clockTime, PlainList, PlainRow, type PlainRowAction } from "@halonicjs/studio-kit";
 import { useRef } from "react";
 import { channelSize, isChannel, workingMembers } from "../channel.ts";
 import { chatAgent, chatName } from "../chat-name.ts";
@@ -23,6 +23,11 @@ export interface ConversationListProps {
   readonly now: Date;
   /** How many agent's messages in a row the person hasn't seen: its count badge. */
   readonly unread: (row: ConversationRow) => number;
+  /**
+   * A row's hover action (`messenger.read-marks`): **Mark as read** while it counts messages,
+   * **Mark as unread** once read while an agent's message is newer than the person's own.
+   */
+  readonly marks?: RowMarks | undefined;
   /** The chats come from more than one source, so each chat's row names its own. */
   readonly manySources: boolean;
   /**
@@ -30,6 +35,13 @@ export interface ConversationListProps {
    * marked (`messenger.chat-search`).
    */
   readonly search?: { readonly text: string; readonly lines: ReadonlyMap<MessagingId, string> };
+}
+
+/** What a row's **Mark as read** and **Mark as unread** do. */
+export interface RowMarks {
+  readonly canMarkUnread: (row: ConversationRow) => boolean;
+  readonly onMarkRead: (row: ConversationRow) => void;
+  readonly onMarkUnread: (row: ConversationRow) => void;
 }
 
 /**
@@ -48,6 +60,7 @@ export function ConversationList({
   pictures,
   now,
   unread,
+  marks,
   manySources,
   search,
 }: ConversationListProps) {
@@ -62,6 +75,7 @@ export function ConversationList({
     <PlainList listRef={list} label={messengerWords.chatsLabel}>
       {rows.map((row) => {
         const current = row.conversation.id === selected;
+        const count = current ? 0 : unread(row);
         return (
           <Row
             key={row.conversation.id}
@@ -70,7 +84,8 @@ export function ConversationList({
             onSelect={onSelect}
             picture={pictureOf(pictures, row)}
             now={now}
-            unread={current ? 0 : unread(row)}
+            unread={count}
+            action={current ? undefined : rowAction(row, count, marks)}
             named={manySources}
             line={search?.lines.get(row.conversation.id) ?? rowLine(row)}
             highlight={search?.text ?? ""}
@@ -79,6 +94,21 @@ export function ConversationList({
       })}
     </PlainList>
   );
+}
+
+/**
+ * A row's hover action: **Mark as read** while it counts messages, else **Mark as unread** while an
+ * agent's message is newer than the person's own; none for the open chat, which reads them.
+ */
+function rowAction(
+  row: ConversationRow,
+  count: number,
+  marks: RowMarks | undefined,
+): PlainRowAction | undefined {
+  if (marks === undefined) return undefined;
+  if (count > 0) return { label: messengerWords.markRead, onClick: () => marks.onMarkRead(row) };
+  if (!marks.canMarkUnread(row)) return undefined;
+  return { label: messengerWords.markUnread, onClick: () => marks.onMarkUnread(row) };
 }
 
 /** What a row says under its name: for a channel, who is working; else the newest message. */
@@ -112,6 +142,7 @@ function Row({
   picture,
   now,
   unread,
+  action,
   named,
   line,
   highlight,
@@ -123,6 +154,8 @@ function Row({
   readonly now: Date;
   /** How many messages the person hasn't seen; 0 shows no badge. */
   readonly unread: number;
+  /** Mark as read or unread, in the time's place on hover or focus; none for the open chat. */
+  readonly action: PlainRowAction | undefined;
   /** The list holds more than one source, so a chat's row names its own. */
   readonly named: boolean;
   /** What the row says under its name. */
@@ -146,6 +179,7 @@ function Row({
       }
       current={current}
       onSelect={() => onSelect(row.conversation.id)}
+      action={action}
     />
   );
 }

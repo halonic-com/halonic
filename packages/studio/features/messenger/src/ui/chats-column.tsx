@@ -1,12 +1,12 @@
 import type { MessagingId } from "@halonicjs/ports";
 import type { EngineWords } from "@halonicjs/studio-shell";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useReducer, useState } from "react";
 import type { FoundChat } from "../chat-search.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import type { WaitingCard } from "../needs-you.ts";
 import type { AgentPictures } from "./agent-pictures.ts";
 import { ListHeader, useChatSearch } from "./chat-search.tsx";
-import { ConversationList } from "./conversation-list.tsx";
+import { ConversationList, type RowMarks } from "./conversation-list.tsx";
 import { ChatsLoad } from "./load-states.tsx";
 import { NeedsYouEntry } from "./needs-you.tsx";
 
@@ -84,6 +84,19 @@ export function ChatsColumn({
   readonly newMenu: ReactNode;
 }) {
   const chatSearch = useChatSearch(messenger, rows);
+  // A mark changes only what this device keeps, so the rows draw again without asking the source.
+  const [, onMarked] = useReducer((count: number) => count + 1, 0);
+  const marks: RowMarks = {
+    canMarkUnread: (row) => messenger.canMarkUnread(row),
+    onMarkRead: (row) => {
+      messenger.markRead(row);
+      onMarked();
+    },
+    onMarkUnread: (row) => {
+      messenger.markUnread(row);
+      onMarked();
+    },
+  };
   const found = chatSearch.search === undefined ? undefined : chatSearch.found;
   return (
     <>
@@ -116,6 +129,7 @@ export function ChatsColumn({
             pictures={pictures}
             now={messenger.now()}
             unread={(row) => messenger.unreadCount(row)}
+            marks={marks}
             manySources={new Set(rows?.map((row) => row.conversation.source)).size > 1}
           />
         </ChatsLoad>

@@ -61,6 +61,12 @@ export const messengerWords = {
   unreadCount: (count: number) => (count > 99 ? "99+" : String(count)),
   /** After the count, for a screen reader: "3 unread". */
   unread: " unread",
+  /** On a row's hover and in the chat's ··· menu (Sofia's sketches D and H on HAL-19192). */
+  markUnread: "Mark as unread",
+  /** On an unread row's hover (sketch D on HAL-19192). */
+  markRead: "Mark as read",
+  /** The chat header's ··· button, for a screen reader and as its tooltip. */
+  moreActions: (name: string) => `More actions for ${name}`,
   /** Before the person's own message in a row's preview. */
   youSaid: "You: ",
   /** One pane at a time in a narrow window: back from the open chat to the list (HAL-18074). */

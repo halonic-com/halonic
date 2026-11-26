@@ -18,6 +18,7 @@ import { type FoundChat, findChats } from "./chat-search.ts";
 import { DraftFiles } from "./draft-files.ts";
 import { type WaitingCard, waitingCards } from "./needs-you.ts";
 import { isFromAgentOf, QuickActions } from "./quick-actions.ts";
+import { type ReadMarks, StoredReadMarks } from "./read-marks.ts";
 import { refusalOf } from "./refusal.ts";
 
 export { refusalOf } from "./refusal.ts";
@@ -89,17 +90,19 @@ export class Messenger {
   private readonly messaging: AgentMessaging;
   private readonly drafts = new Map<MessagingId, string>();
   private readonly picks = new Map<MessagingId, readonly MessagingId[]>();
-  /** When the newest message the person saw in each chat was sent, while this Messenger lives. */
-  private readonly seen = new Map<MessagingId, string>();
+  /** When the newest message the person read in each chat was sent (`messenger.read-marks`). */
+  private readonly marks: ReadMarks;
 
   constructor(
     messaging: AgentMessaging,
     now: () => Date = () => new Date(),
     activity?: ActivityReads,
+    marks: ReadMarks = new StoredReadMarks(null),
   ) {
     this.messaging = messaging;
     this.now = now;
     this.activity = activity;
+    this.marks = marks;
     this.quickActions = new QuickActions(messaging);
     this.channels = new ChannelAdmin(messaging);
   }
@@ -114,6 +117,17 @@ export class Messenger {
     const rows = [...conversations]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((conversation) => rowOf(conversation, sources, agents));
+    // Only an online source's list is whole, so only its gone chats lose their marks. A source that
+    // lists nothing may have failed one read (the hub drops a failed source's answer while another
+    // answers), so its marks wait for a read that lists its chats.
+    for (const source of sources.filter((each) => each.state.kind === "online")) {
+      const listed = conversations.filter((conversation) => conversation.source === source.id);
+      if (listed.length === 0) continue;
+      this.marks.keepOnly(
+        source.id,
+        listed.map((conversation) => conversation.id),
+      );
+    }
     return inTab(await this.withFacts(rows), tab);
   }
 
@@ -159,31 +173,57 @@ export class Messenger {
     return this.messaging.listWork();
   }
 
-  /** Notes that the person saw a chat's messages up to the newest of `messages`. */
-  markSeen(conversation: MessagingId, messages: readonly Message[]): void {
+  /** Notes that the person read a chat's messages up to the newest of `messages`. */
+  markSeen(row: ConversationRow, messages: readonly Message[]): void {
     const newest = messages.at(-1)?.sentAt;
-    if (newest !== undefined && newest > (this.seen.get(conversation) ?? "")) {
-      this.seen.set(conversation, newest);
-    }
+    if (newest !== undefined && newest > this.markOf(row)) this.setMark(row, newest);
+  }
+
+  /** **Mark as read**: the row's count goes, as if the person had opened the chat. */
+  markRead(row: ConversationRow): void {
+    const newest = row.incoming?.at(-1);
+    if (newest !== undefined && newest > this.markOf(row)) this.setMark(row, newest);
   }
 
   /**
-   * Whether a row's newest message is an agent's that the person hasn't seen open since this
-   * Messenger started: the row's unread dot.
+   * **Mark as unread**: the mark moves back before the agent's newest message, so the row counts
+   * it again; a later message counts too (`messenger.read-marks`).
    */
+  markUnread(row: ConversationRow): void {
+    const incoming = row.incoming ?? [];
+    const newest = incoming.at(-1);
+    if (newest === undefined) return;
+    // Two messages sent in the same millisecond both count again.
+    this.setMark(row, incoming.filter((sentAt) => sentAt < newest).at(-1) ?? "");
+  }
+
+  /** Whether a row's newest message is an agent's that the person hasn't read. */
   unread(row: ConversationRow): boolean {
     const { last } = row;
     if (last === undefined || last.author.kind === "me") return false;
-    return last.sentAt > (this.seen.get(row.conversation.id) ?? "");
+    return last.sentAt > this.markOf(row);
+  }
+
+  /** Whether the row has an agent's message to mark unread: one since the person last wrote. */
+  canMarkUnread(row: ConversationRow): boolean {
+    return (row.incoming ?? []).length > 0;
   }
 
   /**
-   * How many agent's messages a row holds that the person hasn't seen: those since the person's
-   * own newest message and since they last had the chat open (`messenger.chat-rows`).
+   * How many agent's messages a row holds that the person hasn't read: those since the person's
+   * own newest message and after the chat's read mark (`messenger.chat-rows`).
    */
   unreadCount(row: ConversationRow): number {
-    const seen = this.seen.get(row.conversation.id) ?? "";
-    return (row.incoming ?? []).filter((sentAt) => sentAt > seen).length;
+    const mark = this.markOf(row);
+    return (row.incoming ?? []).filter((sentAt) => sentAt > mark).length;
+  }
+
+  private markOf({ conversation }: ConversationRow): string {
+    return this.marks.of(conversation.source, conversation.id) ?? "";
+  }
+
+  private setMark({ conversation }: ConversationRow, sentAt: string): void {
+    this.marks.set(conversation.source, conversation.id, sentAt);
   }
 
   /**

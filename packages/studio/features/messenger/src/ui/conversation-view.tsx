@@ -13,6 +13,7 @@ import { ChannelHeaderActions } from "./channel-header-actions.tsx";
 import { authorOf } from "./channel-message.tsx";
 import { ChatBox } from "./chat-box.tsx";
 import { useChatCards } from "./chat-cards.tsx";
+import { ChatMenu } from "./chat-menu.tsx";
 import { FindBar, FindButton, useFind } from "./find-bar.tsx";
 import { MembersPanel } from "./members-panel.tsx";
 import { Transcript } from "./transcript.tsx";
@@ -28,6 +29,8 @@ export interface ConversationViewProps {
   readonly onLeft?: () => void;
   /** The channel's members changed; the page reads the list again. */
   readonly onChanged?: () => void;
+  /** **Mark as unread** in the header's ··· menu: the page marks the chat and closes it. */
+  readonly onMarkUnread?: () => void;
   /** The chat agent's picture for the header and its messages; without one, its initial shows. */
   readonly picture?: ImageBitmap | undefined;
   /** How a failed read says the engine isn't answering. */
@@ -55,6 +58,7 @@ export function ConversationView({
   changed,
   onLeft,
   onChanged,
+  onMarkUnread,
   picture,
   words,
 }: ConversationViewProps) {
@@ -95,7 +99,16 @@ export function ConversationView({
 
   return (
     <section ref={section} aria-label={chatName(row)} className="flex min-h-0 flex-1 flex-col">
-      <ConversationHeader row={row} picture={picture} find={<FindButton find={find} />}>
+      <ConversationHeader
+        row={row}
+        picture={picture}
+        find={<FindButton find={find} />}
+        menu={
+          onMarkUnread === undefined || !messenger.canMarkUnread(row) ? null : (
+            <ChatMenu name={chatName(row)} onMarkUnread={onMarkUnread} />
+          )
+        }
+      >
         {isChannel(row) ? (
           <ChannelHeaderActions
             messenger={messenger}
@@ -194,7 +207,7 @@ function useMessages(
     setMessages(found);
     setQuestions(asked);
     setFailure(undefined);
-    messenger.markSeen(id, found);
+    messenger.markSeen(latestRow.current, found);
     const before = seen.current;
     seen.current = new Set(found.map((message) => message.id));
     const fresh = before === undefined ? undefined : newestFromAgent(found, before);
@@ -205,6 +218,15 @@ function useMessages(
   useEffect(() => {
     void read().catch(reportRead);
   }, [read, changed]);
+
+  // A read that lands once the chat closed counts as replaced, so it doesn't mark the chat read
+  // again after its header's **Mark as unread** closed it.
+  useEffect(
+    () => () => {
+      reads.current += 1;
+    },
+    [],
+  );
 
   return { messages, questions, failure, read };
 }
@@ -262,12 +284,15 @@ function ConversationHeader({
   row,
   picture,
   find,
+  menu,
   children,
 }: {
   readonly row: ConversationRow;
   readonly picture: ImageBitmap | undefined;
   /** The icon that opens the find bar (Ctrl+F). */
   readonly find: ReactNode;
+  /** The ··· menu, last; none while the chat has nothing to mark unread. */
+  readonly menu: ReactNode;
   /** A channel's Members and Leave channel. */
   readonly children: ReactNode;
 }) {
@@ -288,6 +313,7 @@ function ConversationHeader({
           {children}
           {find}
           <ActivityButton />
+          {menu}
         </>
       }
     />

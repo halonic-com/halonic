@@ -105,6 +105,12 @@ export function MessengerPage({
     setSelected(undefined);
     readAgain();
   };
+  // An open chat reads its messages, so marking it unread closes it, as Mail does, and focus goes
+  // back to its row, now with its count (`messenger.read-marks`).
+  const markUnread = () => {
+    if (open !== undefined) messenger.markUnread(open);
+    back();
+  };
   return (
     <div className="flex h-full min-h-0 gap-2">
       <h1 className="sr-only">{messengerWords.title}</h1>
@@ -159,6 +165,7 @@ export function MessengerPage({
                 onConnect={onConnect}
                 onLeft={left}
                 onChanged={readAgain}
+                onMarkUnread={markUnread}
               />
             )}
           </main>
@@ -205,6 +212,7 @@ function Panel({
   onConnect,
   onLeft,
   onChanged,
+  onMarkUnread,
 }: {
   readonly messenger: Messenger;
   readonly loaded: boolean;
@@ -216,6 +224,7 @@ function Panel({
   readonly onConnect: (() => void) | undefined;
   readonly onLeft: () => void;
   readonly onChanged: () => void;
+  readonly onMarkUnread: () => void;
 }) {
   if (connected === false) {
     return <NoConnections line={messengerWords.noConnections.line} onConnect={onConnect} />;
@@ -235,6 +244,7 @@ function Panel({
       words={words}
       onLeft={onLeft}
       onChanged={onChanged}
+      onMarkUnread={onMarkUnread}
     />
   );
 }
