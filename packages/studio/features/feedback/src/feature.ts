@@ -1,17 +1,19 @@
+import { AskKeysSettingsService } from "@halonicjs/studio-feature-quick-ask/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { FeedbackSettingsService } from "./api.ts";
 import { settingsWords } from "./settings/settings-words.ts";
 
 /**
- * The Feedback feature: Settings → Keyboard, where the feedback shortcut changes, and Settings →
- * Feedback, where feedback goes (`feedback.settings-shortcut`, `feedback.settings-section`). Both
- * show only where the app gives a {@link FeedbackSettingsService}: Studio's own main window.
+ * The Feedback feature: Settings → Keyboard, where the feedback shortcut and quick ask's keys
+ * change, and Settings → Feedback, where feedback goes (`feedback.settings-shortcut`,
+ * `feedback.settings-quick-ask`, `feedback.settings-section`). Both show only where the app gives
+ * a {@link FeedbackSettingsService}: Studio's own main window.
  */
 export const feedbackFeature = defineFeature({
   id: "feedback",
   title: "Feedback",
-  wants: [FeedbackSettingsService, HostSettingsService],
+  wants: [FeedbackSettingsService, HostSettingsService, AskKeysSettingsService],
   register(studio) {
     studio.settings.add({
       id: "keyboard",

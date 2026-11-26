@@ -3891,6 +3891,9 @@ importers:
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../../../core/app
+      '@halonicjs/studio-feature-quick-ask':
+        specifier: workspace:*
+        version: link:../quick-ask
       '@halonicjs/studio-feature-settings':
         specifier: workspace:*
         version: link:../settings

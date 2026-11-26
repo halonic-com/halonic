@@ -41,6 +41,7 @@ import { itemLocationKey, placeNames, type Shell, StudioWorkspace } from "@halon
 import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
 import { openShellEngine } from "../engine/remote-engine.ts";
 import { provideFeedbackSettings } from "../feedback/provide-feedback-settings.ts";
+import { provideAskKeysSettings } from "../quick-ask/provide-ask-keys-settings.ts";
 import { provideKeepAwake, provideRemoteControl } from "../remote/provide-remote.ts";
 import { provideRunNotifications } from "../runs/run-notifications-watch.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
@@ -120,10 +121,12 @@ export async function openFolder(
   provideShellSecrets(services, window);
   provideShellHostSettings(services, window);
   services.provide(HostSettingsService, await hostSettingsOf(services, window));
-  await provideAgentSandbox(services, window, ipc, device.platform ?? "linux");
+  const platform = device.platform ?? "linux";
+  await provideAgentSandbox(services, window, ipc, platform);
   provideRemoteControl(services, tauriAgentHostTransport(window));
   provideKeepAwake(services, ipc, windowLabelOf(window));
-  provideFeedbackSettings(services, ipc, windowLabelOf(window), device.platform ?? "linux");
+  provideFeedbackSettings(services, ipc, windowLabelOf(window), platform);
+  provideAskKeysSettings(services, ipc, windowLabelOf(window), platform);
   if (ipc !== undefined) {
     services.provide(UpdaterService, updaterOf(ipc));
     services.provide(RestartRunsService, restartRunsOfWindow(services));
@@ -137,7 +140,7 @@ export async function openFolder(
       trust,
       askTrust: () => trustView?.asks.ask() ?? Promise.resolve("declined"),
       location,
-      platform: device.platform ?? "linux",
+      platform,
       name,
       scope,
       remoteEngine: await openShellEngine(ipc, location),
