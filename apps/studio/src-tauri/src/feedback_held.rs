@@ -35,9 +35,6 @@ pub struct Held {
     /// A press's still is being taken: another press now would start a
     /// second capture.
     capturing: bool,
-    /// The Send feedback window was asked to close and hasn't gone yet: a
-    /// press now takes a new capture instead of bringing it forward.
-    send_feedback_closing: bool,
 }
 
 /// The state of the window that asks for a still.
@@ -58,19 +55,11 @@ impl CallerState {
     }
 }
 
-/// Which of the feedback's windows are open when the shortcut is pressed.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct OpenWindows {
-    pub send_feedback: bool,
-}
-
 /// What a press of the shortcut does.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Press {
     /// Nothing: the last press is still taking its still.
     Ignore,
-    /// Brings the Send feedback window forward, keeping what is typed in it.
-    ShowSendFeedback,
     /// Takes the still of the window the shortcut was pressed in;
     /// `capture_done` follows.
     Capture,
@@ -87,26 +76,16 @@ impl Held {
             crop: None,
             press: self.press + 1,
             capturing: self.capturing,
-            send_feedback_closing: self.send_feedback_closing,
         };
         self.press
     }
 
-    /// The number of the last press, which its windows keep so that
-    /// closing late never drops what a later press holds.
-    pub fn press(&self) -> u64 {
-        self.press
-    }
-
-    /// What a press of the shortcut does while `open` windows are open.
-    /// A capture marks the still as being taken until `capture_done`, so
-    /// a press in between is ignored instead of starting a second one.
-    pub fn on_press(&mut self, open: OpenWindows) -> Press {
+    /// What a press of the shortcut does. A capture marks the still as
+    /// being taken until `capture_done`, so a press in between is ignored
+    /// instead of starting a second one.
+    pub fn on_press(&mut self) -> Press {
         if self.capturing {
             return Press::Ignore;
-        }
-        if open.send_feedback && !self.send_feedback_closing {
-            return Press::ShowSendFeedback;
         }
         self.capturing = true;
         Press::Capture
@@ -115,16 +94,6 @@ impl Held {
     /// The press's capture ended, with a still held or not.
     pub fn capture_done(&mut self) {
         self.capturing = false;
-    }
-
-    /// The Send feedback window was asked to close.
-    pub fn send_feedback_closing(&mut self) {
-        self.send_feedback_closing = true;
-    }
-
-    /// The Send feedback window is gone.
-    pub fn send_feedback_closed(&mut self) {
-        self.send_feedback_closing = false;
     }
 
     /// Drops the still of press `press` when no box was selected from it
@@ -144,17 +113,8 @@ impl Held {
         *self = Held {
             press: self.press,
             capturing: self.capturing,
-            send_feedback_closing: self.send_feedback_closing,
             ..Held::default()
         };
-    }
-
-    /// Drops everything held for press `press`: its Send feedback window
-    /// closed. A later press's still is left alone.
-    pub fn clear_press(&mut self, press: u64) {
-        if self.press == press {
-            self.clear();
-        }
     }
 
     /// The still, while it is younger than STILL_LIFETIME. An older one is
@@ -191,9 +151,15 @@ impl Held {
         Ok(())
     }
 
-    /// The selected crop, until the feedback ends.
-    pub fn crop(&self) -> Option<&Still> {
-        self.crop.as_ref()
+    /// The selected crop, until the feedback ends, for `window` only: the
+    /// Send feedback dialog shows in the window whose press took the still.
+    /// Refused as `other_window` for any other window, and as `gone` when
+    /// no crop is held.
+    pub fn crop(&self, window: &str) -> Result<&Still, &'static str> {
+        if self.window.as_deref().is_some_and(|held| held != window) {
+            return Err("other_window");
+        }
+        self.crop.as_ref().ok_or("gone")
     }
 }
 

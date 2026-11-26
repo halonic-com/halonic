@@ -22,6 +22,8 @@ export interface FeedbackOverlayProps {
   readonly still: StillSize;
   /** Takes the overlay away: after a selection, on Esc, or when the selection fails. */
   readonly onClose: () => void;
+  /** The shell kept the crop of the selected box: the Send feedback dialog can show. */
+  readonly onSelected: () => void;
 }
 
 /**
@@ -29,17 +31,18 @@ export interface FeedbackOverlayProps {
  * a light, see-through dim over the live app under a crosshair, with the hint at the top.
  * Dragging, or a click, a move and a second click, draws a box at full brightness with its size
  * in device pixels; finishing a box of 8 × 8 or more takes the overlay away and hands the box to
- * the shell, which crops the still it took when the shortcut was pressed. A smaller box does
+ * the shell, which crops the still it took when the shortcut was pressed, and then says so
+ * through `onSelected`. A smaller box does
  * nothing. Enter selects the whole window, so a keyboard alone can send feedback (WCAG 2.1.1),
  * and Esc ends the feedback.
  */
-export function FeedbackOverlay({ ipc, still, onClose }: FeedbackOverlayProps) {
+export function FeedbackOverlay({ ipc, still, onClose, onSelected }: FeedbackOverlayProps) {
   const [drag, setDrag] = useState<Drag>();
   const [pointerHere, setPointerHere] = useState(true);
   const viewport = useViewport();
   const select = (area: SelectedArea) => {
     onClose();
-    selectArea(ipc, area);
+    selectArea(ipc, area, onSelected);
   };
   useEscapeCloses(ipc, onClose);
   useEnterSelectsAll(drag === undefined ? still : undefined, select);
@@ -201,11 +204,12 @@ function useEscapeCloses(ipc: FeedbackIpc, onClose: () => void): void {
 }
 
 /**
- * Hands `area` to the shell, which opens the Send feedback window; if it can't, the feedback ends.
- * When another window's press took the still since (`other_window`), that feedback is left alone.
+ * Hands `area` to the shell, which keeps its crop, then calls `selected`; if the shell can't, the
+ * feedback ends. When another window's press took the still since (`other_window`), that feedback
+ * is left alone.
  */
-function selectArea(ipc: FeedbackIpc, area: SelectedArea): void {
-  ipc.invoke(feedbackCommands.select, { area }).catch((error: unknown) => {
+function selectArea(ipc: FeedbackIpc, area: SelectedArea, selected: () => void): void {
+  ipc.invoke(feedbackCommands.select, { area }).then(selected, (error: unknown) => {
     console.error("The box wasn't selected:", error);
     if (error !== "other_window") endFeedback(ipc);
   });

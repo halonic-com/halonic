@@ -5,8 +5,9 @@
 //! while that window is focused, visible and not minimised, so a page script in a window behind
 //! another app can't capture what covers it. The page
 //! then draws its see-through selection overlay over the live app and
-//! hands the box to `plugin:feedback|select`; the Send feedback window
-//! gets only that crop (`plugin:feedback|crop`). Where no still can be
+//! hands the box to `plugin:feedback|select`; the Send feedback dialog,
+//! in that same window, gets only that crop (`plugin:feedback|crop`). No
+//! window opens for it (HAL-19528). Where no still can be
 //! taken yet, such as macOS or Linux on Wayland, `start` opens a small
 //! window that says so.
 
@@ -19,19 +20,16 @@ use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::ipc::Response;
 use tauri::plugin::TauriPlugin;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
-use tauri::{AppHandle, LogicalSize, Manager, Runtime, Webview, WindowEvent};
+use tauri::{AppHandle, LogicalSize, Manager, Runtime, Webview};
 
 #[path = "feedback_held.rs"]
 mod held;
 #[path = "feedback_shortcut.rs"]
 mod shortcut;
 use held::{
-    CallerState, Capturing, Held, OpenWindows, Press, STILL_LIFETIME, SelectedBox,
-    UNAVAILABLE_WINDOW, still_bytes,
+    CallerState, Capturing, Held, Press, STILL_LIFETIME, SelectedBox, UNAVAILABLE_WINDOW,
+    still_bytes,
 };
-
-/// The Send feedback window's label.
-pub const FEEDBACK_WINDOW: &str = "feedback";
 
 /// Whether `label` is one of Studio's own windows (Studio, Halonic Inbox,
 /// Halonic Messenger), the only windows that may start a capture of their
@@ -79,8 +77,7 @@ pub struct Started {
     pub height: u32,
 }
 
-/// A press of the feedback shortcut in one of Studio's own windows. Brings the Send
-/// feedback window forward when it is open (`send_open`); otherwise takes
+/// A press of the feedback shortcut in one of Studio's own windows. Takes
 /// one still of that window's own area and holds it. Refused as
 /// `not_focused` unless the calling window is focused, visible and not
 /// minimised: the still is the screen under the window, so a window behind
@@ -97,23 +94,9 @@ pub async fn start<R: Runtime>(window: WebviewWindow<R>) -> Result<Started, &'st
         return Err("not_focused");
     }
     let app = window.app_handle().clone();
-    let windows = app.webview_windows();
-    let open = OpenWindows {
-        send_feedback: windows.contains_key(FEEDBACK_WINDOW),
-    };
-    let press = held(&app).on_press(open);
+    let press = held(&app).on_press();
     match press {
         Press::Ignore => Err("busy"),
-        Press::ShowSendFeedback => {
-            if let Some(send) = windows.get(FEEDBACK_WINDOW)
-                && let Err(error) = send.set_focus()
-            {
-                log(format!(
-                    "the Send feedback window didn't come forward: {error}"
-                ));
-            }
-            Err("send_open")
-        }
         Press::Capture => {
             let taking = app.clone();
             let taken = tauri::async_runtime::spawn_blocking(move || {
@@ -184,7 +167,7 @@ fn take_window_still<R: Runtime>(
 fn show_unavailable<R: Runtime>(app: &AppHandle<R>) {
     let shown = match app.get_webview_window(UNAVAILABLE_WINDOW) {
         Some(window) => window.set_focus(),
-        None => page_window(app, UNAVAILABLE_WINDOW).and_then(|window| {
+        None => unavailable_window(app).and_then(|window| {
             window.set_size(LogicalSize::new(440.0, 220.0))?;
             window.center()?;
             window.show()?;
@@ -196,53 +179,26 @@ fn show_unavailable<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// A hidden, borderless, always-on-top window on the app's own page.
-fn page_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> tauri::Result<WebviewWindow<R>> {
+/// The not-available window: hidden, borderless and always on top, on the
+/// app's own page.
+fn unavailable_window<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<WebviewWindow<R>> {
     let mut config = crate::window::app_window_config(app);
-    config.label = label.to_owned();
+    config.label = UNAVAILABLE_WINDOW.to_owned();
     config.visible = false;
     config.decorations = false;
     config.always_on_top = true;
     config.skip_taskbar = true;
     config.resizable = false;
-    let window = WebviewWindowBuilder::from_config(app, &config)?.build()?;
-    // Closed any other way, such as Alt+F4 or a crashed page, the Send
-    // feedback window drops the crop. Only its own press's: a window can
-    // close after the next press took its still.
-    // While the Send feedback window closes, a press takes a new capture.
-    let closed = app.clone();
-    let send_feedback = label == FEEDBACK_WINDOW;
-    let press = held(app).press();
-    window.on_window_event(move |event| match event {
-        WindowEvent::CloseRequested { .. } if send_feedback => {
-            held(&closed).send_feedback_closing();
-        }
-        WindowEvent::Destroyed if send_feedback => {
-            let mut held = held(&closed);
-            held.clear_press(press);
-            held.send_feedback_closed();
-        }
-        _ => {}
-    });
-    Ok(window)
+    WebviewWindowBuilder::from_config(app, &config)?.build()
 }
 
-/// Drops the still and the crop, and closes every feedback window.
+/// Drops the still and the crop, and closes the not-available window.
 fn finish<R: Runtime>(app: &AppHandle<R>) {
     held(app).clear();
-    close_windows(app, |label| {
-        label == FEEDBACK_WINDOW || label == UNAVAILABLE_WINDOW
-    });
-}
-
-/// Closes every window whose label `closes` picks.
-fn close_windows<R: Runtime>(app: &AppHandle<R>, closes: impl Fn(&str) -> bool) {
-    for (label, window) in app.webview_windows() {
-        if closes(&label)
-            && let Err(error) = window.close()
-        {
-            log(format!("{label} didn't close: {error}"));
-        }
+    if let Some(window) = app.get_webview_window(UNAVAILABLE_WINDOW)
+        && let Err(error) = window.close()
+    {
+        log(format!("{UNAVAILABLE_WINDOW} didn't close: {error}"));
     }
 }
 
@@ -250,42 +206,32 @@ fn log(message: String) {
     halonic_shell_log::record("feedback", message);
 }
 
-/// Keeps the crop of `area` of the still the calling window's press took,
-/// drops the still and opens the Send feedback window. Refused as
-/// `other_window`, leaving what is held alone, when another window's press
-/// took it, and as `gone`, ending the feedback, when there is no still.
-/// Async, because Windows can't open a window from a command on the main
-/// thread.
+/// Keeps the crop of `area` of the still the calling window's press took
+/// and drops the still; that window's page then shows the Send feedback
+/// dialog. Refused as `other_window`, leaving what is held alone, when
+/// another window's press took it, and as `gone`, ending the feedback, when
+/// there is no still.
 #[tauri::command]
-pub async fn select<R: Runtime>(
-    webview: Webview<R>,
-    area: SelectedBox,
-) -> Result<(), &'static str> {
+pub fn select<R: Runtime>(webview: Webview<R>, area: SelectedBox) -> Result<(), &'static str> {
     if !studio_window(webview.label()) {
         return Err("not_a_studio_window");
     }
     let app = webview.app_handle().clone();
     let selected = held(&app).select(webview.label(), area.into(), Instant::now());
-    if let Err(refusal) = selected {
-        if refusal == "gone" {
-            finish(&app);
-        }
-        return Err(refusal);
+    if selected == Err("gone") {
+        finish(&app);
     }
-    let window = page_window(&app, FEEDBACK_WINDOW).map_err(|_| "failed")?;
-    window
-        .center()
-        .and_then(|()| window.show())
-        .map_err(|_| "failed")
+    selected
 }
 
-/// The crop, for the Send feedback window, or `gone`.
+/// The crop, for the Send feedback dialog in the window whose press took
+/// it; `other_window` for any other window, or `gone`.
 #[tauri::command]
-pub fn crop<R: Runtime>(app: AppHandle<R>) -> Result<Response, &'static str> {
+pub fn crop<R: Runtime>(webview: Webview<R>) -> Result<Response, &'static str> {
+    let app = webview.app_handle().clone();
     let held = held(&app);
-    held.crop()
+    held.crop(webview.label())
         .map(|crop| Response::new(still_bytes(crop)))
-        .ok_or("gone")
 }
 
 /// Ends the feedback: Esc, Cancel, a sent feedback, or "Not now" where

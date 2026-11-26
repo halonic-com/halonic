@@ -18,10 +18,12 @@ export const feedbackWords = {
   notNow: "Not now",
   /** Under the text field when Send is pressed with nothing written. */
   emptyText: "Write a line about what you saw.",
-  /** The Send feedback window's title, and its two buttons. */
+  /** The Send feedback dialog's title, and its two buttons. */
   sendTitle: "Send feedback",
   cancel: "Cancel",
   send: "Send",
+  /** Send while the feedback is handed on. */
+  sending: "Sending…",
   placeholder: "What did you notice? The first line becomes the title.",
   /** The text field's name for screen readers: the placeholder's question (design check, HAL-19208). */
   textLabel: "What did you notice?",

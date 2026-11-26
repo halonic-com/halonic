@@ -9,7 +9,7 @@ use tauri::webview::WebviewWindowBuilder;
 use tauri::{App, Manager, Webview, WebviewUrl};
 
 use super::held::{CallerState, Held, SelectedBox, UNAVAILABLE_WINDOW, still_bytes};
-use super::{FEEDBACK_WINDOW, FeedbackCapture, crop, end, select, start};
+use super::{FeedbackCapture, crop, end, select, start};
 
 /// A 4 × 2 still whose pixels count up from 0.
 fn still() -> Still {
@@ -59,7 +59,7 @@ fn a_selection_keeps_only_the_crop() {
         height: 1,
     };
     assert_eq!(held.select("main", crop, now), Ok(()));
-    assert_eq!(held.crop(), still().crop(crop).as_ref());
+    assert_eq!(held.crop("main").ok(), still().crop(crop).as_ref());
     assert_eq!(held.still(now), None);
 }
 
@@ -78,7 +78,22 @@ fn only_the_window_whose_press_took_the_still_selects_from_it() {
         held.select("inbox", whole_box(2, 2), now),
         Err("other_window")
     );
-    assert!(held.crop().is_some(), "the crop stays for its window");
+    assert!(held.crop("main").is_ok(), "the crop stays for its window");
+}
+
+#[test]
+fn only_the_window_whose_press_took_the_still_reads_its_crop() {
+    let now = Instant::now();
+    let mut held = Held::default();
+    held.hold(still(), "main", now);
+    assert_eq!(held.select("main", whole_box(2, 2), now), Ok(()));
+    assert_eq!(held.crop("inbox").err(), Some("other_window"));
+    assert_eq!(held.crop("messenger").err(), Some("other_window"));
+    assert_eq!(
+        held.crop("main").map(|crop| crop.width),
+        Ok(2),
+        "refusing another window leaves the crop for its own"
+    );
 }
 
 #[test]
@@ -87,7 +102,7 @@ fn a_box_outside_the_still_or_after_it_was_dropped_keeps_nothing() {
     let mut held = Held::default();
     held.hold(still(), "main", now);
     assert_eq!(held.select("main", whole_box(5, 1), now), Err("gone"));
-    assert_eq!(held.crop(), None);
+    assert_eq!(held.crop("main").err(), Some("gone"));
     assert_eq!(held.still(now), None);
     assert_eq!(held.select("main", whole_box(1, 1), now), Err("gone"));
 }
@@ -99,7 +114,7 @@ fn a_new_press_drops_the_last_crop() {
     held.hold(still(), "main", now);
     assert_eq!(held.select("main", whole_box(4, 2), now), Ok(()));
     held.hold(still(), "main", now);
-    assert_eq!(held.crop(), None);
+    assert_eq!(held.crop("main").err(), Some("gone"));
 }
 
 #[test]
@@ -122,7 +137,7 @@ fn after_a_selection_the_timer_keeps_the_crop() {
     let press = held.hold(still(), "main", now);
     assert_eq!(held.select("main", whole_box(2, 2), now), Ok(()));
     assert!(!held.expire(press));
-    assert!(held.crop().is_some());
+    assert!(held.crop("main").is_ok());
 }
 
 #[test]
@@ -132,7 +147,7 @@ fn the_end_drops_all_and_presses_keep_counting() {
     let first = held.hold(still(), "main", now);
     assert_eq!(held.select("main", whole_box(2, 2), now), Ok(()));
     held.clear();
-    assert_eq!(held.crop(), None);
+    assert_eq!(held.crop("main").err(), Some("gone"));
     assert_eq!(
         held.select("inbox", whole_box(2, 2), now),
         Err("gone"),
@@ -201,16 +216,38 @@ fn only_a_studio_window_selects_and_only_while_a_still_is_held() {
         width: 2,
         height: 2,
     };
-    let other = webview(&app, "other");
     assert_eq!(
-        tauri::async_runtime::block_on(select(other, area)).err(),
+        select(webview(&app, "other"), area).err(),
         Some("not_a_studio_window")
     );
-    let main = webview(&app, "main");
+    assert_eq!(select(webview(&app, "main"), area).err(), Some("gone"));
+}
+
+#[test]
+fn a_selection_opens_no_window_and_its_crop_goes_only_to_its_window() {
+    let app = app_with(&["main", "inbox"]);
+    let state = app.state::<FeedbackCapture>();
+    state
+        .held
+        .lock()
+        .expect("not poisoned")
+        .hold(still(), "main", Instant::now());
+    let area = SelectedBox {
+        left: 0,
+        top: 0,
+        width: 2,
+        height: 2,
+    };
+    let before = app.webview_windows().len();
+    assert_eq!(select(webview(&app, "main"), area), Ok(()));
     assert_eq!(
-        tauri::async_runtime::block_on(select(main, area)).err(),
-        Some("gone")
+        app.webview_windows().len(),
+        before,
+        "the Send feedback dialog shows in the window itself"
     );
+    assert!(app.get_webview_window("feedback").is_none());
+    assert_eq!(crop(webview(&app, "inbox")).err(), Some("other_window"));
+    assert!(crop(webview(&app, "main")).is_ok());
 }
 
 #[test]
@@ -242,7 +279,7 @@ fn a_window_captures_only_while_focused_visible_and_not_minimised() {
 
 #[test]
 fn only_a_focused_studio_window_starts_a_capture() {
-    let others = ["other", "ask", FEEDBACK_WINDOW, UNAVAILABLE_WINDOW];
+    let others = ["other", "ask", UNAVAILABLE_WINDOW];
     let app = app_with(&[&["main"][..], &others[..]].concat());
     for label in others {
         let window = app.get_webview_window(label).expect("the window is open");
@@ -274,9 +311,9 @@ fn ending_drops_the_stills_and_the_crop() {
         held.hold(still(), "main", now);
         assert_eq!(held.select("main", whole_box(2, 2), now), Ok(()));
     }
-    assert!(crop(app.handle().clone()).is_ok());
+    assert!(crop(webview(&app, "main")).is_ok());
     end(app.handle().clone());
-    assert_eq!(crop(app.handle().clone()).err(), Some("gone"));
+    assert_eq!(crop(webview(&app, "main")).err(), Some("gone"));
 }
 
 fn capability(text: &str) -> Value {
@@ -297,14 +334,9 @@ fn each_feedback_window_is_granted_only_its_own_commands_and_never_served() {
         json!([
             "feedback:allow-start",
             "feedback:allow-select",
+            "feedback:allow-crop",
             "feedback:allow-end"
         ])
-    );
-    let window = capability(include_str!("../capabilities/desktop-feedback-window.json"));
-    assert_eq!(window["windows"], json!(["feedback"]));
-    assert_eq!(
-        window["permissions"],
-        json!(["feedback:allow-crop", "feedback:allow-end"])
     );
     let shortcut = capability(include_str!(
         "../capabilities/desktop-feedback-shortcut.json"
