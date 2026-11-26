@@ -241,5 +241,20 @@ verifies("messenger.conversations", () => {
       await press(transcript?.querySelector("a"));
       expect(opened).toEqual(["https://acme.example/pr/12"]);
     });
+
+    it("shows a task link the connector made a full Paperclip address as a link that opens outside", async () => {
+      // What the Paperclip connector sends for Chief's `[ACME-8](/ACME/issues/ACME-8)` (HAL-19407).
+      const task = "https://paperclip.acme.test/ACME/issues/ACME-8";
+      const { messaging, acmeChat } = twoChiefs();
+      messaging.addMessage(acmeChat.id, { body: `Done, see [ACME-8](${task}).` });
+      const opened: string[] = [];
+      const page = await openMessenger(messaging, opened);
+      await openAcmeChat(page);
+      const link = page.querySelector("main ol a");
+      expect(link?.textContent).toMatch(/^ACME-8/);
+      expect(link?.getAttribute("href")).toBe(task);
+      await press(link);
+      expect(opened).toEqual([task]);
+    });
   });
 });
