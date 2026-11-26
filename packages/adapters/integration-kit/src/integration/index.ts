@@ -33,6 +33,7 @@ export type {
 } from "@halonicjs/ports";
 export { maxIntegrationWaitMs } from "@halonicjs/ports";
 export { IntegrationRefusedError, IntegrationTimeoutError, type RefusalCode } from "./refused.ts";
+export { retryDelayMs } from "./retry-after.ts";
 export {
   type ArgumentCheck,
   type ArgumentIssue,
