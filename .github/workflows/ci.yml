@@ -942,19 +942,44 @@ jobs:
       # the job. Without the mount the job uses GitHub's cache, as below.
       # Elsewhere it is Turbo's own default folder (gitignored); actions/cache
       # refuses a path with "..", so the earlier ../turbo-cache was never saved.
+      # A fast-track pull request's overlay is a snapshot of that disk, and on
+      # 25 and 26 Nov some fast runs found it cold: 0-14% of typecheck and
+      # test tasks cached while a pull request on GitHub's runners at the same
+      # time had 87-96% (HAL-19780). So a pull request first counts how many of
+      # its shard's typecheck results the disk holds, as pr-turbo-cache does;
+      # under half, and it restores GitHub's cache instead, like GitHub's runners.
       - id: turbo-dir
         name: Choose the Turbo cache folder
         env:
           SELF_HOSTED: ${{ runner.environment == 'self-hosted' }}
+          PULL_REQUEST: ${{ github.event_name == 'pull_request' }}
         run: |
           dir=$GITHUB_WORKSPACE/.turbo/cache
           if [ "$SELF_HOSTED" = true ]; then
             if [ -d /cache/turbo ] && [ -w /cache/turbo ]; then
               dir=/cache/turbo
-              echo "disk=true" >> "$GITHUB_OUTPUT"
             else
               echo "::warning title=Turbo cache::/cache/turbo isn't mounted or writable, so this job uses GitHub's cache."
             fi
+          fi
+          if [ "$dir" = /cache/turbo ] && [ "$PULL_REQUEST" = true ]; then
+            rest=$(awk -v shard="$SHARD" '$1 == shard { $1 = ""; print }' <<< "$BUILD_SHARDS")
+            read -ra words <<< "$rest"
+            found=0 total=0
+            for hash in $(pnpm exec turbo run typecheck "${words[@]/#/--filter=}" --dry=json | jq -r '.tasks[] | select(.task == "typecheck") | .hash'); do
+              total=$((total + 1))
+              if [ -e "/cache/turbo/$hash.tar.zst" ]; then
+                found=$((found + 1))
+              fi
+            done
+            echo "Disk cache: $found of $total typecheck results for this shard."
+            if [ $((found * 2)) -lt "$total" ]; then
+              echo "::warning title=Turbo cache::The disk snapshot holds $found of $total typecheck results for this shard, so this job uses GitHub's cache."
+              dir=$GITHUB_WORKSPACE/.turbo/cache
+            fi
+          fi
+          if [ "$dir" = /cache/turbo ]; then
+            echo "disk=true" >> "$GITHUB_OUTPUT"
           fi
           echo "TURBO_CACHE_DIR=$dir" >> "$GITHUB_ENV"
       # Every task runs; unchanged packages are cache hits. On GitHub's
