@@ -190,18 +190,21 @@ Stacks stay short, so a closed pull request never strands work above it:
   queue asks for it on the pull request. Being behind `main` is fine: the merge queue tests it on
   top of current `main` anyway, and any push needs a new CI run and a new approval
   ([docs/guides/review.md](docs/guides/review.md#after-approval)).
-- The maintainer gives final approval only on the core building blocks: `packages/core/*`,
-  `packages/host`, the guard (`tooling/check`, `testing/spec`, `.github/workflows`), a new package,
-  and any change to a package's public interface (what its `src/index.ts` exports; an API report
-  replaces this once we generate one). Everything else merges on the teammates' approvals.
-- Three reviewers share the rest, by the paths a pull request changes (`reviewerFor` in
-  `tooling/paperclip/src/reviewer-paths.ts`; `pr_status` names the reviewer): the routine reviewer
-  approves alone everything outside the core building blocks above, `packages/host`,
-  `packages/testing/spec`, `tooling/paperclip`, `package.json` files and the second reviewer's
-  limits, up to 800 changed lines of code; the second reviewer takes the rest within their
-  limits; the maintainer takes everything else. Until the maintainer says the routine reviewer's
-  calibration is done, the second reviewer covers routine reviews
-  ([docs/guides/review.md](docs/guides/review.md#who-reviews-what)).
+- One reviewer per pull request, picked by the paths it changes (`reviewerFor` in
+  `tooling/paperclip/src/reviewer-paths.ts`; `pr_status` names them). Send the task to that
+  reviewer, and nobody else reviews it too:
+  - the routine reviewer approves alone what the second reviewer may approve, except
+    `packages/core/`, `packages/host/`, `packages/testing/spec/`, `tooling/paperclip/`, a public
+    interface (`src/index.ts`) and any `package.json`, up to 800 changed lines of code. Until the
+    maintainer says its calibration is done, the second reviewer covers these;
+  - the second reviewer approves the rest outside the maintainer's paths, up to 1500 changed lines
+    of code (800 in the engine's kernel and the event types);
+  - the maintainer reviews everything else: the maintainer's paths (the guard, `.github/`, the
+    lockfile and root config among them), security and release pull requests, and anything that
+    changes what a run may do
+  ([docs/guides/review.md](docs/guides/review.md#who-reviews-what)). A change to
+  `packages/core/*`, the guard or a public interface still waits for the maintainer's OK on its
+  plan (see "Plan first").
 - Nobody queues or merges a pull request by hand (no `gh pr merge`). The Merger queues approved
   pull requests with `ci-ok` green on their head, the bottom of a stack first.
 - The security reviewer also reviews tests, requirements, dependencies and `tooling/check`. The

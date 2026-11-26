@@ -10,8 +10,9 @@ full review of the whole repository before every release is in
 
 `reviewerFor` in `tooling/paperclip/src/reviewer-paths.ts` picks one of three
 roles by the paths and size of a pull request, and `pr_status` names who
-covers it. Send the task to that reviewer; a wrong pick costs nothing, since
-the reviewer passes it on.
+covers it. **One reviewer per pull request:** send the task to the reviewer
+`pr_status` names, not to whoever seems safest, and the others don't review it
+too. A reviewer who gets a pull request outside their scope passes it on.
 
 | Role | Who | Approves alone |
 | --- | --- | --- |
