@@ -1,16 +1,13 @@
 import type { CSSProperties } from "react";
 
 /**
- * The overlay's colours. They lie on someone else's screen, so they stay the same in light and
- * dark and aren't the kit's theme colours, which follow Studio's theme (and the kit's theme
+ * The overlay's colours. They lie over whatever the window shows, so they stay the same in light
+ * and dark and aren't the kit's theme colours, which follow Studio's theme (and the kit's theme
  * removes Tailwind's own `black` and `white`).
  */
 
-/** Black at 40% over the still. */
-export const dim = "rgb(0 0 0 / 0.4)";
-
-/** Behind the still while it loads. */
-export const overlayBackground: CSSProperties = { background: "#000000" };
+/** Black at 25% over the live app: it shows the overlay is on and keeps the app readable. */
+export const dim = "rgb(0 0 0 / 0.25)";
 
 /** The box's edge, white so it shows on any screen. */
 export const boxEdge = "#ffffff";

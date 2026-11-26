@@ -6,7 +6,12 @@ import {
   type Rect,
   type Screen,
 } from "../crop.ts";
-import type { StillImage } from "./still.ts";
+
+/** The size of the still the shell took of the window, in device pixels. */
+export interface StillSize {
+  readonly width: number;
+  readonly height: number;
+}
 
 /**
  * A box being drawn on an overlay: its first corner and where the pointer is now, in CSS pixels.
@@ -29,12 +34,12 @@ export interface SelectedArea {
 }
 
 /**
- * The screen an overlay covers, as the crop maths sees it: the window's own CSS pixels from its
+ * The window an overlay covers, as the crop maths sees it: the window's own CSS pixels from its
  * top-left corner, scaled by how many of the still's pixels each one holds. The scale comes from
  * the still rather than `devicePixelRatio`, so a crop always lands on the picture the person saw.
  */
 export function overlayScreen(
-  still: StillImage,
+  still: StillSize,
   viewport: { readonly width: number; readonly height: number },
 ): Screen {
   return {
@@ -63,6 +68,6 @@ export function wasClick(box: Rect): boolean {
 }
 
 /** The whole still, which Enter selects when no box is being drawn. */
-export function wholeStill(still: StillImage): SelectedArea {
+export function wholeStill(still: StillSize): SelectedArea {
   return { left: 0, top: 0, width: still.width, height: still.height };
 }

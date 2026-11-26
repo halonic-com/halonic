@@ -1,8 +1,8 @@
-//! The global-shortcut plugin (HAL-18778), which the feedback shortcut
-//! and quick ask (HAL-18787) share. It is registered from Rust only, and
-//! only with their own keys: no capability grants the plugin's commands, so
-//! no page can register a key or hear one. A press goes to whichever of
-//! the two registered its keys; any other press does nothing.
+//! The global-shortcut plugin (HAL-18778), used by quick ask (HAL-18787)
+//! only: the feedback shortcut is heard in Studio's own focused windows,
+//! never system-wide. It is registered from Rust only, and only with quick
+//! ask's keys: no capability grants the plugin's commands, so no page can
+//! register a key or hear one. Any other press does nothing.
 
 use tauri::{AppHandle, Builder, Manager, Runtime};
 use tauri_plugin_global_shortcut::{GlobalShortcut, ShortcutState};
@@ -22,8 +22,6 @@ pub fn keys<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 }
                 if crate::quick_ask::owns(app, shortcut) {
                     crate::quick_ask::pressed(app);
-                } else if crate::feedback_capture::owns(app, shortcut) {
-                    crate::feedback_capture::pressed(app);
                 }
             })
             .build(),

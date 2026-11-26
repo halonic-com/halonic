@@ -1,10 +1,11 @@
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 
 /**
- * The shortcut the shell uses when none is saved (`DEFAULT_SHORTCUT` in `feedback_held.rs`):
- * Ctrl+Alt+F, ⌘ ⌥ F on macOS.
+ * The shortcut used when none is saved, or the saved one holds none of Ctrl, Alt and ⌘
+ * ({@link heardShortcut}): Ctrl+Shift+F, ⌘ ⇧ F on macOS. Studio's own window hears it only while
+ * focused, so it takes nothing from other apps, and it holds Ctrl (⌘), so it works while typing.
  */
-export const defaultShortcut = "CommandOrControl+Alt+F";
+export const defaultShortcut = "CommandOrControl+Shift+F";
 
 /** The keys of a key press the recording control reads; a `KeyboardEvent` is one. */
 export interface PressedKeys {
@@ -22,9 +23,9 @@ const modifierCodes = /^(Control|Alt|Shift|Meta|OS)(Left|Right)?$/;
 /**
  * The shortcut a key press records, in the words the shell reads (`Shortcut::from_str`):
  * `"Control+Alt+KeyK"`. It names the physical key, so a layout that types another letter there
- * still gives the shortcut the shell hears. `undefined` while only modifiers are held, and for a
- * key without Ctrl, Alt or ⌘: the shell refuses those as `invalid`, because a global Shift+F would
- * take every capital F typed in any app.
+ * still gives the same shortcut. `undefined` while only modifiers are held, and for a key without
+ * Ctrl, Alt or ⌘: the shell refuses those as `invalid`, because Shift+F would take every capital F
+ * typed in Studio.
  */
 export function recordedShortcut(press: PressedKeys): string | undefined {
   if (modifierCodes.test(press.code) || press.code === "") return undefined;
@@ -54,6 +55,21 @@ const modifierOf: Readonly<Record<string, "Ctrl" | "Super" | "Alt" | "Shift" | "
   cmdorctrl: "Mod",
   cmdorcontrol: "Mod",
 };
+
+/**
+ * The shortcut the feedback hears for the saved `shortcut`: itself when it holds Ctrl, Alt or ⌘
+ * (`CommandOrControl` counts), and {@link defaultShortcut} otherwise. The shell refuses to save such
+ * a shortcut (`plugin:feedback|shortcut_set`), but a settings file edited by hand could hold one,
+ * and a saved Shift+F would take every capital F typed in Studio.
+ */
+export function heardShortcut(shortcut: string): string {
+  const holding = shortcut
+    .split("+")
+    .slice(0, -1)
+    .map((part) => modifierOf[part.trim().toLowerCase()])
+    .some((modifier) => modifier !== undefined && modifier !== "Shift");
+  return holding ? shortcut : defaultShortcut;
+}
 
 /** The order the keys show in, as every hint in the Studio (`hintKeys`): Ctrl, ⌘, Alt, Shift. */
 const shownOrder = ["Ctrl", "Super", "Alt", "Shift"] as const;
@@ -108,4 +124,48 @@ export function shortcutKeys(shortcut: string, platform: KeyboardPlatform): stri
 /** A shortcut in a sentence: "Ctrl+Alt+K", and "⌃⌥K" on macOS, as its menus write it. */
 export function shortcutText(keys: readonly string[], platform: KeyboardPlatform): string {
   return keys.join(platform === "macos" ? "" : "+");
+}
+
+/**
+ * Whether a key press is `shortcut`, as the shell saves it (`"control+shift+KeyF"`) or as
+ * {@link defaultShortcut} names it (`"CommandOrControl+Shift+F"`): the same physical key with
+ * exactly the same modifiers held. `CommandOrControl` is ⌘ on macOS and Ctrl elsewhere.
+ */
+export function matchesShortcut(
+  shortcut: string,
+  press: PressedKeys,
+  platform: KeyboardPlatform,
+): boolean {
+  const parts = shortcut.split("+").map((part) => part.trim());
+  const key = parts.at(-1) ?? "";
+  const held = new Set<string>();
+  for (const part of parts.slice(0, -1)) {
+    const modifier = modifierOf[part.toLowerCase()];
+    if (modifier === undefined) return false;
+    held.add(modifier === "Mod" ? commandOrControl(platform) : modifier);
+  }
+  return (
+    codeOf(key) === press.code &&
+    held.has("Ctrl") === press.ctrlKey &&
+    held.has("Super") === press.metaKey &&
+    held.has("Alt") === press.altKey &&
+    held.has("Shift") === press.shiftKey
+  );
+}
+
+/** The `KeyboardEvent.code` a shortcut's key names: "F" and "KeyF" are "KeyF", "1" is "Digit1". */
+function codeOf(key: string): string {
+  if (/^[a-z]$/i.test(key)) return `Key${key.toUpperCase()}`;
+  if (/^[0-9]$/.test(key)) return `Digit${key}`;
+  const letterOrDigit = /^(Key|Digit)(.)$/i.exec(key);
+  if (letterOrDigit?.[1] !== undefined && letterOrDigit[2] !== undefined) {
+    const kind = letterOrDigit[1].toLowerCase() === "key" ? "Key" : "Digit";
+    return `${kind}${letterOrDigit[2].toUpperCase()}`;
+  }
+  return key;
+}
+
+/** What `CommandOrControl` holds: ⌘ on macOS, Ctrl elsewhere. */
+function commandOrControl(platform: KeyboardPlatform): "Super" | "Ctrl" {
+  return platform === "macos" ? "Super" : "Ctrl";
 }

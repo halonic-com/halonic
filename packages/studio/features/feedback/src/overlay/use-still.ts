@@ -3,14 +3,13 @@ import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc
 import { readStill, type StillImage } from "./still.ts";
 
 /**
- * This overlay's still, or with `command` set to `crop` the Send feedback window's crop, drawn on
- * `canvas` once the shell gave it. Without one, such as after two minutes, or a canvas that can't
+ * The Send feedback window's crop, drawn on `canvas` once the shell gave it. Without one, such as after two minutes, or a canvas that can't
  * draw, the feedback ends: a window over nothing would hide the screen for no reason.
  */
 export function useStill(
   ipc: FeedbackIpc,
   canvas: RefObject<HTMLCanvasElement | null>,
-  command: typeof feedbackCommands.still | typeof feedbackCommands.crop = feedbackCommands.still,
+  command: typeof feedbackCommands.crop = feedbackCommands.crop,
 ): StillImage | undefined {
   const [still, setStill] = useState<StillImage>();
   useEffect(() => {

@@ -1,6 +1,5 @@
 //! Requirement `studio.src-tauri.feedback-capture`.
 
-use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 use halonic_screen_still::{CropBox, Still};
@@ -8,12 +7,9 @@ use serde_json::{Value, json};
 use tauri::test::{MockRuntime, mock_builder};
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{App, Manager, Webview, WebviewUrl};
-use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
 
-use super::held::{
-    DEFAULT_SHORTCUT, Held, MAX_SCREENS, SelectedBox, overlay_index, saved_shortcut, still_bytes,
-};
-use super::{FeedbackCapture, crop, end, still as overlay_still};
+use super::held::{CallerState, Held, SelectedBox, UNAVAILABLE_WINDOW, still_bytes};
+use super::{FEEDBACK_WINDOW, FeedbackCapture, crop, end, select, start};
 
 /// A 4 × 2 still whose pixels count up from 0.
 fn still() -> Still {
@@ -34,46 +30,6 @@ fn whole_box(width: u32, height: u32) -> CropBox {
 }
 
 #[test]
-fn the_default_shortcut_is_ctrl_alt_f_or_command_option_f() {
-    let control = if cfg!(target_os = "macos") {
-        Modifiers::SUPER
-    } else {
-        Modifiers::CONTROL
-    };
-    let expected = Shortcut::new(Some(control | Modifiers::ALT), Code::KeyF);
-    assert_eq!(Shortcut::from_str(DEFAULT_SHORTCUT).ok(), Some(expected));
-    assert_eq!(saved_shortcut(None), expected);
-}
-
-#[test]
-fn a_saved_shortcut_is_used_and_anything_else_falls_back_to_the_default() {
-    let saved = json!("CommandOrControl+Shift+K");
-    assert_eq!(
-        saved_shortcut(Some(&saved)),
-        Shortcut::from_str("CommandOrControl+Shift+K").expect("a shortcut")
-    );
-    let default = saved_shortcut(None);
-    for value in [json!("not a shortcut"), json!(""), json!(42), Value::Null] {
-        assert_eq!(saved_shortcut(Some(&value)), default, "{value}");
-    }
-}
-
-#[test]
-fn only_overlay_labels_have_a_screen_number() {
-    assert_eq!(overlay_index("feedback-overlay-0"), Some(0));
-    assert_eq!(overlay_index("feedback-overlay-7"), Some(7));
-    for label in [
-        "main",
-        "feedback",
-        "feedback-overlay-",
-        "feedback-overlay-x",
-        "feedback-overlay-8",
-    ] {
-        assert_eq!(overlay_index(label), None, "{label}");
-    }
-}
-
-#[test]
 fn a_still_reaches_the_page_with_its_size_first() {
     let bytes = still_bytes(&still());
     assert_eq!(&bytes[..8], &[4, 0, 0, 0, 2, 0, 0, 0]);
@@ -81,78 +37,81 @@ fn a_still_reaches_the_page_with_its_size_first() {
 }
 
 #[test]
-fn each_screen_gets_its_own_still_until_it_is_two_minutes_old() {
+fn the_still_is_held_until_it_is_two_minutes_old() {
     let taken = Instant::now();
     let mut held = Held::default();
-    held.hold(
-        vec![
-            still(),
-            Still {
-                width: 1,
-                height: 1,
-                rgba: vec![7; 4],
-            },
-        ],
-        taken,
-    );
-    assert_eq!(held.still(1, taken).map(|still| still.width), Some(1));
-    assert_eq!(held.still(2, taken), None);
+    held.hold(still(), "main", taken);
+    assert_eq!(held.still(taken).map(|still| still.width), Some(4));
     let later = taken + Duration::from_secs(120);
-    assert_eq!(held.still(0, later), None);
-    assert_eq!(
-        held.still(0, taken),
-        None,
-        "an old still is dropped, not kept"
-    );
+    assert_eq!(held.still(later), None);
+    assert_eq!(held.still(taken), None, "an old still is dropped, not kept");
 }
 
 #[test]
 fn a_selection_keeps_only_the_crop() {
     let now = Instant::now();
     let mut held = Held::default();
-    held.hold(vec![still()], now);
+    held.hold(still(), "main", now);
     let crop = CropBox {
         left: 1,
         top: 1,
         width: 2,
         height: 1,
     };
-    assert!(held.select(0, crop, now));
+    assert_eq!(held.select("main", crop, now), Ok(()));
     assert_eq!(held.crop(), still().crop(crop).as_ref());
-    assert_eq!(held.still(0, now), None);
+    assert_eq!(held.still(now), None);
+}
+
+#[test]
+fn only_the_window_whose_press_took_the_still_selects_from_it() {
+    let now = Instant::now();
+    let mut held = Held::default();
+    held.hold(still(), "main", now);
+    assert_eq!(
+        held.select("inbox", whole_box(2, 2), now),
+        Err("other_window")
+    );
+    assert!(held.still(now).is_some(), "the still stays for its window");
+    assert_eq!(held.select("main", whole_box(2, 2), now), Ok(()));
+    assert_eq!(
+        held.select("inbox", whole_box(2, 2), now),
+        Err("other_window")
+    );
+    assert!(held.crop().is_some(), "the crop stays for its window");
 }
 
 #[test]
 fn a_box_outside_the_still_or_after_it_was_dropped_keeps_nothing() {
     let now = Instant::now();
     let mut held = Held::default();
-    held.hold(vec![still()], now);
-    assert!(!held.select(0, whole_box(5, 1), now));
+    held.hold(still(), "main", now);
+    assert_eq!(held.select("main", whole_box(5, 1), now), Err("gone"));
     assert_eq!(held.crop(), None);
-    assert_eq!(held.still(0, now), None);
-    assert!(!held.select(0, whole_box(1, 1), now));
+    assert_eq!(held.still(now), None);
+    assert_eq!(held.select("main", whole_box(1, 1), now), Err("gone"));
 }
 
 #[test]
 fn a_new_press_drops_the_last_crop() {
     let now = Instant::now();
     let mut held = Held::default();
-    held.hold(vec![still()], now);
-    assert!(held.select(0, whole_box(4, 2), now));
-    held.hold(vec![still()], now);
+    held.hold(still(), "main", now);
+    assert_eq!(held.select("main", whole_box(4, 2), now), Ok(()));
+    held.hold(still(), "main", now);
     assert_eq!(held.crop(), None);
 }
 
 #[test]
-fn the_timer_drops_only_the_stills_of_its_own_press() {
+fn the_timer_drops_only_the_still_of_its_own_press() {
     let now = Instant::now();
     let mut held = Held::default();
-    let first = held.hold(vec![still()], now);
-    let second = held.hold(vec![still()], now);
+    let first = held.hold(still(), "main", now);
+    let second = held.hold(still(), "inbox", now);
     assert!(!held.expire(first), "a later press is left alone");
-    assert!(held.still(0, now).is_some());
+    assert!(held.still(now).is_some());
     assert!(held.expire(second));
-    assert_eq!(held.still(0, now), None);
+    assert_eq!(held.still(now), None);
     assert!(!held.expire(second), "nothing is left to drop");
 }
 
@@ -160,30 +119,27 @@ fn the_timer_drops_only_the_stills_of_its_own_press() {
 fn after_a_selection_the_timer_keeps_the_crop() {
     let now = Instant::now();
     let mut held = Held::default();
-    let press = held.hold(vec![still()], now);
-    assert!(held.select(0, whole_box(2, 2), now));
+    let press = held.hold(still(), "main", now);
+    assert_eq!(held.select("main", whole_box(2, 2), now), Ok(()));
     assert!(!held.expire(press));
     assert!(held.crop().is_some());
 }
 
 #[test]
-fn an_overlay_closed_another_way_drops_the_stills_and_the_end_drops_all() {
+fn the_end_drops_all_and_presses_keep_counting() {
     let now = Instant::now();
     let mut held = Held::default();
-    let first = held.hold(vec![still()], now);
-    held.drop_stills_of(first);
-    assert_eq!(held.still(0, now), None);
-    let second = held.hold(vec![still()], now);
-    assert!(held.select(0, whole_box(2, 2), now));
-    held.drop_stills_of(second);
-    assert!(
-        held.crop().is_some(),
-        "the crop stays for the Send feedback window"
-    );
+    let first = held.hold(still(), "main", now);
+    assert_eq!(held.select("main", whole_box(2, 2), now), Ok(()));
     held.clear();
     assert_eq!(held.crop(), None);
+    assert_eq!(
+        held.select("inbox", whole_box(2, 2), now),
+        Err("gone"),
+        "after the end, no window's press holds anything"
+    );
     assert!(
-        held.hold(vec![still()], now) > first,
+        held.hold(still(), "main", now) > first,
         "presses keep counting"
     );
 }
@@ -210,12 +166,11 @@ fn a_box_is_whole_numbers_from_zero_up_and_inside_its_screen() {
     }
     let now = Instant::now();
     let mut held = Held::default();
-    held.hold(vec![still()], now);
-    assert!(!held.select(0, whole_box(0, 2), now), "an empty box");
-    held.hold(vec![still()], now);
-    assert!(
-        !held.select(1, whole_box(1, 1), now),
-        "a screen that isn't there"
+    held.hold(still(), "main", now);
+    assert_eq!(
+        held.select("main", whole_box(0, 2), now),
+        Err("gone"),
+        "an empty box"
     );
 }
 
@@ -238,30 +193,86 @@ fn webview(app: &App<MockRuntime>, label: &str) -> Webview<MockRuntime> {
 }
 
 #[test]
-fn only_an_overlay_window_gets_a_still_and_only_while_one_is_held() {
-    let app = app_with(&["main", "feedback-overlay-0"]);
+fn only_a_studio_window_selects_and_only_while_a_still_is_held() {
+    let app = app_with(&["main", "other"]);
+    let area = SelectedBox {
+        left: 0,
+        top: 0,
+        width: 2,
+        height: 2,
+    };
+    let other = webview(&app, "other");
+    assert_eq!(
+        tauri::async_runtime::block_on(select(other, area)).err(),
+        Some("not_a_studio_window")
+    );
     let main = webview(&app, "main");
-    let overlay = webview(&app, "feedback-overlay-0");
-    assert_eq!(overlay_still(main).err(), Some("not_an_overlay"));
-    assert_eq!(overlay_still(overlay.clone()).err(), Some("gone"));
+    assert_eq!(
+        tauri::async_runtime::block_on(select(main, area)).err(),
+        Some("gone")
+    );
+}
+
+#[test]
+fn a_window_captures_only_while_focused_visible_and_not_minimised() {
+    let in_front = CallerState {
+        focused: true,
+        visible: true,
+        minimized: false,
+    };
+    assert!(in_front.may_capture());
+    for refused in [
+        CallerState {
+            focused: false,
+            ..in_front
+        },
+        CallerState {
+            visible: false,
+            ..in_front
+        },
+        CallerState {
+            minimized: true,
+            ..in_front
+        },
+        CallerState::default(),
+    ] {
+        assert!(!refused.may_capture(), "{refused:?}");
+    }
+}
+
+#[test]
+fn only_a_focused_studio_window_starts_a_capture() {
+    let others = ["other", "ask", FEEDBACK_WINDOW, UNAVAILABLE_WINDOW];
+    let app = app_with(&[&["main"][..], &others[..]].concat());
+    for label in others {
+        let window = app.get_webview_window(label).expect("the window is open");
+        assert_eq!(
+            tauri::async_runtime::block_on(start(window)).err(),
+            Some("not_a_studio_window"),
+            "{label}"
+        );
+    }
+    // The mock runtime's windows are never focused, as a window behind
+    // another app isn't.
+    let main = app.get_webview_window("main").expect("the window is open");
+    assert_eq!(
+        tauri::async_runtime::block_on(start(main)).err(),
+        Some("not_focused")
+    );
     let state = app.state::<FeedbackCapture>();
-    state
-        .held
-        .lock()
-        .expect("not poisoned")
-        .hold(vec![still()], Instant::now());
-    assert!(overlay_still(overlay).is_ok());
+    let mut held = state.held.lock().expect("not poisoned");
+    assert_eq!(held.still(Instant::now()), None, "no still was taken");
 }
 
 #[test]
 fn ending_drops_the_stills_and_the_crop() {
-    let app = app_with(&["feedback-overlay-0"]);
+    let app = app_with(&["main"]);
     let state = app.state::<FeedbackCapture>();
     let now = Instant::now();
     {
         let mut held = state.held.lock().expect("not poisoned");
-        held.hold(vec![still()], now);
-        assert!(held.select(0, whole_box(2, 2), now));
+        held.hold(still(), "main", now);
+        assert_eq!(held.select("main", whole_box(2, 2), now), Ok(()));
     }
     assert!(crop(app.handle().clone()).is_ok());
     end(app.handle().clone());
@@ -277,17 +288,14 @@ fn capability(text: &str) -> Value {
 
 #[test]
 fn each_feedback_window_is_granted_only_its_own_commands_and_never_served() {
-    let overlay = capability(include_str!(
-        "../capabilities/desktop-feedback-overlay.json"
+    let capture = capability(include_str!(
+        "../capabilities/desktop-feedback-capture.json"
     ));
-    let labels: Vec<String> = (0..MAX_SCREENS)
-        .map(|index| format!("feedback-overlay-{index}"))
-        .collect();
-    assert_eq!(overlay["windows"], json!(labels));
+    assert_eq!(capture["windows"], json!(["main", "inbox", "messenger"]));
     assert_eq!(
-        overlay["permissions"],
+        capture["permissions"],
         json!([
-            "feedback:allow-still",
+            "feedback:allow-start",
             "feedback:allow-select",
             "feedback:allow-end"
         ])

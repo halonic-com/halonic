@@ -218,7 +218,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "update_set_automatic",
         "update_set_track",
         "plugin:updater|check",
-        "plugin:feedback|still",
+        "plugin:feedback|start",
         "plugin:feedback|select",
         "plugin:feedback|crop",
         "plugin:feedback|end",
