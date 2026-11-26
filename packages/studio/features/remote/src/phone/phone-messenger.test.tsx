@@ -288,3 +288,62 @@ verifies("remote.phone-messenger", () => {
     });
   });
 });
+
+/** A Messenger tab over a version 4 host that hasn't answered anything yet. */
+function openList() {
+  const scene = new GatewayScene();
+  scene.connect();
+  render(
+    <PhoneMessenger
+      messaging={scene.client.messaging}
+      computer={SCENE_COMPUTER}
+      olderComputer={false}
+      onOpenLink={() => undefined}
+    />,
+  );
+  return scene;
+}
+
+const chips = () => document.querySelector('[role="radiogroup"]');
+
+verifies("remote.phone-messenger-tab", () => {
+  describe("the Messenger tab before it has chats", () => {
+    it("says Loading Messenger, without chips, until the computer answers", async () => {
+      const scene = openList();
+      await settle();
+      expect(readLine()).toBe("Loading Messenger");
+      expect(chips()).toBeNull();
+      answer(scene, "conversations", []);
+      answer(scene, "agents", []);
+      await settle();
+      expect(document.body.textContent).toBe(
+        "No chats yetChats you start on Work laptop show up here.",
+      );
+    });
+
+    it("says why a failed read failed, never No chats yet", async () => {
+      const scene = openList();
+      const conversations = scene.tunnel
+        .sentOf("msg-read")
+        .find((read) => read.what === "conversations");
+      scene.host({ type: "error", replyTo: conversations?.id ?? "", code: "signed-out" });
+      answer(scene, "agents", []);
+      await settle();
+      expect(readLine()).toBe(
+        "Couldn't load it: Work laptop turned it down. You can open it there.",
+      );
+      expect(document.body.textContent).not.toContain("No chats yet");
+      expect(chips()).toBeNull();
+    });
+
+    it("says Nothing is waiting for you under the chips when nothing waits", async () => {
+      const scene = openList();
+      answer(scene, "conversations", [{ ...direct, waitingForMe: false }]);
+      answer(scene, "agents", []);
+      await settle();
+      await act(async () => chips()?.querySelectorAll("input")[1]?.click());
+      expect(document.body.textContent).toContain("Nothing is waiting for you.");
+      expect(buttonNamed("Chief")).toBeUndefined();
+    });
+  });
+});

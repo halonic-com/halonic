@@ -47,6 +47,7 @@ function options(shell: FakeShell, tunnel: PhoneTunnel | undefined): PageOptions
     window,
     openSettings: () => undefined,
     openTailscale: () => undefined,
+    openLink: () => undefined,
     report: () => undefined,
   };
 }

@@ -58,6 +58,7 @@ async function openLaptop(): Promise<FakePhoneTunnel> {
         onCamera: () => undefined,
         onOpenSettings: () => undefined,
         onOpenTailscale: () => undefined,
+        onOpenLink: () => undefined,
       }),
     );
   });

@@ -100,6 +100,7 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
           router={router}
           onOpenSettings={mount.onOpenSettings}
           onOpenTailscale={mount.onOpenTailscale}
+          onOpenLink={mount.onOpenLink}
           onCamera={mount.onCamera}
           nearby={mount.nearby}
         />

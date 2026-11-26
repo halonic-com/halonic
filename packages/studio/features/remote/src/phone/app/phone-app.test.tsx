@@ -48,6 +48,7 @@ async function mount(tunnel: FakePhoneTunnel) {
         onCamera: () => undefined,
         onOpenSettings: () => undefined,
         onOpenTailscale: () => undefined,
+        onOpenLink: () => undefined,
       }),
     );
   });

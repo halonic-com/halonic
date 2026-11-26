@@ -29,6 +29,8 @@ export interface PageOptions extends ConnectPageOptions {
   /** Android's settings for Halonic. */
   readonly openSettings: () => void;
   readonly openTailscale: () => void;
+  /** A message's link in the system browser. */
+  readonly openLink: (link: string) => void;
   /** Where an answer or a refusal the page doesn't expect goes, for the log. */
   readonly report: (problem: string) => void;
   /** The Android app's shortcuts (HAL-19143); without them no shortcut opens a screen. */
@@ -85,6 +87,7 @@ export async function startPage(options: PageOptions): Promise<void> {
     report: options.report,
     onOpenSettings: options.openSettings,
     onOpenTailscale: options.openTailscale,
+    onOpenLink: options.openLink,
     // The camera runs behind the web view: the page lets it show through while scanning.
     onCamera: (showing) => document.body.classList.toggle("camera", showing),
     onAddress: (showing) => {

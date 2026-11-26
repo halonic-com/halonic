@@ -95,6 +95,7 @@ async function launch(answers: Record<string, unknown>, scanner?: PairingScanner
     window,
     openSettings: () => undefined,
     openTailscale: () => undefined,
+    openLink: () => undefined,
     report,
   });
   await settle();

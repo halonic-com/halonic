@@ -1,0 +1,21 @@
+{
+  "identifier": "phone-links",
+  "description": "On Android, the app's own page may open a GitHub pull request page in the system browser through the opener, for a link in the phone's Messenger tab (HAL-19050). The page checks each link with isAllowedWebLink first; this scope is the shell's own limit, so no other address opens. It is local only, so the Studio the computer serves gets none of it.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "android"
+  ],
+  "permissions": [
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "https://github.com/*/*/pull/*"
+        }
+      ]
+    }
+  ]
+}
