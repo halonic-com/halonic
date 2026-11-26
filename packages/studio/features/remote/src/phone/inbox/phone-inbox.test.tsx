@@ -331,7 +331,9 @@ verifies("remote.phone-inbox-parts", () => {
       );
       render(inbox);
       expect(text()).toBe("Loading the Inbox");
-      act(() => vi.advanceTimersByTime(SKELETON_AFTER_MS));
+      act(() => vi.advanceTimersByTime(SKELETON_AFTER_MS - 1));
+      expect(document.querySelectorAll(".bg-surface-muted")).toHaveLength(0);
+      act(() => vi.advanceTimersByTime(1));
       expect(text()).toBe("Loading the Inbox");
       expect(document.querySelectorAll(".bg-surface-muted").length).toBeGreaterThan(0);
     } finally {

@@ -155,22 +155,29 @@ export function InboxCard({
         <p className="text-small text-fg-muted">{askerLine(item)}</p>
       </div>
       {body === "" ? null : <p className="whitespace-pre-wrap text-body text-fg">{body}</p>}
-      <p id={lineId} role="status" className="flex items-center gap-1 text-small text-fg-muted">
-        {answered?.settled === true && answered.mark !== "none" ? (
-          <span aria-hidden="true" className="size-4 shrink-0 *:size-full">
-            {marks[answered.mark]}
-          </span>
-        ) : null}
-        {answered?.line}
-      </p>
-      <CardAnswers
-        item={item}
-        off={off}
-        offBy={settled ? lineId : undefined}
-        sending={sending}
-        onSend={send}
-        onOpenSettings={onOpenSettings}
-      />
+      {/* The line stays for screen readers but takes no gap while it's empty. */}
+      <div className="flex flex-col">
+        <p
+          id={lineId}
+          role="status"
+          className="mb-2 flex items-center gap-1 text-small text-fg-muted empty:mb-0"
+        >
+          {answered?.settled === true && answered.mark !== "none" ? (
+            <span aria-hidden="true" className="size-4 shrink-0 *:size-full">
+              {marks[answered.mark]}
+            </span>
+          ) : null}
+          {answered?.line}
+        </p>
+        <CardAnswers
+          item={item}
+          off={off}
+          offBy={settled ? lineId : undefined}
+          sending={sending}
+          onSend={send}
+          onOpenSettings={onOpenSettings}
+        />
+      </div>
       {settled ? (
         <Button variant="primary" size="touch" onClick={onBack}>
           {inboxWords.next}

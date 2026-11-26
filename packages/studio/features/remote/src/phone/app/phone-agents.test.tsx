@@ -3,6 +3,7 @@
 import {
   gatewayFallbackProtocolVersion,
   gatewayMaxMessageBytes,
+  type InboxItem,
   type PairingQrPayload,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
@@ -54,8 +55,7 @@ const reporter = listedSession({ id: "s-reporter", title: "Reporter", lastSeq: 1
  * pairs and sends statuses, and each computer's tunnel carries the gateway messages of a host the
  * test plays.
  */
-async function mountApp() {
-  const tunnel = new FakePhoneTunnel();
+async function mountApp(tunnel = new FakePhoneTunnel()) {
   const hosts = new Map<ComputerId, GatewayHost>();
   const container = document.createElement("section");
   document.body.append(container);
@@ -298,3 +298,67 @@ verifies("remote.phone-computer-agents", () => {
     for (const words of older) expect(text()).not.toContain(words);
   });
 });
+
+verifies("remote.phone-inbox-parts", () => {
+  it("shows none of a forgotten computer's Inbox on the next computer's screen", async () => {
+    const tunnel = new FakePhoneTunnel();
+    for (const [id, name] of [
+      ["c-1", "Tim's laptop"],
+      ["c-2", "Work desktop"],
+    ] as const) {
+      const computer = id as ComputerId;
+      tunnel.computers.set(computer, {
+        id: computer,
+        name,
+        pairedAt: "2026-11-14T10:00:00Z",
+        endpoints: ["wss://studio.tail1234.ts.net"],
+        standing: "paired",
+      });
+    }
+    const { hosts } = await mountApp(tunnel);
+    const laptop = "c-1" as ComputerId;
+    const first = hosts.get(laptop);
+    if (first === undefined) throw new Error("No gateway client held for the laptop.");
+    await step(() => {
+      tunnel.push(laptop, { state: "connected" });
+      first.connectAndList([]);
+    });
+    await step(() => {
+      const replyTo = first.tunnel.lastOf("msg-read").id;
+      first.host({ type: "msg-data", replyTo, what: "inbox", items: [card] });
+    });
+    expect(text()).toContain("Ship phase 2 now?");
+    expect(document.querySelector("nav")?.textContent).toContain("waiting");
+
+    // The laptop removes this phone, and it's forgotten on its Removed screen.
+    await step(() => tunnel.push(laptop, { state: "removed" }));
+    await press("Forget this computer");
+    const confirm = [...document.querySelectorAll("dialog button")].find((each) =>
+      each.textContent?.startsWith("Forget"),
+    );
+    await step(() => (confirm as HTMLButtonElement | undefined)?.click());
+    const desktop = "c-2" as ComputerId;
+    const next = hosts.get(desktop);
+    if (next === undefined) throw new Error("No gateway client held for the desktop.");
+    // The desktop answers, but holds its Inbox read.
+    await step(() => {
+      tunnel.push(desktop, { state: "connected" });
+      next.connectAndList([]);
+    });
+    expect(document.querySelector("h1")?.textContent).toBe("Work desktop");
+    expect(next.tunnel.sentOf("msg-read")).toHaveLength(1);
+    expect(text()).not.toContain("Ship phase 2 now?");
+    expect(document.querySelector("nav")?.textContent).toBe("InboxAgents");
+  });
+});
+
+const card: InboxItem = {
+  id: "i-1",
+  source: "acme",
+  from: { kind: "agent", agent: "chief", name: "Chief" },
+  question: "Ship phase 2 now?",
+  options: [],
+  attachments: [],
+  createdAt: "2026-11-25T14:00:00.000Z",
+  state: { kind: "open" },
+};
