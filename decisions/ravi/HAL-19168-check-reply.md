@@ -2,7 +2,7 @@
 
 - Approval: the plan is HAL-18391 rev 2 (Liam's OK, 26 Nov), the task is HAL-19168, and its reviewer approves this note in review
 - Kind: internal
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:WtniqddU6iB2ZtUrq4bADN8KQsy+bGrvvIMT93QWneEt40fa9qiD0cnZgZHbZqvR9xeTkRZkR6JHyQ0GX56ZDw==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:CrJ9269lQABf7TV5aftAoTgAfmV6NWb8/9Nf/JJiL534gdOE6XnvhC54eHQf8VB/OGgenl90qRjqSrj1k3y8AQ==
 - Task: HAL-19168
 
 ## What changes
