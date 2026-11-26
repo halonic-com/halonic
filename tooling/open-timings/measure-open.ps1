@@ -31,6 +31,12 @@ New-Item -ItemType Directory -Force (Join-Path $profileFolder 'studio') | Out-Nu
 # before it read them on Windows.
 @{ version = 1; folders = @(@{ location = $location }) } | ConvertTo-Json -Depth 4 |
   Set-Content (Join-Path $profileFolder 'studio\picked-folders.json') -Encoding utf8NoBOM
+# Without a saved choice, Windows starts the agent host in Halonic's WSL
+# distro, which the runner lacks: the start is refused and writes no `start`
+# or `ready` line. A saved `srt` choice starts it beside the shell instead.
+New-Item -ItemType Directory -Force (Join-Path $profileFolder 'sandbox') | Out-Null
+@{ backend = 'srt'; chosenAt = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json |
+  Set-Content (Join-Path $profileFolder 'sandbox\sandbox-setting.json') -Encoding utf8NoBOM
 
 # WebView2's registry policy beats the shell's own browser arguments; the
 # per-user key alone opened no port on the runner, so both, as test-update.ps1
@@ -66,14 +72,22 @@ try {
   foreach ($key in $policyKeys) { Remove-ItemProperty -Path $key -Name 'Halonic.exe' -ErrorAction SilentlyContinue }
 }
 
-# The measured start: a fresh log, then wait for a window's engine line.
+# The measured start: a fresh log, then wait for a window's engine line and
+# the agent host's, which the shell starts only once the page's engine is ready.
 Remove-Item $log -ErrorAction SilentlyContinue
 Start-Process $exe | Out-Null
 foreach ($i in 1..60) {
   Start-Sleep -Seconds 2
-  if ((Test-Path $log) -and (Select-String -Path $log -Pattern "timings: a window's engine" -Quiet)) { break }
+  if ((Test-Path $log) -and
+    (Select-String -Path $log -Pattern "timings: a window's engine" -Quiet) -and
+    (Select-String -Path $log -Pattern 'timings: the agent host started' -Quiet)) { break }
 }
 Stop-Halonic
+if (-not (Select-String -Path $log -Pattern 'timings: the agent host started' -Quiet -ErrorAction SilentlyContinue)) {
+  # Not a failure, but the table then lacks `start` and `ready`: say why.
+  Write-Output 'No agent host start line; the end of shell.log:'
+  Get-Content $log -ErrorAction SilentlyContinue | Select-Object -Last 40 | Out-Host
+}
 Remove-Item Env:HALONIC_HOME
 
 $summary = pnpm --silent --dir $repo exec node $cli summary $log

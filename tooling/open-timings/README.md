@@ -21,3 +21,6 @@ In CI, `measure-open.ps1` starts the installed Studio twice on Windows: the firs
 `examples/acme` in Recent through WebView2's DevTools port, the second reopens it as a person's
 next start would, and the job summary gets the table (`pnpm --filter
 @halonicjs/tooling-open-timings timings summary <shell.log>`).
+
+The runner has no Halonic WSL distro, so the test profile saves the `srt` sandbox choice: the
+agent host then starts beside the shell, and its `start` row times that start, not the distro's.
