@@ -70,6 +70,16 @@ async function messageOf(response: Pick<Response, "json">): Promise<string> {
   }
 }
 
+const notModified = /Invalid response status code 304\b/;
+
+/**
+ * Whether a fetch error is the plugin SDK failing to rebuild a 304: its worker
+ * rebuilds the host's answer as `new Response(body, …)`, which refuses a 304
+ * (HAL-20170).
+ */
+const unchangedAnswer = (error: unknown) =>
+  error instanceof TypeError && notModified.test(error.message);
+
 /** One GET with the last answer's ETag; a 304 gives that answer back. */
 async function getOnce(
   options: { readonly fetch: ReadFetch; readonly token: string; readonly etags: EtagCache },
@@ -80,14 +90,22 @@ async function getOnce(
     throw new Error(`GitHub: refusing to send the token to ${url.origin}.`);
   }
   const kept = options.etags.get(url.href);
-  const response = await options.fetch(url.href, {
-    method: "GET",
-    headers: {
-      ...baseHeaders,
-      authorization: `Bearer ${options.token}`,
-      ...(kept === undefined ? {} : { "if-none-match": kept.etag }),
-    },
-  });
+  let response: Awaited<ReturnType<ReadFetch>>;
+  try {
+    response = await options.fetch(url.href, {
+      method: "GET",
+      headers: {
+        ...baseHeaders,
+        authorization: `Bearer ${options.token}`,
+        ...(kept === undefined ? {} : { "if-none-match": kept.etag }),
+      },
+    });
+  } catch (error) {
+    if (kept !== undefined && unchangedAnswer(error)) {
+      return { status: 304, value: kept.body };
+    }
+    throw error;
+  }
   if (response.status === 304 && kept !== undefined) {
     return { status: 304, value: kept.body };
   }

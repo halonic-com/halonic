@@ -118,6 +118,22 @@ verifies("paperclip.merge-control-api-budget", () => {
     expect(second.calls().calls).toBe(0);
   });
 
+  test("a 304 the plugin SDK can't rebuild as a Response gives the kept answer (HAL-20170)", async () => {
+    const etags = etagCache();
+    const github = fakeGitHub([{ status: 200, body: ["first"], headers: { etag: 'W/"abc"' } }]);
+    const first = await passReader({ fetch: github.fetch, token: tokens(), etags });
+    await first.get("/repos/acme/app/actions/runs");
+    const sdkFetch: ReadFetch = async () => {
+      // What the SDK's worker does with the host's 304: `new Response("", { status: 304 })`.
+      return new Response("", { status: 304 });
+    };
+    const second = await passReader({ fetch: sdkFetch, token: tokens(), etags });
+    expect(await second.get("/repos/acme/app/actions/runs")).toEqual(["first"]);
+    expect(second.calls().calls).toBe(0);
+    const empty = await passReader({ fetch: sdkFetch, token: tokens(), etags: etagCache() });
+    await expect(empty.get("/repos/acme/app/actions/runs")).rejects.toThrow(TypeError);
+  });
+
   test("writes are counted on their own, with the remaining limit their answers name", async () => {
     const github = fakeGitHub([{ status: 200, body: {}, headers: rateLimited("4200") }]);
     const writes = meteredWrites(github.fetch);
