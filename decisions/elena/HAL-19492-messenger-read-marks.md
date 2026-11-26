@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-19492
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:bV3zXP6TU/Bo1edBgbM7rlRCnmE4s5AwISYUVQFndzESlVjes460fD3+cwh0zb3l9bdsNX52M7rzARkmuvDIDg==
 
 `messenger.chat-rows` counted the agent's messages that came after the person last had the chat
 open, and showed no count once it was open. The read and unread rule the board approved on
