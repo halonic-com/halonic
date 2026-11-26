@@ -45,22 +45,8 @@ export function provideAgentMessaging(
   location: string,
   window: object,
 ): void {
-  if (transport === undefined) return;
-  const messaging = new AgentHostMessaging(transport, location);
-  const active = new HostActiveAccount(
-    services.has(HostSettingsService)
-      ? services.get(HostSettingsService)
-      : new MemoryHostSettingsStore(),
-  );
-  services.provide(ActiveAccountService, active);
-  // One account at a time, for every reader of the port: the Inbox and Messenger in every window,
-  // search and the overview, and so the desktop notifications, which follow the active account.
-  const scoped = scopeToAccount(messaging, active);
-  services.provide(AgentMessagingService, scoped);
-  services.provide(SearchMessagingService, scoped);
-  services.provide(OverviewMessagingService, scoped);
-  services.provide(AgentActivityService, new AgentHostActivity(transport, location));
-  if (!(window instanceof EventTarget)) return;
+  const messaging = provideAgentMessagingReaders(services, transport, location);
+  if (messaging === undefined || !(window instanceof EventTarget)) return;
   const tell = (inFront: boolean) => () => {
     messaging.setInFront(inFront).catch((error: unknown) => {
       console.error("Telling the agent host whether the window is in front", error);
@@ -76,4 +62,34 @@ export function provideAgentMessaging(
       window.removeEventListener("blur", blurred);
     },
   });
+}
+
+/**
+ * Provides what {@link provideAgentMessaging} provides, but tells the host nothing about the
+ * window: quick ask's box shows and hides over other apps, so its focus says nothing about whether
+ * Studio is in front. Returns the host's own port, or `undefined` without an agent host.
+ *
+ * @param location - the workspace's real path, which the host binds keys to
+ */
+export function provideAgentMessagingReaders(
+  services: ServiceRegistry,
+  transport: AgentHostTransport | undefined,
+  location: string,
+): AgentHostMessaging | undefined {
+  if (transport === undefined) return undefined;
+  const messaging = new AgentHostMessaging(transport, location);
+  const active = new HostActiveAccount(
+    services.has(HostSettingsService)
+      ? services.get(HostSettingsService)
+      : new MemoryHostSettingsStore(),
+  );
+  services.provide(ActiveAccountService, active);
+  // One account at a time, for every reader of the port: the Inbox and Messenger in every window,
+  // search and the overview, and so the desktop notifications, which follow the active account.
+  const scoped = scopeToAccount(messaging, active);
+  services.provide(AgentMessagingService, scoped);
+  services.provide(SearchMessagingService, scoped);
+  services.provide(OverviewMessagingService, scoped);
+  services.provide(AgentActivityService, new AgentHostActivity(transport, location));
+  return messaging;
 }

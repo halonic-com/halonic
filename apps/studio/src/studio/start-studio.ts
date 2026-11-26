@@ -30,6 +30,7 @@ import { followFrameColour, studioFrameColour } from "./frame-colour.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import { halonicVersion } from "./open-trusts.ts";
 import { startServedStudio } from "./served-studio.ts";
+import { isAskBoxWindow, startAskBox } from "./start-ask-box.ts";
 import { feedbackWindowOf, startFeedbackWindow } from "./start-feedback-window.ts";
 import { focusedAppOf, startFocusedApp } from "./start-focused-app.ts";
 import { watchStart } from "./start-watch.ts";
@@ -103,6 +104,16 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
     const feedback = feedbackWindowOf(page.window);
     if (feedback !== undefined) {
       return startFeedbackWindow(page, { ipc, kind: feedback, display: displaySettingsOf(page) });
+    }
+    // Quick ask's box starts only itself and the Messenger it asks through, not every feature.
+    if (isAskBoxWindow(page.window)) {
+      return startAskBox(page, {
+        ipc,
+        host,
+        platform,
+        language: studioLanguage,
+        display: displaySettingsOf(page),
+      });
     }
     const shell = createShell({ ...desktop, host, platform });
     // Halonic Inbox and Halonic Messenger load this page too, in a window of their own.
