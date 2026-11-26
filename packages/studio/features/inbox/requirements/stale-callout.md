@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18557; design review HAL-18481, improvement 8 (approved by the board on HAL-10)
+- Source: HAL-18557; HAL-19449; design review HAL-18481, improvement 8 (approved by the board on HAL-10)
 
-When a later load of the Inbox fails, the line over the list that says it is showing what the engine said last shall be a callout with **Try again**, which loads the Inbox again, in the same words as before.
+When a later load of the Inbox fails, the line over the list that says it is showing what the engine said last shall be a callout with **Try again**, which loads the Inbox again. The callout's words are those of `inbox.stale-age`.
 
 ## Examples
 

@@ -114,6 +114,31 @@ async function inboxWith(done: () => Promise<readonly RunProposalEntry[]>) {
   return { root, inbox };
 }
 
+/** The Inbox page with proposal `01JD8Q` open, after a load the agent host refused. */
+async function openAfterRefusal(decisions: ProposalDecisions): Promise<HTMLElement> {
+  let refuse = false;
+  const { runs } = fakeRuns([]);
+  const inbox = new Inbox({
+    ...runs,
+    proposals: async () => {
+      if (refuse) throw new KindedError("unavailable", "The agent host refused the read.");
+      return [entry("01JD8Q")];
+    },
+  });
+  const root = render(
+    <InboxView inbox={inbox} proposals={decisions} now={() => new Date("2026-11-22T10:00:00Z")} />,
+  );
+  await act(async () => inbox.refresh());
+  refuse = true;
+  await act(async () => inbox.refresh());
+  const cell = root.querySelector<HTMLElement>('[role="grid"] tr [role="gridcell"]');
+  act(() => cell?.focus());
+  await act(async () => {
+    cell?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  return root;
+}
+
 const doneDetails = (root: HTMLElement) =>
   [...root.querySelectorAll("summary")].find((summary) => summary.textContent === "Done")
     ?.parentElement;
@@ -172,36 +197,27 @@ verifies("inbox.proposal-not-answering", () => {
     it("sends nothing after a load the engine refused with its own reason", async () => {
       // HAL-19190: the line gives a refusal's reason instead of "isn't answering", but the last
       // load still failed, so the buttons stay unavailable.
-      let refuse = false;
       const decisions = fakeDecisions();
-      const { runs } = fakeRuns([]);
-      const inbox = new Inbox({
-        ...runs,
-        proposals: async () => {
-          if (refuse) throw new KindedError("unavailable", "The agent host refused the read.");
-          return [entry("01JD8Q")];
-        },
-      });
-      const root = render(
-        <InboxView
-          inbox={inbox}
-          proposals={decisions}
-          now={() => new Date("2026-11-22T10:00:00Z")}
-        />,
-      );
-      await act(async () => inbox.refresh());
-      refuse = true;
-      await act(async () => inbox.refresh());
-      const cell = root.querySelector<HTMLElement>('[role="grid"] tr [role="gridcell"]');
-      act(() => cell?.focus());
-      await act(async () => {
-        cell?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
-      });
+      const root = await openAfterRefusal(decisions);
 
       expect(root.textContent).toContain("The agent host refused the read.");
       expect(buttons(root, "Accept")[0]?.getAttribute("aria-disabled")).toBe("true");
       await press(buttons(root, "Accept")[0]);
       expect(decisions.accept).not.toHaveBeenCalled();
+    });
+
+    it("gives the open item the list line's reason after a refusal, not that the engine isn't answering", async () => {
+      // HAL-19449: the list gave the refusal's reason while the open item still said the engine
+      // isn't answering, and its buttons named that line.
+      const root = await openAfterRefusal(fakeDecisions());
+
+      const line = "The agent host refused the read. Showing what was read last.";
+      const list = root.querySelector('[data-pane="list"] [role="status"]');
+      expect(list?.textContent).toContain(line);
+      const body = root.querySelector('[data-pane="item"] section > div');
+      expect(body?.firstElementChild?.textContent).toBe(line);
+      expect(pointsAt(root, buttons(root, "Accept")[0], line)).toBe(true);
+      expect(root.textContent).not.toContain("The engine isn't answering.");
     });
   });
 
