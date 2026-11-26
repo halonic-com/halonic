@@ -2,8 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18970 (plan on HAL-18919); words and look from Sofia's sketch on HAL-18562, §1;
-  Enter and the two-click box from HAL-19017
+- Source: HAL-18970 (plan on HAL-18919); words and look from Sofia's sketch on HAL-18562, §1; Enter and the two-click box from HAL-19017
 
 When a feedback overlay window opens, the Feedback feature shall draw that screen's still from
 `plugin:feedback|still` under black at 40%, with a crosshair pointer and the hint
