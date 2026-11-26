@@ -135,6 +135,38 @@ verifies("server.messaging-client-changes", () => {
       expect(waits).toEqual([]);
     });
 
+    it("opens changes again after a 5xx answer, as when the server can't be reached", async () => {
+      const stream = changesStream();
+      stream.send("src-1");
+      const unavailable = () => new Response("Service Unavailable", { status: 503 });
+      const { fetch, sent } = scripted(unavailable, unavailable, stream.response);
+      const { messaging, waits } = client(fetch);
+      const reader = messaging.changes();
+
+      const heard = await reader.next();
+
+      expect(heard).toEqual({ done: false, value: "src-1" });
+      expect(sent).toHaveLength(3);
+      expect(waits).toEqual([1000, 2000]);
+      await reader.return(undefined);
+    });
+
+    it("throws bad-answer without opening again after a 400 answer", async () => {
+      const { fetch, sent } = scripted(() => new Response("Bad Request", { status: 400 }));
+      const { messaging, waits } = client(fetch);
+
+      const failure = await messaging
+        .changes()
+        [Symbol.asyncIterator]()
+        .next()
+        .catch((error: unknown) => error);
+
+      expect(failure).toBeInstanceOf(ServerClientError);
+      expect((failure as ServerClientError).reason).toBe("bad-answer");
+      expect(sent).toHaveLength(1);
+      expect(waits).toEqual([]);
+    });
+
     it("throws without opening again when the server signs the device out", async () => {
       const { fetch, sent } = scripted(() =>
         Response.json({ code: "not_signed_in" }, { status: 401 }),
