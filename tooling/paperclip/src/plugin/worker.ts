@@ -93,15 +93,16 @@ export const plugin = definePlugin({
     ctx.jobs.register("precheck-wake", () => precheckJob.dispatch());
     // Off unless the board turns it on; its only outside call is to api.anthropic.com (HAL-19136).
     const bot = frontBot(ctx, {
-      anthropicFetch: fetchHonouringSignal((url, init) => ctx.http.fetch(url, init)),
+      anthropicFetch: (url, init) => fetch(url, init),
       now: () => new Date(),
     });
     ctx.events.on("issue.comment.created", async (event) => {
       roster.remember(event.companyId);
+      // Not awaited: the bot's queue never holds up the other comment handlers.
+      void bot.onCommentCreated(event);
       await Promise.all([
         board.onCommentCreated(event, new Date()),
         onChiefLineComment(ctx, event),
-        bot.onCommentCreated(event),
       ]);
     });
     ctx.events.on("agent.run.failed", async (event) => {

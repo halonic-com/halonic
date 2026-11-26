@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
   chatTaskId,
   commentCreated,
@@ -170,6 +170,66 @@ verifies("paperclip.front-bot-first-reply", () => {
     await earlierKey.bot.onCommentCreated(commentCreated(earlierKey.message.id));
     expect(earlierKey.requests).toHaveLength(1);
     expect(earlierKey.requests[0]?.body).not.toContain(plantedKey);
+  });
+
+  describe("must-fail test 5: keys Studio's check doesn't know are caught too", () => {
+    // Built at run time, so the source holds no text shaped like a key.
+    const shapes = {
+      "a signed token (JWT)": [
+        `eyJ${"aGVsbG8gd29y".repeat(2)}`,
+        `eyJ${"c3ViIjoiYWNt".repeat(2)}`,
+        "Q7x2Lm9K".repeat(4),
+      ].join("."),
+      "a GitHub app token": `ghs_${"Q7x2Lm9K".repeat(5)}`,
+    };
+    for (const [kind, fake] of Object.entries(shapes)) {
+      test(`${kind} in the message makes no call`, async () => {
+        const harness = frontBotHarness({ message: `use ${fake}`, answers: [{ reply: "SKIP" }] });
+        await harness.bot.onCommentCreated(commentCreated(harness.message.id));
+        expect(harness.requests).toEqual([]);
+        expect(onlyRecord(harness.logs)).toMatchObject({ reason: "secret_in_input" });
+      });
+
+      test(`${kind} in an earlier comment is left out`, async () => {
+        const harness = frontBotHarness({
+          earlier: [{ author: "board", at: "2026-11-26T13:00:00Z", body: `token: ${fake}` }],
+          answers: [{ reply: "SKIP" }],
+        });
+        await harness.bot.onCommentCreated(commentCreated(harness.message.id));
+        expect(harness.requests).toHaveLength(1);
+        expect(harness.requests[0]?.body).not.toContain(fake);
+      });
+    }
+  });
+
+  test("the call never follows a redirect, which would take the key to another host", async () => {
+    const harness = frontBotHarness({ answers: [{ reply: "SKIP" }] });
+    await harness.bot.onCommentCreated(commentCreated(harness.message.id));
+    expect(harness.requests.map((request) => request.redirect)).toEqual(["error"]);
+  });
+
+  test("a call that never answers ends at the timeout and frees the queue", async () => {
+    vi.useFakeTimers();
+    try {
+      const harness = frontBotHarness({
+        answers: [{ hangs: true }, { reply: "About PR #6129. Depends on the merge queue." }],
+      });
+      const first = harness.bot.onCommentCreated(commentCreated(harness.message.id));
+      await vi.advanceTimersByTimeAsync(8_000);
+      await first;
+      expect(onlyRecord(harness.logs)).toMatchObject({ outcome: "failed", reason: "timeout" });
+
+      const second = harness.addComment({
+        authorAgentId: null,
+        authorUserId: "user-board",
+        body: "Is #6129 merged yet?",
+        createdAt: new Date("2026-11-26T14:04:00Z"),
+      });
+      await harness.bot.onCommentCreated(commentCreated(second.id));
+      expect(harness.posted()).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("must-fail test 6: out-of-scope comments make no call", async () => {

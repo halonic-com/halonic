@@ -239,7 +239,11 @@ async function handle(
 
 /** The front bot for one plugin worker. */
 export interface FrontBot {
-  /** A comment was created: write a first reply when it is a board user's message on a chat task. */
+  /**
+   * A comment was created: write a first reply when it is a board user's
+   * message on a chat task. Settles once this message is handled; callers
+   * other than tests needn't wait for it, and it never rejects.
+   */
   onCommentCreated(event: PluginEvent): Promise<void>;
 }
 

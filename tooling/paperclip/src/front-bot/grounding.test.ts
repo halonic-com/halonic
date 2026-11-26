@@ -47,6 +47,26 @@ verifies("paperclip.front-bot-grounding", () => {
     expect(checkGrounding(`About ${key}.`, input)).toEqual({ ok: false, reason: "secret_shape" });
   });
 
+  test("a reply repeating a JWT or a GitHub app token is rejected as a key", () => {
+    // Built at run time, so the source holds no text shaped like a key.
+    const jwt = [
+      `eyJ${"aGVsbG8gd29y".repeat(2)}`,
+      `eyJ${"c3ViIjoiYWNt".repeat(2)}`,
+      "Q7x2Lm9K".repeat(4),
+    ];
+    const input = inputOf({
+      title: "Chat",
+      earlier: [],
+      message: "Is #6129 merged yet?",
+    });
+    for (const fake of [jwt.join("."), `ghs_${"Q7x2Lm9K".repeat(5)}`]) {
+      expect(checkGrounding(`About ${fake}.`, input)).toEqual({
+        ok: false,
+        reason: "secret_shape",
+      });
+    }
+  });
+
   test("a negated result word passes, and the same word alone doesn't", () => {
     const input = inputOf(examples("voice")[2] as FrontBotExample);
     expect(

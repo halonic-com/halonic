@@ -1,3 +1,4 @@
+import { findCredentialShape } from "./credential-shape.ts";
 import {
   clockTime,
   commentLimit,
@@ -5,7 +6,6 @@ import {
   frontBotUserText,
   shownEarlier,
 } from "./prompt.ts";
-import { holdsSecretShape } from "./secret-shape.ts";
 
 /**
  * The plain-code check every first reply passes before it is posted
@@ -18,6 +18,7 @@ import { holdsSecretShape } from "./secret-shape.ts";
 /** Why a reply was rejected. Only the code is logged, never the reply. */
 export type GroundingReason =
   | "secret_shape"
+  | "credential_request"
   | "too_long"
   | "bare_acknowledgement"
   | "unhedged_answer"
@@ -62,6 +63,15 @@ const firstPerson = /(?<![\w'’])(?:I|I'm|I’m|I'll|I’ll|I've|I’ve|I'd|I�
 const bannedWords = /\bsafe(?:ly)?\b|!|\p{Extended_Pictographic}/iu;
 const timePromises =
   /\b(?:in (?:a|\d+) (?:moment|minute|minutes|min|mins|hour|hours|sec|second|seconds|bit|few)|within|shortly|soon|right away|asap|by (?:today|tonight|tomorrow|the end|end of))\b/i;
+
+/**
+ * A reply that names a credential, or asks the reader to hand something over.
+ * An injected comment could otherwise make the bot ask the board for a key in
+ * plain lowercase words, which no key shape catches.
+ */
+const credentialWords =
+  /\b(?:api[- ]?keys?|keys?|tokens?|passwords?|passphrases?|secrets?|credentials?)\b/i;
+const handOverWords = /\b(?:paste|send|share|provide|enter)\b/i;
 
 /**
  * Words that state a result or a claimed action. Allowed only when negated
@@ -191,7 +201,8 @@ function resultWordsAllowed(line: string, input: FrontBotInput): boolean {
 export function checkGrounding(line: string, given: FrontBotInput): Grounding {
   const input = frontBotUserText(given);
   const reject = (reason: GroundingReason): Grounding => ({ ok: false, reason });
-  if (holdsSecretShape(line)) return reject("secret_shape");
+  if (findCredentialShape(line) !== undefined) return reject("secret_shape");
+  if (credentialWords.test(line) || handOverWords.test(line)) return reject("credential_request");
   if (line.length > maxCharacters || words(line).length > maxWords) return reject("too_long");
   if (isBareAcknowledgement(line)) return reject("bare_acknowledgement");
   if (unhedgedAnswer.test(line)) return reject("unhedged_answer");

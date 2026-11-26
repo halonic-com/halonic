@@ -46,11 +46,15 @@ export interface StoredComment {
   createdAt: Date;
 }
 
-/** How the recorded Anthropic answers: a reply text, an HTTP status, or a thrown network error. */
+/**
+ * How the recorded Anthropic answers: a reply text, an HTTP status, a thrown
+ * network error, or never, ignoring the abort signal like the host's `fetch`.
+ */
 export type Recorded =
   | { readonly reply: string }
   | { readonly status: number }
-  | { readonly throws: string };
+  | { readonly throws: string }
+  | { readonly hangs: true };
 
 /** Options for one harness. */
 export interface HarnessOptions {
@@ -114,7 +118,12 @@ export function frontBotHarness(options: HarnessOptions = {}) {
       options.conversationAgentId === undefined ? chiefId : options.conversationAgentId,
     activeRun: { id: "run-1" },
   };
-  const requests: { url: string; headers: Record<string, string>; body: string }[] = [];
+  const requests: {
+    url: string;
+    headers: Record<string, string>;
+    body: string;
+    redirect: RequestInit["redirect"];
+  }[] = [];
   const answers = [...(options.answers ?? [])];
   const logs: { level: string; line: string; meta: unknown }[] = [];
   let clock = new Date("2026-11-26T14:03:00.300Z").getTime();
@@ -128,6 +137,7 @@ export function frontBotHarness(options: HarnessOptions = {}) {
         url: String(url),
         headers: (init?.headers ?? {}) as Record<string, string>,
         body: String(init?.body ?? ""),
+        redirect: init?.redirect,
       });
       if (options.agentAnswersDuringCall === true) {
         addComment({
@@ -138,6 +148,9 @@ export function frontBotHarness(options: HarnessOptions = {}) {
         });
       }
       const recorded = answers.shift() ?? { status: 500 };
+      if ("hangs" in recorded) {
+        return new Promise<Response>(() => {});
+      }
       if ("throws" in recorded) {
         throw Object.assign(new Error(recorded.throws), { name: recorded.throws });
       }

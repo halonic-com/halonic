@@ -18,7 +18,11 @@ import type { SecretRef } from "../task-effort/settings.ts";
 
 /** What the bot reaches outside the host, so tests replace it with recorded replies. */
 export interface FrontBotDeps {
-  /** The host's outbound `fetch`; only ever called with {@link messagesUrl}. */
+  /**
+   * Node's own `fetch`, not `ctx.http.fetch`: the host's drops `signal` and
+   * `redirect`, so a hanging call would run to its 30 s RPC limit. Only ever
+   * called with {@link messagesUrl}.
+   */
   readonly anthropicFetch: typeof fetch;
   readonly now: () => Date;
 }
@@ -28,6 +32,30 @@ export const messagesUrl = "https://api.anthropic.com/v1/messages";
 
 /** A first reply is only worth it within seconds; a slower answer is dropped. */
 const requestTimeoutMs = 8_000;
+
+/**
+ * Runs `work` with a signal that aborts after `ms`, and gives up waiting at
+ * that point even if `work` ignores the signal, so a hanging call never holds
+ * the bot's queue past the limit.
+ */
+async function withTimeout<T>(
+  work: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+): Promise<T | "timeout"> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<"timeout">((resolve) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      resolve("timeout");
+    }, ms);
+  });
+  try {
+    return await Promise.race([work(controller.signal), timedOut]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** What one call came to. */
 export type FrontBotCall =
@@ -53,7 +81,42 @@ function answerText(body: { content?: { type?: string; text?: string }[] }): str
     .join("");
 }
 
-/** Asks Haiku for one first reply. Never throws. */
+/** One Messages API call and its answer read. Throws on a network failure. */
+async function callMessages(
+  deps: FrontBotDeps,
+  key: string,
+  input: FrontBotInput,
+  signal: AbortSignal,
+): Promise<FrontBotCall> {
+  const response = await deps.anthropicFetch(messagesUrl, {
+    method: "POST",
+    headers: {
+      "x-api-key": key,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(frontBotRequest(input)),
+    // A redirect would take the key header to another host.
+    redirect: "error",
+    signal,
+  });
+  if (!response.ok) {
+    return { answered: false, reason: `http_${response.status}` };
+  }
+  const body = (await response.json()) as {
+    content?: { type?: string; text?: string }[];
+    usage?: CallUsage;
+  };
+  return {
+    answered: true,
+    answer: parseFrontBotAnswer(answerText(body)),
+    inputTokens: tokenCount(body.usage?.input_tokens),
+    outputTokens: tokenCount(body.usage?.output_tokens),
+    usage: body.usage,
+  };
+}
+
+/** Asks Haiku for one first reply, giving up after {@link requestTimeoutMs}. Never throws. */
 export async function askFrontBot(
   ctx: { readonly secrets: Pick<PluginSecretsClient, "resolve"> },
   deps: FrontBotDeps,
@@ -64,30 +127,11 @@ export async function askFrontBot(
   try {
     // Read at call time, sent only to Anthropic in a header, never logged or kept.
     const key = await ctx.secrets.resolve(keyRef, { companyId });
-    const response = await deps.anthropicFetch(messagesUrl, {
-      method: "POST",
-      headers: {
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(frontBotRequest(input)),
-      signal: AbortSignal.timeout(requestTimeoutMs),
-    });
-    if (!response.ok) {
-      return { answered: false, reason: `http_${response.status}` };
-    }
-    const body = (await response.json()) as {
-      content?: { type?: string; text?: string }[];
-      usage?: CallUsage;
-    };
-    return {
-      answered: true,
-      answer: parseFrontBotAnswer(answerText(body)),
-      inputTokens: tokenCount(body.usage?.input_tokens),
-      outputTokens: tokenCount(body.usage?.output_tokens),
-      usage: body.usage,
-    };
+    const call = await withTimeout(
+      (signal) => callMessages(deps, key, input, signal),
+      requestTimeoutMs,
+    );
+    return call === "timeout" ? { answered: false, reason: "timeout" } : call;
   } catch (error) {
     return { answered: false, reason: failureReason(error) };
   }
