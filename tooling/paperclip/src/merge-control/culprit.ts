@@ -19,10 +19,11 @@ import { texts } from "./texts.ts";
  * request's head (HAL-18340: #5969 went back in on the same head); one that
  * failed on files a pull request ahead of it in the group chain touches holds
  * that one. A group whose jobs the runner hook refused holds nothing
- * (`refused.ts`). A queued pull request whose own group ends `failure` is
- * taken out at once and judged in the same pass, without waiting for GitHub
- * to take it out (HAL-18506, the live Merger's since 25 Nov 12:16 UTC); a
- * cancelled or hook-refused group still waits.
+ * (`refused.ts`). A queued pull request whose own group ends `failure`, or
+ * `cancelled` with a failed required job (HAL-19508), is taken out at once
+ * and judged in the same pass, without waiting for GitHub to take it out
+ * (HAL-18506, the live Merger's since 25 Nov 12:16 UTC); a cancelled group
+ * with no failed required job, or a hook-refused one, still waits.
  */
 
 /** Failed groups are read this far back. */
@@ -129,10 +130,36 @@ function hold(context: PassContext, run: GroupRun, row: GateRow, where: string):
   wakeAuthor(context, row.pull, "group-failed", failedGroupFacts(row.pull, jobs, run.url));
 }
 
+/**
+ * The `CI` jobs outside `ci-ok`'s needs, by the name GitHub shows: the
+ * fail-fast watcher, the runner pick, the pull request cache job and the
+ * push-only check. Their failure alone doesn't fail a group.
+ */
+const notRequiredJobs: ReadonlySet<string> = new Set([
+  "Cancel the run on the first failure",
+  "pick-runner",
+  "pr-turbo-cache",
+  "Merge group already passed this commit",
+]);
+
+/**
+ * Whether the group failed: it ended `failure`, or `cancelled` with a failed
+ * required job, as fail-fast leaves a failed group (HAL-19508, the live
+ * Merger's since 26 Nov 09:11 UTC; Chief on HAL-18424: required jobs only).
+ */
+function groupFailed(run: GroupRun): boolean {
+  if (run.conclusion === "failure") {
+    return true;
+  }
+  return (
+    run.conclusion === "cancelled" && run.failedJobs.some((job) => !notRequiredJobs.has(job.name))
+  );
+}
+
 /** Whether a queued pull request comes out at once for its own group's run (HAL-18506). */
 function dequeuesAtFailure(context: PassContext, run: GroupRun, row: GateRow): boolean {
   return (
-    run.conclusion === "failure" &&
+    groupFailed(run) &&
     !refusedOnly(run) &&
     !context.actions.some(
       (action) => action.kind === "dequeue" && action.number === row.pull.number,
