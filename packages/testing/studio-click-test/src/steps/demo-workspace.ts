@@ -38,7 +38,9 @@ export const demoWorkspace: Step = {
     const menu = await openWorkspaceMenu(context);
     if (!menu.passed) return menu;
     const { recent, demoFolder, demoTag, openFolderRow } = basicsText;
-    const wanted = [recent.text, demoFolder.text, demoTag.text, openFolderRow.text];
+    // The kit draws menu headings in capitals (`uppercase`), and the page text is the text as drawn
+    // (studio-preview run 45737719858).
+    const wanted = [recent.text.toUpperCase(), demoFolder.text, demoTag.text, openFolderRow.text];
     const listed = await waitForText(context, 10_000, (text) =>
       wanted.every((part) => text.includes(part)) ? true : undefined,
     );
