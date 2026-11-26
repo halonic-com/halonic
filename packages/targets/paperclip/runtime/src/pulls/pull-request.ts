@@ -3,6 +3,13 @@ import { amsterdamTime } from "../amsterdam-time.ts";
 import type { CheckState, GitHubGet } from "../github.ts";
 import type { ActionCall, ActionHandler } from "../handlers.ts";
 import {
+  approvalsWithCopies,
+  type CopyReader,
+  copyCapabilities,
+  copyErrorText,
+  paperclipCopies,
+} from "./approval-copy.ts";
+import {
   branchOwner,
   branchPath,
   ciOkOf,
@@ -57,6 +64,8 @@ export interface PullRequestStatus {
   readonly behindBase: number | undefined;
   readonly inQueue: boolean;
   readonly approvals: readonly Approval[];
+  /** Why the approvals' Paperclip copies couldn't be read; they then show no copy. */
+  readonly copyError?: string;
   readonly approvedOnHead: boolean;
   readonly changedLines: number;
   /** The newest review finding on the head, as `<id> at <time>`. */
@@ -107,13 +116,18 @@ export function agentNames({ paperclip, companyId }: ActionCall): AgentName {
 /** No changed files read: the repository has no rules to match them against. */
 const noFiles: ChangedFiles = { paths: [], lines: {} };
 
-/** Reads one pull request's whole status: about 9 GitHub requests. */
+/**
+ * Reads one pull request's whole status: about 9 GitHub requests.
+ *
+ * @param copies - where each approval's Paperclip copy is read; without it, no copy is shown
+ */
 export async function pullRequestStatus(
   get: GitHubGet,
   repo: string,
   number: number,
   nameOf: AgentName = async () => undefined,
   sources: ReviewerSources = { rules: undefined, routing: undefined },
+  copies?: CopyReader,
 ): Promise<PullRequestStatus> {
   const pull = (await get(`/repos/${repo}/pulls/${number}`)) as PullDetails;
   const head = pull.head.sha;
@@ -140,7 +154,8 @@ export async function pullRequestStatus(
     sources.rules === undefined
       ? undefined
       : reviewerByPaths(sources.rules, files, changedLines, sources.routing);
-  const found = await withReviewerNote(
+  const task = ours ? taskOfBranch(pull.head.ref) : undefined;
+  const judged = await withReviewerNote(
     approvals(comments, {
       head,
       author: author === undefined ? undefined : { urlKey: author, name: await nameOf(author) },
@@ -149,6 +164,10 @@ export async function pullRequestStatus(
     reviewer,
     nameOf,
   );
+  const { approvals: found, copyError } =
+    copies === undefined
+      ? { approvals: judged, copyError: undefined }
+      : await approvalsWithCopies(judged, copies, task, head);
   const title = shownTitle(pull);
   return {
     repo,
@@ -159,13 +178,14 @@ export async function pullRequestStatus(
     draft: pull.draft === true,
     branch: pull.head.ref,
     author,
-    task: ours ? taskOfBranch(pull.head.ref) : undefined,
+    task,
     head,
     ciOk,
     mergeable: mergeableOf(pull),
     behindBase: compare?.behind_by,
     inQueue,
     approvals: found,
+    ...(copyError === undefined ? {} : { copyError }),
     approvedOnHead: found.some((approval) => approval.counts),
     changedLines,
     latestReviewFinding: finding === undefined ? undefined : `${finding.id} at ${finding.at}`,
@@ -207,16 +227,18 @@ function findingText(finding: string): string {
   return at === -1 ? finding : `${finding.slice(0, at)} at ${amsterdamTime(finding.slice(at + 4))}`;
 }
 
+/** One approval: who, on which head, whether it counts and whether its Paperclip copy exists. */
+function approvalText(approval: Approval): string {
+  const marks = [
+    approval.counts ? undefined : "doesn't count",
+    approval.copy === undefined ? undefined : `copy: ${approval.copy}`,
+  ].filter((mark): mark is string => mark !== undefined);
+  const marked = marks.length === 0 ? "" : ` (${marks.join("; ")})`;
+  return `${approval.by} on ${approval.head}${marked}${approval.note ? `: ${approval.note}` : ""}`;
+}
+
 function approvalsText(found: readonly Approval[]): string {
-  if (found.length === 0) {
-    return "none";
-  }
-  return found
-    .map(
-      (a) =>
-        `${a.by} on ${a.head}${a.counts ? "" : " (doesn't count)"}${a.note ? `: ${a.note}` : ""}`,
-    )
-    .join("; ");
+  return found.length === 0 ? "none" : found.map(approvalText).join("; ");
 }
 
 /**
@@ -232,6 +254,7 @@ export function pullRequestText(status: PullRequestStatus): string {
     `${status.state}${status.draft ? ", draft" : ""}; task ${status.task ?? "none"}; author ${status.author ?? "unknown"}`,
     `head ${status.head.slice(0, 7)}: ci-ok ${status.ciOk}; mergeable ${status.mergeable}; behind base by ${status.behindBase ?? "n/a"}`,
     `merge queue: ${status.inQueue ? "queued" : "not queued"}; approvals: ${approvalsText(status.approvals)}`,
+    ...(status.copyError === undefined ? [] : [copyErrorText(status.copyError)]),
     `${status.changedLines} changed lines`,
     reviewerText(status.reviewer),
     ...(status.latestReviewFinding === undefined
@@ -243,8 +266,9 @@ export function pullRequestText(status: PullRequestStatus): string {
 
 /** Reads the pull request the agent names, on one of the tool's repositories. */
 export const pullRequestHandler: ActionHandler = {
-  // It lists agents to show an author's display name (agentNames).
-  capabilities: ["agents.read"],
+  // It lists agents to show an author's display name (agentNames) and reads the
+  // branch's task for approvals' Paperclip copies (paperclipCopies).
+  capabilities: copyCapabilities,
   run: async (call) => {
     const { tool, params, github, routing } = call;
     if (tool.action.run !== "github.pull-request") {
@@ -260,6 +284,7 @@ export const pullRequestHandler: ActionHandler = {
       target.number,
       agentNames(call),
       { rules: reviewerRulesOf(tool, target.repo), routing },
+      paperclipCopies(call),
     );
     return { content: pullRequestText(status), data: status };
   },

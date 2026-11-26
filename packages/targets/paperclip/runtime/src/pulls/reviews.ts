@@ -1,4 +1,5 @@
 import type { GitHubGet } from "../github.ts";
+import type { CopyState } from "./approval-copy.ts";
 import { byReviewer, everyPage } from "./reads.ts";
 
 /**
@@ -31,6 +32,11 @@ export interface Approval {
   readonly counts: boolean;
   /** Why it doesn't count, or what it holds only under. */
   readonly note?: string;
+  /**
+   * Whether its Paperclip copy exists (`approval-copy.ts`); left out when the
+   * copies weren't read. Detection only: it never changes `counts`.
+   */
+  readonly copy?: CopyState;
 }
 
 /** One signed approval line, before deciding whether it counts. */
@@ -50,20 +56,23 @@ const approvalLine =
  * "Liam: approved on head …".
  */
 export function signedApprovals(comments: readonly Review[]): SignedApproval[] {
-  return comments.filter(byReviewer).flatMap(({ body }) =>
-    [...(body ?? "").matchAll(approvalLine)].flatMap(
-      ([, by, approved, reapproved, rebaseOf]): SignedApproval[] => {
-        if (by === undefined) {
-          return [];
-        }
-        if (approved !== undefined) {
-          return [{ by, head: approved }];
-        }
-        return reapproved !== undefined && rebaseOf !== undefined
-          ? [{ by, head: reapproved, rebaseOf }]
-          : [];
-      },
-    ),
+  return comments.filter(byReviewer).flatMap(({ body }) => signedLines(body ?? ""));
+}
+
+/** The signed approval lines in one text, whoever wrote it. */
+export function signedLines(text: string): SignedApproval[] {
+  return [...text.matchAll(approvalLine)].flatMap(
+    ([, by, approved, reapproved, rebaseOf]): SignedApproval[] => {
+      if (by === undefined) {
+        return [];
+      }
+      if (approved !== undefined) {
+        return [{ by, head: approved }];
+      }
+      return reapproved !== undefined && rebaseOf !== undefined
+        ? [{ by, head: reapproved, rebaseOf }]
+        : [];
+    },
   );
 }
 
