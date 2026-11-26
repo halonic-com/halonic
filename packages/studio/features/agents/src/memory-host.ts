@@ -19,6 +19,7 @@ import type {
   AgentToolList,
   AgentToolOption,
   AgentUser,
+  AliasSummary,
   HarnessReadiness,
   HarnessSignIn,
   MissingModelKey,
@@ -52,6 +53,8 @@ export interface MemoryAgentsHostOptions {
   readonly modelAliases?: readonly string[] | undefined;
   /** The model an agent without one uses; none when left out. */
   readonly defaultModel?: string | undefined;
+  /** What `aliasSummary` answers for each alias, by name; left out, the host can't tell. */
+  readonly aliasSummaries?: Readonly<Record<string, AliasSummary>> | undefined;
   /** The Library items every hub can use; none when left out. */
   readonly toolOptions?:
     | Readonly<Partial<Record<AgentToolList, readonly AgentToolOption[]>>>
@@ -231,6 +234,12 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
       return options.modelAliases ?? [];
     },
     defaultModel: async () => options.defaultModel,
+    ...(options.aliasSummaries && {
+      aliasSummary: async (ref: AgentRef, alias: string) => {
+        found(ref);
+        return options.aliasSummaries?.[alias];
+      },
+    }),
     toolOptions: async (ref) => {
       found(ref);
       const { skills = [], knowledge = [], connectors = [] } = options.toolOptions ?? {};

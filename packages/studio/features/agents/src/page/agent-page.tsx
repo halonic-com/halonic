@@ -24,6 +24,7 @@ import {
 } from "../api.ts";
 import { keyFieldOpener } from "../chat/key-field.ts";
 import { TryItPanel } from "../chat/try-it-panel.tsx";
+import { aliasOpener } from "../configuration/alias-opener.ts";
 import {
   Configuration,
   type ConfigurationPage,
@@ -42,6 +43,7 @@ import { AgentPhoneFrame } from "./agent-phone-frame.tsx";
 import { AgentRead } from "./agent-read.tsx";
 import type { AgentScreenProps } from "./agent-screen-props.ts";
 import { FullAccessChip } from "./full-access-chip.tsx";
+import { libraryTabCommands } from "./library-tabs.ts";
 import { nameProblem } from "./name-check.ts";
 import { NotLiveLine } from "./not-live-line.tsx";
 import { PageCard } from "./page-card.tsx";
@@ -53,16 +55,6 @@ import { type AgentView, agentTabs, useAgentView } from "./use-agent-view.ts";
 import { useLoad } from "./use-load.ts";
 import { useTakenNames } from "./use-taken-names.ts";
 import { focusAfterAdd, focusedIn, mapAdds, pickedPageTab } from "./view-opening.ts";
-
-/**
- * The Library's commands that open it on a tab (`library.skill` and so on); the Agents feature
- * can't import the Library, so it runs them by id.
- */
-const libraryTabCommands: Readonly<Record<AgentToolList, string>> = {
-  skills: "library.skill",
-  knowledge: "library.knowledge",
-  connectors: "library.connector",
-};
 
 /** The step that opens an agent's page at its model, as `openItem(agent, { step: "model" })`. */
 export const MODEL_STEP = "model";
@@ -104,6 +96,7 @@ export function AgentPage({ item, context, step, asked, Sections, sections }: It
           openBudget: () => runCommand("workspace.open-budget"),
         })}
         openKeyField={keyFieldOpener(context)}
+        openAlias={aliasOpener(context)}
         closeStack={closeStack}
         announce={announce}
         sandboxStartCheck={context.services.find(sandboxStartCheckKey)}
@@ -149,6 +142,7 @@ export function AgentScreen({
   openLibrary,
   openRuns,
   openKeyField,
+  openAlias,
   openBudget,
   closeStack,
   announce,
@@ -379,6 +373,7 @@ export function AgentScreen({
             startOnInstructions={fresh}
             save={save}
             openLibrary={openLibrary}
+            openAlias={openAlias}
             openSubagent={cards.openSubagent}
             reportNotSaved={reportNotSaved}
             announce={announce}

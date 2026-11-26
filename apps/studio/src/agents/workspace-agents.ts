@@ -17,6 +17,7 @@ import type {
   AgentToolList,
   AgentToolOption,
   AgentUser,
+  AliasSummary,
   HarnessReadiness,
   HarnessSignIn,
   NewAgent,
@@ -30,6 +31,7 @@ import { loopRefusal } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, loadWorkspace, modelAliases } from "@halonicjs/workspace";
 import { editYaml, type YamlEdit } from "@halonicjs/yaml";
 import { hubFilesFor } from "../studio/first-hub.ts";
+import { aliasSummaryOf } from "./agent-alias-summary.ts";
 import {
   agentGone,
   agentSuffix,
@@ -413,6 +415,11 @@ export class WorkspaceAgents implements AgentsHost {
   /** The default model of {@link defaultModelOf}, on the workspace as it is now. */
   async defaultModel(hubId: string): Promise<string | undefined> {
     return defaultModelOf(await this.#load(), hubId);
+  }
+
+  /** The alias's line of {@link aliasSummaryOf}, on the workspace as it is now. */
+  async aliasSummary(ref: AgentRef, alias: string): Promise<AliasSummary | undefined> {
+    return aliasSummaryOf(await this.#load(), ref.hubId, alias);
   }
 
   /** The workflows that run the agent, as {@link agentUsersOf} finds them. */

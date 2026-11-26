@@ -7,6 +7,7 @@ import type {
 } from "@halonicjs/studio-shell";
 import type { ComponentType } from "react";
 import type { AgentRef, AgentRoutine, AgentsHost, AgentToolList, AgentUser } from "../api.ts";
+import type { OpenAlias } from "../configuration/alias-line.tsx";
 import type { AgentReviewHost } from "../review-api.ts";
 
 /** Props for `AgentScreen`. */
@@ -27,6 +28,8 @@ export interface AgentScreenProps extends AgentRef {
    * with a secret name, that provider's key block, for **Set the key ›**.
    */
   readonly openKeyField?: ((secretName?: string) => void) | undefined;
+  /** Opens an alias on Models, for the line under the Model page's picker. */
+  readonly openAlias?: OpenAlias | undefined;
   /** Opens Workspace settings at its Budget block, for the Try it budget line's **Change budget**. */
   readonly openBudget?: (() => void) | undefined;
   /** The window's close stack, so Esc closes the top card; a page of its own without one. */
