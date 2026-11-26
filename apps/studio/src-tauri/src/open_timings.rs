@@ -47,8 +47,9 @@ impl StepTimes {
     }
 
     /// One line for the log: `what`, then each step and the whole, as
-    /// `wsl 812 ms, start 4000 ms (4812 ms in all)`.
-    pub fn line(&self, what: &str) -> String {
+    /// `wsl 812 ms, start 4000 ms (4812 ms in all)`. `what` is a fixed
+    /// text, so no path or error message can reach the line.
+    pub fn line(&self, what: &'static str) -> String {
         let mut line = format!("{what}:");
         for (index, (name, took)) in self.steps.iter().enumerate() {
             let comma = if index == 0 { "" } else { "," };
@@ -78,7 +79,7 @@ pub fn ready_line(since_page_loaded: Option<Duration>) -> Option<String> {
 pub fn engine_open_line(
     asked_after_page_load: Option<Duration>,
     took: Duration,
-    refused: Option<&str>,
+    refused: Option<&'static str>,
 ) -> String {
     let asked = asked_after_page_load.map_or_else(String::new, |asked| {
         format!(", asked {} ms after the page loaded", millis(asked))
