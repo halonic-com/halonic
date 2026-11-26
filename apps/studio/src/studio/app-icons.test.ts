@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { type AppLogoId, appGlyphs } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
@@ -24,18 +24,23 @@ const glyphMarks = (app: AppLogoId) =>
     shape.kind === "dot" ? `cx="${shape.cx}" cy="${shape.cy}" r="${shape.r}"` : `d="${shape.d}"`,
   );
 
-/** The width and height of each image in an .ico, and whether it is a PNG. */
-function icoImages(ico: Buffer) {
+/** Each image in an .ico: its width and height, whether it is a PNG, and its bytes. */
+function icoEntries(ico: Buffer) {
   const count = ico.readUInt16LE(4);
   return Array.from({ length: count }, (_, index) => {
     const entry = 6 + 16 * index;
     const offset = ico.readUInt32LE(entry + 12);
+    const bytes = ico.subarray(offset, offset + ico.readUInt32LE(entry + 8));
     return {
       pixels: ico.readUInt8(entry) || 256,
-      png: ico.subarray(offset, offset + 4).toString("latin1") === "\x89PNG",
+      png: bytes.subarray(0, 4).toString("latin1") === "\x89PNG",
+      bytes,
     };
   });
 }
+
+/** The width and height of each image in an .ico, and whether it is a PNG. */
+const icoImages = (ico: Buffer) => icoEntries(ico).map(({ pixels, png }) => ({ pixels, png }));
 
 verifies("studio.app-icons", () => {
   describe("drawn from the kit's glyphs", () => {
@@ -54,13 +59,35 @@ verifies("studio.app-icons", () => {
   });
 
   it.each(["icons/icon.ico", ...focusedApps.map((app) => `icons/apps/${app}.ico`)])(
-    "%s holds every size from 16 to 256 px",
+    "%s holds every size Windows asks for, from 16 to 256 px",
     (path) => {
       expect(icoImages(read(path))).toEqual(
-        [16, 24, 32, 48, 64, 256].map((pixels) => ({ pixels, png: true })),
+        [16, 20, 24, 30, 32, 36, 40, 48, 64, 256].map((pixels) => ({ pixels, png: true })),
       );
     },
   );
+
+  it("draws Windows' icons without a tile and keeps the tile for icon.png's source", () => {
+    for (const app of focusedApps) {
+      const svg = text(`icons/apps/${app}.svg`);
+      // The tile is a rounded rect; the flap's mask has a plain one.
+      expect(svg).not.toContain(" rx=");
+      expect(svg).toContain('viewBox="0 0 256 256"');
+    }
+    expect(text("icons/icon.svg")).toContain('<rect width="100" height="100" rx="22"');
+  });
+
+  it("puts each hand-tuned image in its app's .ico in place of the drawn one", () => {
+    const tunedFolder = join(shellFolder, "icons/tuned");
+    const tuned = existsSync(tunedFolder) ? readdirSync(tunedFolder) : [];
+    const missing = tuned.filter((file) => {
+      const [, app, pixels] = /^(\w+)-(\d+)\.png$/.exec(file) ?? [];
+      const path = app === "studio" ? "icons/icon.ico" : `icons/apps/${app}.ico`;
+      const image = icoEntries(read(path)).find((entry) => entry.pixels === Number(pixels));
+      return image?.bytes.equals(read(`icons/tuned/${file}`)) !== true;
+    });
+    expect(missing).toEqual([]);
+  });
 
   it("gives each focused app's window its own 64 by 64 icon", () => {
     const shell = text("src/focused_apps.rs");

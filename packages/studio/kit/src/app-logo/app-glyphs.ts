@@ -17,11 +17,14 @@ export type AppLogoId = (typeof appLogoIds)[number];
 
 /**
  * One shape of a glyph on the ring's 100-unit box. `solid` is filled, with a 4.5 round stroke for
- * soft corners, as the teaser's play shape; `line` is a round stroke of `width`; `dot` is a disc.
+ * soft corners, as the teaser's play shape; `line` is a round stroke of `width`; `dot` is a disc;
+ * `cut` is a round stroke of `width` cut out of the glyph's other shapes, so whatever is behind the
+ * glyph shows through it.
  */
 export type AppGlyphShape =
   | { readonly kind: "solid"; readonly d: string }
   | { readonly kind: "line"; readonly d: string; readonly width: number }
+  | { readonly kind: "cut"; readonly d: string; readonly width: number }
   | { readonly kind: "dot"; readonly cx: number; readonly cy: number; readonly r: number };
 
 /**
@@ -37,13 +40,14 @@ export const appGlyphs: Readonly<Record<AppLogoId, readonly AppGlyphShape[]>> = 
       d: "M42 36.25 H58 A5.75 5.75 0 0 1 63.75 42 V49.5 A5.75 5.75 0 0 1 58 55.25 H50 L38.5 64.75 L40 55.25 A5.75 5.75 0 0 1 36.25 49.5 V42 A5.75 5.75 0 0 1 42 36.25 Z",
     },
   ],
+  // The envelope the board chose for the taskbar icons (HAL-19183): rounded corners and one bold V
+  // flap cut out, so the flap stays clear at 16 to 24 px.
   inbox: [
     {
-      kind: "line",
-      d: "M39 37 H61 A4 4 0 0 1 65 41 V59 A4 4 0 0 1 61 63 H39 A4 4 0 0 1 35 59 V41 A4 4 0 0 1 39 37 Z",
-      width: 7,
+      kind: "solid",
+      d: "M40 38 H60 A7 7 0 0 1 67 45 V55 A7 7 0 0 1 60 62 H40 A7 7 0 0 1 33 55 V45 A7 7 0 0 1 40 38 Z",
     },
-    { kind: "solid", d: "M37.25 52 H43 L45.75 57.25 H54.25 L57 52 H62.75 V60.75 H37.25 Z" },
+    { kind: "cut", d: "M35 40.5 L50 52 L65 40.5", width: 7 },
   ],
   workspaces: [
     { kind: "solid", d: "M36.5 43.5 L50 36.25 L63.5 43.5 L50 50.75 Z" },
