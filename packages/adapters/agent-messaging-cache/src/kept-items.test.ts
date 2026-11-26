@@ -1,18 +1,29 @@
 import type {
   ActionResultStep,
+  Attachment,
   Conversation,
+  FullAnswer,
   InboxActionRequest,
+  InboxAnswer,
+  InboxAnswerElsewhere,
   InboxItem,
   InboxItemOption,
   InboxQuestion,
+  InboxQuestionAnswer,
+  InboxQuestionsAnswer,
   InboxStepperRequest,
+  InboxStepperTarget,
+  InboxStepperTouch,
+  InboxWebLink,
   Message,
   MessageWork,
   MessagingAgent,
+  MessagingProject,
+  WorkItem,
 } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { keptAgent, keptConversation, keptInboxItem, keptMessage } from "./kept-items.ts";
+import { keptAgent, keptConversation, keptInboxItem, keptMessage, keptWork } from "./kept-items.ts";
 
 const testKey = "pcp_board_acme-test-key-0000";
 
@@ -45,17 +56,23 @@ const action = {
   expires: "2026-11-27T08:00:00.000Z",
 } satisfies Required<InboxActionRequest>;
 
+const target = {
+  service: "github",
+  kind: "repository",
+  name: "acme/app",
+} satisfies Required<InboxStepperTarget>;
+
+const touch = {
+  block: 1,
+  risk: "admin",
+  targets: [target],
+} satisfies Required<InboxStepperTouch>;
+
 const stepper = {
   format: "halonic.stepper-request/1",
   document: '{"format":"halonic.stepper-request/1"}',
   revision: "3",
-  touches: [
-    {
-      block: 1,
-      risk: "admin",
-      targets: [{ service: "github", kind: "repository", name: "acme/app" }],
-    },
-  ],
+  touches: [touch],
   changed: false,
 } satisfies Required<InboxStepperRequest>;
 
@@ -69,6 +86,41 @@ const step = {
   byHand: true,
 } satisfies Required<ActionResultStep>;
 
+const answerElsewhere = {
+  link: "https://paperclip.acme.test/ACME/issues/ACME-7",
+} satisfies Required<InboxAnswerElsewhere>;
+
+const webLink = {
+  link: "https://paperclip.acme.test/ACME/issues/ACME-7",
+  site: "Paperclip",
+} satisfies Required<InboxWebLink>;
+
+const project = { id: "project-1", name: "Acme app" } satisfies Required<MessagingProject>;
+
+const attachment = {
+  id: "file-1",
+  name: "plan.png",
+  type: "image/png",
+  size: 1024,
+} satisfies Required<Attachment>;
+
+const optionAnswer = {
+  kind: "option",
+  option: "approve",
+  note: "Looks safe.",
+} satisfies Required<Extract<InboxAnswer, { kind: "option" }>>;
+
+const questionAnswer = {
+  question: "q1",
+  options: ["approve"],
+  text: "Only acme/app.",
+} satisfies Required<InboxQuestionAnswer>;
+
+const questionsAnswer = {
+  kind: "answers",
+  answers: [questionAnswer],
+} satisfies Required<InboxQuestionsAnswer>;
+
 const item = {
   id: "item-1",
   source: "acme",
@@ -76,12 +128,12 @@ const item = {
   question: "Add a deploy key",
   options: [option],
   questions: [question],
-  answerElsewhere: { link: "https://paperclip.acme.test/ACME/issues/ACME-7" },
-  webLink: { link: "https://paperclip.acme.test/ACME/issues/ACME-7", site: "Paperclip" },
+  answerElsewhere,
+  webLink,
   action,
   stepper,
-  project: { id: "project-1", name: "Acme app" },
-  attachments: [{ id: "file-1", name: "plan.png", type: "image/png", size: 1024 }],
+  project,
+  attachments: [attachment],
   work: "work-1",
   conversation: "chat-1",
   risk: "risky",
@@ -103,18 +155,24 @@ const work = {
   since: "2026-11-26T08:00:00.000Z",
 } satisfies Required<MessageWork>;
 
+const fullAnswer = {
+  key: "full-answer",
+  title: "Full answer",
+  markdown: "All of it.",
+} satisfies Required<FullAnswer>;
+
 const message = {
   id: "message-1",
   conversation: "chat-1",
   author: { kind: "me" },
   body: "Ship it?",
-  attachments: [],
+  attachments: [attachment],
   sentAt: "2026-11-26T08:00:00.000Z",
   to: ["agent-1"],
   work: [work],
   readAt: "2026-11-26T08:01:00.000Z",
   automatic: true,
-  fullAnswer: { key: "full-answer", title: "Full answer", markdown: "All of it." },
+  fullAnswer,
 } satisfies Required<Message>;
 
 const conversation = {
@@ -127,6 +185,17 @@ const conversation = {
   waitingForMe: true,
   agentWorking: true,
 } satisfies Required<Conversation>;
+
+const workItem = {
+  id: "work-1",
+  source: "acme",
+  label: "ACME-7",
+  title: "Add a deploy key",
+  state: "blocked",
+  assignee: "agent-1",
+  blockedBy: ["work-2"],
+  updatedAt: "2026-11-26T08:00:00.000Z",
+} satisfies Required<WorkItem>;
 
 const agent = {
   id: "agent-1",
@@ -141,6 +210,20 @@ verifies("agent-host.agent-messaging-cache", () => {
   describe("kept items", () => {
     it("keeps every field the port names on an inbox item, down to its answers", () => {
       expect(keptInboxItem(item)).toEqual(item);
+    });
+
+    it("keeps every field of an option answer, its note included", () => {
+      const answered = { ...item, state: { ...item.state, answer: optionAnswer } };
+      expect(keptInboxItem(answered)).toEqual(answered);
+    });
+
+    it("keeps every field of an answers answer, down to each question's text", () => {
+      const answered = { ...item, state: { ...item.state, answer: questionsAnswer } };
+      expect(keptInboxItem(answered)).toEqual(answered);
+    });
+
+    it("keeps every field the port names on a work item, assignee included", () => {
+      expect(keptWork(workItem)).toEqual(workItem);
     });
 
     it("keeps every field the port names on a message and its work lines", () => {
