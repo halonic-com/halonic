@@ -1,5 +1,7 @@
 import type { AnswerResult, InboxAnswer, InboxItem, MessagingRefusal } from "@halonicjs/ports";
 import { type BoardRequestKind, PaperclipBoardRequests } from "./board-requests.ts";
+import { budgetOverrideType } from "./budget-amount.ts";
+import { answerBudgetOverride } from "./budget-incidents.ts";
 import { approvalAnswerRequest, approvalToItem, cardAnswerRequest, cardToItem } from "./cards.ts";
 import { decisionAnswerRequest, decisionPage, decisionToItem } from "./decisions.ts";
 import { asRecord, asRecords, type JsonRecord, text } from "./json.ts";
@@ -239,6 +241,12 @@ export class PaperclipWriter {
         "refused",
       );
     }
+    if (answer.kind === "option" && answer.option !== "request-changes") {
+      const budget = await this.#answerIfBudgetOverride(context, approval, answer);
+      if (budget !== undefined) {
+        return budget;
+      }
+    }
     const sent = await this.#reader.send(request.name, { path: { approval }, body: request.body });
     if (sent.kind === "ok") {
       return {
@@ -260,6 +268,32 @@ export class PaperclipWriter {
       throw unexpected(request.name);
     }
     return answered;
+  }
+
+  /**
+   * Approve or Reject on a budget override, which resolves its budget incident instead of only
+   * recording the answer (`paperclip-client.budget-incidents`); `undefined` for any other
+   * approval, or one whose type can't be read, which takes the approval routes.
+   */
+  async #answerIfBudgetOverride(
+    context: MapContext,
+    approval: string,
+    answer: Extract<InboxAnswer, { kind: "option" }>,
+  ): Promise<AnswerResult | undefined> {
+    const current = await this.#reader.send("getApproval", { path: { approval } });
+    const reason = refusalOf(current);
+    if (reason !== undefined) {
+      return refused(reason);
+    }
+    const record = current.kind === "ok" ? asRecord(current.body) : undefined;
+    if (record === undefined || text(record, "type") !== budgetOverrideType) {
+      return undefined;
+    }
+    const answerer = { reader: this.#reader, company: this.#company, now: this.#now };
+    return (
+      alreadyAnswered(approvalToItem(context, record, undefined)) ??
+      (await answerBudgetOverride(answerer, approval, answer))
+    );
   }
 
   async #answerDecision(

@@ -32,6 +32,23 @@ export const paperclipRequests = {
   rejectApproval: { method: "POST", path: "/api/approvals/:approval/reject" },
   // Request changes (HAL-18872): the approval goes back to the agent that asked, with the note.
   requestApprovalRevision: { method: "POST", path: "/api/approvals/:approval/request-revision" },
+  // Budget overrides (`paperclip-client.budget-incidents`, HAL-18921): the approve route only
+  // records the answer, so Approve and Reject resolve the approval's budget incident, found in
+  // budgetsOverview. Each row pins its action: raise to a whole number of cents, or keep paused.
+  raiseBudget: {
+    method: "POST",
+    path: "/api/companies/:company/budget-incidents/:incident/resolve",
+    body: {
+      fields: ["action", "amount"],
+      pinned: { action: "raise_budget_and_resume" },
+      integers: ["amount"],
+    },
+  },
+  keepBudgetPaused: {
+    method: "POST",
+    path: "/api/companies/:company/budget-incidents/:incident/resolve",
+    body: { fields: ["action"], pinned: { action: "keep_paused" } },
+  },
   // Standalone decisions (HAL-18872): read the open ones, and pick one option of one.
   listDecisions: { method: "GET", path: "/api/companies/:company/decisions" },
   decide: { method: "POST", path: "/api/decisions/:decision/decide" },
@@ -210,6 +227,8 @@ interface BodyRule {
   pinned?: Readonly<Record<string, string>>;
   nullable?: readonly string[];
   idLists?: readonly string[];
+  /** Fields that must be a whole number from 1 to Paperclip's limit, such as a budget in cents. */
+  integers?: readonly string[];
   /** Fields whose text must start with the given prefix and go on after it. */
   prefixed?: Readonly<Record<string, string>>;
 }
@@ -254,7 +273,12 @@ const segmentRules: Readonly<Record<string, RegExp>> = {
   // Secret proposals and join requests are UUIDs as well (HAL-18873).
   proposal: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
   join: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+  // And so are budget incidents (HAL-18921).
+  incident: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 };
+
+/** The largest amount Paperclip's resolve route takes: its column is a 32-bit integer. */
+const largestAmount = 2_147_483_647;
 
 /** Whether `value` may fill segment `:segment`: safe, and passing the segment's own rule. */
 export function fitsSegment(segment: string, value: string): boolean {
@@ -330,8 +354,8 @@ export function matchesRequest(name: PaperclipRequestName, method: string, path:
 
 /**
  * Whether `body` may go with request `name`: anything for a row without a
- * body rule, otherwise exactly the rule's fields, each a non-empty string or
- * a `null` the rule allows, with the rule's status, pinned values and prefixes. So a
+ * body rule, otherwise exactly the rule's fields, each a non-empty string,
+ * a `null` the rule allows or a whole number the rule asks for, with the rule's status, pinned values and prefixes. So a
  * task write can't change a title, a blocker or a budget, or set any other
  * status, and the stepper result is always a Markdown document of that title.
  */
@@ -346,12 +370,7 @@ export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
   const fields = new Map<string, unknown>(Object.entries(body));
   const onlyRuleFields =
     fields.size === rule.fields.length && rule.fields.every((field) => fields.has(field));
-  const allText = [...fields].every(([field, value]) =>
-    rule.idLists?.includes(field) === true
-      ? isOneIdList(value)
-      : (typeof value === "string" && value !== "") ||
-        (value === null && rule.nullable?.includes(field) === true),
-  );
+  const allText = [...fields].every(([field, value]) => fieldFits(rule, field, value));
   const allPrefixed = Object.entries(rule.prefixed ?? {}).every(([field, prefix]) => {
     const value = fields.get(field);
     return typeof value === "string" && value.startsWith(prefix) && value.length > prefix.length;
@@ -371,6 +390,20 @@ export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
 /** Row `name`'s upload rule, or `undefined` for a row that sends no file. */
 export function uploadRule(name: PaperclipRequestName): UploadRule | undefined {
   return (paperclipRequests[name] as RequestRule).upload;
+}
+
+/** Whether one field's value fits `rule`: one-ID list, whole number, or text (or an allowed `null`). */
+function fieldFits(rule: BodyRule, field: string, value: unknown): boolean {
+  if (rule.idLists?.includes(field) === true) {
+    return isOneIdList(value);
+  }
+  if (rule.integers?.includes(field) === true) {
+    return Number.isSafeInteger(value) && Number(value) >= 1 && Number(value) <= largestAmount;
+  }
+  return (
+    (typeof value === "string" && value !== "") ||
+    (value === null && rule.nullable?.includes(field) === true)
+  );
 }
 
 /** Whether `value` is a list of exactly one ID that is a safe segment, such as one label. */

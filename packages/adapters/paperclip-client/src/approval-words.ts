@@ -28,9 +28,18 @@ export const approvalWords = {
   budgetFor: "For",
   limit: "Limit",
   spent: "Spent",
-  // Paperclip's approve route only records the answer; the budget is raised from Paperclip's budget page.
+  // Approve and Reject resolve the budget incident (HAL-18921): raise and resume, or keep paused.
   budgetApproving:
-    "Approving only records your answer. The budget doesn't change, and the work stays paused until you raise the budget in Paperclip.",
+    "Approving raises the limit to the amount you enter and resumes the paused work. Rejecting keeps the work paused.",
+  // The label of Approve's field on a budget override, and why an amount was refused.
+  newLimit: "New limit, in dollars",
+  newLimitUnreadable: "Enter the new limit in dollars, such as 250 or 250.50.",
+  newLimitTooLow: (spent: string) => `The new limit must be more than the ${spent} already spent.`,
+  noBudgetStop: "Paperclip has no budget stop open for this approval. Check it in Paperclip.",
+  budgetRefused: (detail: string | undefined) =>
+    detail === undefined
+      ? "Paperclip didn't change the budget."
+      : `Paperclip didn't change the budget: ${detail}`,
   document: "Document",
   revision: (number: number) => `revision ${number}`,
   tool: "Tool",

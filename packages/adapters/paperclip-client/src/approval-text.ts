@@ -24,7 +24,7 @@ export function fieldLines(fields: readonly (readonly [string, string | undefine
 }
 
 /** Whole US cents as dollars, as Paperclip shows costs. */
-function dollars(cents: unknown): string | undefined {
+export function dollars(cents: unknown): string | undefined {
   return typeof cents === "number" && Number.isFinite(cents)
     ? `$${(cents / 100).toFixed(2)}`
     : undefined;

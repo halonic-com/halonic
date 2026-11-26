@@ -77,7 +77,7 @@ verifies("paperclip-client.approval-fields", () => {
       );
       expect(items.get(approvalItem("p-3"))?.question).toBe(
         "Budget override\n\n- For: Website\n- Limit: $100.00\n- Spent: $125.50\n\n" +
-          "Approving only records your answer. The budget doesn't change, and the work stays paused until you raise the budget in Paperclip.",
+          "Approving raises the limit to the amount you enter and resumes the paused work. Rejecting keeps the work paused.",
       );
       expect(items.get(approvalItem("p-4"))?.question).toBe(
         "Board approval\n\nPublish the launch post\n\n**Recommended action**\n\nPublish on Friday.\n\n" +
