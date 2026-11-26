@@ -16,7 +16,7 @@ const healthKey = JSON.stringify({
   stateKey: "health",
 });
 
-const reply = { reply: "About PR #6129. Depends on the merge queue." };
+const reply = { reply: "About PR #6129. Checking the merge queue." };
 
 verifies("paperclip.front-bot-limits", () => {
   test("must-fail test 7: off by default, the bot makes no call and logs nothing", async () => {

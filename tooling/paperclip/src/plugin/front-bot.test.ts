@@ -117,7 +117,7 @@ verifies("paperclip.front-bot-first-reply", () => {
 
   test("must-fail test 3: a reply that arrives after the agent's answer is not posted", async () => {
     const harness = frontBotHarness({
-      answers: [{ reply: "About PR #6129. Depends on the merge queue." }],
+      answers: [{ reply: "About PR #6129. Checking the merge queue." }],
       agentAnswersDuringCall: true,
     });
     await harness.bot.onCommentCreated(commentCreated(harness.message.id));
@@ -214,7 +214,7 @@ verifies("paperclip.front-bot-first-reply", () => {
     vi.useFakeTimers();
     try {
       const harness = frontBotHarness({
-        answers: [{ hangs: true }, { reply: "About PR #6129. Depends on the merge queue." }],
+        answers: [{ hangs: true }, { reply: "About PR #6129. Checking the merge queue." }],
       });
       const first = harness.bot.onCommentCreated(commentCreated(harness.message.id));
       await vi.advanceTimersByTimeAsync(8_000);

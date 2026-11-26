@@ -473,6 +473,51 @@
       "expect": "rejected",
       "reply": "Got it, rerunning the build",
       "reason": "result_word"
+    },
+    {
+      "title": "Chat with Chief",
+      "earlier": [],
+      "expect": "rejected",
+      "name": "live note: a claim that the task has no context",
+      "message": "Better fix: would that need a patch?",
+      "reply": "About the better fix\nthere's no prior context in this task",
+      "reason": "context_claim"
+    },
+    {
+      "title": "Chat with Chief",
+      "earlier": [],
+      "expect": "rejected",
+      "name": "live note: a capitalised claim that the task has no context",
+      "message": "Better fix: would that need a patch?",
+      "reply": "About the better fix\nThere's no prior context in this task",
+      "reason": "context_claim"
+    },
+    {
+      "title": "Chat with Chief",
+      "earlier": [],
+      "expect": "rejected",
+      "name": "a claim of missing information, after a good line",
+      "message": "Better fix: would that need a patch?",
+      "reply": "Good question\nnot enough information to tell",
+      "reason": "context_claim"
+    },
+    {
+      "title": "Chat with Chief",
+      "earlier": [],
+      "expect": "rejected",
+      "name": "live note: the answer depends on something",
+      "message": "Do we have a fork already?",
+      "reply": "Hmm, let's see\nThe answer depends on your current forks",
+      "reason": "non_answer"
+    },
+    {
+      "title": "Chat with Chief",
+      "earlier": [],
+      "expect": "rejected",
+      "name": "a bare it depends",
+      "message": "Should we drop the Linux build for 0.3?",
+      "reply": "Fair question\nIt depends",
+      "reason": "non_answer"
     }
   ]
 }

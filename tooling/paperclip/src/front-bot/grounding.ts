@@ -28,7 +28,9 @@ export type GroundingReason =
   | "unknown_number"
   | "unknown_link"
   | "unknown_name"
-  | "result_word";
+  | "result_word"
+  | "context_claim"
+  | "non_answer";
 
 /** What the check decided. */
 export type Grounding =
@@ -92,6 +94,22 @@ const handOverWords = /\b(?:paste|send|share|provide|enter|post|type|give|upload
 export function asksForCredential(line: string): boolean {
   return credentialWords.test(line) || credentialIdentifier.test(line) || handOverWords.test(line);
 }
+
+/**
+ * A line that says the bot was given little or nothing: "there's no prior context in
+ * this task". The bot reads only the title, the message and the last few
+ * comments, never the whole thread, so any such claim may be false
+ * (HAL-19703, the first live notes on HAL-10).
+ */
+export const contextClaim =
+  /\b(?:no|without|missing|lacks?|lacking|not enough|not much|little)\s+(?:\w+\s+)?(?:context|background|history|information|info|details)\b|\bnothing (?:earlier|before|prior)\b/i;
+
+/**
+ * A line that frames the question as open without saying what it's about:
+ * "The answer depends on what the better fix entails". It reads like a reply
+ * but says nothing; the bot restates the ask or answers SKIP (HAL-19703).
+ */
+export const nonAnswer = /\b(?:depends?|depending)\s+on\b|\bit depends\b/i;
 
 /**
  * Words that state a result or a claimed action. Allowed only when negated
@@ -181,9 +199,9 @@ export const negation =
  */
 const commonWords = new Set(
   (
-    "a an the about request requests depends adds asks also answer current plan question " +
+    "a an the about request requests adds asks also answer current plan question " +
     "this that these those it its your for on in to of and or but so which what why how " +
-    "when where who whether same earlier new still not needs part follows ties waiting " +
+    "when where who whether there same earlier new still not needs part follows ties waiting " +
     "pr prs ci utc task build run release " +
     "got good ok okay noted ah ugh hm hmm oh fair thanks looking checking " +
     "digging working reading on into let's let"
@@ -268,7 +286,8 @@ function resultWordsAllowed(line: string, input: FrontBotInput): boolean {
  * alone come first; then every number, link and name must be found in the exact
  * text it sent, and result words need a negation or an earlier comment quoted
  * with its time. Result words come before names, so a sentence that starts with
- * one is reported as a result.
+ * one is reported as a result. Claims about context and lines that only say
+ * "it depends" come last: they are about what the line says, not what it names.
  */
 export function checkGrounding(line: string, given: FrontBotInput): Grounding {
   const input = frontBotUserText(given);
@@ -286,6 +305,8 @@ export function checkGrounding(line: string, given: FrontBotInput): Grounding {
   if (!allLinksKnown(line, input)) return reject("unknown_link");
   if (!resultWordsAllowed(line, given)) return reject("result_word");
   if (!allNamesKnown(line, input)) return reject("unknown_name");
+  if (contextClaim.test(line)) return reject("context_claim");
+  if (nonAnswer.test(line)) return reject("non_answer");
   return { ok: true };
 }
 
