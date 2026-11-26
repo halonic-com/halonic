@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
 import { FakePhoneRemote } from "../../test-support/fake-phone-remote.ts";
+import { FakeSavedDataStore } from "../../test-support/fake-saved-data-store.ts";
 import { FakePhoneTunnel } from "../../test-support/phone-tunnel.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
 import type { ComputerId, PairedComputer } from "../phone-tunnel.ts";
@@ -29,9 +30,11 @@ function setUp(...computers: PairedComputer[]) {
   const tunnel = new FakePhoneTunnel();
   for (const computer of computers) tunnel.computers.set(computer.id, computer);
   const events: string[] = [];
+  const saved = new FakeSavedDataStore();
   const router = new PhoneAppRouter({
     tunnel,
     scanner,
+    saved,
     report: () => undefined,
     hold: (computer) =>
       Object.assign(new FakePhoneRemote(), {
@@ -48,7 +51,7 @@ function setUp(...computers: PairedComputer[]) {
     const state = shown?.standing === "unreadable" ? undefined : shown && router.stateOf(shown);
     events.push(`shows ${screen.computer} ${state ?? "no state"}`);
   });
-  return { tunnel, router, events };
+  return { tunnel, router, events, saved };
 }
 
 verifies("remote.phone-app", () => {
@@ -220,5 +223,27 @@ verifies("remote.phone-app", () => {
     expect(router.back()).toBe(true);
     expect(tunnel.calls).toContain("cancel pairing-1");
     expect(router.view.screen).toEqual({ screen: "computer", computer: laptop, sheet: "none" });
+  });
+});
+
+verifies("remote.phone-saved-messaging", () => {
+  it("Forget and Removed delete what the phone saved of that computer", async () => {
+    const { tunnel, router, saved } = setUp(
+      paired(laptop, "Tim's laptop"),
+      paired(desktop, "Desk"),
+    );
+    await router.start();
+    tunnel.push(desktop, { state: "removed" });
+    const shown = tunnel.computers.get(laptop);
+    if (shown === undefined) throw new Error("The laptop isn't listed.");
+    await router.forget(shown);
+    expect(saved.cleared).toEqual([desktop, laptop]);
+  });
+
+  it("Can't confirm keeps what the phone saved", async () => {
+    const { tunnel, router, saved } = setUp(paired(laptop, "Tim's laptop"));
+    await router.start();
+    tunnel.push(laptop, { state: "cant-confirm" });
+    expect(saved.cleared).toEqual([]);
   });
 });
