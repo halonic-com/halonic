@@ -31,7 +31,9 @@ async function askAfter(answer: string, config: Record<string, unknown> = choice
   const harness = frontBotHarness({ answers: [{ reply: answer }], config });
   await harness.bot.onCommentCreated(commentCreated(harness.message.id));
   const params = { companyId: "acme", issueId: chatTaskId, commentId: harness.message.id };
-  const result = await answerRunChoice(harness.ctx, pendingMessages(), params);
+  // The harness stores the choice at a fixed time; read it just after, not on the real clock.
+  const now = () => new Date("2026-11-26T14:03:01Z");
+  const result = await answerRunChoice(harness.ctx, pendingMessages(), params, now);
   return { harness, result };
 }
 
