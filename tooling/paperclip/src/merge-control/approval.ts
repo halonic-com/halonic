@@ -1,6 +1,7 @@
 import {
   isLiamPath,
   julianRebaseRefusal,
+  manifestFileOf,
   overLineLimit,
   type RoutedPull,
   reviewerRoleFor,
@@ -14,7 +15,8 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * approvals on the current head after the last push, carry-over across a
  * rebase with an identical diff, Julian within `reviewerRoleFor` or re-approving
  * after a rebase-only push (HAL-18459), "Author: Liam", Nora within the routine
- * reviewer's scope (HAL-19248, board 26 Nov) and open change requests. The texts follow
+ * reviewer's scope (HAL-19248, board 26 Nov), Julian's approval too on a plugin
+ * manifest change (HAL-19440) and open change requests. The texts follow
  * the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
  * counts here (HAL-15553), and time after the last push matters. A signed
@@ -347,10 +349,35 @@ export function approvalOf(pull: GatePull, teamLogin: string, patchIds: PatchIds
     approval?.ok === false && (approval.stale !== undefined || approval.moved === true);
   const reason = approvalReason(pull, approval, reReview);
   const liamOwnWaiting = reason?.startsWith("Liam's own PR") === true && note !== undefined;
-  const reasons = [note, liamOwnWaiting ? undefined : reason].filter(
-    (each): each is string => each !== undefined,
-  );
+  const reasons = [
+    note,
+    liamOwnWaiting ? undefined : reason,
+    manifestReason(pull, teamLogin, patchIds),
+  ].filter((each): each is string => each !== undefined);
   return { approval, reasons, reReview };
+}
+
+/**
+ * Why a plugin manifest change still waits for Julian, or undefined: the
+ * plugin deployer ships it only with his approval on the head, whoever else
+ * approved (HAL-19440). Here his approval counts at any size and on any path,
+ * as long as it holds on the head; never on his own pull request. Only the
+ * files the snapshot lists are checked: the deployer refuses a pull request
+ * with more files anyway.
+ */
+function manifestReason(pull: GatePull, teamLogin: string, patchIds: PatchIds): string | undefined {
+  const manifest = manifestFileOf(pull.files);
+  if (manifest === undefined) {
+    return undefined;
+  }
+  const h9 = pull.head.slice(0, 9);
+  if (pull.branch.startsWith("julian/")) {
+    return `Julian's own PR changes a plugin manifest (${manifest}): no second security reviewer is set for this; for the board`;
+  }
+  if (julianApproval(pull, teamLogin, patchIds)?.ok === true) {
+    return undefined;
+  }
+  return `changes a plugin manifest (${manifest}): needs Julian's approval on head ${h9} too`;
 }
 
 /** An open change request newer than the head's approval. */

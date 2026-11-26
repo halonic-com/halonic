@@ -163,6 +163,36 @@ export function isSecurityPath(path: string): boolean {
   return path === "SECURITY.md" || path.startsWith("docs/security/") || hasLiamWord(path);
 }
 
+/**
+ * The plugin manifests' own modules: `manifest.ts` and the declaration and
+ * settings modules next to it, tests excluded. The same list as the plugin
+ * deployer's `touchesManifest` (server `plugin-deployer/gates.mjs`), so the
+ * Merger asks for the approvals the deployer does (HAL-19440).
+ */
+const manifestModule =
+  /^tooling\/paperclip\/src\/(?:plugin|seats\/plugin)\/[^/]*(?:manifest|declaration|settings)[^/]*\.ts$/;
+
+/** Modules `plugin/manifest.ts` imports whose names don't match `manifestModule`; keep in step with the deployer's. */
+export const manifestImports: readonly string[] = [
+  "tooling/paperclip/src/front-bot/settings.ts",
+  "tooling/paperclip/src/worker-agents/keys.ts",
+  "tooling/paperclip/src/worker-agents/tables.ts",
+  "tooling/paperclip/src/plugin/front-bot-notes.ts",
+  "tooling/paperclip/src/plugin/version.ts",
+];
+
+/**
+ * The first changed file that builds a plugin manifest, or undefined when
+ * none does. Such a pull request needs Julian's approval on its head as well
+ * as its reviewer's (`reviewerFor`), whoever that is (HAL-19440).
+ */
+export function manifestFileOf(files: readonly string[]): string | undefined {
+  return files.find(
+    (path) =>
+      (manifestModule.test(path) && !path.endsWith(".test.ts")) || manifestImports.includes(path),
+  );
+}
+
 /** What the rebase-only rule needs to know about a pull request: all its changed files, and its branch. */
 export interface ReapprovedPull {
   readonly files: readonly string[];
@@ -368,7 +398,8 @@ function isPublicInterface(path: string): boolean {
 /**
  * Why the routine reviewer (Nora, HAL-19246) can't approve this pull request
  * alone, or null when it can: it fits the second reviewer's limits and
- * touches none of `routineExcludedFolders` and no public interface. A new
+ * touches none of `routineExcludedFolders`, no public interface and no plugin
+ * manifest (`manifestFileOf`, which Julian approves, HAL-19440). A new
  * package already needs the code reviewer (its `package.json` has no base).
  * The PR watcher, the Agent tools plugin and the Merger's gate all call
  * this, so they count the same approvals.
@@ -386,6 +417,10 @@ export function routineRefusal(pull: RoutedPull): string | null {
   const publicInterface = pull.files.find(isPublicInterface);
   if (publicInterface !== undefined) {
     return `changes a public interface (${publicInterface})`;
+  }
+  const manifest = manifestFileOf(pull.files);
+  if (manifest !== undefined) {
+    return `changes a plugin manifest (${manifest}): Julian approves it`;
   }
   return null;
 }
@@ -411,7 +446,9 @@ export function reviewerRoleFor(pull: RoutedPull): ReviewRole {
  * The agent who reviews a pull request: its role (`reviewerRoleFor`),
  * covered by the person the routing names. Without a routing that is
  * `julian` or `liam`, as before (the routine reviewer's role stays with
- * Julian until Nora runs); a refused routing is no routing.
+ * Julian until Nora runs); a refused routing is no routing. A plugin
+ * manifest change goes to Julian at least, and needs his approval even
+ * when it goes to Liam (`manifestFileOf`, HAL-19440).
  */
 export function reviewerFor(pull: RoutedPull): "julian" | "liam";
 export function reviewerFor(pull: RoutedPull, routing: Routing | undefined): string;
