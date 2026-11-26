@@ -22,9 +22,9 @@ export function dataManifestSource(manifest: unknown): string {
 }
 
 /**
- * Refuses a `__proto__` key at any depth. `JSON.parse` makes it an own property, but anything that copies the object
- * with plain assignment or a spread (as Paperclip's loader or a reader may) would set the prototype instead
- * (Julian's review, HAL-19360).
+ * Refuses a `__proto__` key at any depth. `JSON.parse` makes it an own property, which is harmless on its own, but
+ * code that copies the object key by key with assignment or `Object.assign` (as a reader of the manifest may) sets the
+ * copy's prototype instead of a key; an object spread copies it as a plain key (Julian's review, HAL-19360).
  */
 function refuseProtoKeys(value: unknown, where: string): void {
   if (value === null || typeof value !== "object") {

@@ -1,8 +1,8 @@
-import { verifies } from "@halonicjs/testing-spec";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, expect, test } from "vitest";
 import { manifest as seatsManifest } from "../seats/plugin/manifest.ts";
 import { dataManifestSource, writeDataManifest } from "./data-manifest.ts";
