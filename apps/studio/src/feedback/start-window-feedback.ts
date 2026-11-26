@@ -32,7 +32,7 @@ export interface MainWindowFolders {
 }
 
 /**
- * Send feedback for Studio's main window: through the shown folder's Paperclip connection, with
+ * Send feedback for one of Studio's own windows: through the shown folder's Paperclip connection, with
  * the waiting feedback in the page's IndexedDB under the Web Lock every window shares.
  */
 export function mainWindowFeedbackOf(
@@ -76,6 +76,34 @@ export function mainWindowFeedbackOf(
   });
 }
 
+/** What {@link startFocusedWindowFeedback} needs of Halonic Inbox's or Halonic Messenger's window. */
+export interface FocusedWindowFeedbackParts {
+  readonly ipc: TauriIpc;
+  readonly platform: KeyboardPlatform;
+  readonly toasts: InAppFeedbackParts["toasts"];
+  /** The folder the window opened, the one Studio last had open (`studio.window-content`). */
+  readonly opened: { readonly location: string; readonly value: OpenedWorkspace };
+  readonly openTask: (taskUrl: string) => void;
+}
+
+/**
+ * Starts the feedback shortcut in Halonic Inbox's or Halonic Messenger's window
+ * (`studio.feedback-window`), as in Studio's main window: each feedback goes through the folder the
+ * window opened and its Paperclip connection, into the outbox every window shares. That folder
+ * stays the same while the window is open. Gives the stop.
+ */
+export function startFocusedWindowFeedback(
+  page: { readonly window: object },
+  parts: FocusedWindowFeedbackParts,
+): () => void {
+  const feedback = mainWindowFeedbackOf(page, {
+    folders: () => ({ shown: parts.opened, subscribe: () => () => undefined }),
+    toasts: parts.toasts,
+    openTask: parts.openTask,
+  });
+  return startWindowFeedback(page, parts.ipc, parts.platform, parts.toasts, feedback);
+}
+
 function shownFolderOf(shown: MainWindowFolders["shown"]): ShownFolder | undefined {
   if (shown === undefined) return undefined;
   const services = shown.value.workspace.services;
@@ -86,10 +114,10 @@ function shownFolderOf(shown: MainWindowFolders["shown"]): ShownFolder | undefin
 }
 
 /**
- * Starts the feedback shortcut in Studio's main window (`feedback.in-app`). The window hears the
- * shortcut only while it is focused and Studio is connected to Paperclip, and the selection overlay
- * and then the Send feedback dialog show inside it; Halonic Inbox and Halonic Messenger don't hear
- * it, as they can't send (HAL-19671). The shortcut, the project and the assignee are read from the
+ * Starts the feedback shortcut in one of Studio's own windows (`feedback.in-app`): the main window,
+ * Halonic Inbox or Halonic Messenger. The window hears the shortcut only while it is focused and
+ * Studio is connected to Paperclip, and the selection overlay and then the Send feedback dialog
+ * show inside it. The shortcut, the project and the assignee are read from the
  * window's host settings when they're needed, so a change in Settings counts at once. Each
  * feedback goes through `feedback`, and its toasts show in the window's `toasts`; Help and Ctrl K
  * begin one through `feedback` too (`feedback.help-send-feedback`). Gives the stop.
