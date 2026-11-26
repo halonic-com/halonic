@@ -47,8 +47,8 @@
 #
 # The CLI goes to npm as `halonic` (HAL-16209). On a real run, once the
 # draft release exists, the npm-cli job stages the exact `cli-package`
-# tarball the build job checked, with `--tag latest`, because the 1.0.0
-# placeholder holds `latest` (tooling/publish/README.md). It runs in the
+# tarball the build job checked, with `--tag latest`, so the tag doesn't
+# depend on the 1.0.0 placeholder staying deprecated (tooling/publish/README.md). It runs in the
 # `npm-publish-cli` environment, which allows `v*` tags only, and npm trusts
 # this workflow's identity (OIDC) for `halonic`: no npm token exists. The
 # trusted publisher allows `npm stage publish` only, so the version is not
@@ -771,7 +771,7 @@ jobs:
           # README. What changed is the notes the update dialog shows, from
           # latest.json (HAL-19542); the changelog link points at the tag, so
           # it never moves, and has the whole list when the notes are cut.
-          cli="**Command line** (Windows WSL 2, macOS, Linux): \`npm install -g halonic\`, with Node.js 26.12 or later. Then try \`halonic init --example acme\`. [Getting started](https://docs.halonic.dev/getting-started)"
+          cli="**Command line** (Windows WSL 2, macOS, Linux): \`npm install -g halonic@latest\`, with Node.js 26.12 or later. Then try \`halonic init --example acme\`. [Getting started](https://docs.halonic.dev/getting-started)"
           changes="## What changed"$'\n\n'"$(jq -r .notes dist/latest.json)"$'\n\n'"[The full changelog](https://github.com/$GH_REPO/blob/$TAG/apps/studio/CHANGELOG.md)"
           body="$link"$'\n\n'"$cli"$'\n\n'"$changes"
           notes="$body"
@@ -841,8 +841,8 @@ jobs:
             echo "halonic@$VERSION is already on npm, skipping."
             exit 0
           fi
-          # `--tag latest`: 0.x is lower than the 1.0.0 placeholder, so npm
-          # would not move `latest` by itself. A staged version is not on npm
+          # `--tag latest`: 0.x is lower than the 1.0.0 placeholder, which npm
+          # skips only while it is deprecated. A staged version is not on npm
           # yet, so `npm view` misses it and npm answers 409; the run cannot
           # tell who staged it, so it stops and a person checks.
           if ! npm stage publish "$tarball" --access public --provenance --tag latest 2> stage-error.txt; then

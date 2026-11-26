@@ -273,7 +273,7 @@ output can include your home folder.
   Google may receive usage statistics about the scanner (device and app
   details, a device ID and a per-installation ID, speed, image settings). See
   [Google's ML Kit data disclosure](https://developers.google.com/ml-kit/android-data-disclosure).
-- The 0.1.0 command line doesn't check for updates.
+- The command line doesn't check for updates yet.
 
 ## How Halonic is built
 
