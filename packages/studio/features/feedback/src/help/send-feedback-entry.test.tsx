@@ -115,10 +115,15 @@ verifies("feedback.help-send-feedback", () => {
       expect(named(helpItems(page), sendFeedback)?.textContent).toBe("Send feedback (⌘⇧F)");
     });
 
-    it("name the shortcut Settings saved", async () => {
-      const { settings } = await memorySettings({ "feedback.shortcut": "control+alt+KeyF" });
+    it("name the new shortcut once Settings saves it", async () => {
+      const { settings, store } = await memorySettings();
       const { page } = await renderWindow({ settings });
+      expect(named(helpItems(page), sendFeedback)?.textContent).toBe(
+        "Send feedback (Ctrl+Shift+F)",
+      );
 
+      await act(async () => store.changeElsewhere("feedback.shortcut", "control+alt+KeyF"));
+      await settle();
       expect(named(helpItems(page), sendFeedback)?.textContent).toBe("Send feedback (Ctrl+Alt+F)");
     });
 

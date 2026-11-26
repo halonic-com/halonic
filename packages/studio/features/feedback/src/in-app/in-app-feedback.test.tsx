@@ -444,7 +444,22 @@ verifies("feedback.help-send-feedback", () => {
     await settle();
     expect(overlay()).not.toBeNull();
     act(() => inApp?.start());
+    await drawFrame();
+    await drawFrame();
+    await settle();
     expect(overlay()).not.toBeNull();
+    expect(shell.invoke).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts one feedback when picked twice before the window draws", async () => {
+    const shell = fakeShell();
+    startWith(shell);
+    act(() => inApp?.start());
+    act(() => inApp?.start());
+    await drawFrame();
+    await drawFrame();
+    await settle();
+    expect(shell.invoke).toHaveBeenCalledTimes(1);
   });
 
   it("starts nothing while Studio isn't connected to Paperclip", async () => {
