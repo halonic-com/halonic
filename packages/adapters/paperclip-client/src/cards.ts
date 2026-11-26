@@ -1,6 +1,7 @@
 import type {
   InboxAnswer,
   InboxItem,
+  InboxItemKind,
   InboxItemOption,
   InboxItemState,
   InboxQuestion,
@@ -34,6 +35,26 @@ export interface AnswerRequest {
 
 /** Card states that are an answer; cancelled, expired and failed cards aren't shown. */
 const answeredStates: ReadonlySet<string> = new Set(["accepted", "rejected", "answered"]);
+
+/**
+ * The badge each card kind gets (requirement `paperclip-client.item-kinds`, HAL-19491). A card
+ * that pins a stepper becomes an `action` once it is served (`steppers.ts`); a kind not listed
+ * here gets no kind, so apps work it out from its fields.
+ */
+const cardItemKinds: ReadonlyMap<string, InboxItemKind> = new Map([
+  ["request_confirmation", "approval"],
+  ["request_item_verdicts", "approval"],
+  ["ask_user_questions", "question"],
+  ["request_checkbox_confirmation", "question"],
+  ["suggest_tasks", "question"],
+  ["connection_intent", "elsewhere"],
+]);
+
+/** `{ kind }` for a card kind with a badge, else nothing. */
+function itemKindOf(kind: string): Pick<InboxItem, "kind"> {
+  const itemKind = cardItemKinds.get(kind);
+  return itemKind === undefined ? {} : { kind: itemKind };
+}
 
 /** The one question of an `ask_user_questions` card, when it has exactly one. */
 function onlyQuestion(payload: JsonRecord | undefined): JsonRecord | undefined {
@@ -158,6 +179,7 @@ export function cardToItem(
     question: fullLinksOf(context, questionOf(kind, record, payload)),
     options: questions === undefined ? optionsOf(kind, payload) : [],
     ...(questions === undefined ? {} : { questions }),
+    ...itemKindOf(kind),
     work: context.ids.make("task", task),
     // A card asks a question in words and changes no one's rights, unless it lets an agent run a tool.
     risk: asksToRunTool(payload) ? "risky" : "normal",
@@ -319,6 +341,7 @@ export function approvalToItem(
     from: authorOf(context, text(record, "requestedByAgentId"), text(record, "requestedByUserId")),
     question: fullLinksOf(context, approvalQuestion(type, asRecord(field(record, "payload")))),
     options: type === budgetOverrideType ? budgetOverrideOptions : approvalOptions,
+    kind: "approval",
     ...(work === undefined ? {} : { work }),
     risk: approvalRisk(type),
     createdAt: timeOf(record, "createdAt"),

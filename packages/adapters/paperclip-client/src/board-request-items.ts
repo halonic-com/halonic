@@ -79,6 +79,7 @@ export function secretProposalToItem(
     from: authorOf(context, text(record, "proposedByAgentId"), undefined),
     question: proposalQuestion(record),
     options: canApprove ? [approve, rejectProposal] : [rejectProposal],
+    kind: "approval",
     ...(task === undefined ? {} : { work: context.ids.make("task", task) }),
     // A secret changes what an agent can reach.
     risk: "risky",
@@ -149,6 +150,7 @@ export function joinRequestToItem(context: MapContext, record: JsonRecord): Inbo
     from: authorOf(context, undefined, text(record, "requestingUserId")),
     question: joinQuestion(record),
     options: [approve, reject],
+    kind: "approval",
     // Approving changes who may work in the company.
     risk: "risky",
     createdAt: timeOf(record, "createdAt"),
