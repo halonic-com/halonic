@@ -24,8 +24,10 @@ import { changesBetween, type Prints, readPrints } from "./merger-wake-prints.ts
  * job asks for a pass every minute; the chief line's `pr-event` route asks
  * for one 10 seconds after a webhook delivery, and a signed approval counts
  * as a change by itself, as GitHub's review decision doesn't see it. A
- * change wakes the Merger at most once every 45 seconds, and not while a
- * Merger run is in progress: it waits for the next pass. Within 45 seconds of
+ * change wakes the Merger at most once every 45 seconds, not while a Merger
+ * run is in progress, and not when its timer pass is due within 30 seconds,
+ * since the Merger has one run slot and a wake must never hold off the timer
+ * pass (26 Nov, woken runs did): it waits for the next pass. Within 45 seconds of
  * a wake, or while the Merger is busy, a pass doesn't read GitHub at all, so
  * the shared token isn't spent when no wake can follow. The Merger's own
  * heartbeat stays as the fallback. A GitHub rate limit pauses the passes
@@ -38,6 +40,30 @@ export const wakeEveryMs = 45_000;
 export const nudgeWaitMs = 10_000;
 /** How long a rate limit pauses the passes when GitHub names no reset time. */
 export const backoffMs = 15 * 60_000;
+/** No wake when the Merger's timer pass is due within this long, so a wake never holds it off. */
+export const timerPassMarginMs = 30_000;
+
+/** The heartbeat fields of an agent that this reads. */
+interface HeartbeatClock {
+  readonly runtimeConfig: Readonly<Record<string, unknown>>;
+  readonly lastHeartbeatAt: Date | string | null;
+}
+
+/**
+ * In how many ms the agent's next timer heartbeat is due (negative when it is
+ * overdue), or undefined when it has no timer heartbeat or hasn't run yet.
+ */
+export function timerPassDueInMs(agent: HeartbeatClock, now: number) {
+  const heartbeat = (agent.runtimeConfig["heartbeat"] ?? {}) as Record<string, unknown>;
+  const intervalSec = heartbeat["intervalSec"];
+  if (heartbeat["enabled"] === false || typeof intervalSec !== "number" || intervalSec <= 0) {
+    return undefined;
+  }
+  if (agent.lastHeartbeatAt === null) {
+    return undefined;
+  }
+  return new Date(agent.lastHeartbeatAt).getTime() + intervalSec * 1000 - now;
+}
 
 /** The woken run's prompt: one pass, as on a timer heartbeat, for these changes. */
 export function passPrompt(changes: readonly string[]) {
@@ -177,6 +203,7 @@ export function mergerWake(
   async function merger(
     companyId: string,
     task: string,
+    now: number,
   ): Promise<{ readonly agentId: string } | { readonly busy: string }> {
     const issue = await ctx.issues.get(task, companyId);
     if (issue === null) {
@@ -189,8 +216,15 @@ export function mergerWake(
       return { busy: "its task has no assignee" };
     }
     const agent = await ctx.agents.get(issue.assigneeAgentId, companyId);
-    return agent?.status === "running"
-      ? { busy: "a Merger run is in progress" }
+    if (agent === null) {
+      return { busy: "its holder isn't there" };
+    }
+    if (agent.status === "running") {
+      return { busy: "a Merger run is in progress" };
+    }
+    const dueInMs = timerPassDueInMs(agent, now);
+    return dueInMs !== undefined && dueInMs < timerPassMarginMs
+      ? { busy: `its timer pass is due in ${Math.max(0, Math.round(dueInMs / 1000))} s` }
       : { agentId: issue.assigneeAgentId };
   }
 
@@ -272,7 +306,7 @@ export function mergerWake(
     if (tooSoon(companyId, state, at)) {
       return undefined;
     }
-    const target = await merger(companyId, task);
+    const target = await merger(companyId, task, at);
     if (!("busy" in target)) {
       return target.agentId;
     }
