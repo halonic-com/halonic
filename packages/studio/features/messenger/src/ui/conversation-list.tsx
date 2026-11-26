@@ -98,7 +98,8 @@ export function ConversationList({
 
 /**
  * A row's hover action: **Mark as read** while it counts messages, else **Mark as unread** while an
- * agent's message is newer than the person's own; none for the open chat, which reads them.
+ * agent's message is newer than the person's own; none for the open chat, which reads them. A
+ * screen reader hears the chat's name after it, so the buttons in a list aren't all alike.
  */
 function rowAction(
   row: ConversationRow,
@@ -106,9 +107,19 @@ function rowAction(
   marks: RowMarks | undefined,
 ): PlainRowAction | undefined {
   if (marks === undefined) return undefined;
-  if (count > 0) return { label: messengerWords.markRead, onClick: () => marks.onMarkRead(row) };
+  if (count > 0) {
+    return {
+      label: messengerWords.markRead,
+      spokenLabel: messengerWords.markReadFor(chatName(row)),
+      onClick: () => marks.onMarkRead(row),
+    };
+  }
   if (!marks.canMarkUnread(row)) return undefined;
-  return { label: messengerWords.markUnread, onClick: () => marks.onMarkUnread(row) };
+  return {
+    label: messengerWords.markUnread,
+    spokenLabel: messengerWords.markUnreadFor(chatName(row)),
+    onClick: () => marks.onMarkUnread(row),
+  };
 }
 
 /** What a row says under its name: for a channel, who is working; else the newest message. */

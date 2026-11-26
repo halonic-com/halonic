@@ -187,7 +187,7 @@ verifies("assistant.build.fix-attempts", () => {
       expect(await workspace.store.read(notesPaths.code)).toBe(code);
       expect(await workspace.review.itemsWithChangesToReview()).toEqual([]);
       expect(stop).toContain(
-        "I've tried two fixes and notes still fails, so I'll stop here instead of rewriting it again. You can change the code yourself, or start a new chat to try another way.",
+        "I've tried two fixes and the `notes` integration still fails, so I'll stop here instead of rewriting it again. You can change the code yourself, or start a new chat to try another way.",
       );
     });
 

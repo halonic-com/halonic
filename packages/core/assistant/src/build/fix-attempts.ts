@@ -23,7 +23,7 @@ export const failedFixesAllowed = 2;
  */
 export const fixStopTexts = {
   line: (integration: string) =>
-    `I've tried two fixes and ${integration} still fails, so I'll stop here instead of rewriting it again. You can change the code yourself, or start a new chat to try another way.`,
+    `I've tried two fixes and the \`${integration}\` integration still fails, so I'll stop here instead of rewriting it again. You can change the code yourself, or start a new chat to try another way.`,
   result: (integration: string) =>
     `Stopped: two fixes to "${integration}" were followed by a failed call, so this chat changes nothing more in its folder and doesn't read its log. Tell the person exactly this, and nothing else about a next fix:\n${fixStopTexts.line(integration)}`,
 };
