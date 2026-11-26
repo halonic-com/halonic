@@ -1,23 +1,21 @@
 import type { StepperCatalog } from "@halonicjs/action-steppers";
-import {
-  type AgentMessaging,
-  type AnswerResult,
-  type AttachmentRead,
-  addresseesFit,
-  type ChannelResult,
-  type Conversation,
-  type InboxAnswer,
-  type InboxItem,
-  type Message,
-  type MessageSendOptions,
-  type MessagingAgent,
-  type MessagingId,
-  type MessagingRefusal,
-  type MessagingSource,
-  type OutgoingAttachment,
-  type SearchHit,
-  type SendResult,
-  type WorkItem,
+import type {
+  AgentMessaging,
+  AnswerResult,
+  AttachmentRead,
+  ChannelResult,
+  Conversation,
+  InboxAnswer,
+  InboxItem,
+  Message,
+  MessageSendOptions,
+  MessagingAgent,
+  MessagingId,
+  MessagingSource,
+  OutgoingAttachment,
+  SearchHit,
+  SendResult,
+  WorkItem,
 } from "@halonicjs/ports";
 import { checkedOrigin } from "./address.ts";
 import { readAvatar } from "./avatars.ts";
@@ -26,25 +24,21 @@ import { ChangeFeed } from "./changes.ts";
 import { PaperclipChannelMembers } from "./channel-members.ts";
 import { PaperclipChannelSender } from "./channel-send.ts";
 import { PaperclipChannelWork } from "./channel-work.ts";
-import { readChannel, toChannel } from "./channels.ts";
-import { readWorkingChats, withAgentWorking, withReadAt } from "./chat-signals.ts";
+import { withReadAt } from "./chat-signals.ts";
 import { PaperclipCommentThreads } from "./comment-threads.ts";
+import { PaperclipConversations } from "./conversations.ts";
 import { PaperclipFullAnswers } from "./full-answers.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
-import { type MapContext, newestFirst, toAgent, toConversation, toMessage, toWork } from "./map.ts";
+import { type MapContext, newestFirst, toAgent, toMessage, toWork } from "./map.ts";
 import { PaperclipReader } from "./reader.ts";
+import { type RefreshLists, RefreshReads } from "./refresh-reads.ts";
 import { isSafeSegment } from "./requests.ts";
 import { searchAll } from "./search.ts";
 import { type PaperclipUser, SignedInUser } from "./signed-in-user.ts";
 import { PaperclipSteppers } from "./steppers.ts";
-import {
-  bodyOf,
-  PaperclipClientError,
-  PaperclipTransport,
-  type TransportOptions,
-} from "./transport.ts";
+import { PaperclipClientError, PaperclipTransport, type TransportOptions } from "./transport.ts";
 import { PaperclipWebLinks } from "./web-links.ts";
 import { PaperclipWriter } from "./writer.ts";
 
@@ -86,8 +80,6 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #label: string;
   readonly #origin: string;
   readonly #user: SignedInUser;
-  /** The user the host named. Channel membership keeps to it; reading it from Paperclip there is HAL-18736's follow-up. */
-  readonly #namedUserId: string | undefined;
   readonly #reader: PaperclipReader;
   readonly #inbox: PaperclipInbox;
   readonly #writer: PaperclipWriter;
@@ -96,10 +88,10 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #channelWork: PaperclipChannelWork;
   readonly #fullAnswers: PaperclipFullAnswers;
   readonly #threads: PaperclipCommentThreads;
+  readonly #conversations: PaperclipConversations;
+  readonly #refreshReads: RefreshReads;
   readonly #feed = new ChangeFeed<MessagingId>();
   #agentNames = new Map<string, string>();
-  /** Each chat task's agent, as the chats were last read, for its messages' `readAt`. */
-  #chatAgents = new Map<string, string>();
   /** The Inbox as last read, which search matches without reading every task's cards again. */
   #lastInbox: readonly InboxItem[] = [];
   #lastSeen: string | undefined;
@@ -112,7 +104,6 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#origin = checkedOrigin(options.address);
     this.#reader = new PaperclipReader(new PaperclipTransport(options), now);
     this.#user = new SignedInUser(this.#reader, options.userId);
-    this.#namedUserId = options.userId;
     const steppers =
       options.stepperCatalog && new PaperclipSteppers(this.#reader, options.stepperCatalog);
     const webLinks = new PaperclipWebLinks(options.address);
@@ -123,6 +114,13 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#channelWork = new PaperclipChannelWork(this.#reader, options.company, options.userId);
     this.#fullAnswers = new PaperclipFullAnswers(this.#reader, options.warn);
     this.#threads = new PaperclipCommentThreads(this.#reader);
+    this.#conversations = new PaperclipConversations(
+      this.#reader,
+      this.#ids,
+      options.company,
+      options.userId,
+    );
+    this.#refreshReads = new RefreshReads(now);
   }
 
   async listSources(): Promise<readonly MessagingSource[]> {
@@ -137,6 +135,10 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   async listAgents(): Promise<readonly MessagingAgent[]> {
+    return this.#refreshReads.take("agents") ?? this.#readAgents();
+  }
+
+  async #readAgents(): Promise<readonly MessagingAgent[]> {
     const records = asRecords(
       await this.#reader.read("listAgents", { path: { company: this.#company } }),
     );
@@ -153,7 +155,8 @@ export class PaperclipMessaging implements AgentMessaging {
 
   /** Chats and channels, newest first. A channel is an open parent task (`paperclip-client.channels`). */
   async listConversations(): Promise<readonly Conversation[]> {
-    return this.#conversationsFrom(await this.#inbox.openTasks());
+    const kept = this.#refreshReads.take("conversations");
+    return kept ?? this.#conversations.list(this.#context(), await this.#inbox.openTasks());
   }
 
   /**
@@ -179,18 +182,18 @@ export class PaperclipMessaging implements AgentMessaging {
     }
     const answered = await this.#fullAnswers.add(task, messages);
     // A chat not yet listed has no known agent, so its messages wait for the next read for `readAt`.
-    const agent = this.#chatAgents.get(task);
+    const agent = this.#conversations.agentOf(task);
     return agent === undefined
       ? answered
       : withReadAt(this.#reader, this.#ids, { task, agent }, answered);
   }
 
   async listInboxItems(): Promise<readonly InboxItem[]> {
-    return this.#inboxFrom(undefined);
+    return this.#refreshReads.take("inboxItems") ?? this.#inboxFrom(undefined);
   }
 
   async listWork(): Promise<readonly WorkItem[]> {
-    return this.#workFrom(await this.#inbox.openTasks());
+    return this.#refreshReads.take("work") ?? this.#workFrom(await this.#inbox.openTasks());
   }
 
   /**
@@ -214,6 +217,7 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   async answer(item: MessagingId, answer: InboxAnswer): Promise<AnswerResult> {
+    this.#refreshReads.forget();
     const target = {
       card: this.#ids.read(item, "card"),
       approval: this.#ids.read(item, "approval"),
@@ -242,6 +246,7 @@ export class PaperclipMessaging implements AgentMessaging {
     attachments: readonly OutgoingAttachment[] = [],
     options: MessageSendOptions = {},
   ): Promise<SendResult> {
+    this.#refreshReads.forget();
     // Files aren't sent to Paperclip yet, so a message with files is refused whole, before any request.
     if (attachments.length > 0) {
       return { outcome: "refused", reason: "unsupported-type" };
@@ -257,7 +262,11 @@ export class PaperclipMessaging implements AgentMessaging {
     }
     // The key may comment only on the person's own chats (ADR: "comment on a chat task"),
     // so a stale or made-up chat ID never turns into a comment on some other task.
-    const notAChat = await this.#refusalUnlessChat(task, options.to ?? []);
+    const notAChat = await this.#conversations.refusalUnlessChat(
+      this.#context(),
+      task,
+      options.to ?? [],
+    );
     if (notAChat !== undefined) {
       return { outcome: "refused", reason: notAChat };
     }
@@ -285,6 +294,7 @@ export class PaperclipMessaging implements AgentMessaging {
     members: readonly MessagingId[],
     lead: MessagingId,
   ): Promise<ChannelResult> {
+    this.#refreshReads.forget();
     const result = await this.#members.start(this.#context(), title, members, lead);
     this.#changedAfter(result.outcome === "done");
     return result;
@@ -301,8 +311,7 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   async browseChannels(): Promise<readonly Conversation[]> {
-    const channels = this.#members.browse(this.#context(), await this.#inbox.openTasks());
-    return newestFirst(channels, (conversation) => conversation.updatedAt);
+    return this.#refreshReads.take("channels") ?? this.#browseFrom(await this.#inbox.openTasks());
   }
 
   joinChannel(channel: MessagingId): Promise<ChannelResult> {
@@ -324,15 +333,23 @@ export class PaperclipMessaging implements AgentMessaging {
   /**
    * Reads the source again and tells `changes` readers when anything they
    * show changed. The engine calls it on its schedule (`ports.paperclip-polling`).
+   * The list reads right after it answer from what it read
+   * (`paperclip-client.refresh-reads`).
    */
   async refresh(): Promise<void> {
-    // One read of the open tasks serves both the Inbox and the work list.
+    const reading = this.#refreshReads.start();
+    const agents = this.#agentNames.size === 0 ? await this.#readAgents() : undefined;
+    // One read of the open tasks serves the Inbox, the chats, the work and the channels.
     const tasks = await this.#inbox.openTasks();
-    const seen = JSON.stringify([
-      await this.#inboxFrom(tasks),
-      await this.#conversationsFrom(tasks),
-      this.#workFrom(tasks),
-    ]);
+    const lists: RefreshLists = {
+      inboxItems: await this.#inboxFrom(tasks),
+      conversations: await this.#conversations.list(this.#context(), tasks),
+      work: this.#workFrom(tasks),
+      channels: this.#browseFrom(tasks),
+      ...(agents === undefined ? {} : { agents }),
+    };
+    reading.keep(lists);
+    const seen = JSON.stringify([lists.inboxItems, lists.conversations, lists.work]);
     const changed = this.#lastSeen !== undefined && seen !== this.#lastSeen;
     this.#lastSeen = seen;
     if (changed) {
@@ -346,6 +363,7 @@ export class PaperclipMessaging implements AgentMessaging {
    * out or refused, it didn't, and the key stays valid until its expiry.
    */
   async revoke(): Promise<boolean> {
+    this.#refreshReads.forget();
     const answer = await this.#reader.send("revokeKey");
     return answer.kind === "ok";
   }
@@ -368,6 +386,7 @@ export class PaperclipMessaging implements AgentMessaging {
     channel: MessagingId,
     change: (context: MapContext, task: string) => Promise<ChannelResult>,
   ): Promise<ChannelResult> {
+    this.#refreshReads.forget();
     const [task] = this.#ids.read(channel, "channel") ?? [];
     if (task === undefined || !isSafeSegment(task)) {
       return { outcome: "refused", reason: "not-found" };
@@ -390,66 +409,16 @@ export class PaperclipMessaging implements AgentMessaging {
     return result;
   }
 
-  /** The person's chats and the channels among `tasks`, newest first. */
-  async #conversationsFrom(tasks: readonly JsonRecord[]): Promise<Conversation[]> {
-    const context = this.#context();
-    // A channel the person left shows in Browse instead.
-    const channels = tasks.flatMap((record) => {
-      const userId = this.#namedUserId;
-      const channel = readChannel(record, userId);
-      const left = userId !== undefined && !channel?.people.includes(userId);
-      return channel === undefined || left ? [] : [toChannel(context, channel)];
-    });
-    const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
-    // Paperclip answers 404 when Agent Chat is off: there are no chats, which isn't an error.
-    const records =
-      answer.kind === "failed" && answer.failure === "not-found"
-        ? []
-        : asRecords(bodyOf("listChats", answer));
-    this.#chatAgents = new Map(
-      records.flatMap((record) => {
-        const [task, agent] = [text(record, "id"), text(record, "conversationAgentId")];
-        return task === undefined || agent === undefined ? [] : [[task, agent] as const];
-      }),
-    );
-    // Live runs are read only when there are chats to mark (`paperclip-client.agent-working`).
-    const working =
-      records.length === 0 ? undefined : await readWorkingChats(this.#reader, this.#company);
-    const chats = records.flatMap((record) => {
-      const chat = toConversation(context, record);
-      return chat === undefined ? [] : [withAgentWorking(this.#ids, chat, working)];
-    });
-    return newestFirst([...chats, ...channels], (conversation) => conversation.updatedAt);
-  }
-
-  /**
-   * Why `task` can't take a message: offline, signed out, not one of the person's chats, or a `to`
-   * naming an agent other than the chat's one agent.
-   */
-  async #refusalUnlessChat(
-    task: string,
-    to: readonly MessagingId[],
-  ): Promise<MessagingRefusal | undefined> {
-    const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
-    if (answer.kind === "failed") {
-      const { failure } = answer;
-      if (failure === "offline" || failure === "signed-out" || failure === "not-found") {
-        return failure;
-      }
-    }
-    const chats = asRecords(bodyOf("listChats", answer));
-    const chat = chats.find((each) => text(each, "id") === task);
-    if (chat === undefined) return "not-found";
-    if (to.length === 0) return undefined;
-    const conversation = toConversation(this.#context(), chat);
-    return conversation !== undefined && addresseesFit(conversation, to) ? undefined : "not-found";
-  }
-
   async #inboxFrom(tasks: readonly JsonRecord[] | undefined): Promise<InboxItem[]> {
     await this.#knowAgents();
     const items = await this.#inbox.list(this.#context(), tasks);
     this.#lastInbox = items;
     return items;
+  }
+
+  #browseFrom(tasks: readonly JsonRecord[]): Conversation[] {
+    const channels = this.#members.browse(this.#context(), tasks);
+    return newestFirst(channels, (conversation) => conversation.updatedAt);
   }
 
   #workFrom(tasks: readonly JsonRecord[]): WorkItem[] {
@@ -460,7 +429,7 @@ export class PaperclipMessaging implements AgentMessaging {
 
   async #knowAgents(): Promise<void> {
     if (this.#agentNames.size === 0) {
-      await this.listAgents();
+      await this.#readAgents();
     }
   }
 
