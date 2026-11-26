@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { company, testKey } from "./acme-data.test-helper.ts";
 import { UnsafeAddressError } from "./address.ts";
-import { connectTo, FakeEventsServer, textFrame } from "./live-events.test-helper.ts";
+import { connectTo, FakeEventsServer, textFrame, textHeader } from "./live-events.test-helper.ts";
 import { LiveEventsConnection, liveFrameMaxBytes } from "./live-events.ts";
 import { upgradeSocket } from "./live-socket.ts";
 import { paperclipRequests } from "./requests.ts";
@@ -17,15 +17,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await paperclip.stop();
 });
-
-/** A server text frame's header that declares `length` bytes, with none of them sent. */
-function textHeader(length: number): Buffer {
-  const header = Buffer.alloc(10);
-  header[0] = 0x81;
-  header[1] = 127;
-  header.writeBigUInt64BE(BigInt(length), 2);
-  return header;
-}
 
 verifies("paperclip-client.live-events", () => {
   describe("the key", () => {

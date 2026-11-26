@@ -2,7 +2,7 @@ import type { SyncBatch, SyncCollection } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { KeptCollection } from "./kept-collection.ts";
-import { SyncCounters, syncLogEveryMs } from "./sync-counters.ts";
+import { connectionChangesMax, SyncCounters, syncLogEveryMs } from "./sync-counters.ts";
 import type { SyncPersistence } from "./sync-persistence.ts";
 
 /** A clock the test moves by hand. */
@@ -146,6 +146,30 @@ verifies("agent-host.sync-diagnostics", () => {
       expect(diagnostics.updates.write).toEqual({ count: 1, share: 1 });
       expect(diagnostics.routes).toEqual([]);
       expect(diagnostics.timeIn["polling-only"]).toBe(24 * 60 * 60_000);
+    });
+
+    it("keeps only the window's changes of connection when a socket flaps, with nobody asking", () => {
+      const { counters: made, pass } = counters();
+      const day = 24 * 60 * 60_000;
+      // A socket that opens and drops every 30 seconds for 25 hours: 3,000 changes.
+      for (let change = 0; change < 3000; change += 1) {
+        pass(30_000);
+        made.setConnection(change % 2 === 0 ? "connected" : "polling-only");
+      }
+
+      expect(made.connectionChangesHeld).toBeLessThanOrEqual(day / 30_000 + 1);
+      const { timeIn } = made.diagnostics();
+      expect(timeIn.connected + timeIn["polling-only"] + timeIn["not-allowed"]).toBe(day);
+    });
+
+    it("keeps at most a fixed number of changes of connection, however fast they come", () => {
+      const { counters: made, pass } = counters();
+      for (let change = 0; change < connectionChangesMax + 1000; change += 1) {
+        pass(1);
+        made.setConnection(change % 2 === 0 ? "connected" : "polling-only");
+      }
+
+      expect(made.connectionChangesHeld).toBe(connectionChangesMax);
     });
 
     it("writes a line on each change of connection and every 15 minutes, with counts only", () => {

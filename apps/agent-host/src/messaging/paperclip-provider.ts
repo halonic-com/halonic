@@ -1,4 +1,6 @@
 import {
+  LiveEventsConnection,
+  type LiveSignal,
   type PaperclipAnswer,
   PaperclipFeedback,
   type PaperclipKeyGuard,
@@ -6,12 +8,14 @@ import {
   type PaperclipMessagingOptions,
   PaperclipTeamStatus,
   type RouteTimingSink,
+  touchedBy,
 } from "@halonicjs/adapter-paperclip-client";
 import type {
   PaperclipBinding,
   PaperclipConnectionNow,
   PaperclipKeys,
 } from "@halonicjs/host-agent-messaging-hub";
+import type { EventsSignal, OpenEvents } from "@halonicjs/host-paperclip-sync";
 import type { MessagingSource } from "@halonicjs/ports";
 
 /** What {@link paperclipProvider} needs for one connection the person connected. */
@@ -93,6 +97,56 @@ export function paperclipFeedback(
     company,
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
   });
+}
+
+/**
+ * Opens the connection's live events socket (`agent-host.paperclip-live-events`), or `undefined`
+ * when the host holds no key for it. It sends through the same key guard as
+ * {@link paperclipProvider}, so only to the address and company the key was made for, and tells
+ * the sync only what it needs: that an event touched the local copy, never what the event said.
+ * A failure to open that the connection doesn't report as `closed` is reported, and counts as one.
+ */
+export function paperclipEvents(
+  options: Pick<PaperclipProviderOptions, "binding" | "keys" | "readNow">,
+  report: (error: unknown) => void,
+): OpenEvents | undefined {
+  const guarded = guardedKey(options);
+  if (guarded === undefined) return undefined;
+  const { address, key, company } = guarded;
+  return (onSignal) => {
+    const connection = new LiveEventsConnection({
+      address,
+      key,
+      company,
+      onSignal: (signal) => {
+        const heard = eventsSignalOf(signal);
+        if (heard !== undefined) onSignal(heard);
+      },
+    });
+    connection.open().catch((error: unknown) => {
+      report(error);
+      onSignal({ kind: "closed", refused: false });
+    });
+    return connection;
+  };
+}
+
+/**
+ * What the sync hears of a live signal: an event only when it touches the local copy, and a close
+ * as refused when Paperclip won't let this key use the socket (403) or no longer accepts it.
+ */
+export function eventsSignalOf(signal: LiveSignal): EventsSignal | undefined {
+  switch (signal.kind) {
+    case "event":
+      return touchedBy(signal.event).length > 0 ? { kind: "change" } : undefined;
+    case "closed":
+      return {
+        kind: "closed",
+        refused: signal.why === "not-allowed" || signal.why === "signed-out",
+      };
+    default:
+      return signal;
+  }
 }
 
 /** Where the key was made for, and the guard that checks the connection file before each request. */

@@ -25,6 +25,7 @@ export {
   liveFrameMaxBytes,
 } from "./live-events.ts";
 export type { LiveEvent } from "./live-messages.ts";
+export { type SyncCollectionName, touchedBy } from "./live-touches.ts";
 export {
   findRequest,
   type PaperclipRequestName,

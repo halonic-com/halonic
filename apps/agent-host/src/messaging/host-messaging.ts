@@ -5,7 +5,7 @@ import { NodeScheduler } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
 import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
 import { type PaperclipBinding, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
-import { SyncCounters, SyncScheduler } from "@halonicjs/host-paperclip-sync";
+import { LiveSync, SyncCounters, SyncScheduler } from "@halonicjs/host-paperclip-sync";
 import type { PhoneMessaging, Scheduler, SecretStore } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -58,8 +58,9 @@ export const messagingCacheFolderName = "agent-messaging-cache";
  *
  * The sync starts with the host, with its first full load at once, but reads
  * only connected sources, and none is connected until Studio hands a key
- * over, so a host that starts calls nobody. No source's live events are
- * connected yet, so it polls at the rates without events.
+ * over, so a host that starts calls nobody. Each connected source's live
+ * events then bring reads forward (`agent-host.paperclip-live-events`); until
+ * every source's are connected, it polls at the rates without events.
  */
 export function hostMessaging(
   profile: ProfileFolder | undefined,
@@ -93,6 +94,11 @@ export function hostMessaging(
   const counters = new SyncCounters({ clock: systemClock, log });
   const messaging = new DesktopMessaging({
     counters,
+    live: {
+      add: (id, open) => live.add(id, open),
+      remove: (id) => live.remove(id),
+      countersFor: (id, kept) => live.countersFor(id, kept),
+    },
     keys,
     engines: { setting, pairings: new ServerPairings(pairingSecrets), warn },
     cacheRoot: join(profile.root, messagingCacheFolderName),
@@ -103,9 +109,10 @@ export function hostMessaging(
   });
   const scheduler = new NodeScheduler(
     {
-      // Each timer is the sync's poll or a sign-in's time limit; each checks its own key.
+      // Each timer is the sync's poll, its events' batch or reconnect, or a sign-in's time limit; each checks its own key.
       onTimer: async (timer) => {
         if (await sync.onTimer(timer)) return;
+        if (await live.onTimer(timer)) return;
         await signIn.onTimer(timer);
       },
       // The poll needs no tick: its own timer brings every poll.
@@ -126,10 +133,17 @@ export function hostMessaging(
     scheduler,
     clock: systemClock,
     poll: async () => {
-      await messaging.refresh();
+      await live.poll(() => messaging.refresh());
       counters.tick();
     },
     waiting: () => replies.waiting(),
+  });
+  const live = new LiveSync({
+    scheduler,
+    clock: systemClock,
+    sync,
+    counters,
+    report: (error) => report({ provider: "paperclip", action: "live events", error }),
   });
   const signIn = hostSignIn(keys, messaging, scheduler, sync);
   const usesServer = (workspace: string) => messaging.usesServer(workspace);
@@ -161,6 +175,7 @@ export function hostMessaging(
       ? {}
       : { phone: phoneWorkspaceMessaging(() => messaging.lastAsked()) }),
     stop: async () => {
+      await live.stop();
       await sync.stop();
       await scheduler.close();
       messaging.close();

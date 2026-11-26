@@ -5,7 +5,12 @@ import { type PaperclipTeamStatus, paperclipSourceId } from "@halonicjs/adapter-
 import type { PaperclipConnection } from "@halonicjs/format";
 import type { PaperclipConnectionNow, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { type MessagingFailure, MessagingHub } from "@halonicjs/host-agent-messaging-hub";
-import { StoredAgentMessaging, type SyncCounters } from "@halonicjs/host-paperclip-sync";
+import {
+  type LiveSync,
+  type OpenEvents,
+  StoredAgentMessaging,
+  type SyncCounters,
+} from "@halonicjs/host-paperclip-sync";
 import type {
   AgentMessaging,
   MessagingId,
@@ -15,6 +20,7 @@ import type {
 } from "@halonicjs/ports";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { ChangeLog, type ChangesSince, changesWaitMs } from "./change-log.ts";
+import { followEvents, liveCounters, liveIdOf } from "./connection-events.ts";
 import { listConnectionFiles } from "./connection-file.ts";
 import type { MessagingEngine } from "./messaging-engine-setting.ts";
 import {
@@ -53,6 +59,10 @@ export interface WorkspaceMessagingOptions {
   engine?: JoinedEngine;
   /** Counts every change the local copies apply and every Paperclip call (`agent-host.sync-diagnostics`). */
   counters?: Pick<SyncCounters, "applied" | "called">;
+  /** Follows each connected connection's live events (`agent-host.paperclip-live-events`); none without it. */
+  live?: Pick<LiveSync, "add" | "remove" | "countersFor">;
+  /** Opens a connection's events socket; `paperclipEvents` unless a test says otherwise. */
+  openEvents?: (options: PaperclipProviderOptions) => OpenEvents | undefined;
 }
 
 /** What the Messenger's activity panel reads: each connected source's runs and pull requests. */
@@ -208,6 +218,7 @@ export class WorkspaceMessaging {
     if (team === undefined) this.#teams.delete(connection);
     else this.#teams.set(connection, team);
     this.#rejoin();
+    await followEvents(this.#options, connection, provider === undefined ? undefined : made);
     this.#changes.note(paperclipSourceId(connection));
   }
 
@@ -313,6 +324,7 @@ export class WorkspaceMessaging {
     this.#stored.delete(connection);
     this.#teams.delete(connection);
     this.#rejoin();
+    await this.#options.live?.remove(liveIdOf(this.#options, connection));
     await this.#served.clear(source);
     // Closes the held copy first, so a poll, answer or send still in flight can't write it again.
     await stored?.clear();
@@ -367,7 +379,8 @@ export class WorkspaceMessaging {
    */
   #storedOf(connection: string, provider: PaperclipConnectionProvider): StoredAgentMessaging {
     const source = paperclipSourceId(connection);
-    const { cacheFolder, warn, counters } = this.#options;
+    const { cacheFolder, warn } = this.#options;
+    const counters = liveCounters(this.#options, connection);
     return new StoredAgentMessaging({
       live: provider,
       sync: provider.sync(),

@@ -29,8 +29,11 @@ export class FakeEventsServer {
   readonly #sockets = new Set<Socket>();
   #frameWaiters: Array<() => void> = [];
 
-  constructor() {
-    this.#server = createServer((socket) => this.#accept(socket));
+  /** `allowHalfOpen` keeps a socket open after the client's end, as a server that ignores our close may. */
+  constructor(options: { allowHalfOpen?: boolean } = {}) {
+    this.#server = createServer({ allowHalfOpen: options.allowHalfOpen ?? false }, (socket) =>
+      this.#accept(socket),
+    );
   }
 
   get address(): string {
@@ -113,6 +116,15 @@ function acceptOf(head: string): string {
   return createHash("sha1").update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest("base64");
 }
 
+/** A server text frame's header that declares `length` bytes, with none of them sent. */
+export function textHeader(length: number): Buffer {
+  const header = Buffer.alloc(10);
+  header[0] = 0x81;
+  header[1] = 127;
+  header.writeBigUInt64BE(BigInt(length), 2);
+  return header;
+}
+
 /** A server's text frame holding `message` as JSON. */
 export function textFrame(message: unknown): Buffer {
   return encodeFrame(frameType.text, Buffer.from(JSON.stringify(message)));
@@ -131,7 +143,7 @@ export interface TestConnection {
 /** Makes a {@link TestConnection} to `server`. */
 export function connectTo(
   server: FakeEventsServer,
-  options: { idleTimeoutMs?: number; upgradeTimeoutMs?: number } = {},
+  options: { idleTimeoutMs?: number; upgradeTimeoutMs?: number; closeGraceMs?: number } = {},
 ): TestConnection {
   const signals: LiveSignal[] = [];
   let waiters: Array<() => void> = [];
