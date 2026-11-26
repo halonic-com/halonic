@@ -591,6 +591,15 @@ export {
   workspaceSecretWriter,
 } from "./secrets.ts";
 export {
+  type SyncConnection,
+  type SyncDiagnostics,
+  type SyncRouteTiming,
+  type SyncSource,
+  type SyncTiming,
+  syncConnections,
+  syncSources,
+} from "./sync-diagnostics.ts";
+export {
   type RunAgainBlock,
   type RunAgainCheck,
   type RunAgainResult,

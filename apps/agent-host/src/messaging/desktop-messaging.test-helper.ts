@@ -8,7 +8,7 @@ import {
 } from "@halonicjs/adapter-agent-host-client";
 import { ManualClock, MemoryScheduler, MemorySecretStore } from "@halonicjs/adapter-memory";
 import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
-import { SyncScheduler } from "@halonicjs/host-paperclip-sync";
+import { SyncCounters, SyncScheduler } from "@halonicjs/host-paperclip-sync";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
 import { profileOf } from "../profile-folder.ts";
 import { webCryptoDigest } from "../profile-token-key.ts";
@@ -20,6 +20,7 @@ import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
 import { ReplyWatch } from "./reply-watch.ts";
 import { ServerPairings } from "./server-engine.ts";
+import { syncDiagnosticsRoute } from "./sync-diagnostics-route.ts";
 
 // A fake key only these tests use, so its absence from answers and files means something.
 export const testKey = "pcp_board_fake-key-for-tests-only";
@@ -199,6 +200,8 @@ export interface Desktop {
   /** Each workspace's messaging engine setting, in {@link Desktop.profile}. */
   setting: MessagingEngineSetting;
   messaging: DesktopMessaging;
+  /** The sync's counters, which `GET /v1/sync/diagnostics` answers from. */
+  counters: SyncCounters;
   keys: PaperclipKeys;
   /** Moves the scheduler's clock on by `ms` and delivers the timers that are due: no sleep. */
   wait(ms: number): Promise<void>;
@@ -247,7 +250,10 @@ export async function startDesktop(): Promise<Desktop> {
   const clock = new ManualClock("2026-11-24T14:00:00.000Z");
   const logged: string[] = [];
   const log = (text: string) => logged.push(text);
+  // Its lines go nowhere, so `logged` holds only what failed.
+  const counters = new SyncCounters({ clock, log: () => undefined });
   const messaging = new DesktopMessaging({
+    counters,
     keys,
     cacheRoot: join(profile, "agent-messaging-cache"),
     workspaceRoots,
@@ -288,6 +294,7 @@ export async function startDesktop(): Promise<Desktop> {
       usesServer: (folder) => messaging.usesServer(folder),
     }),
     ...messagingRoutes({ messaging, sync, replies, log }),
+    syncDiagnosticsRoute(counters),
   ]);
   const answers: string[] = [];
   const transport = pageTransport(host.url, token, answers);
@@ -304,6 +311,7 @@ export async function startDesktop(): Promise<Desktop> {
     keychain,
     setting,
     messaging,
+    counters,
     keys,
     wait: async (ms) => {
       clock.advance(ms);

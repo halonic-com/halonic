@@ -110,6 +110,7 @@ export {
   type ServerPairStart,
   type ServerPairState,
 } from "./server-engine.ts";
+export { SharedChanges } from "./shared-changes.ts";
 export { actionStepsKey, provideActionSteps } from "./shell-actions.ts";
 export { type ChatOpens, shellChatOpens } from "./shell-chat-opens.ts";
 export { hostSettingsStoreKey, provideShellHostSettings } from "./shell-host-settings.ts";
@@ -127,6 +128,7 @@ export {
   shellKeyOrigins,
   tokenStoreKey,
 } from "./shell-secrets.ts";
+export { type SyncDiagnosticsReader, SyncDiagnosticsService } from "./sync-diagnostics.ts";
 export { TauriChannel } from "./tauri-channel.ts";
 export { onWindowCloseRequested } from "./tauri-close.ts";
 export { type TauriCallbacks, type TauriIpc, tauriChannelIpc, tauriIpc } from "./tauri-ipc.ts";

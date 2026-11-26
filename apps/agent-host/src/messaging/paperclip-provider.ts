@@ -5,6 +5,7 @@ import {
   PaperclipMessaging,
   type PaperclipMessagingOptions,
   PaperclipTeamStatus,
+  type RouteTimingSink,
 } from "@halonicjs/adapter-paperclip-client";
 import type {
   PaperclipBinding,
@@ -26,6 +27,8 @@ export interface PaperclipProviderOptions {
   /** The `fetch` the provider sends with; the global one by default. */
   fetch?: typeof fetch;
   now?: () => Date;
+  /** Hears each Paperclip call's route template, status, time and size; never its address or body. */
+  timing?: RouteTimingSink;
 }
 
 const signedOut: PaperclipAnswer = { kind: "failed", failure: "signed-out" };
@@ -114,10 +117,11 @@ function guardedKey(options: Pick<PaperclipProviderOptions, "binding" | "keys" |
 
 function network(
   options: PaperclipProviderOptions,
-): Pick<PaperclipProviderOptions, "fetch" | "now"> {
+): Pick<PaperclipProviderOptions, "fetch" | "now" | "timing"> {
   return {
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     ...(options.now === undefined ? {} : { now: options.now }),
+    ...(options.timing === undefined ? {} : { timing: options.timing }),
   };
 }
 

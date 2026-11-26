@@ -4,6 +4,8 @@ The Connections feature of the Studio: Settings › Connections, with a row per 
 
 A row is "Connected", "Offline", "Signed out" (Paperclip refused the key: **Sign in again**) or "Not connected" (this computer holds no key for it yet: **Sign in**). Both buttons open the sign-in dialog; requirement `connections.connection-row` has the exact wording.
 
+Next to it, Settings › Sync diagnostics is a read-only view of how the engine kept the Inbox and Messenger up to date over the last 24 hours: how changes arrived and their shares, delays, reconnects and each Paperclip call's timing. It reads them through `SyncDiagnosticsService` and shows only where the app provides it (requirement `connections.sync-diagnostics`).
+
 - **Layer:** studio
 - **Owner:** tomas
 - **Public API:** `@halonicjs/studio-feature-connections` (the feature) and `@halonicjs/studio-feature-connections/api`
