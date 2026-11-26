@@ -1,8 +1,8 @@
 // The Markdown a plugin's result (`plugins.plugin-text`) and a chat reply
 // (`kit.chat-message`) may use. It reads a fixed set of elements into plain
 // data, and everything else stays text: HTML, images, tables, nested lists and
-// links to anything but a web page. The screens draw the data with React, so
-// no string ever becomes markup.
+// links to anything but a web page or, when the caller asks, a page in Studio.
+// The screens draw the data with React, so no string ever becomes markup.
 
 import { isWebAddress } from "../external-link/external-link.tsx";
 
@@ -13,7 +13,22 @@ export type MarkdownInline =
   | { readonly kind: "em"; readonly children: readonly MarkdownInline[] }
   | { readonly kind: "code"; readonly text: string }
   /** Only for an `http` or `https` address; its text is plain. */
-  | { readonly kind: "link"; readonly href: string; readonly text: string };
+  | { readonly kind: "link"; readonly href: string; readonly text: string }
+  /**
+   * Only when the caller asks for `appLinks`, and only for a task, an approval or an agent in
+   * Studio, such as `/ACME/issues/ACME-42`; its text is plain.
+   */
+  | { readonly kind: "app-link"; readonly path: string; readonly text: string };
+
+/** What `readMarkdown` and `readInline` read besides the fixed set of elements. */
+export interface MarkdownOptions {
+  /**
+   * Also read a link to a task, an approval or an agent in Studio as an `app-link`. Only a path
+   * like `/<company>/issues/<id>`, `/<company>/approvals/<id>` or `/<company>/agents/<id>`, with an
+   * optional `#part`, qualifies; every other path stays text (`kit.chat-text-app-links`).
+   */
+  readonly appLinks?: boolean;
+}
 
 /**
  * A block of a text. A heading is a bold line, so a plugin or a chat reply can't add to the page's
@@ -39,23 +54,31 @@ const NUMBERED = /^ {0,3}\d{1,9}[.)]\s+/;
 /** Only a list that starts at 1 ends a paragraph, so a line like `2024. Next` doesn't. */
 const FIRST_NUMBERED = /^ {0,3}1[.)]\s+/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+/**
+ * A task, an approval or an agent in Studio. The company and the id are letters, digits, `-` and
+ * `_` only, so `//host`, `..`, a query or a scheme such as `javascript:` never match.
+ */
+const APP_PATH = /^\/[\w-]+\/(?:issues|approvals|agents)\/[\w-]+(?:#[\w-]+)?$/;
 
 /**
  * Reads a plugin's result or a chat reply into blocks. Lines inside a paragraph keep
  * their line breaks.
  *
  * @param source - the tool's answer or the model's reply
+ * @param options - `appLinks` to read links to tasks, approvals and agents in Studio
  * @example
  * readMarkdown("# Today\n**Sunny**, 21 °C");
  * // [{ kind: "heading", inlines: [text "Today"] },
  * //  { kind: "paragraph", inlines: [strong "Sunny", text ", 21 °C"] }]
+ * readMarkdown("See [ACME-42](/ACME/issues/ACME-42)", { appLinks: true });
+ * // [{ kind: "paragraph", inlines: [text "See ", app-link "/ACME/issues/ACME-42" "ACME-42"] }]
  */
-export function readMarkdown(source: string): MarkdownBlock[] {
+export function readMarkdown(source: string, options: MarkdownOptions = {}): MarkdownBlock[] {
   const lines = source.replace(/\r\n?/g, "\n").split("\n");
   const blocks: MarkdownBlock[] = [];
   let index = 0;
   while (index < lines.length) {
-    const { block, next } = blockAt(lines, index);
+    const { block, next } = blockAt(lines, index, options);
     if (block !== null) blocks.push(block);
     index = next;
   }
@@ -66,6 +89,7 @@ export function readMarkdown(source: string): MarkdownBlock[] {
 function blockAt(
   lines: readonly string[],
   index: number,
+  options: MarkdownOptions,
 ): { block: MarkdownBlock | null; next: number } {
   const line = lines[index] ?? "";
   if (line.trim() === "") return { block: null, next: index + 1 };
@@ -80,12 +104,12 @@ function blockAt(
     };
   }
   if (HEADING.test(line)) {
-    const inlines = readInline(line.replace(HEADING, "").trim());
+    const inlines = readInline(line.replace(HEADING, "").trim(), options);
     return { block: { kind: "heading", inlines }, next: index + 1 };
   }
   const kind = runKind(line);
   const run = takeRun(lines, index, kind);
-  return { block: toBlock(kind, run), next: index + run.length };
+  return { block: toBlock(kind, run, options), next: index + run.length };
 }
 
 type RunKind = "quote" | "list" | "paragraph";
@@ -114,12 +138,13 @@ function startsOtherBlock(line: string, kind: RunKind): boolean {
   return quote || BULLET.test(line) || FIRST_NUMBERED.test(line);
 }
 
-function toBlock(kind: RunKind, run: readonly string[]): MarkdownBlock {
+function toBlock(kind: RunKind, run: readonly string[], options: MarkdownOptions): MarkdownBlock {
   if (kind === "quote") {
-    return { kind, inlines: readInline(run.map((line) => line.replace(QUOTE, "")).join("\n")) };
+    const quoted = run.map((line) => line.replace(QUOTE, "")).join("\n");
+    return { kind, inlines: readInline(quoted, options) };
   }
   if (kind === "paragraph") {
-    return { kind, inlines: readInline(run.map((line) => line.trim()).join("\n")) };
+    return { kind, inlines: readInline(run.map((line) => line.trim()).join("\n"), options) };
   }
   // A line that isn't an item continues the item above it.
   const ordered = NUMBERED.test(run[0] ?? "");
@@ -130,22 +155,23 @@ function toBlock(kind: RunKind, run: readonly string[]): MarkdownBlock {
     if (marker === null) items[items.length - 1] += `\n${line.trim()}`;
     else items.push(line.slice(marker[0].length));
   }
-  return { kind, ordered, start, items: items.map((item) => readInline(item)) };
+  return { kind, ordered, start, items: items.map((item) => readInline(item, options)) };
 }
 
 /**
  * Reads the inline parts of one block: `code`, **strong**, *em* or _em_,
- * [links](https://…) and `\` escapes. An image, a link to anything but a web
- * page, and any HTML stay as their own characters.
+ * [links](https://…) and `\` escapes, and with `appLinks` [links](/ACME/issues/ACME-42) to
+ * Studio. An image, a link to anything else, and any HTML stay as their own characters.
  *
  * Its time grows in step with the block's length, even when markers never
  * close (HAL-4978): every search for a closing marker remembers its answer,
  * so no stretch of text is searched twice.
  *
  * @param source - the block's text
+ * @param options - `appLinks` to read links to tasks, approvals and agents in Studio
  */
-export function readInline(source: string): MarkdownInline[] {
-  const reader = readerOf(source);
+export function readInline(source: string, options: MarkdownOptions = {}): MarkdownInline[] {
+  const reader = readerOf(source, options);
   const parts: MarkdownInline[] = [];
   let text = "";
   let at = 0;
@@ -184,6 +210,8 @@ type Closer = keyof typeof CLOSERS;
 /** One block's text and the searches over it. */
 interface Reader {
   readonly source: string;
+  /** What the caller asked for, passed on to the text inside emphasis. */
+  readonly options: MarkdownOptions;
   /** The first match of the closer at or after `from`, or -1. */
   readonly find: (closer: Closer, from: number) => number;
   /** The first run of exactly `size` backticks that starts at or after `from`, or -1. */
@@ -196,11 +224,12 @@ interface Reader {
  * later one that starts at or before `found`, and one that found nothing
  * answers all of them.
  */
-function readerOf(source: string): Reader {
+function readerOf(source: string, options: MarkdownOptions): Reader {
   const last = new Map<Closer, { pattern: RegExp; from: number; found: number }>();
   let runs: Map<number, { starts: number[]; next: number }> | null = null;
   return {
     source,
+    options,
     find(closer, from) {
       const known = last.get(closer);
       if (
@@ -268,7 +297,7 @@ function emphasisAt(reader: Reader, at: number): Found {
   if (source[at + 1] === marker && /\S/.test(source[at + 2] ?? "")) {
     const last = reader.find(marker === "*" ? "**" : "__", at + 2);
     if (last !== -1) {
-      const children = readInline(source.slice(at + 2, last + 1));
+      const children = readInline(source.slice(at + 2, last + 1), reader.options);
       return { part: { kind: "strong", children }, end: last + 3 };
     }
   }
@@ -276,7 +305,7 @@ function emphasisAt(reader: Reader, at: number): Found {
   const last = reader.find(marker, at + 1);
   if (last === -1) return null;
   return {
-    part: { kind: "em", children: readInline(source.slice(at + 1, last + 1)) },
+    part: { kind: "em", children: readInline(source.slice(at + 1, last + 1), reader.options) },
     end: last + 2,
   };
 }
@@ -292,9 +321,14 @@ function imageAt(reader: Reader, at: number): Found {
 
 function linkAt(reader: Reader, at: number): Found {
   const link = bracketsAt(reader, at);
-  if (link === null || link.text === "" || link.href === "" || !isWebAddress(link.href))
-    return null;
-  return { part: { kind: "link", href: link.href, text: link.text }, end: link.end };
+  if (link === null || link.text === "" || link.href === "") return null;
+  if (isWebAddress(link.href)) {
+    return { part: { kind: "link", href: link.href, text: link.text }, end: link.end };
+  }
+  if (reader.options.appLinks === true && APP_PATH.test(link.href)) {
+    return { part: { kind: "app-link", path: link.href, text: link.text }, end: link.end };
+  }
+  return null;
 }
 
 /** `[text](href)` at `at`, with no line break in the text and no space in the address. */

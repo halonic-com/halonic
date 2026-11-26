@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo } from "react";
-import { ExternalLink } from "../external-link/external-link.tsx";
+import { ExternalLink, inlineLinkClasses } from "../external-link/external-link.tsx";
 import { type OpenExternal, OpenExternalProvider } from "../external-link/open-external.tsx";
 import { type MarkdownBlock, type MarkdownInline, readMarkdown } from "../text/markdown.ts";
 
@@ -13,10 +13,18 @@ export interface ChatTextProps {
    * click calls this instead of navigating the window (`kit.chat-text-links`).
    */
   readonly openLink?: OpenExternal;
+  /**
+   * How a link to a task, an approval or an agent in Studio opens, such as `/ACME/issues/ACME-42`.
+   * Left out, such a link shows only its words, as text. Given, its words are a link-styled button
+   * whose click calls this with the path (`kit.chat-text-app-links`).
+   */
+  readonly openAppLink?: (path: string) => void;
 }
 
-// Set only when the caller gave `openLink`; the blocks and inlines in between don't need to know.
+// Set only when the caller gave `openLink` or `openAppLink`; the blocks and inlines in between
+// don't need to know.
 const OpenLinkContext = createContext<OpenExternal | undefined>(undefined);
+const OpenAppLinkContext = createContext<((path: string) => void) | undefined>(undefined);
 
 /**
  * A step of a reply that's text: `text-reading` in `fg`, with the Markdown a reply may use drawn
@@ -27,17 +35,20 @@ const OpenLinkContext = createContext<OpenExternal | undefined>(undefined);
  * @example
  * <ChatText>{"I added **morning-sort**. It runs at `0 8 * * 1-5`."}</ChatText>
  * <ChatText openLink={useOpenExternal()}>{"See [the PR](https://example.com/pr/1)."}</ChatText>
+ * <ChatText openAppLink={openPage}>{"Done in [ACME-42](/ACME/issues/ACME-42)."}</ChatText>
  */
-export function ChatText({ children, openLink }: ChatTextProps) {
+export function ChatText({ children, openLink, openAppLink }: ChatTextProps) {
   // The text grows while it streams; it's read again only when it changes.
-  const blocks = useMemo(() => readMarkdown(children), [children]);
+  const blocks = useMemo(() => readMarkdown(children, { appLinks: true }), [children]);
   return (
     <OpenLinkContext value={openLink}>
-      <div className="flex min-w-0 flex-col gap-3 text-reading text-fg wrap-break-word">
-        {blocks.map((block, index) => (
-          <ReplyBlock key={index} block={block} />
-        ))}
-      </div>
+      <OpenAppLinkContext value={openAppLink}>
+        <div className="flex min-w-0 flex-col gap-3 text-reading text-fg wrap-break-word">
+          {blocks.map((block, index) => (
+            <ReplyBlock key={index} block={block} />
+          ))}
+        </div>
+      </OpenAppLinkContext>
     </OpenLinkContext>
   );
 }
@@ -120,7 +131,24 @@ function ReplyInline({ inline }: { readonly inline: MarkdownInline }) {
       );
     case "link":
       return <ReplyLink href={inline.href} text={inline.text} />;
+    case "app-link":
+      return <AppLink path={inline.path} text={inline.text} />;
   }
+}
+
+/**
+ * A link to a task, an approval or an agent in Studio: only its words, since `readMarkdown` checked
+ * the path and opening it stays inside Studio. Like the Studio's other in-app links it's a button
+ * in the inline link style, so it never navigates the window.
+ */
+function AppLink({ path, text }: { readonly path: string; readonly text: string }) {
+  const openAppLink = useContext(OpenAppLinkContext);
+  if (openAppLink === undefined) return text;
+  return (
+    <button type="button" className={inlineLinkClasses} onClick={() => openAppLink(path)}>
+      {text}
+    </button>
+  );
 }
 
 /**

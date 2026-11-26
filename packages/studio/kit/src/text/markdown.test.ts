@@ -171,3 +171,41 @@ verifies("plugins.plugin-text", () => {
     });
   });
 });
+
+verifies("kit.chat-text-app-links", () => {
+  const appLinks = { appLinks: true };
+
+  it("reads a task, an approval and an agent in Studio only when asked", () => {
+    const source = "[t](/ACME/issues/ACME-1) [a](/ACME/approvals/7f3a#plan) [n](/ACME/agents/noah)";
+    expect(readInline(source)).toEqual([text(source)]);
+    expect(readInline(source, appLinks)).toEqual([
+      { kind: "app-link", path: "/ACME/issues/ACME-1", text: "t" },
+      text(" "),
+      { kind: "app-link", path: "/ACME/approvals/7f3a#plan", text: "a" },
+      text(" "),
+      { kind: "app-link", path: "/ACME/agents/noah", text: "n" },
+    ]);
+  });
+
+  it("passes the ask on to emphasis, quotes and list items", () => {
+    const link = { kind: "app-link", path: "/ACME/issues/ACME-1", text: "t" };
+    expect(
+      readMarkdown("> *[t](/ACME/issues/ACME-1)*\n\n1. [t](/ACME/issues/ACME-1)", appLinks),
+    ).toEqual([
+      { kind: "quote", inlines: [{ kind: "em", children: [link] }] },
+      { kind: "list", ordered: true, start: 1, items: [[link]] },
+    ]);
+  });
+
+  it.each([
+    ["a link to script", "[x](javascript:alert(1))"],
+    ["a data address", "[x](data:text/html,hi)"],
+    ["an address on another host", "[x](//example.com/ACME/issues/ACME-1)"],
+    ["another path", "[x](/ACME/settings)"],
+    ["a path that climbs", "[x](/ACME/issues/../agents)"],
+    ["a path with a query", "[x](/ACME/issues/ACME-1?tab=log)"],
+    ["a path with no leading slash", "[x](ACME/issues/ACME-1)"],
+  ])("keeps %s as text", (_name, source) => {
+    expect(readInline(source, appLinks)).toEqual([text(source)]);
+  });
+});
