@@ -67,7 +67,7 @@ export interface TransportOptions {
   fetch?: typeof fetch;
   /** Where each call's route, status, time and size go (`paperclip-client.route-timing`); nowhere by default. */
   timing?: RouteTimingSink;
-  /** Milliseconds for {@link timing}; `Date.now` by default. */
+  /** Milliseconds for {@link timing}, read only when it is set; `Date.now` by default. */
   clock?: () => number;
 }
 
@@ -190,7 +190,7 @@ export class PaperclipTransport {
     if (payload.contentType !== undefined) {
       headers["content-type"] = payload.contentType;
     }
-    const started = this.#clock();
+    const started = this.#timing === undefined ? 0 : this.#clock();
     let response: Response;
     try {
       response = await this.#fetch(url, {
@@ -203,6 +203,10 @@ export class PaperclipTransport {
       this.#record(name, "offline", started, 0);
       // The platform's error can name the address; "offline" is all a caller needs.
       return { kind: "failed", failure: "offline" };
+    }
+    // Without a sink the answer goes to the reader exactly as `fetch` gave it.
+    if (this.#timing === undefined) {
+      return this.#read(name, response, reader);
     }
     const counted = new CountedResponse(response);
     try {
@@ -222,6 +226,7 @@ export class PaperclipTransport {
   ): void {
     if (this.#timing === undefined) return;
     const { method } = paperclipRequests[name];
+    // `Date.now` jumps back when the system clock is set; a negative time would mislead.
     const ms = Math.max(0, this.#clock() - started);
     this.#timing({ method, route: routeOf(name), status, ms, bytes });
   }

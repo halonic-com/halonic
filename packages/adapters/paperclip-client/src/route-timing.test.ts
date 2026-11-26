@@ -14,6 +14,20 @@ function steppingClock(): () => number {
   };
 }
 
+/**
+ * A `fetch` answering with `status`, which may lie outside the 200–599 a `Response` can be built
+ * with: Node's `fetch` passes such statuses through.
+ */
+function statusFetch(status: number): typeof fetch {
+  return () =>
+    Promise.resolve(
+      Object.defineProperties(new Response("{}"), {
+        status: { value: status },
+        ok: { value: false },
+      }),
+    );
+}
+
 let paperclip: FakePaperclip;
 let timings: RouteTiming[];
 let lines: string[];
@@ -98,18 +112,56 @@ verifies("paperclip-client.route-timing", () => {
       ]);
     });
 
-    it("records nothing without a sink", async () => {
-      paperclip.on("GET", `/api/issues/${plainTask}`, { body: { id: plainTask } });
+    it("records a status a Response can't be built with, and still answers refused", async () => {
+      const answer = await transport(statusFetch(600)).send("getTask", {
+        path: { task: plainTask },
+      });
+
+      expect(answer).toEqual({ kind: "failed", failure: "refused", status: 600 });
+      expect(timings).toEqual([
+        { method: "GET", route: "issues/:task", status: 600, ms: 25, bytes: 0 },
+      ]);
+    });
+
+    it("without a sink, reads no clock and hands the reader fetch's own answer", async () => {
+      const fetched = new Response("acme");
       const plain = new PaperclipTransport({
         address: paperclip.address,
         key: testKey,
-        fetch: paperclip.fetch,
+        fetch: () => Promise.resolve(fetched),
+        clock: () => {
+          throw new Error("The clock was read without a sink.");
+        },
+      });
+      const read: Response[] = [];
+
+      const answer = await plain.sendReading(
+        "getTask",
+        { path: { task: plainTask } },
+        {
+          accept: "text/plain",
+          read: (_name, response) => {
+            read.push(response);
+            return Promise.resolve({ kind: "ok", body: null });
+          },
+        },
+      );
+
+      expect(answer).toEqual({ kind: "ok", body: null });
+      expect(read).toHaveLength(1);
+      expect(read[0]).toBe(fetched);
+    });
+
+    it("without a sink, still answers refused for a status outside 200 to 599", async () => {
+      const plain = new PaperclipTransport({
+        address: paperclip.address,
+        key: testKey,
+        fetch: statusFetch(600),
       });
 
       const answer = await plain.send("getTask", { path: { task: plainTask } });
 
-      expect(answer).toEqual({ kind: "ok", body: { id: plainTask } });
-      expect(timings).toEqual([]);
+      expect(answer).toEqual({ kind: "failed", failure: "refused", status: 600 });
     });
   });
 });

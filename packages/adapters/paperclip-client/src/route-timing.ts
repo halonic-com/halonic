@@ -13,11 +13,14 @@ export interface RouteTiming {
   status: number | "offline";
   /** From sending the request until its answer was read, in milliseconds. */
   ms: number;
-  /** How many bytes of the answer's body were read. */
+  /** How many bytes of the answer's body were read, after `fetch` decompressed it. */
   bytes: number;
 }
 
-/** Where the transport hands each call's {@link RouteTiming}. */
+/**
+ * Where the transport hands each call's {@link RouteTiming}. It must not throw: an error it
+ * throws replaces the call's answer.
+ */
 export type RouteTimingSink = (timing: RouteTiming) => void;
 
 /** The route template of request `name`, without `/api/`: the list's own text, so it holds no ID. */
@@ -48,12 +51,14 @@ export class CountedResponse {
   #bytes = 0;
 
   constructor(response: Response) {
-    // A redirect the client refuses has no body to count, and a status 0 or a no-body status
-    // (204, 205, 304) couldn't be rebuilt with one.
+    // A redirect the client refuses has no body to count, and a `Response` can't be rebuilt with
+    // a no-body status (204, 205, 304) or one outside 200–599, which Node's `fetch` passes through.
     if (
       response.body === null ||
       response.type === "opaqueredirect" ||
-      noBody.has(response.status)
+      noBody.has(response.status) ||
+      response.status < 200 ||
+      response.status > 599
     ) {
       this.response = response;
       return;
