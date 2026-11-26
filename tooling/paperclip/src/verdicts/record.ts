@@ -86,11 +86,14 @@ export function readVerdict(
   entity: PluginEntityRecord,
   repo: string,
   pr: number,
+  companyId: string,
 ): VerdictRecord | undefined {
   const data = entity.data;
   const { head, fingerprint, verdict, reviewer, agentId, runId, task, importedFrom } = data;
   const valid =
     entity.entityType === verdictEntityType(repo, pr) &&
+    entity.scopeKind === "company" &&
+    entity.scopeId === companyId &&
     entity.updatedAt === entity.createdAt &&
     data["repo"] === repo &&
     data["pr"] === pr &&
