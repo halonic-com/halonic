@@ -2,6 +2,7 @@
 
 - Approval: follow-up from Julian's security review of #6404 on HAL-19448 (https://paperclip.halonic.com/HAL/issues/HAL-19448), tracked on HAL-19520 (https://paperclip.halonic.com/HAL/issues/HAL-19520); Julian reviews the security and Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:45dl7HJuR4NpF7qqBJq9BF2ic2/MUsRwb7pXt4OalLvWirZ1GiStU3xsNumMe4etEcNnTM/g8SuGBEH48BtnDw==
 
 ## What changes
 
