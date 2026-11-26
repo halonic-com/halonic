@@ -19,7 +19,7 @@ function chatShown(listed: readonly string[]) {
       watchers.add(watcher);
       return () => watchers.delete(watcher);
     },
-    reopen: vi.fn(async (kept: string) => listed.includes(kept)),
+    reopen: vi.fn(async (kept: string, _signal: AbortSignal) => listed.includes(kept)),
   } satisfies ShownInApp;
   const show = (chat: string | undefined) => {
     current = chat;
@@ -42,13 +42,14 @@ verifies("studio.window-content", () => {
       const { keeper, kept } = shellKeeping();
       const content = { workspace: "/work/acme", chat: "chat-1" };
 
-      const stop = await keepFocusedContent(keeper, shown, "/work/acme", content);
+      const keeping = keepFocusedContent(keeper, shown, "/work/acme", content);
+      await keeping.ready;
       show("chat-1");
       show("chat-2");
       await vi.waitFor(() => expect(kept()).toHaveLength(2));
-      stop();
+      keeping.stop();
 
-      expect(shown.reopen).toHaveBeenCalledWith("chat-1");
+      expect(shown.reopen).toHaveBeenCalledWith("chat-1", expect.any(AbortSignal));
       expect(kept()).toEqual([
         '{"workspace":"/work/acme","chat":"chat-1"}',
         '{"workspace":"/work/acme","chat":"chat-2"}',
@@ -60,7 +61,7 @@ verifies("studio.window-content", () => {
       const { keeper, kept } = shellKeeping();
       const content = { workspace: "/work/acme", chat: "chat-1" };
 
-      (await keepFocusedContent(keeper, shown, "/work/acme", content))();
+      await keepFocusedContent(keeper, shown, "/work/acme", content).ready;
 
       expect(kept()).toEqual(['{"workspace":"/work/acme"}']);
     });
@@ -70,7 +71,7 @@ verifies("studio.window-content", () => {
       const { keeper, kept } = shellKeeping();
       const content = { workspace: "/work/beta", chat: "chat-1" };
 
-      (await keepFocusedContent(keeper, shown, "/work/acme", content))();
+      await keepFocusedContent(keeper, shown, "/work/acme", content).ready;
 
       expect(shown.reopen).not.toHaveBeenCalled();
       expect(kept()).toEqual(['{"workspace":"/work/acme"}']);
@@ -82,15 +83,50 @@ verifies("studio.window-content", () => {
       shown.reopen.mockRejectedValueOnce(new Error("engine gone"));
       const { keeper, kept } = shellKeeping();
 
-      (
-        await keepFocusedContent(keeper, shown, "/work/acme", {
-          chat: "chat-1",
-          workspace: "/work/acme",
-        })
-      )();
+      await keepFocusedContent(keeper, shown, "/work/acme", {
+        chat: "chat-1",
+        workspace: "/work/acme",
+      }).ready;
 
       expect(error).toHaveBeenCalledWith(expect.stringContaining("chat"), expect.any(Error));
       expect(kept()).toEqual(['{"workspace":"/work/acme"}']);
+    });
+
+    it("stops at once while the chat is still being asked for, and keeps nothing after", async () => {
+      const { shown, show } = chatShown(["chat-1"]);
+      shown.reopen.mockImplementationOnce(() => new Promise<boolean>(() => {}));
+      const { keeper, kept } = shellKeeping();
+
+      const keeping = keepFocusedContent(keeper, shown, "/work/acme", {
+        chat: "chat-1",
+        workspace: "/work/acme",
+      });
+      keeping.stop();
+      show("chat-2");
+
+      const signal = shown.reopen.mock.calls[0]?.[1];
+      expect(signal?.aborted).toBe(true);
+      expect(kept()).toEqual([]);
+    });
+
+    it("keeps a chat opened while the kept one is being asked for", async () => {
+      const { shown, show } = chatShown(["chat-1"]);
+      let answer = (_listed: boolean): void => {};
+      shown.reopen.mockImplementationOnce(
+        () => new Promise<boolean>((resolve) => (answer = resolve)),
+      );
+      const { keeper, kept } = shellKeeping();
+
+      const keeping = keepFocusedContent(keeper, shown, "/work/acme", {
+        chat: "chat-1",
+        workspace: "/work/acme",
+      });
+      show("chat-2");
+      answer(true);
+      await keeping.ready;
+      keeping.stop();
+
+      expect(kept()).toEqual(['{"workspace":"/work/acme","chat":"chat-2"}']);
     });
   });
 

@@ -103,7 +103,11 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
       if (found === undefined) return () => {};
       const { opened, location, content } = found;
       const inApp = shownInApp(app.id, opened.workspace.services);
-      return keepFocusedContent(new WindowContentKeeper(ipc), inApp, location, content);
+      const kept = keepFocusedContent(new WindowContentKeeper(ipc), inApp, location, content);
+      kept.ready.catch((error: unknown) => {
+        console.error("This window won't reopen on what it shows:", error);
+      });
+      return () => kept.stop();
     })
     .catch((error: unknown) => {
       console.error("This window won't reopen on what it shows:", error);

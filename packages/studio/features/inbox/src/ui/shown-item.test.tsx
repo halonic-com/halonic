@@ -80,6 +80,18 @@ verifies("inbox.window-item", () => {
 
       expect(await reopened).toBe(false);
     });
+
+    it("stops listening and asks for nothing once its window stops", async () => {
+      const key = await reviewKey();
+      const inbox = new Inbox(fakeRuns([notes, review]).runs);
+      const stopping = new AbortController();
+      const reopened = reopenItem(inbox, key, stopping.signal);
+      stopping.abort();
+      await inbox.refresh();
+
+      expect(await reopened).toBe(false);
+      expect(inbox.shownItem.key).toBeUndefined();
+    });
   });
 
   describe("Inbox.shownItem", () => {

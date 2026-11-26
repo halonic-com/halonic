@@ -72,6 +72,17 @@ verifies("messenger.window-chat", () => {
       expect(openChatName(page)).toBeUndefined();
       expect(messenger.shown.id).toBeUndefined();
     });
+
+    it("asks for nothing once its window stops", async () => {
+      const { messenger, liamChat } = acmeChats();
+      const stopping = new AbortController();
+      const reopened = messenger.reopen(liamChat.id, stopping.signal);
+      stopping.abort();
+
+      expect(await reopened).toBe(false);
+      const page = await openPage(messenger);
+      expect(openChatName(page)).toBeUndefined();
+    });
   });
 
   describe("Messenger.shown", () => {

@@ -33,18 +33,27 @@ export class ShownItem {
  * Opens the item with `key` again as the Inbox's window reopens (`inbox.window-item`), once the
  * list has loaded and only while the item is still in it, through {@link Inbox.requestOpen}.
  * Resolves whether it asked; an item that is gone, or a list that fails to load, leaves the list
- * showing.
+ * showing. Once `signal` aborts, it stops listening and resolves `false` without asking.
  */
-export function reopenItem(inbox: Inbox, key: string): Promise<boolean> {
+export function reopenItem(inbox: Inbox, key: string, signal?: AbortSignal): Promise<boolean> {
   return new Promise((resolve) => {
     let stop = (): void => {};
     let done = false;
+    const giveUp = (): void => {
+      if (done) return;
+      done = true;
+      stop();
+      resolve(false);
+    };
+    if (signal?.aborted) return giveUp();
+    signal?.addEventListener("abort", giveUp, { once: true });
     // `requestOpen` calls the Inbox's listeners, this one too, so it settles only once.
     const settle = (): void => {
       const { loaded, error, items } = inbox.state;
       if (done || (!loaded && error === undefined)) return;
       done = true;
       stop();
+      signal?.removeEventListener("abort", giveUp);
       const listed = items.some((item) => item.key === key);
       if (listed) inbox.requestOpen(key);
       resolve(listed);
