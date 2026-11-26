@@ -1,4 +1,4 @@
-import type { MenuEntry } from "@halonicjs/studio-kit";
+import { FormatLocale, formatTag, type MenuEntry } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeaderBadges } from "../badges/header-badges.tsx";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
@@ -131,10 +131,13 @@ export interface StudioWindowProps {
  * <StudioWindow shell={shell} workspace={workspace} host="desktop-app" platform="windows" language="en" />
  */
 export function StudioWindow(props: StudioWindowProps) {
-  // What the window draws deep down, such as a page that can't load its code, reads the host here.
+  // What the window draws deep down, such as a page that can't load its code, reads the host here,
+  // and its times follow the system's region format, as Formats' "Follow this computer" does.
   return (
     <StudioHostContext value={props.host}>
-      <StudioWindowBody {...props} />
+      <FormatLocale value={formatTag(props.regionFormat ?? navigator.language)}>
+        <StudioWindowBody {...props} />
+      </FormatLocale>
     </StudioHostContext>
   );
 }

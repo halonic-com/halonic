@@ -400,6 +400,7 @@ export {
   type MarkdownInline,
   readMarkdown,
 } from "./text/markdown.ts";
+export { fullTime, shortTime } from "./text/short-time.ts";
 export {
   calendarDay,
   clockTime,
@@ -412,6 +413,8 @@ export {
   waitingSince,
 } from "./text/waiting-time.ts";
 export { TextSheet, type TextSheetProps } from "./text-sheet/text-sheet.tsx";
+export { FormatLocale, formatTag, useFormatLocale } from "./time-stamp/format-locale.ts";
+export { TimeStamp, type TimeStampProps } from "./time-stamp/time-stamp.tsx";
 export {
   TOAST_CLOSES_AFTER_MS,
   TOAST_WITH_ACTION_CLOSES_AFTER_MS,
