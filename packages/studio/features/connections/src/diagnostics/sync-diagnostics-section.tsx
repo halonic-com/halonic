@@ -33,36 +33,7 @@ export function SyncDiagnosticsView({
   readonly reader: SyncDiagnosticsReader;
   readonly surface?: SettingsSurface | undefined;
 }) {
-  const [shown, setShown] = useState<SyncDiagnostics | "failed">();
-  // Read again counts up `attempt`, which runs the effect again.
-  const [attempt, setAttempt] = useState(0);
-  // The button shows "Reading…" until the read ends, so a press that brings the same numbers
-  // still shows it did something. The read gives up on a host that doesn't answer.
-  const [reading, setReading] = useState(true);
-  useEffect(() => {
-    let current = true;
-    reader
-      .read()
-      .then(
-        (read) => {
-          if (current) setShown(read);
-        },
-        (error: unknown) => {
-          console.error("Settings › Sync diagnostics couldn't read the counters", error);
-          if (current) setShown("failed");
-        },
-      )
-      .finally(() => {
-        if (current) setReading(false);
-      });
-    return () => {
-      current = false;
-    };
-  }, [reader, attempt]);
-  const readAgain = () => {
-    setReading(true);
-    setAttempt((count) => count + 1);
-  };
+  const { shown, attempt, reading, readAgain } = useDiagnosticsRead(reader);
   const button = (label: string) => (
     <Button variant="secondary" busy={reading} busyLabel={words.READING} onClick={readAgain}>
       {label}
@@ -93,6 +64,41 @@ export function SyncDiagnosticsView({
       {button(words.READ_AGAIN)}
     </div>
   );
+}
+
+/** What the view shows, and Read again: the latest read, which read it is and whether one runs. */
+function useDiagnosticsRead(reader: SyncDiagnosticsReader) {
+  const [shown, setShown] = useState<SyncDiagnostics | "failed">();
+  // Read again counts up `attempt`, which runs the effect again.
+  const [attempt, setAttempt] = useState(0);
+  // The button shows "Reading…" until the read ends, so a press that brings the same numbers
+  // still shows it did something. The read gives up on a host that doesn't answer.
+  const [reading, setReading] = useState(true);
+  useEffect(() => {
+    let current = true;
+    reader
+      .read()
+      .then(
+        (read) => {
+          if (current) setShown(read);
+        },
+        (error: unknown) => {
+          console.error("Settings › Sync diagnostics couldn't read the counters", error);
+          if (current) setShown("failed");
+        },
+      )
+      .finally(() => {
+        if (current) setReading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [reader, attempt]);
+  const readAgain = () => {
+    setReading(true);
+    setAttempt((count) => count + 1);
+  };
+  return { shown, attempt, reading, readAgain };
 }
 
 function arrivedRows(diagnostics: SyncDiagnostics): [string, string][] {
