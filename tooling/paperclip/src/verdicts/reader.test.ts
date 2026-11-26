@@ -16,7 +16,8 @@ const pull: VerdictPull = {
   fingerprint: "fp-1",
   author: "mateo",
   reviewer: "julian",
-  role: "second-reviewer",
+  routineRefusal:
+    "changes a plugin manifest (tooling/paperclip/src/plugin/manifest.ts): Julian approves it",
 };
 
 let count = 0;
@@ -82,7 +83,11 @@ verifies("paperclip.verdicts-reader", () => {
     });
 
     test("the HAL-14809 rules apply on the current head: limits and own pull requests", () => {
-      const liamPaths = { ...pull, reviewer: "liam" as const, role: "code-reviewer" as const };
+      const liamPaths = {
+        ...pull,
+        reviewer: "liam" as const,
+        routineRefusal: "outside the second reviewer's limits",
+      };
       expect(judgeVerdicts([record("julian", "approved")], liamPaths).approved).toBe(false);
       expect(judgeVerdicts([record("liam", "approved")], liamPaths).approved).toBe(true);
       const own = { ...pull, author: "julian" };
@@ -94,6 +99,20 @@ verifies("paperclip.verdicts-reader", () => {
         counts: false,
         note: "not a reviewer",
       });
+    });
+
+    test("Nora's approval counts only within the routine scope", () => {
+      expect(judgeVerdicts([record("nora", "approved")], pull).approvals[0]).toMatchObject({
+        counts: false,
+      });
+      const liamPaths = {
+        ...pull,
+        reviewer: "liam" as const,
+        routineRefusal: "not written by the team",
+      };
+      expect(judgeVerdicts([record("nora", "approved")], liamPaths).approved).toBe(false);
+      const routine = { ...pull, routineRefusal: null };
+      expect(judgeVerdicts([record("nora", "approved")], routine).approved).toBe(true);
     });
 
     test("a change request holds every head until the same reviewer approves or withdraws", () => {

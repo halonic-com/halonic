@@ -1,6 +1,5 @@
 import { type CopyAgent, copyTaskOf } from "../pr-tools/approval-copy.ts";
 import { judgeApprovals } from "../pr-tools/approvals.ts";
-import type { ReviewRole } from "../reviewer-paths.ts";
 import { ToolInputError } from "../task-tools/input.ts";
 import { type AuthorComment, authorOf, namesPull } from "./author.ts";
 import { judgeVerdicts } from "./reader.ts";
@@ -60,9 +59,10 @@ export interface VerdictPullFacts {
   readonly openedBy: string;
   /** The whole diff's fingerprint against the merge base (`changeIdOf`), or null. */
   readonly fingerprint: string | null;
-  /** The reviewer and role by the path rules, as `pr_status` works them out. */
+  /** The reviewer by the path rules, as `pr_status` works it out. */
   readonly reviewer: "julian" | "liam";
-  readonly role: ReviewRole;
+  /** Why Nora's approval can't count here (`routineRefusal`), or null when it can. */
+  readonly routineRefusal: string | null;
 }
 
 /** Everything the tool reads and writes, so tests can fake it. */

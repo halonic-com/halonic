@@ -23,7 +23,12 @@ import type { VerdictStore } from "./store.ts";
  */
 
 /** What deciding needs about the pull request: the approval rules' facts and the head's fingerprint. */
-export interface VerdictPull extends Omit<ApprovedPull, "rebaseRefusal"> {
+export interface VerdictPull extends Omit<ApprovedPull, "rebaseRefusal" | "routineRefusal"> {
+  /**
+   * Why Nora's approval can't count here (`routineRefusal`), or null when it
+   * can. Required: unread files would let her approval count anywhere.
+   */
+  readonly routineRefusal: string | null;
   /** The current head's fingerprint (`changeIdOf`), or null when GitHub couldn't give one. */
   readonly fingerprint: string | null;
 }

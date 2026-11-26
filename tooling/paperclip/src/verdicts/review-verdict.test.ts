@@ -30,7 +30,7 @@ const pullFacts: VerdictPullFacts = {
   openedBy: "halonic-dev",
   fingerprint: "fp-1",
   reviewer: "liam",
-  role: "code-reviewer",
+  routineRefusal: "outside the second reviewer's limits",
 };
 
 const tasks: Record<string, VerdictTask> = {
@@ -177,9 +177,28 @@ verifies("paperclip.review-verdict", () => {
       );
       const inScope = fakeDeps({
         reviewer: "julian",
-        pull: { reviewer: "julian", role: "second-reviewer" },
+        pull: { reviewer: "julian", routineRefusal: "touches .github/workflows" },
       });
       expect((await reviewVerdict(inScope.deps, call("approved"))).record.verdict).toBe("approved");
+    });
+
+    test("Nora approves only within the routine scope", async () => {
+      const outside = fakeDeps({ reviewer: "nora" });
+      await expect(reviewVerdict(outside.deps, call("approved"))).rejects.toThrow(
+        "outside the routine scope (outside the second reviewer's limits)",
+      );
+      const excluded = fakeDeps({
+        reviewer: "nora",
+        pull: { reviewer: "julian", routineRefusal: "touches .github/workflows" },
+      });
+      await expect(reviewVerdict(excluded.deps, call("approved"))).rejects.toThrow(
+        "outside the routine scope (touches .github/workflows)",
+      );
+      const routine = fakeDeps({
+        reviewer: "nora",
+        pull: { reviewer: "julian", routineRefusal: null },
+      });
+      expect((await reviewVerdict(routine.deps, call("approved"))).record.verdict).toBe("approved");
     });
 
     test("Julian's change request on Liam's paths can be withdrawn, and only by him", async () => {
