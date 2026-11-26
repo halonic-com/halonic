@@ -4,6 +4,7 @@
 - Task: HAL-20150, the rest of Sofia's proposal on HAL-19491 (parts b and c), approved by the board on 26 Nov
 - Approval: Liam approves this note in his review of this pull request on HAL-20150
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ILHvE8SYJmAs6545R8YgsGbHIOdbwavGY2vyarv1FdSwm4C8lddOzsP2njVxRulzXK3iV549q6ET4ReUYsgDBQ==
 
 ## What changes
 
