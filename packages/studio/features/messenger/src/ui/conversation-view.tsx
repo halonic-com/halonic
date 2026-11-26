@@ -1,5 +1,5 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { Avatar, Input } from "@halonicjs/studio-kit";
+import { Avatar } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { isChannel } from "../channel.ts";
@@ -13,6 +13,7 @@ import { ChannelHeaderActions } from "./channel-header-actions.tsx";
 import { authorOf } from "./channel-message.tsx";
 import { ChatBox } from "./chat-box.tsx";
 import { useChatCards } from "./chat-cards.tsx";
+import { FindBar, FindButton, useFind } from "./find-bar.tsx";
 import { MembersPanel } from "./members-panel.tsx";
 import { Transcript } from "./transcript.tsx";
 import { WaitingBar } from "./waiting-bar.tsx";
@@ -35,18 +36,18 @@ export interface ConversationViewProps {
 
 /**
  * One open conversation (HAL-17421 render 4a): its agent and activity in the
- * header, a search through its messages, the messages and the agent's cards
+ * header, a find bar for its messages (Ctrl+F), the messages and the agent's cards
  * oldest first, "3 cards waiting" in a direct chat while any card waits
  * (`messenger.inline-cards`), and the box. While its source is offline or signed out, the box keeps the text and
  * Send sends nothing (requirement `messenger.conversations`). Files picked or
  * pasted wait in the box and go with the message (`messenger.files`); the
  * agent's cards and "Ask for an update" are its quick actions
  * (`messenger.quick-actions`). The page gives each conversation its own view
- * (a `key`), so its draft and search start fresh.
+ * (a `key`), so its draft and find bar start fresh.
  *
- * Its status regions read out what the agent writes after the chat opened ("Chief: …", never on a
- * search or on opening the chat), the option that answered a card, and that no message matches the
- * search (HAL-18074 MS1, MS2 and MS4).
+ * Its status regions read out what the agent writes after the chat opened ("Chief: …", never on
+ * opening the chat), the option that answered a card, and what the find bar found (HAL-18074 MS1,
+ * MS2 and MS4).
  */
 export function ConversationView({
   messenger,
@@ -57,7 +58,6 @@ export function ConversationView({
   picture,
   words,
 }: ConversationViewProps) {
-  const [search, setSearch] = useState("");
   // What the chat's status region reads out: a new message, or the option that answered a card.
   // Each gets its own key, so the same words twice are read twice (HAL-18316 MS8).
   const [said, setSaid] = useState({ text: "", count: 0 });
@@ -67,8 +67,16 @@ export function ConversationView({
   );
   const [membersOpen, setMembersOpen] = useState(false);
   const section = useRef<HTMLElement>(null);
-  const { messages, questions, failure, read } = useMessages(messenger, row, search, changed, say);
+  const { messages, questions, failure, read } = useMessages(messenger, row, changed, say);
   const { pending, sending } = usePending();
+  const find = useFind(messages);
+  const current = find.matches[find.at];
+  // The match shown scrolls into the middle of the chat.
+  useEffect(() => {
+    if (current === undefined) return;
+    const shown = section.current?.querySelector(`[data-message="${CSS.escape(current)}"]`);
+    shown?.scrollIntoView?.({ block: "center" });
+  }, [current]);
 
   // Once a card is answered and gone, the next card's first option, or else the box, takes focus.
   const focusAfterAnswer = useCallback(() => {
@@ -85,10 +93,9 @@ export function ConversationView({
     focusAfterAnswer,
   );
 
-  const noMatch = messages?.length === 0 && search.trim() !== "";
   return (
     <section ref={section} aria-label={chatName(row)} className="flex min-h-0 flex-1 flex-col">
-      <ConversationHeader row={row} picture={picture} search={search} onSearch={setSearch}>
+      <ConversationHeader row={row} picture={picture} find={<FindButton find={find} />}>
         {isChannel(row) ? (
           <ChannelHeaderActions
             messenger={messenger}
@@ -102,9 +109,14 @@ export function ConversationView({
       <p role="status" className="sr-only">
         <span key={said.count}>{said.text}</span>
       </p>
-      <p role="status" className={noMatch ? "px-4 pt-4 text-small text-fg-muted" : undefined}>
-        {noMatch ? messengerWords.noMatches : ""}
-      </p>
+      {find.open ? (
+        <FindBar
+          find={find}
+          onClosed={() =>
+            section.current?.querySelector<HTMLElement>("header [data-find]")?.focus()
+          }
+        />
+      ) : null}
       {isChannel(row) ? <WaitingBar row={row} section={section} /> : null}
       <div className="flex min-h-0 flex-1">
         <Transcript
@@ -114,7 +126,8 @@ export function ConversationView({
           cards={cards}
           pending={pending}
           questions={questions}
-          searching={search.trim() !== ""}
+          searching={find.text.trim() !== ""}
+          found={{ matches: new Set(find.matches), current }}
           failure={failure}
           words={words}
           onRetry={() => void read().catch(reportRead)}
@@ -141,13 +154,12 @@ export function ConversationView({
 }
 
 /**
- * The chat's messages found by `search`, read again on each change. A message the agent writes
- * after the first read without a search is passed to `announce`.
+ * The chat's messages, read again on each change. A message the agent writes after the first read
+ * is passed to `announce`.
  */
 function useMessages(
   messenger: Messenger,
   row: ConversationRow,
-  search: string,
   changed: number,
   announce: (line: string) => void,
 ) {
@@ -161,29 +173,27 @@ function useMessages(
   const [failure, setFailure] = useState<unknown>(undefined);
   // Counts the reads, so an answer that arrives after a newer read's never shows.
   const reads = useRef(0);
-  // The messages the last read without a search found; none before the first and after a search.
+  // The messages the last read found; none before the first.
   const seen = useRef<ReadonlySet<Message["id"]> | undefined>(undefined);
 
   const read = useCallback(async () => {
     reads.current += 1;
     const thisRead = reads.current;
-    const [found, asked] = await readChat(messenger, id, search, channel).catch(
-      (error: unknown) => {
-        if (thisRead === reads.current) setFailure(error);
-        throw error;
-      },
-    );
+    const [found, asked] = await readChat(messenger, id, channel).catch((error: unknown) => {
+      if (thisRead === reads.current) setFailure(error);
+      throw error;
+    });
     if (thisRead !== reads.current) return;
     setMessages(found);
     setQuestions(asked);
     setFailure(undefined);
-    if (search.trim() === "") messenger.markSeen(id, found);
-    const before = search.trim() === "" ? seen.current : undefined;
-    seen.current = search.trim() === "" ? new Set(found.map((message) => message.id)) : undefined;
+    messenger.markSeen(id, found);
+    const before = seen.current;
+    seen.current = new Set(found.map((message) => message.id));
     const fresh = before === undefined ? undefined : newestFromAgent(found, before);
     if (fresh !== undefined)
       announce(messengerWords.newMessage(authorOf(fresh, latestRow.current), fresh.body));
-  }, [messenger, id, channel, search, announce]);
+  }, [messenger, id, channel, announce]);
 
   useEffect(() => {
     void read().catch(reportRead);
@@ -208,16 +218,15 @@ function usePending() {
   return { pending, sending };
 }
 
-/** A chat's messages found by `search`; a channel's open questions too, for its work lines. */
+/** A chat's messages; a channel's open questions too, for its work lines. */
 function readChat(
   messenger: Messenger,
   id: MessagingId,
-  search: string,
   channel: boolean,
 ): Promise<[readonly Message[], ReadonlyMap<MessagingId, string>]> {
   // Only a channel's work lines show a question's text, so a chat reads no inbox for them.
   return Promise.all([
-    messenger.messages(id, search),
+    messenger.messages(id),
     channel ? messenger.questions() : new Map<MessagingId, string>(),
   ]);
 }
@@ -241,18 +250,17 @@ function newestFromAgent(
   );
 }
 
-/** The conversation's agent, its source and activity, and the search through its messages. */
+/** The conversation's agent, its source and activity, and the find bar's icon. */
 function ConversationHeader({
   row,
   picture,
-  search,
-  onSearch,
+  find,
   children,
 }: {
   readonly row: ConversationRow;
   readonly picture: ImageBitmap | undefined;
-  readonly search: string;
-  readonly onSearch: (search: string) => void;
+  /** The icon that opens the find bar (Ctrl+F). */
+  readonly find: ReactNode;
   /** A channel's Members and Leave channel. */
   readonly children: ReactNode;
 }) {
@@ -269,17 +277,8 @@ function ConversationHeader({
         </p>
       </div>
       {children}
+      {find}
       <ActivityButton />
-      <div className="w-56">
-        <Input
-          size="sm"
-          type="search"
-          aria-label={messengerWords.searchLabel}
-          placeholder={messengerWords.searchLabel}
-          value={search}
-          onChange={(event) => onSearch(event.target.value)}
-        />
-      </div>
     </header>
   );
 }

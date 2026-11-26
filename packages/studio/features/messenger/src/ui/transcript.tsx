@@ -29,6 +29,11 @@ export interface TranscriptProps {
   readonly pending: readonly PendingMessage[];
   readonly questions: ReadonlyMap<MessagingId, string>;
   readonly searching: boolean;
+  /** What the chat's find bar found, and which of it is shown (`messenger.find-in-chat`). */
+  readonly found?: {
+    readonly matches: ReadonlySet<MessagingId>;
+    readonly current: MessagingId | undefined;
+  };
   /** Why the last read of the messages failed; none once one landed. */
   readonly failure: unknown;
   readonly words: EngineWords;
@@ -157,8 +162,18 @@ function Line({ line, ...props }: TranscriptProps & { readonly line: ChatLine })
       follows={line.follows}
       picture={props.picture}
       questions={props.questions}
+      found={foundOf(line.message.id, props.found)}
     />
   );
+}
+
+/** Whether the find bar found a message, and whether it is the match shown. */
+function foundOf(
+  message: MessagingId,
+  found: TranscriptProps["found"],
+): "current" | "match" | undefined {
+  if (found?.current === message) return "current";
+  return found?.matches.has(message) === true ? "match" : undefined;
 }
 
 /** Rises into view once, as it mounts: the "new message" pill. */
@@ -184,6 +199,11 @@ function useStickToEnd(
     readonly messages: boolean;
     readonly cards: boolean;
     readonly searching: boolean;
+    /** What the chat's find bar found, and which of it is shown (`messenger.find-in-chat`). */
+    readonly found?: {
+      readonly matches: ReadonlySet<MessagingId>;
+      readonly current: MessagingId | undefined;
+    };
     /** The typing line shows under the messages. */
     readonly typing: boolean;
   },

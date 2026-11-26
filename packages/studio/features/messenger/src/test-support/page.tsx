@@ -81,3 +81,33 @@ export async function typeAndSend(box: HTMLTextAreaElement, text: string): Promi
   });
   await settle();
 }
+
+/**
+ * Presses a key where focus is, as a shortcut: `Ctrl+F` is `pressKey("f", { ctrlKey: true })`. It
+ * goes up to the window, as a real key press does.
+ */
+export async function pressKey(key: string, options: KeyboardEventInit = {}): Promise<void> {
+  const target = document.activeElement ?? document.body;
+  await act(async () => {
+    target.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true, ...options }),
+    );
+  });
+  await settle();
+}
+
+/** Types `text` in a field, as a person does, and lets what it started land. */
+export async function typeIn(field: Element | null | undefined, text: string): Promise<void> {
+  if (!(field instanceof HTMLInputElement)) throw new Error("no field to type in");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(field, text);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await settle();
+}
+
+/** Opens the open chat's find bar with Ctrl+F and types `text` in it. */
+export async function findInChat(page: HTMLElement, text: string): Promise<void> {
+  if (page.querySelector("main [data-find-bar]") === null) await pressKey("f", { ctrlKey: true });
+  await typeIn(page.querySelector("main [data-find-bar] input"), text);
+}

@@ -9,16 +9,17 @@ import {
   NoConnections,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
-import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { MessengerService } from "../api.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
 import { type AgentPictures, pictureOf, useAgentPictures } from "./agent-pictures.ts";
-import { ConversationList } from "./conversation-list.tsx";
+import { ChatsColumn, useChats } from "./chats-column.tsx";
 import { ConversationView } from "./conversation-view.tsx";
-import { ChatsLoad, useFadeIn } from "./load-states.tsx";
+import { useFadeIn } from "./load-states.tsx";
+import { NeedsYouPanel, useWaiting } from "./needs-you.tsx";
 import { NewMenu } from "./new-menu.tsx";
 import { useLeft } from "./use-left.ts";
 
@@ -52,54 +53,41 @@ export function MessengerPage({
   onConnect,
   words = engineWords["desktop-app"],
 }: MessengerPageProps) {
-  // Undefined until the first read lands, so the page shows its skeleton, not "No chats yet".
-  const [rows, setRows] = useState<readonly ConversationRow[] | undefined>(undefined);
-  // Unknown until the first read lands, so the page never flashes "No connections".
-  const [connected, setConnected] = useState<boolean | undefined>(undefined);
-  // The last read's failure; a read that lands clears it.
-  const [failure, setFailure] = useState<unknown>(undefined);
+  const { rows, connected, failure, changed, readAgain } = useChats(messenger);
   const [selected, setSelected] = useState<MessagingId | undefined>(undefined);
-  // Grows on each change a source reports, so the list and the open conversation read again.
-  const [changed, setChanged] = useState(0);
-
-  useEffect(() => messenger.watch(() => setChanged((count) => count + 1)), [messenger]);
-
-  useEffect(() => {
-    let current = true;
-    Promise.all([messenger.rows(), messenger.hasSources()]).then(
-      ([read, hasSources]) => {
-        if (!current) return;
-        setRows(read);
-        setConnected(hasSources);
-        setFailure(undefined);
-      },
-      (error: unknown) => {
-        console.error("The Messenger couldn't read its chats:", error);
-        if (current) setFailure(error);
-      },
-    );
-    return () => {
-      current = false;
-    };
-  }, [messenger, changed]);
+  // The "Needs you" panel shows in the chat's place (`messenger.needs-you`).
+  const [needsYou, setNeedsYou] = useState(false);
 
   const pictures = useAgentPictures(messenger, rows ?? []);
   const open = rows?.find((row) => row.conversation.id === selected);
-  const { onePane, list, chat, select, back } = useOnePane(selected, setSelected);
-  useFadeIn(chat, open?.conversation.id);
-  const readAgain = () => setChanged((count) => count + 1);
+  const onePaneState = useOnePane(selected, setSelected);
+  const { onePane, list, chat } = onePaneState;
+  const select = (conversation: MessagingId) => {
+    setNeedsYou(false);
+    onePaneState.select(conversation);
+  };
+  const back = () => {
+    setNeedsYou(false);
+    onePaneState.back();
+  };
+  const openNeedsYou = () => {
+    setSelected(undefined);
+    setNeedsYou(true);
+  };
+  useFadeIn(chat, needsYou ? "needs-you" : open?.conversation.id);
+  const waiting = useWaiting(messenger, rows);
   // In one pane, nothing connected shows the panel, so a narrow window still offers Connect.
-  const panelFirst = open !== undefined || connected === false;
+  const panelFirst = open !== undefined || needsYou || connected === false;
   // A channel made or joined is read into the list, then opened.
   const openChannel = (channel: MessagingId) => {
-    setChanged((count) => count + 1);
+    readAgain();
     select(channel);
   };
   const { said, leave } = useLeft(list, rows);
   const left = () => {
     if (open !== undefined) leave(open);
     setSelected(undefined);
-    setChanged((count) => count + 1);
+    readAgain();
   };
   return (
     <div className="flex h-full min-h-0 gap-2">
@@ -109,56 +97,54 @@ export function MessengerPage({
       </p>
       {onePane && panelFirst ? null : (
         <ListColumn listRef={list} onePane={onePane} connected={connected}>
-          {/* Also while the chats load, so the list doesn't move once they arrive (motion 7); not over
-              "Couldn't load your chats", where nothing can be made yet. */}
-          {connected === false || (rows === undefined && failure !== undefined) ? null : (
-            <div className="flex justify-end px-2 pt-2">
-              <NewMenu messenger={messenger} onOpen={openChannel} />
-            </div>
-          )}
-          <div className="flex min-h-0 flex-col">
-            <ChatsLoad
-              loaded={rows !== undefined}
-              error={failure}
-              words={words}
-              onRetry={readAgain}
-            >
-              <ConversationList
-                rows={rows}
-                onRetry={readAgain}
-                selected={selected}
-                onSelect={select}
-                pictures={pictures}
-                now={messenger.now()}
-                unread={(row) => messenger.unreadCount(row)}
-                manySources={new Set(rows?.map((row) => row.conversation.source)).size > 1}
-              />
-            </ChatsLoad>
-          </div>
+          <ChatsColumn
+            messenger={messenger}
+            rows={rows}
+            connected={connected}
+            failure={failure}
+            words={words}
+            onRetry={readAgain}
+            selected={selected}
+            onSelect={select}
+            pictures={pictures}
+            waiting={waiting}
+            needsYou={needsYou}
+            onNeedsYou={openNeedsYou}
+            newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
+          />
         </ListColumn>
       )}
       {onePane && !panelFirst ? null : (
         <WithActivity messenger={messenger} row={open} words={words} offered={!onePane}>
           <main ref={chat} className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
-            {onePane && open !== undefined ? (
+            {onePane && (open !== undefined || needsYou) ? (
               <div className="px-2 pt-2">
                 <Button variant="ghost" size="sm" onClick={back}>
                   {messengerWords.backToChats}
                 </Button>
               </div>
             ) : null}
-            <Panel
-              messenger={messenger}
-              loaded={rows !== undefined}
-              words={words}
-              connected={connected}
-              open={open}
-              changed={changed}
-              pictures={pictures}
-              onConnect={onConnect}
-              onLeft={left}
-              onChanged={() => setChanged((count) => count + 1)}
-            />
+            {needsYou ? (
+              <NeedsYouPanel
+                messenger={messenger}
+                waiting={waiting}
+                onOpenChat={select}
+                onAnswered={readAgain}
+              />
+            ) : (
+              <Panel
+                messenger={messenger}
+                loaded={rows !== undefined}
+                words={words}
+                connected={connected}
+                open={open}
+                changed={changed}
+                pictures={pictures}
+                onConnect={onConnect}
+                onLeft={left}
+                onChanged={readAgain}
+              />
+            )}
           </main>
         </WithActivity>
       )}

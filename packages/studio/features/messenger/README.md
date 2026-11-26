@@ -4,8 +4,10 @@ The Messenger feature of the Studio: one conversation per agent, read from the e
 `AgentMessaging` (ADR `docs/adr/2026-11-24-agent-messaging.md`), in one list. Each row counts the
 agent's messages the person hasn't read, and a violet dot after its name marks a card or question
 waiting. An agent's bubbles are tinted in its own colour, one of six from the kit's theme
-(`bg-agent-*`). It sends through `AgentMessaging.send`, keeps a draft per conversation, and keeps the
-draft unsent while the conversation's source is offline or signed out. It never sees a provider's
+(`bg-agent-*`). The search icon over the list, or Ctrl+K inside the Messenger, finds chats by name or
+message; in a chat, Ctrl+F opens a find bar. "Needs you" at the top of the list opens every card and
+question waiting across the chats, oldest first. It sends through `AgentMessaging.send`, keeps a
+draft per conversation, and keeps the draft unsent while the conversation's source is offline or signed out. It never sees a provider's
 own types, IDs or addresses: it gets the port from `AgentMessagingService` in `studio/services`.
 
 Messages are written by agents, so the kit's `ChatText` draws them: no raw HTML, scripts, images or
@@ -25,7 +27,7 @@ and changes nothing until the person confirms.
 - **Layer:** studio
 - **Owner:** elena
 - **Public API:** `@halonicjs/studio-feature-messenger` (the feature) and `@halonicjs/studio-feature-messenger/api` (`MessengerService`)
-- **Requirements:** `messenger.conversations`, `messenger.channel-authority`, `messenger.author-from-source`, `messenger.channel-messages`, `messenger.channel-create`, `messenger.members`
+- **Requirements:** `messenger.conversations`, `messenger.chat-search`, `messenger.find-in-chat`, `messenger.needs-you`, `messenger.channel-authority`, `messenger.author-from-source`, `messenger.channel-messages`, `messenger.channel-create`, `messenger.members`
 
 ## Example
 

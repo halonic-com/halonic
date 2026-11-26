@@ -6,6 +6,7 @@ import { chatAgent, chatName } from "../chat-name.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { type AgentPictures, pictureOf } from "./agent-pictures.ts";
+import { Highlighted } from "./chat-search.tsx";
 import { ChatsSkeleton, useFadeIn } from "./load-states.tsx";
 
 /** The props of {@link ConversationList}. */
@@ -24,6 +25,11 @@ export interface ConversationListProps {
   readonly unread: (row: ConversationRow) => number;
   /** The chats come from more than one source, so each chat's row names its own. */
   readonly manySources: boolean;
+  /**
+   * While a chat search is open, what it searched for: each row shows the line that holds it,
+   * marked (`messenger.chat-search`).
+   */
+  readonly search?: { readonly text: string; readonly lines: ReadonlyMap<MessagingId, string> };
 }
 
 /**
@@ -43,6 +49,7 @@ export function ConversationList({
   now,
   unread,
   manySources,
+  search,
 }: ConversationListProps) {
   // The rows fade in once they arrive in the skeleton's place.
   const list = useRef<HTMLUListElement>(null);
@@ -65,6 +72,8 @@ export function ConversationList({
               now={now}
               unread={current ? 0 : unread(row)}
               named={manySources}
+              line={search?.lines.get(row.conversation.id) ?? rowLine(row)}
+              highlight={search?.text ?? ""}
             />
           </li>
         );
@@ -104,6 +113,8 @@ function Row({
   now,
   unread,
   named,
+  line,
+  highlight,
 }: {
   readonly row: ConversationRow;
   readonly current: boolean;
@@ -114,6 +125,10 @@ function Row({
   readonly unread: number;
   /** The list holds more than one source, so a chat's row names its own. */
   readonly named: boolean;
+  /** What the row says under its name. */
+  readonly line: string;
+  /** What a chat search searched for, marked in the row; empty with none. */
+  readonly highlight: string;
 }) {
   const after = afterName(row, named);
   return (
@@ -130,7 +145,9 @@ function Row({
           {/* The dot sits outside the truncated name, so a long name's ellipsis never hides it. */}
           <span className="flex min-w-0 flex-1 items-center">
             <span className="min-w-0 truncate text-body">
-              <bdi>{chatName(row)}</bdi>
+              <bdi>
+                <Highlighted text={chatName(row)} term={highlight} />
+              </bdi>
               {after === undefined ? null : (
                 <span className="text-small text-fg-muted"> · {after}</span>
               )}
@@ -148,7 +165,9 @@ function Row({
           )}
         </span>
         <span className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-small text-fg-muted">{rowLine(row)}</span>
+          <span className="min-w-0 flex-1 truncate text-small text-fg-muted">
+            <Highlighted text={line} term={highlight} />
+          </span>
           {unread === 0 ? null : <UnreadBadge count={unread} />}
         </span>
       </span>

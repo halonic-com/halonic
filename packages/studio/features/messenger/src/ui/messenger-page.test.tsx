@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { button, openDialog, polyfillModals } from "../test-support/modal.ts";
 import {
   byText,
+  findInChat,
   openChat,
   openMessenger,
   press,
@@ -70,14 +71,9 @@ function openAcmeChat(page: HTMLElement): Promise<HTMLTextAreaElement> {
   return openChat(page, "Acme");
 }
 
-async function searchFor(page: HTMLElement, text: string): Promise<void> {
-  const search = page.querySelector<HTMLInputElement>('input[type="search"]');
-  if (search === null) throw new Error("no search box");
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(search, text);
-    search.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await settle();
+/** What the find bar says: "1 of 2", or that nothing matches. */
+function findSays(page: HTMLElement): string | null | undefined {
+  return page.querySelector('main [data-find-bar] [role="status"]')?.textContent;
 }
 
 verifies("messenger.conversations", () => {
@@ -123,29 +119,31 @@ verifies("messenger.conversations", () => {
       expect(page.textContent).toContain("Paperclip · Acme is offline. Your message stays here");
     });
 
-    it("finds the chat's messages by their text", async () => {
+    it("finds the chat's messages by their text, marking the match in the whole chat", async () => {
       const { messaging, acmeChat } = twoChiefs();
       messaging.addMessage(acmeChat.id, { body: "Morning" });
       const page = await openMessenger(messaging);
       await openAcmeChat(page);
-      await searchFor(page, "merge");
+      await findInChat(page, "merge");
       const shown = page.querySelector("main ol")?.textContent ?? "";
       expect(shown).toContain("Shall I merge #12?");
-      expect(shown).not.toContain("Morning");
+      expect(shown).toContain("Morning");
+      expect(page.querySelector("main [data-found=current]")?.textContent).toContain("merge #12");
+      expect(findSays(page)).toBe("1 of 1");
     });
 
     it("says so when no message in the chat matches the search", async () => {
       const { messaging } = twoChiefs();
       const page = await openMessenger(messaging);
       await openAcmeChat(page);
-      await searchFor(page, "invoice");
+      await findInChat(page, "invoice");
       const transcript = page.querySelector("main ol");
-      expect(transcript?.textContent).not.toContain("Shall I merge #12?");
+      expect(transcript?.querySelector("[data-found]")).toBeNull();
       // In a status region that is always there, outside the list, so a screen reader reads it.
-      const status = byText(page, 'main [role="status"]', "No message in this chat matches.");
+      const status = page.querySelector('main [data-find-bar] [role="status"]');
       expect(status?.textContent).toBe("No message in this chat matches.");
       expect(transcript?.contains(status ?? null)).toBe(false);
-      await searchFor(page, "");
+      await findInChat(page, "");
       expect(status?.isConnected).toBe(true);
       expect(status?.textContent).toBe("");
     });
@@ -155,8 +153,8 @@ verifies("messenger.conversations", () => {
       const page = await openMessenger(messaging);
       await openAcmeChat(page);
       expect(said(page)).toBe("");
-      await searchFor(page, "merge");
-      await searchFor(page, "");
+      await findInChat(page, "merge");
+      await findInChat(page, "");
       expect(said(page)).toBe("");
       await act(async () => void messaging.addMessage(acmeChat.id, { body: "x".repeat(150) }));
       await settle();
@@ -212,27 +210,16 @@ verifies("messenger.conversations", () => {
       expect(pageSaid(page)).toBe("You left Engineering.");
     });
 
-    it("never lets a search's late answer replace a newer one's", async () => {
+    it("finds without reading the chat again, so a find never shows an older read's messages", async () => {
       const { messaging, acmeChat } = twoChiefs();
       messaging.addMessage(acmeChat.id, { body: "Morning" });
       const page = await openMessenger(messaging);
       await openAcmeChat(page);
-      // From here each read waits until the test lets it answer.
-      const held: (() => void)[] = [];
-      const list = messaging.listMessages.bind(messaging);
-      vi.spyOn(messaging, "listMessages").mockImplementation(
-        (conversation) => new Promise((answer) => held.push(() => answer(list(conversation)))),
-      );
-      await searchFor(page, "merge");
-      await searchFor(page, "morning");
-      const [mergeAnswer, morningAnswer] = held;
-      await act(async () => morningAnswer?.());
-      await settle();
-      await act(async () => mergeAnswer?.());
-      await settle();
-      const shown = page.querySelector("main ol")?.textContent ?? "";
-      expect(shown).toContain("Morning");
-      expect(shown).not.toContain("Shall I merge #12?");
+      const reads = vi.spyOn(messaging, "listMessages");
+      await findInChat(page, "merge");
+      await findInChat(page, "morning");
+      expect(reads).not.toHaveBeenCalled();
+      expect(page.querySelector("main [data-found=current]")?.textContent).toContain("Morning");
     });
 
     it("renders a message's `<script>` and `javascript:` link as inert text, and opens web links outside", async () => {

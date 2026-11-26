@@ -23,7 +23,6 @@ export const channelWords = {
   },
   /** What waits for the person in a channel (flow K, k13a). */
   waiting: {
-    more: (count: number) => `+${count} more`,
     bar: (count: number) => `${count} waiting for you`,
     next: "Next",
     alsoInInbox: (channel: string) =>

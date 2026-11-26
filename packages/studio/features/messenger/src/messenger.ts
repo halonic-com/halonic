@@ -13,7 +13,9 @@ import type {
 } from "@halonicjs/ports";
 import { ChannelAdmin } from "./channel-admin.ts";
 import { type ChannelQuestion, channelQuestions } from "./channel-waiting.ts";
+import { type FoundChat, findChats } from "./chat-search.ts";
 import { DraftFiles } from "./draft-files.ts";
+import { type WaitingCard, waitingCards } from "./needs-you.ts";
 import { isFromAgentOf, QuickActions } from "./quick-actions.ts";
 import { refusalOf } from "./refusal.ts";
 
@@ -215,6 +217,16 @@ export class Messenger {
     else this.picks.set(conversation, [...agents]);
   }
 
+  /** The conversations of `rows` whose name or messages hold `search` (`messenger.chat-search`). */
+  findChats(rows: readonly ConversationRow[], search: string): Promise<readonly FoundChat[]> {
+    return findChats(rows, search, (row) => this.newestOf(row));
+  }
+
+  /** Everything waiting for the person across `rows`, oldest first (`messenger.needs-you`). */
+  async needsYou(rows: readonly ConversationRow[]): Promise<readonly WaitingCard[]> {
+    return waitingCards(rows, await this.messaging.listInboxItems());
+  }
+
   /** The open questions' text by the work they belong to, for a work line that asks the person. */
   async questions(): Promise<ReadonlyMap<MessagingId, string>> {
     const items = await this.messaging.listInboxItems();
@@ -358,7 +370,7 @@ function incoming(messages: readonly Message[]): readonly string[] {
 }
 
 /** Whether `text` holds `search`, ignoring case; an empty search matches everything. */
-function holds(text: string, search: string): boolean {
+export function holds(text: string, search: string): boolean {
   const wanted = search.trim().toLowerCase();
   return wanted === "" || text.toLowerCase().includes(wanted);
 }

@@ -29,7 +29,6 @@ export const messengerWords = {
     line: "Connect Paperclip to answer your agents' cards and chat with them from Inbox and Messenger.",
     connect: "Connect Paperclip",
   },
-  searchLabel: "Search this chat",
   noMatches: "No message in this chat matches.",
   /**
    * Loading and failed reads, in the Inbox's words (design review HAL-18481, improvement 3,
