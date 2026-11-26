@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { FileHandle } from "node:fs/promises";
 import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import {
@@ -11,12 +10,8 @@ import {
 import { KeyedQueue } from "@halonicjs/std";
 import { writeFlushedFile } from "./flushed-write.ts";
 import { isMissing } from "./links.ts";
-import {
-  makePrivateFolder,
-  openUnlinkedForAppend,
-  openUnlinkedForCut,
-  readUnlinkedBytes,
-} from "./private-files.ts";
+import { cutBack, intactEnd, writeAll } from "./log-file.ts";
+import { makePrivateFolder, openUnlinkedForAppend, readUnlinkedBytes } from "./private-files.ts";
 import { parseRecordLog } from "./record-log.ts";
 import { renameOver } from "./rename-over.ts";
 import { withRunLock } from "./run-lock.ts";
@@ -28,8 +23,6 @@ const lockName = "write.lock";
 
 /** The one key of the in-process queue: every write in this store goes one at a time. */
 const writeKey = "write";
-
-const lineBreak = 0x0a;
 
 /** A log as it was before an append added to it, so a failed append can cut it back. */
 interface LogBefore {
@@ -176,44 +169,6 @@ async function readLog(file: string): Promise<Uint8Array | null> {
 }
 
 /**
- * Where the log's whole lines end: its size when it ends in a line break or
- * is empty, which is the usual case and needs one byte read; otherwise just
- * after its last line break.
- */
-async function intactEnd(handle: FileHandle, size: number): Promise<number> {
-  if (size === 0) {
-    return 0;
-  }
-  const last = new Uint8Array(1);
-  await handle.read(last, 0, 1, size - 1);
-  if (last[0] === lineBreak) {
-    return size;
-  }
-  const bytes = new Uint8Array(size);
-  const { bytesRead } = await handle.read(bytes, 0, size, 0);
-  return bytes.subarray(0, bytesRead).lastIndexOf(lineBreak) + 1;
-}
-
-/**
- * Writes all of `bytes`, at the end because the handle is opened with
- * O_APPEND. One write may take only part of them and still succeed, so it
- * writes again from where the last one stopped. A write that takes nothing
- * fails the append rather than trying forever.
- */
-async function writeAll(handle: FileHandle, file: string, bytes: Uint8Array): Promise<void> {
-  let written = 0;
-  while (written < bytes.length) {
-    const { bytesWritten } = await handle.write(bytes, written, bytes.length - written);
-    if (bytesWritten === 0) {
-      throw new Error(
-        `Couldn't append to record log ${JSON.stringify(file)}: the system took none of the last ${bytes.length - written} bytes.`,
-      );
-    }
-    written += bytesWritten;
-  }
-}
-
-/**
  * Cuts every log a failed append added to back to its size before, so the
  * append stores nothing. When a cut fails too, the append's own error is
  * the one worth reporting; its lines left behind then count as stored, as
@@ -226,20 +181,6 @@ async function cutBackAll(before: readonly LogBefore[]): Promise<void> {
     } catch {
       // Left as it is; see above.
     }
-  }
-}
-
-/**
- * Cuts a log back to `bytes`. It opens the log again rather than cutting
- * through the append's handle: on Windows a file opened to append can't be
- * cut shorter (HAL-4361).
- */
-async function cutBack(file: string, bytes: number): Promise<void> {
-  const handle = await openUnlinkedForCut(file);
-  try {
-    await handle.truncate(bytes);
-  } finally {
-    await handle.close();
   }
 }
 

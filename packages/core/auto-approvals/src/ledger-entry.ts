@@ -88,8 +88,10 @@ export type ChainCheck = { readonly ok: true } | { readonly ok: false; readonly 
 
 /**
  * Checks every entry's index, its link to the entry before and its own hash.
- * An entry edited, added, removed or moved anywhere fails at the first entry
- * that no longer fits.
+ * An entry edited, inserted, removed or moved inside the chain fails at the
+ * first entry that no longer fits. The chain is checked against nothing
+ * outside it, so entries cut from the end, or an edit with every later entry
+ * rehashed, still pass.
  *
  * @param entries - the ledger's entries, oldest first, as read from a store
  * @param digest - SHA-256

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19462 (plan, PR 2), HAL-19486; `LedgerStore` from `@halonicjs/auto-approvals`
 
-The file approval ledger store shall keep the auto approvals shadow ledger as one file with one JSON entry per line, in a folder with mode `700` and a file with mode `600`, and shall resolve `append` only once the line is flushed to disk. It shall have no method that changes or removes an entry. A store opened again on the same file shall go on from its last entry. A line torn by a crash shall be cut off on the first read. A whole line that isn't a JSON object shall make reading throw, naming the line. A link in the file's place shall be refused.
+The file approval ledger store shall keep the auto approvals shadow ledger as one file with one JSON entry per line, in a folder with mode `700` and a file with mode `600`, and shall resolve `append` only once the line is flushed to disk. It shall have no method that changes or removes an entry. A store opened again on the same file shall go on from its last entry. Reading shall skip a line torn by a crash and leave the file as it is; the next `append` shall cut it off first. An `append` that fails shall cut the file back to its whole entries. A whole line that isn't a JSON object shall make reading throw, naming the line. A symbolic link, a hard link or anything but a plain file in the file's place shall be refused, never read or written through. The store assumes it is the only writer of its file.
 
 ## Examples
 

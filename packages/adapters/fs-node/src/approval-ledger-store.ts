@@ -1,26 +1,32 @@
-import { constants } from "node:fs";
-import { open } from "node:fs/promises";
 import { dirname } from "node:path";
 import type { LedgerEntry, LedgerStore } from "@halonicjs/auto-approvals";
-import { makePrivateFolder, readUnlinkedFile } from "./private-files.ts";
+import { isMissing } from "./links.ts";
+import { cutBack, intactEnd, writeAll } from "./log-file.ts";
+import { makePrivateFolder, openUnlinkedForAppend, readUnlinkedBytes } from "./private-files.ts";
 
-// Append only, never through a link put in the file's place. Windows has no
-// O_NOFOLLOW; `readUnlinkedFile` still refuses a link there before the first append.
-const appendFlags =
-  constants.O_WRONLY | constants.O_CREAT | constants.O_APPEND | (constants.O_NOFOLLOW ?? 0);
+const lineBreak = 0x0a;
 
 /**
  * The auto approvals shadow ledger as one JSONL file in the person's profile:
  * one entry per line, each line flushed to disk before `append` resolves.
  *
  * The store can only add lines. It has no way to change or remove an entry;
- * `verifyChain` finds any edit made to the file by other means. A line torn
- * by a crash was never acknowledged, so it is cut off on the first read and
- * the chain goes on from the last whole entry.
+ * `verifyChain` finds an edit to an entry made by other means, unless every
+ * later entry was rehashed too. Like the record store, it never reads or
+ * writes through a symbolic link, a hard link or anything but a plain file
+ * in the file's place.
+ *
+ * It assumes it is the only writer of its file, in this process and any
+ * other: it takes no lock, and the `Ledger` above it appends one entry at a
+ * time.
+ *
+ * A line torn by a crash was never acknowledged. Reads skip it and leave the
+ * file alone; the next `append` cuts it off, so the chain goes on from the
+ * last whole entry. A failed append is cut back the same way, so it stores
+ * nothing.
  */
 export class FileApprovalLedgerStore implements LedgerStore {
   readonly #file: string;
-  #loaded: Promise<LedgerEntry[]> | undefined;
 
   /** @param file - the ledger file; its folder is created only the person may open */
   constructor(file: string) {
@@ -29,59 +35,61 @@ export class FileApprovalLedgerStore implements LedgerStore {
 
   /** The newest entry, or `null` while the file is missing or empty. */
   async last(): Promise<LedgerEntry | null> {
-    return (await this.#entries()).at(-1) ?? null;
+    return (await this.entries()).at(-1) ?? null;
   }
 
-  /** Every entry, oldest first. */
+  /** Every whole entry in the file, oldest first. */
   async entries(): Promise<readonly LedgerEntry[]> {
-    return [...(await this.#entries())];
+    const bytes = await this.#readBytes();
+    const intactBytes = bytes.lastIndexOf(lineBreak) + 1;
+    const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, intactBytes));
+    const lines = text.split("\n").slice(0, -1);
+    return lines.map((line, index) => this.#parse(line, index + 1));
   }
 
   /** Adds the entry as the file's last line and flushes it to disk. */
   async append(entry: LedgerEntry): Promise<void> {
-    const entries = await this.#entries();
+    const line = new TextEncoder().encode(`${JSON.stringify(entry)}\n`);
     await makePrivateFolder(dirname(this.#file));
-    const handle = await open(this.#file, appendFlags, 0o600);
+    const handle = await openUnlinkedForAppend(this.#file);
+    let intactBytes: number | undefined;
     try {
-      await handle.appendFile(`${JSON.stringify(entry)}\n`, "utf8");
+      const { size } = await handle.stat();
+      intactBytes = await intactEnd(handle, size);
+      if (intactBytes < size) {
+        await cutBack(this.#file, intactBytes);
+      }
+      await writeAll(handle, this.#file, line);
       await handle.datasync();
-    } finally {
-      await handle.close();
-    }
-    entries.push(entry);
-  }
-
-  #entries(): Promise<LedgerEntry[]> {
-    this.#loaded ??= this.#load();
-    return this.#loaded;
-  }
-
-  async #load(): Promise<LedgerEntry[]> {
-    const text = await this.#readText();
-    const intactLength = text.lastIndexOf("\n") + 1;
-    if (intactLength < text.length) {
-      await this.#cutTornLine(Buffer.byteLength(text.slice(0, intactLength)));
-    }
-    const lines = text.slice(0, intactLength).split("\n").slice(0, -1);
-    return lines.map((line, index) => this.#parse(line, index + 1));
-  }
-
-  async #readText(): Promise<string> {
-    try {
-      return await readUnlinkedFile(this.#file);
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return "";
+      await this.#cutBackAfterFailure(intactBytes);
       throw error;
+    } finally {
+      await handle.close();
     }
   }
 
-  async #cutTornLine(intactBytes: number): Promise<void> {
-    const handle = await open(this.#file, constants.O_WRONLY | (constants.O_NOFOLLOW ?? 0));
+  /**
+   * Cuts the file back to its whole entries after a failed append, so no
+   * half-written line is left and a later append doesn't reuse the index.
+   * When the cut fails too, the append's own error is the one worth
+   * reporting; a torn line left behind is cut by the next append.
+   */
+  async #cutBackAfterFailure(intactBytes: number | undefined): Promise<void> {
+    if (intactBytes === undefined) return;
     try {
-      await handle.truncate(intactBytes);
-      await handle.datasync();
-    } finally {
-      await handle.close();
+      await cutBack(this.#file, intactBytes);
+    } catch {
+      // Left as it is; see above.
+    }
+  }
+
+  async #readBytes(): Promise<Uint8Array> {
+    try {
+      return await readUnlinkedBytes(this.#file);
+    } catch (error) {
+      if (isMissing(error)) return new Uint8Array();
+      throw error;
     }
   }
 

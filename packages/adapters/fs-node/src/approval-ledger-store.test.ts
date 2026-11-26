@@ -1,5 +1,17 @@
-import { appendFile, readFile, stat, symlink, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import {
+  appendFile,
+  type FileHandle,
+  link,
+  rm,
+  open,
+  readFile,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import {
   evaluateWriteAhead,
   Ledger,
@@ -9,7 +21,7 @@ import {
 } from "@halonicjs/auto-approvals";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { FileApprovalLedgerStore } from "./approval-ledger-store.ts";
 import { removeTempFolders, tempFolder } from "./temp-folder.test-helper.ts";
 
@@ -36,6 +48,31 @@ async function ledgerFile(): Promise<string> {
 
 function ledgerOn(store: LedgerStore): Ledger {
   return new Ledger({ store, digest, clock: fixedClock() });
+}
+
+/** Makes every `datasync` on a file handle fail, until the returned spy is restored. */
+async function failingFlush(): Promise<{ mockRestore(): void }> {
+  const probe = await open(join(await tempFolder(), "probe"), "w");
+  const fileHandle: Pick<FileHandle, "datasync"> = Object.getPrototypeOf(probe);
+  await probe.close();
+  return vi.spyOn(fileHandle, "datasync").mockRejectedValue(new Error("disk full"));
+}
+
+/** A ledger file outside the store's folder, and the store's file made by `place`. */
+async function storeWithFileOutside(
+  place: (outside: string, file: string) => Promise<void>,
+): Promise<{ store: FileApprovalLedgerStore; outside: string; text: string }> {
+  const outside = await ledgerFile();
+  await ledgerOn(new FileApprovalLedgerStore(outside)).append(input("a1"));
+  const file = await ledgerFile();
+  await ledgerOn(new FileApprovalLedgerStore(file)).append(input("a1"));
+  await rm(file);
+  await place(outside, file);
+  return {
+    store: new FileApprovalLedgerStore(file),
+    outside,
+    text: await readFile(outside, "utf8"),
+  };
 }
 
 verifies("fs-node.approval-ledger-file", () => {
@@ -75,18 +112,24 @@ verifies("fs-node.approval-ledger-file", () => {
       expect(await store.entries()).toEqual([]);
     });
 
-    it("keeps the file and its folder private", async () => {
-      if (process.platform === "win32") return;
-      const file = await ledgerFile();
-      await ledgerOn(new FileApprovalLedgerStore(file)).append(input("a1"));
-      expect((await stat(file)).mode & 0o777).toBe(0o600);
-      expect((await stat(join(file, ".."))).mode & 0o777).toBe(0o700);
-    });
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] needs POSIX modes: keeps the file and its folder private",
+      async () => {
+        const file = await ledgerFile();
+        await ledgerOn(new FileApprovalLedgerStore(file)).append(input("a1"));
+        expect((await stat(file)).mode & 0o777).toBe(0o600);
+        expect((await stat(join(file, ".."))).mode & 0o777).toBe(0o700);
+      },
+    );
 
-    it("cuts a line torn by a crash and goes on from the last whole entry", async () => {
+    it("reads past a line torn by a crash, and the next append cuts it and goes on from the last whole entry", async () => {
       const file = await ledgerFile();
       await ledgerOn(new FileApprovalLedgerStore(file)).append(input("a1"));
       await appendFile(file, '{"index":1,"previ');
+
+      const before = await readFile(file, "utf8");
+      expect((await new FileApprovalLedgerStore(file).entries()).map((e) => e.index)).toEqual([0]);
+      expect(await readFile(file, "utf8")).toBe(before);
 
       await ledgerOn(new FileApprovalLedgerStore(file)).append(input("a2"));
 
@@ -121,13 +164,56 @@ verifies("fs-node.approval-ledger-file", () => {
       );
     });
 
-    it("refuses a link in the file's place", async () => {
-      if (process.platform === "win32") return;
-      const target = await ledgerFile();
-      await ledgerOn(new FileApprovalLedgerStore(target)).append(input("a1"));
-      const link = join(await tempFolder(), "ledger.jsonl");
-      await symlink(target, link);
-      await expect(new FileApprovalLedgerStore(link).entries()).rejects.toThrow();
+    it("cuts a failed append back, so the next one doesn't repeat its index", async () => {
+      const file = await ledgerFile();
+      const store = new FileApprovalLedgerStore(file);
+      await ledgerOn(store).append(input("a1"));
+      const before = await readFile(file, "utf8");
+      const flush = await failingFlush();
+      try {
+        await expect(ledgerOn(store).append(input("a2"))).rejects.toThrow("disk full");
+      } finally {
+        flush.mockRestore();
+      }
+      expect(await readFile(file, "utf8")).toBe(before);
+
+      await ledgerOn(store).append(input("a3"));
+      const entries = await store.entries();
+      expect(entries.map((entry) => entry.index)).toEqual([0, 1]);
+      expect(await verifyChain(entries, digest)).toEqual({ ok: true });
     });
+
+    it("refuses a hard link in the file's place and never writes through it", async () => {
+      const { store, outside, text } = await storeWithFileOutside((target, file) =>
+        link(target, file),
+      );
+      await expect(store.entries()).rejects.toThrow("is a hard link");
+      await expect(ledgerOn(store).append(input("a2"))).rejects.toThrow("is a hard link");
+      expect(await readFile(outside, "utf8")).toBe(text);
+    });
+
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] needs POSIX links: refuses a symbolic link in the file's place",
+      async () => {
+        const { store, outside, text } = await storeWithFileOutside((target, file) =>
+          symlink(target, file),
+        );
+        await expect(store.entries()).rejects.toThrow("is a link");
+        await expect(ledgerOn(store).append(input("a2"))).rejects.toThrow("is a link");
+        expect(await readFile(outside, "utf8")).toBe(text);
+      },
+    );
+
+    // Opening a named pipe waits for a writer, so every evaluation would hang (HAL-2985).
+    it.skipIf(process.platform === "win32")(
+      "[platform:win32] needs POSIX named pipes: refuses a named pipe rather than waiting on it",
+      async () => {
+        const { store } = await storeWithFileOutside(async (_target, file) => {
+          await promisify(execFile)("mkfifo", [file]);
+        });
+        await expect(store.entries()).rejects.toThrow("isn't a plain file");
+        await expect(ledgerOn(store).append(input("a2"))).rejects.toThrow("isn't a plain file");
+      },
+    );
   });
 });
