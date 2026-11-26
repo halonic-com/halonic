@@ -65,7 +65,7 @@ export const seatMoverConfigProperties = {
       },
       reviewers: list(
         "Reviewers",
-        "Url keys of the reviewers. Each sits alone, on the seat with the most 5-hour room; nobody joins a reviewer's seat.",
+        "Url keys of the reviewers. A reviewer never shares a seat with another reviewer, a running heavy agent or a never-move agent. It takes an empty seat when one has room, else a seat of light agents; nobody joins a reviewer's seat.",
         d.reviewers,
       ),
       heavy: list(
@@ -81,7 +81,7 @@ export const seatMoverConfigProperties = {
       },
       fastBurners: list(
         "Fast burners",
-        "Url keys of the agents that burn a seat fastest. They pick a seat right after the reviewers and never sit on a reserve seat (past the weekly stop).",
+        "Url keys of the agents that burn a seat fastest. They pick a seat right after the reviewers and sit on a reserve seat (past the weekly stop) only when its weekly reset is less than the hours below away.",
         d.fastBurners,
       ),
       pinned: list("Never move", "Url keys of agents the mover never moves.", d.pinned),

@@ -9,13 +9,18 @@ export type SeatMoverMode = "off" | "shadow" | "act";
 
 export interface SeatMoverSettings {
   readonly mode: SeatMoverMode;
-  /** Url keys of the reviewers: each sits alone, on the seat with the most 5-hour room. */
+  /**
+   * Url keys of the reviewers: none shares a seat with another reviewer, a
+   * running heavy agent or a pinned agent. Each takes an empty seat when one
+   * may take it, else light company; nobody joins a reviewer's seat.
+   */
   readonly reviewers: readonly string[];
   /** Url keys of the heavy agents: at most `maxHeavyPerSeat` of them share a seat. */
   readonly heavy: readonly string[];
   /**
    * Url keys of the fast burners: they pick a seat right after the reviewers,
-   * and never sit on a reserve seat (one past the weekly stop).
+   * and sit on a reserve seat (one past the weekly stop) only when its weekly
+   * reset is less than `resetSoonHours` away.
    */
   readonly fastBurners: readonly string[];
   /** Url keys of agents the mover never moves (the seat starter). */
