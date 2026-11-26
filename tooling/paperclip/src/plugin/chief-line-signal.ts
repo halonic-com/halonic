@@ -15,6 +15,7 @@ import {
   readChiefLineSettings,
   webhookAllowed,
 } from "./chief-line-settings.ts";
+import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
 import { findAgent, type LineTarget, targetKey, targetTitle } from "./line-target.ts";
 
 /**
@@ -200,7 +201,11 @@ async function handle(ctx: ChiefLineSignalApi, event: PluginEvent): Promise<void
   // Without a comment id in the payload, the newest comment is the one just created.
   const comment =
     commentId === undefined ? comments.at(-1) : comments.find((c) => c.id === commentId);
-  if (comment === undefined) {
+  // The front bot's Automatic note starts no chief-line action (HAL-19136).
+  if (
+    comment === undefined ||
+    isAutomaticNote(comment, await automaticNoteIds(ctx.state, companyId, thread.id))
+  ) {
     return;
   }
   if (comment.authorAgentId !== agentId) {

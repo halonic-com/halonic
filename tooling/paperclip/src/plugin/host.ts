@@ -1,4 +1,8 @@
-import type { PluginAgentsClient, PluginIssuesClient } from "@paperclipai/plugin-sdk";
+import type {
+  PluginAgentsClient,
+  PluginIssuesClient,
+  PluginStateClient,
+} from "@paperclipai/plugin-sdk";
 import type {
   AgentRow,
   CommentRow,
@@ -19,6 +23,7 @@ import {
   readyToUnblock,
   type UnblockPaperclip,
 } from "../pr-watcher/unblock.ts";
+import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
 
 /**
  * The PR watcher's Paperclip, on top of the plugin host's API. This is the
@@ -165,7 +170,11 @@ export async function everyIssue(
 }
 
 /** A Paperclip for one company, limited to what the watcher needs. */
-export function paperclipHost(host: HostApi, companyId: string): Paperclip {
+export function paperclipHost(
+  host: HostApi,
+  companyId: string,
+  noteState?: Pick<PluginStateClient, "get">,
+): Paperclip {
   return {
     async openTasks() {
       const issues = await everyIssue(host, companyId);
@@ -189,14 +198,21 @@ export function paperclipHost(host: HostApi, companyId: string): Paperclip {
     },
     async comments(taskId) {
       const comments = await host.issues.listComments(taskId, companyId);
-      return comments.map(
-        (comment): CommentRow => ({
-          authorAgentId: comment.authorAgentId,
-          authorUserId: comment.authorUserId,
-          createdAt: new Date(comment.createdAt).toISOString(),
-          body: comment.body,
-        }),
-      );
+      // The front bot's Automatic notes are no one's comment: never "a comment after the merge" (HAL-19136).
+      const ownIds =
+        noteState === undefined
+          ? new Set<string>()
+          : await automaticNoteIds(noteState, companyId, taskId);
+      return comments
+        .filter((comment) => !isAutomaticNote(comment, ownIds))
+        .map(
+          (comment): CommentRow => ({
+            authorAgentId: comment.authorAgentId,
+            authorUserId: comment.authorUserId,
+            createdAt: new Date(comment.createdAt).toISOString(),
+            body: comment.body,
+          }),
+        );
     },
     async agents() {
       const agents = await host.agents.list({ companyId, limit: pageSize });

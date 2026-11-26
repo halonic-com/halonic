@@ -90,6 +90,7 @@ verifies("paperclip.gh-guard-route", () => {
         ["worker-agents", "board"],
         ["github-summary", "board"],
         ["github-pull", "board"],
+        ["chat-notes", "board"],
         ["chief-line-open-thread", "board"],
         ["chief-line-thread", "board"],
         ["chief-line-send", "board"],

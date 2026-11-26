@@ -174,7 +174,7 @@ async function sendNudges(
   const { companyId, settings } = input;
   const ids = new Map(input.tasks.map((task) => [task.identifier, task.id]));
   const byTask = Map.groupBy(nudges, (nudge) => nudge.task);
-  const paperclip = paperclipHost(ctx, companyId);
+  const paperclip = paperclipHost(ctx, companyId, ctx.state);
   for (const [task, list] of byTask) {
     const body = authorNudgeText(list);
     const taskId = ids.get(task);

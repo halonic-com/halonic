@@ -1,0 +1,91 @@
+{
+  "about": "The five approved voice examples (HAL-18847 section 4.1, example 3 as rewritten in section 7), with recorded replies. Every one must be posted. Names and numbers are made up.",
+  "cases": [
+    {
+      "name": "example 1: a merge question, with the last word on its task and its time",
+      "title": "Merge #6129",
+      "earlier": [
+        {
+          "author": "Liam",
+          "at": "2026-11-26T13:52:00Z",
+          "body": "Liam: approved on head abc1234"
+        }
+      ],
+      "message": "Is #6129 merged yet?",
+      "reply": "About PR #6129. Depends on the merge queue; the last word on its task is Liam's approval at 13:52.",
+      "expect": "posted"
+    },
+    {
+      "name": "example 2: what the answer depends on, with the nightly issue from a comment",
+      "title": "Chat with Chief",
+      "earlier": [
+        {
+          "author": "Chief",
+          "at": "2026-11-26T06:00:00Z",
+          "body": "Nightly issue for the failing area: HAL-18802."
+        }
+      ],
+      "message": "Why is main red again?",
+      "reply": "About the failing main run. The answer depends on which area failed; tonight's nightly issue for it is HAL-18802.",
+      "expect": "posted"
+    },
+    {
+      "name": "example 3: a request, which says it isn't done yet (Sofia's rewrite)",
+      "title": "Chat with Chief",
+      "earlier": [],
+      "message": "Put Leo's video on the 0.3 release card",
+      "reply": "Request: Leo's explainer on the 0.3 release card. Not done yet.",
+      "expect": "posted"
+    },
+    {
+      "name": "example 4: a follow-up tied to the person's earlier message",
+      "title": "Chat with Chief",
+      "earlier": [
+        {
+          "author": "board",
+          "at": "2026-11-26T14:00:00Z",
+          "body": "Are the 0.3 release notes done?"
+        }
+      ],
+      "message": "and the docs too",
+      "reply": "Adds the docs to your question about the 0.3 release notes.",
+      "expect": "posted"
+    },
+    {
+      "name": "example 5: a decision for the board, with the current plan's task",
+      "title": "Chat with Chief",
+      "earlier": [
+        {
+          "author": "Chief",
+          "at": "2026-11-25T09:00:00Z",
+          "body": "Current plan: HAL-18400, \"0.3 scope\"."
+        }
+      ],
+      "message": "Should we drop the Linux build for 0.3?",
+      "reply": "A release-scope question for 0.3, so it ends with your decision. Current plan: HAL-18400, \"0.3 scope\".",
+      "expect": "posted"
+    },
+    {
+      "name": "a result word quoted from a comment with its time is allowed",
+      "title": "Merge #6129",
+      "earlier": [
+        {
+          "author": "Chief",
+          "at": "2026-11-26T13:40:00Z",
+          "body": "PR #6129 merged at 13:40."
+        }
+      ],
+      "message": "Is #6129 merged yet?",
+      "reply": "About PR #6129. Chief wrote at 13:40 that it merged.",
+      "expect": "posted"
+    },
+    {
+      "name": "nothing better than an acknowledgement: the model answers SKIP and nothing is posted",
+      "title": "Chat with Chief",
+      "earlier": [],
+      "message": "thanks",
+      "reply": "SKIP",
+      "expect": "skip"
+    }
+  ]
+}

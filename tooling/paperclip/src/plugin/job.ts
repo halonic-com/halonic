@@ -326,7 +326,7 @@ async function watchCompany(
   await runFastTrack(ctx, companyId, snapshot, settings, now);
   await lifecycle?.run(companyId, snapshot);
   const found = discoverPulls(snapshot);
-  const paperclip = paperclipHost(ctx, companyId);
+  const paperclip = paperclipHost(ctx, companyId, ctx.state);
   // Kept from the pass, so the monitors are counted without reading the tasks twice.
   let tasks: TaskRow[] = [];
   // What the watcher decided from, for the signal rule beside it (HAL-18197).
