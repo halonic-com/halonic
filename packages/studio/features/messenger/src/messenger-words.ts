@@ -112,6 +112,8 @@ export const messengerWords = {
         : `${labelList.format(labels)} need a note: choose them in your Inbox.`,
     answeredBy: (name: string) => `${name} answered this first.`,
     answeredByYou: "You already answered this.",
+    /** When sending an answer failed, as the Inbox says it, so a press is never silent (HAL-19350). */
+    notRecorded: "Couldn't record your decision. Try again.",
     /** Read out once an option answered the card, which then leaves the chat. */
     answered: (option: string) => `Answered: ${option}.`,
     /** Before an answered card's record, for a screen reader only: "Answered: Approve, 12:10". */

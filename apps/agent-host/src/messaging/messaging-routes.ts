@@ -1,5 +1,6 @@
 import type { ServerResponse } from "node:http";
-import type { AgentMessaging, AttachmentRead, InboxAnswer, TeamRunsQuery } from "@halonicjs/ports";
+import { readInboxAnswer } from "@halonicjs/host-server";
+import type { AgentMessaging, AnswerResult, AttachmentRead, TeamRunsQuery } from "@halonicjs/ports";
 import { type Infer, type Schema, s } from "@halonicjs/schema-kit";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
@@ -21,22 +22,9 @@ const readBody = s
   })
   .strict();
 
-const answerBody = s
-  .object({
-    workspace,
-    item: id,
-    answer: s.discriminatedUnion("kind", [
-      s
-        .object({
-          kind: s.literal("option"),
-          option: s.string().min(1).max(256),
-          note: s.string().max(20_000).optional(),
-        })
-        .strict(),
-      s.object({ kind: s.literal("reply"), text: s.string().min(1).max(20_000) }).strict(),
-    ]),
-  })
-  .strict();
+// Any answer the port takes, read as the server engine reads it, so Submit's `answers` and a
+// stepper's `action-result` reach the source too (HAL-19350). Whether it fits the item, the port decides.
+const answerBody = s.object({ workspace, item: id, answer: s.unknown() }).strict();
 
 const sendBody = s
   .object({ workspace, conversation: id, body: s.string().min(1).max(20_000) })
@@ -73,7 +61,8 @@ type ReadBody = Infer<typeof readBody>;
  *
  * - `POST /v1/messaging/read` with `{ list }` (and `conversation` for
  *   `messages`, `text` for `search`) answers `{ items }`.
- * - `POST /v1/messaging/answer` with `{ item, answer }` and
+ * - `POST /v1/messaging/answer` with `{ item, answer }`, any answer the port
+ *   takes (an answer it doesn't is refused with `bad-answer`), and
  *   `POST /v1/messaging/send` with `{ conversation, body }` answer
  *   `{ result }`: the source answers or refuses, and offline nothing is kept
  *   to send later.
@@ -146,9 +135,15 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
     inWorkspace("/v1/messaging/pull-requests", connectionsBody, async (messaging) => ({
       items: await messaging.activity.pullRequests(),
     })),
-    inWorkspace("/v1/messaging/answer", answerBody, async (messaging, body) => ({
-      result: await messaging.messaging.answer(body.item, inboxAnswerOf(body.answer)),
-    })),
+    inWorkspace("/v1/messaging/answer", answerBody, async (messaging, body) => {
+      const answer = readInboxAnswer(body.answer);
+      return {
+        result:
+          answer === null
+            ? ({ outcome: "refused", reason: "bad-answer" } satisfies AnswerResult)
+            : await messaging.messaging.answer(body.item, answer),
+      };
+    }),
     inWorkspace("/v1/messaging/send", sendBody, async (messaging, body) => ({
       result: await messaging.messaging.send(body.conversation, body.body),
     })),
@@ -192,13 +187,6 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
       sendJson(response, 200, {});
     }),
   ];
-}
-
-/** The port's answer, without a `note` the body left out. */
-function inboxAnswerOf(answer: Infer<typeof answerBody>["answer"]): InboxAnswer {
-  if (answer.kind === "reply") return answer;
-  const { option, note } = answer;
-  return note === undefined ? { kind: "option", option } : { kind: "option", option, note };
 }
 
 /** The port's runs query, without a field the body left out. */

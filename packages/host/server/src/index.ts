@@ -111,7 +111,7 @@ export {
   type ServerFetch,
 } from "./messaging-client-transport.ts";
 export { messagingPathPrefix } from "./messaging-routes.ts";
-export { messagingRefusals } from "./messaging-wire.ts";
+export { messagingRefusals, readInboxAnswer } from "./messaging-wire.ts";
 export type { ModelChoicePort } from "./model-choice-api.ts";
 export type {
   PaperclipDisconnected,
