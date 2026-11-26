@@ -152,6 +152,8 @@ mod trust;
 #[cfg(desktop)]
 mod updates;
 mod window;
+#[cfg(windows)]
+mod window_icons;
 #[cfg(desktop)]
 mod window_place;
 mod workspace_data;

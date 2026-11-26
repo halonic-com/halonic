@@ -79,6 +79,19 @@ impl FocusedApp {
         }
     }
 
+    /// The .ico its Start menu shortcut carries (`icons/apps/<name>.ico`).
+    /// On Windows its window takes its small and large icons from it, at the
+    /// sizes the window's display asks for (HAL-19716), instead of shrinking
+    /// the 64 px one. `None` for quick ask.
+    #[cfg(any(windows, test))]
+    pub fn ico(self) -> Option<&'static [u8]> {
+        match self {
+            FocusedApp::Inbox => Some(include_bytes!("../icons/apps/inbox.ico")),
+            FocusedApp::Messenger => Some(include_bytes!("../icons/apps/messenger.ico")),
+            FocusedApp::Ask => None,
+        }
+    }
+
     /// Its AppUserModelID: the app's identifier and its name, as the
     /// installer sets it on its shortcut (`${BUNDLEID}.inbox`). Only Windows
     /// has one.
@@ -223,6 +236,7 @@ mod tests {
         assert_eq!(requested(&["halonic-studio", "--app=Ask"]), None);
         assert!(!FocusedApp::ALL.contains(&FocusedApp::Ask));
         assert!(FocusedApp::Ask.icon().is_none());
+        assert!(FocusedApp::Ask.ico().is_none());
     }
 
     #[test]
@@ -254,6 +268,22 @@ mod tests {
             FocusedApp::Inbox.icon_bytes(),
             FocusedApp::Messenger.icon_bytes()
         );
+    }
+
+    /// HAL-19716: a window's icons come from its app's .ico, at each size
+    /// Windows asks for at 100 to 200% display scaling (small 16 to 32 px,
+    /// large 32 to 64 px), so the taskbar never takes Halonic's exe icon.
+    #[test]
+    fn each_app_has_an_ico_image_for_every_window_icon_size() {
+        for app in FocusedApp::ALL {
+            let ico = app.ico().expect("an app with a shortcut has an .ico");
+            for pixels in [16, 20, 24, 30, 32, 36, 40, 48, 64] {
+                let image = halonic_window_app_id::image_for(ico, pixels)
+                    .unwrap_or_else(|| panic!("{}'s .ico at {pixels} px", app.name()));
+                assert_eq!(&image[..4], b"\x89PNG", "{} at {pixels} px", app.name());
+            }
+        }
+        assert_ne!(FocusedApp::Inbox.ico(), FocusedApp::Messenger.ico());
     }
 
     #[test]

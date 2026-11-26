@@ -185,6 +185,8 @@ halonic-owner-check = { path = "crates/owner-check" }
 # served page.
 [dev-dependencies]
 tauri = { version = "=2.12.5", features = ["test"] }
+# The .ico picker, so every platform tests each app's window icons (HAL-19716).
+halonic-window-app-id = { path = "crates/window-app-id" }
 
 [lints]
 workspace = true

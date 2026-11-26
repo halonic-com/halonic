@@ -1,6 +1,6 @@
 [package]
 name = "halonic-window-app-id"
-description = "Gives one window of the Studio shell its own Windows taskbar identity (AppUserModelID), so Halonic Inbox and Halonic Messenger each get their own taskbar entry."
+description = "Gives one window of the Studio shell its own Windows taskbar identity (AppUserModelID) and icons, so Halonic Inbox and Halonic Messenger each get their own taskbar entry with their own icon."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -31,4 +31,8 @@ windows = { version = "=0.62.2", features = [
   "Win32_System_Variant",
   # SHGetPropertyStoreForWindow and IPropertyStore.
   "Win32_UI_Shell_PropertiesSystem",
+  # The window's icons: GetSystemMetricsForDpi, CreateIconFromResourceEx,
+  # WM_SETICON and DestroyIcon.
+  "Win32_UI_HiDpi",
+  "Win32_UI_WindowsAndMessaging",
 ] }
