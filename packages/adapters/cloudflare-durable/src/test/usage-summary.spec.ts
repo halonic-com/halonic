@@ -37,6 +37,7 @@ describe("UsageObject summary", () => {
       planName: "Starter",
       costPercent: 62,
       periodEnd: limits.period.end,
+      units: [{ unit: "cost", percent: 62 }],
     });
   });
 
@@ -49,6 +50,7 @@ describe("UsageObject summary", () => {
       planName: null,
       costPercent: null,
       periodEnd: null,
+      units: [],
     });
     expect(await usage.applyLimits("u/acme-two", starterLimits())).toBe("applied");
   });

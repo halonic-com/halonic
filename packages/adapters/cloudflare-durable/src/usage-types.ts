@@ -105,6 +105,15 @@ export interface UsageSummary {
   readonly costPercent: number | null;
   /** When the kept limits' period ends, in ms since 1970; `null` when the account knows no limits. */
   readonly periodEnd: number | null;
+  /** What was spent of each limited unit, in {@link usageUnits} order; empty with no limits. */
+  readonly units: readonly UnitPercent[];
+}
+
+/** What was spent of one limited unit's limit this period. */
+export interface UnitPercent {
+  readonly unit: UsageUnit;
+  /** A whole percent rounded down and at most 100; a limit of 0 reads 100. */
+  readonly percent: number;
 }
 
 /** Why an account refused, with what the app needs to word it. */

@@ -1,4 +1,5 @@
 import type {
+  UnitPercent,
   UsageAmounts,
   UsageLimits,
   UsagePlan,
@@ -57,18 +58,25 @@ export function firstOver(
 }
 
 /**
- * The account menu's figures from the kept limits and the pool's spending this period. A cost
- * limit of 0 counts as used up, so it reads 100 rather than dividing by zero.
+ * The account menu's figures from the kept limits and the pool's spending this period: the cost
+ * percent, and each limited unit's percent for the usage banner.
  */
 export function summaryOf(limits: UsageLimits | undefined, spent: UsageAmounts): UsageSummary {
-  if (limits === undefined) return { planName: null, costPercent: null, periodEnd: null };
-  const limit = limits.limits.cost;
-  const used = spent.cost ?? 0;
-  let costPercent: number | null = null;
-  if (limit !== undefined) {
-    costPercent = limit === 0 ? 100 : Math.min(100, Math.floor((used * 100) / limit));
+  if (limits === undefined) {
+    return { planName: null, costPercent: null, periodEnd: null, units: [] };
   }
-  return { planName: limits.plan?.name ?? null, costPercent, periodEnd: limits.period.end };
+  const units: UnitPercent[] = [];
+  for (const unit of usageUnits) {
+    const limit = limits.limits[unit];
+    if (limit !== undefined) units.push({ unit, percent: percentOf(spent[unit] ?? 0, limit) });
+  }
+  const costPercent = units.find(({ unit }) => unit === "cost")?.percent ?? null;
+  return { planName: limits.plan?.name ?? null, costPercent, periodEnd: limits.period.end, units };
+}
+
+/** A limit of 0 counts as used up, so it reads 100 rather than dividing by zero. */
+function percentOf(used: number, limit: number): number {
+  return limit === 0 ? 100 : Math.min(100, Math.floor((used * 100) / limit));
 }
 
 /** The 80% and 100% marks the pool has reached this period and not reported yet. */
