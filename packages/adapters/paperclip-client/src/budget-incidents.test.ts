@@ -113,7 +113,7 @@ verifies("paperclip-client.budget-incidents", () => {
         body: { activeIncidents: [] },
       });
       await expect(answerWith(paperclip, "reject")).rejects.toThrow(
-        "Paperclip has no budget stop open for this approval. Answer it in Paperclip.",
+        "Paperclip has no budget stop open for this approval. Check it in Paperclip.",
       );
       expect(posts(paperclip)).toEqual([]);
     });

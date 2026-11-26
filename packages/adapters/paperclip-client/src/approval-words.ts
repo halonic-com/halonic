@@ -35,7 +35,7 @@ export const approvalWords = {
   newLimit: "New limit, in dollars",
   newLimitUnreadable: "Enter the new limit in dollars, such as 250 or 250.50.",
   newLimitTooLow: (spent: string) => `The new limit must be more than the ${spent} already spent.`,
-  noBudgetStop: "Paperclip has no budget stop open for this approval. Answer it in Paperclip.",
+  noBudgetStop: "Paperclip has no budget stop open for this approval. Check it in Paperclip.",
   budgetRefused: (detail: string | undefined) =>
     detail === undefined
       ? "Paperclip didn't change the budget."
