@@ -10,6 +10,12 @@
 // the copy of the run's commit, or the workspace folder with history off.
 // Never the saved files beside a copy, so the code a person trusted is the
 // code that runs.
+//
+// A runner whose code reaches for a host its sheet doesn't list, or tries to
+// leak a secret, pauses its connector (HAL-19188): the pause is made and the
+// runner stopped before the refusal reaches the code, and every later start
+// of the connector, in this run or another, is refused until its code changes
+// and is trusted again (`RunnerBlockPause`, `TrustedRunnerStart`).
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -25,6 +31,7 @@ import {
   startRunner,
 } from "@halonicjs/adapter-integration-runner";
 import {
+  type ConnectorPauses,
   type IntegrationFolder,
   IntegrationNotTrustedError,
   integrationsFolder,
@@ -42,6 +49,7 @@ import type {
   FolderReader,
 } from "@halonicjs/ports";
 import type { OpenIntegration, OpenIntegrationRequest } from "./integration-connector-factory.ts";
+import { RunnerBlockPause } from "./runner-block-pause.ts";
 
 /**
  * The sandbox isn't available here and the person hasn't allowed the
@@ -77,6 +85,10 @@ export interface LocalIntegrationMachine {
   readonly digest: Digest;
   /** Picks the sandbox the runner starts in, at every start. */
   readonly gate: RunnerStartGate;
+  /** The paused connectors in the profile, read at every start and added to when a runner is blocked. */
+  readonly pauses: ConnectorPauses;
+  /** Hears a pause that couldn't be saved; it holds for this process all the same. */
+  pauseNotSaved?(error: unknown): void;
   /** The saved yes's file when the gate's last read of it failed, so the refusal names it. */
   unreadableYes?(): string | undefined;
   /** Whether a yes given in Studio reaches this command; when it doesn't, the refusal doesn't send the person there. Left out, it does. */
@@ -139,6 +151,7 @@ class LocalIntegrationOpening {
       workspace: startsFrom,
       digest: this.#machine.digest,
       gate: this.#machine.gate,
+      pauses: this.#machine.pauses,
     });
     const { sheet, code } = await this.#read(startsFrom);
     const loaded = await loadLocalIntegration({
@@ -198,8 +211,9 @@ class LocalIntegrationOpening {
     const trust = await this.#machine.trustCheck(this.#request.context);
     this.#requireTrustedCode(trust, readCode);
     const runnerMachine = await this.#machine.runnerMachine();
+    const pausing = this.#pausing(trust, readCode);
     const gated = await starts.start(
-      { trust, folder: this.#folder, settings: bridge.settings },
+      { trust, folder: this.#folder, connector: this.#request.id, settings: bridge.settings },
       (sandbox, backend): Promise<StartedRunner> =>
         begin({
           sandbox,
@@ -210,12 +224,26 @@ class LocalIntegrationOpening {
           tools: bridge.tools,
           http: bridge.http,
           secrets: bridge.secrets,
+          onBlocked: pausing.onBlocked,
         }),
     );
     if (gated.run === "unfenced") this.#machine.startedUnfenced?.(gated.reason);
-    if (gated.run === "fenced" || gated.run === "unfenced") return gated.runner;
+    if (gated.run === "fenced" || gated.run === "unfenced") return pausing.started(gated.runner);
     if (gated.run === "stopped") throw new Error(this.#stopped());
     throw new UnfencedStartNotAllowedError(gated.reason, await this.#needsYes(gated.reason));
+  }
+
+  /**
+   * What pauses this start's connector when its runner is blocked. Its key is
+   * the code that was read and trusted; a start only goes on when the trust
+   * check is `trusted`, so a block always has the workspace's location.
+   */
+  #pausing(trust: TrustCheck, readCode: string): RunnerBlockPause {
+    const location = trust.status === "trusted" ? trust.grant.location : "";
+    const key = { location, connector: this.#request.id, code: readCode };
+    return new RunnerBlockPause(this.#machine.pauses, key, (error) =>
+      this.#machine.pauseNotSaved?.(error),
+    );
   }
 
   /**

@@ -32,6 +32,9 @@ const pluginsFolderName = "plugins";
 /** The name of the folder in the profile that holds the plugins' records. */
 const pluginRecordsFolderName = "plugin-records";
 
+/** The name of the folder in the profile that holds the paused connectors. */
+const connectorPausesFolderName = "connector-pauses";
+
 /** The name of the folder in the profile that holds the settings kept where Halonic runs. */
 const settingsFolderName = "settings";
 
@@ -365,6 +368,22 @@ export function pluginsFolder(profile: ProfileFolder): string {
  */
 export function pluginRecordsFolder(profile: ProfileFolder): string {
   return joinPath(profile.platform, profile.root, pluginRecordsFolderName);
+}
+
+/**
+ * The folder for the paused connectors, `connector-pauses` in the profile
+ * folder: a record store of its own, apart from the trust records. It is
+ * never in a workspace, so a connector's code can't lift its own pause.
+ *
+ * @param profile - the profile folder, from {@link profileFolder}
+ * @returns the pauses folder, joined the profile's way; nothing is created
+ *
+ * @example
+ * connectorPausesFolder({ platform: "linux", root: "/srv/acme/.local/share/halonic" });
+ * // "/srv/acme/.local/share/halonic/connector-pauses"
+ */
+export function connectorPausesFolder(profile: ProfileFolder): string {
+  return joinPath(profile.platform, profile.root, connectorPausesFolderName);
 }
 
 /**

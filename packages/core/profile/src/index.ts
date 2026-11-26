@@ -1,6 +1,7 @@
 export { isAbsolutePath, type ProfilePlatform, withHomeAsTilde } from "./native-path.ts";
 export {
   connectionSettingsFolder,
+  connectorPausesFolder,
   type ProfileEnvironment,
   type ProfileFolder,
   placementFolder,
