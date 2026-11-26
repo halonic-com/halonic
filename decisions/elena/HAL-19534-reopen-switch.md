@@ -2,6 +2,7 @@
 
 - Approval: the board asked for the switch on HAL-10 (HAL-19534: "Settings switch "Reopen windows on start", on by default"); Liam approved the plan on HAL-19566 and signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ydg6xvJ+c7HDqXdQZM+RQUrv+cYdmYoGedSSobGf4iwJPUPEWGuoenwHKpcnewl+JBFXl2MaFJO91c4rvZPYAw==
 
 `settings.startup-section` said the section holds one switch, **Start
 Halonic when I log in**. Halonic now reopens every window open at the last
