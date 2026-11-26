@@ -58,7 +58,8 @@ function rebaseCommands(status: PrStatus): string[] {
  * Merger counts them there when the changes from the base stay the same
  * (`paperclip.merge-control-carry-over`), and the PR watcher then sends no
  * re-review (`paperclip.pr-watcher-rebase-carry`), with the same exceptions:
- * a security pull request by its paths, a release one, and Liam's own.
+ * a security pull request by its paths, a release one, Liam's own, and a
+ * stacked one, whose approved diff is from a base that isn't `main`.
  */
 function carryOver(status: PrStatus): Pick<RebaseCheck, "approvals" | "carries" | "carryNote"> {
   const approvals = status.approvals
@@ -92,6 +93,9 @@ function carryRefusal(status: PrStatus): string | undefined {
   }
   if (status.author === "liam") {
     return "Liam's own pull request";
+  }
+  if (status.base !== "main") {
+    return `a stacked pull request on ${status.base}, whose approved diff isn't from main`;
   }
   return undefined;
 }

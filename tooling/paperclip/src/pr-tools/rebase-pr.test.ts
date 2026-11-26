@@ -11,6 +11,7 @@ const issues = `/repos/${repo}/issues`;
 
 interface Pull4588 {
   readonly ref?: string;
+  readonly base?: string;
   readonly files?: readonly string[];
   readonly mergeable?: boolean | null;
   readonly behind?: number;
@@ -21,6 +22,7 @@ interface Pull4588 {
 /** #4588 on Priya's branch for HAL-14219, behind `main` and mergeable unless told otherwise. */
 function pr4588({
   ref = "priya/HAL-14219-engine-contract",
+  base = "main",
   files = ["docs/guides/review.md"],
   mergeable = true,
   behind = 3,
@@ -32,6 +34,7 @@ function pr4588({
     [`${pulls}/4588`]: {
       ...(recorded[`${pulls}/4588`] as object),
       head: { sha: head, ref, repo: { full_name: repo } },
+      base: { ref: base },
       title: "feat(engine): the engine contract",
       mergeable,
       additions: 120,
@@ -47,7 +50,7 @@ function pr4588({
     [`${issues}/4588/timeline?per_page=100&page=1`]: queued
       ? [{ event: "added_to_merge_queue" }]
       : [],
-    [`/repos/${repo}/compare/main...${head}`]: {
+    [`/repos/${repo}/compare/${base}...${head}`]: {
       behind_by: behind,
       merge_base_commit: { sha: "0b1d2c3e4f5061728394a5b6c7d8e9f001122334" },
     },
@@ -125,6 +128,14 @@ verifies("paperclip.rebase-pr", () => {
       });
       expect(liams.result).toMatchObject({ verdict: "rebase", carries: false });
       expect(liams.result.carryNote).toBe("Liam's own pull request, so it needs a re-review");
+    });
+
+    test("doesn't carry the approval on a stacked pull request whose base isn't main", async () => {
+      const { result } = await check("priya", { base: "priya/HAL-14218-engine-types" });
+      expect(result).toMatchObject({ verdict: "rebase", carries: false });
+      expect(result.carryNote).toBe(
+        "a stacked pull request on priya/HAL-14218-engine-types, whose approved diff isn't from main, so it needs a re-review",
+      );
     });
 
     test("says there's nothing to carry without an approval on the head", async () => {

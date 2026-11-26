@@ -325,7 +325,7 @@ inside the about 15 s the tool bridge gives a call.
   `up-to-date` when it's level; otherwise `refused`, with the reason. It
   names the approvals on the head and whether they carry over the rebase
   (the Merger's carry-over: not for a security pull request by its paths, a
-  release one or Liam's own), and warns that an approved pull request is
+  release one, Liam's own or a stacked one whose base isn't `main`), and warns that an approved pull request is
   rebased only for a conflict or when the queue asks. It reads as
   `pr_status` does and sends no write: GitHub's rebase waits for the board's
   decision on the branch credential (HAL-18091), so for a `rebase` or a
