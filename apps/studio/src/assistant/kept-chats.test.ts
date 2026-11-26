@@ -1,5 +1,5 @@
 import { MemoryChatSessions } from "@halonicjs/adapter-memory";
-import type { ChatMessage, SavedChat } from "@halonicjs/ports";
+import type { ChatMessage, ChatSessions, SavedChat } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { KeptChats } from "./kept-chats.ts";
@@ -165,6 +165,48 @@ verifies("studio.workspace-assistant", () => {
       chats.add(chat.id, { role: "user", content: "Hi" });
       await chats.delete(chat.id);
       expect(gone).toEqual([chat.id]);
+    });
+
+    it("Assistant lets go of a chat Try it pruned", async () => {
+      const store = newStore();
+      const gone: string[] = [];
+      const chats = new KeptChats({ store, now: ticking(), onGone: (chatId) => gone.push(chatId) });
+      const chat = await chats.newChat("build", { kind: "alias", name: "default" });
+      chats.add(chat.id, { role: "user", content: "Hi" });
+      await chats.saved();
+
+      // Try it prunes the shared store past the 40 on its own.
+      await store.sessions.delete(store.location, chat.id);
+
+      expect(await chats.list()).toEqual([]);
+      expect(gone).toEqual([chat.id]);
+    });
+
+    it("keeps a chat whose save failed in the window", async () => {
+      const store = newStore();
+      const failed: unknown[] = [];
+      // A store that lists, loads and deletes, but can't save.
+      const sessions: ChatSessions = {
+        list: (location) => store.sessions.list(location),
+        load: (location, id) => store.sessions.load(location, id),
+        save: () => Promise.reject(new Error("disk full")),
+        delete: (location, id) => store.sessions.delete(location, id),
+      };
+      const failing = { sessions, location: store.location };
+      const gone: string[] = [];
+      const chats = new KeptChats({
+        store: failing,
+        now: ticking(),
+        onGone: (chatId) => gone.push(chatId),
+        onSaveFailed: (error) => failed.push(error),
+      });
+      const chat = await chats.newChat("build", { kind: "alias", name: "default" });
+      chats.add(chat.id, { role: "user", content: "Hi" });
+      await chats.saved();
+
+      expect(failed).toHaveLength(1);
+      expect((await chats.list()).map((kept) => kept.id)).toEqual([chat.id]);
+      expect(gone).toEqual([]);
     });
   });
 });
