@@ -159,3 +159,9 @@ export function toMessage(
 export function newestFirst<T>(items: readonly T[], key: (item: T) => string): T[] {
   return [...items].sort((left, right) => key(right).localeCompare(key(left)));
 }
+
+/** The tasks as work items, newest first. */
+export function workOf(context: MapContext, tasks: readonly JsonRecord[]): WorkItem[] {
+  const work = tasks.flatMap((record) => toWork(context, record) ?? []);
+  return newestFirst(work, (item) => item.updatedAt);
+}
