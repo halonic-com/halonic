@@ -26,8 +26,15 @@ export function seat(
     grantId: `g-${name}`,
     name,
     method: "subscription",
-    reading: { sessionPercent: session, weekPercent: week, weekResetsAt, at: now.toISOString() },
+    reading: {
+      sessionPercent: session,
+      sessionResetsAt: undefined,
+      weekPercent: week,
+      weekResetsAt,
+      at: now.toISOString(),
+    },
     quotaHit: false,
+    waiting: false,
     connection: "connected",
     ...rest,
   };
@@ -45,6 +52,7 @@ export function agent(
     paused: false,
     connectionId: seatName === undefined ? undefined : `c-${seatName}`,
     parked: false,
+    recentlyMoved: false,
     ...overrides,
   };
   return place;

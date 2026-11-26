@@ -1,7 +1,8 @@
 import type { SeatMoverSettings } from "./settings.ts";
 
 /**
- * The board's pre-move checklist (HAL-19354, a–g), as code. A seat is a legal
+ * The board's pre-move checklist (HAL-19354, a–g, with the board's audit
+ * rules of 26 Nov), as code. A seat is a legal
  * target for an agent only when every item holds; `breaks` checks a whole
  * placement against the items that are about who sits together, so a batch is
  * never sent that leaves one of them broken. No I/O here.
@@ -10,6 +11,8 @@ import type { SeatMoverSettings } from "./settings.ts";
 /** One seat's newest usage reading. */
 export interface SeatReading {
   readonly sessionPercent: number;
+  /** When the 5-hour window resets, as the reading reports it. */
+  readonly sessionResetsAt: string | undefined;
   readonly weekPercent: number;
   readonly weekResetsAt: string | undefined;
   /** When the reading was taken. */
@@ -34,6 +37,8 @@ export interface Seat {
   readonly reading: SeatReading | undefined;
   /** A run on this seat failed with `provider_quota` since its reading: it is full now. */
   readonly quotaHit: boolean;
+  /** Runs are parked waiting for this seat: it is full now, whatever its reading says. */
+  readonly waiting: boolean;
   /**
    * Nobody may sit on a `not-connected` seat. An `unknown` one takes nobody
    * new but moves nobody off, like a seat without a reading.
@@ -51,6 +56,8 @@ export interface AgentPlace {
   readonly connectionId: string | undefined;
   /** It has never-started runs parked on its seat (pool wait or a `provider_quota` retry). */
   readonly parked: boolean;
+  /** The mover moved it less than `moveCooldownMinutes` ago. */
+  readonly recentlyMoved: boolean;
 }
 
 /** Agent id → connection id. */
@@ -60,7 +67,7 @@ export type Placement = ReadonlyMap<string, string>;
 export type TargetRefusal =
   | "a-week-stop"
   | "b-reviewer-seat"
-  | "b-reviewer-needs-empty-seat"
+  | "b-reviewer-company"
   | "c-heavy-limit"
   | "g-quiet-seat"
   | "d-admin"
@@ -78,6 +85,9 @@ export const isReviewer = (agent: AgentPlace, settings: SeatMoverSettings) =>
 
 export const isHeavy = (agent: AgentPlace, settings: SeatMoverSettings) =>
   settings.heavy.includes(agent.key);
+
+export const isFastBurner = (agent: AgentPlace, settings: SeatMoverSettings) =>
+  settings.fastBurners.includes(agent.key);
 
 /** Pinned agents (the seat starter and the timer agents) are never moved. */
 export const isPinned = (agent: AgentPlace, settings: SeatMoverSettings) =>
@@ -101,18 +111,31 @@ export function weekResetsSoon(seat: Seat, settings: SeatMoverSettings, now: Dat
 }
 
 /**
- * Item a: the week is below the weekly stop, or the seat is on the reset-fill
- * list, or its weekly reset is less than a day away (and it is below the hard stop).
+ * Item a: whether `agent` may sit on the seat for its week. A reset-fill seat
+ * takes anyone. Otherwise nobody sits at the hard stop (95%), and a reserve
+ * seat (past the weekly stop, 88%) takes no fast burner unless its weekly
+ * reset is less than a day away.
  */
-export function weekAllows(seat: Seat, settings: SeatMoverSettings, now: Date): boolean {
+export function weekAllows(
+  seat: Seat,
+  agent: AgentPlace,
+  settings: SeatMoverSettings,
+  now: Date,
+): boolean {
   const week = seat.reading?.weekPercent;
   if (week === undefined) {
     return false;
   }
-  if (isResetFill(seat, settings) || week < settings.weekMovePercent) {
+  if (isResetFill(seat, settings)) {
     return true;
   }
-  return weekResetsSoon(seat, settings, now) && week < settings.weekHardStopPercent;
+  if (week >= settings.weekHardStopPercent) {
+    return false;
+  }
+  if (week < settings.weekMovePercent) {
+    return true;
+  }
+  return !isFastBurner(agent, settings) || weekResetsSoon(seat, settings, now);
 }
 
 /** The agents on a seat in a placement, from the full list of agents. */
@@ -141,14 +164,40 @@ export const breaksQuietSeat = (
   settings: SeatMoverSettings,
 ) => countsAsHeavy(agent, settings) && isQuietSeat(seated, settings);
 
+/**
+ * Item b as the board defined "alone" (26 Nov): a reviewer may share its seat
+ * with light agents, but not with another reviewer, a heavy agent that runs,
+ * or a pinned agent (whose seat is the quiet seat).
+ */
+export const crowdsReviewer = (agent: AgentPlace, settings: SeatMoverSettings) =>
+  isReviewer(agent, settings) || countsAsHeavy(agent, settings) || isPinned(agent, settings);
+
 /** The 5-hour stop that applies to an agent: a reviewer's is lower (HAL-19202). */
 export const sessionStopFor = (agent: AgentPlace, settings: SeatMoverSettings) =>
   isReviewer(agent, settings) ? settings.reviewerSessionMovePercent : settings.sessionMovePercent;
 
 /**
+ * Whether the seat stays below the agent's 5-hour stop with `arriving` agents
+ * already sent to it this pass and this one: each arrival is counted at
+ * `targetHeadroomPercent` of the window. Readings don't change within a pass,
+ * so without this headroom a seat just under the stop takes agents and the
+ * next reading moves them off again.
+ */
+export function sessionHasRoom(
+  reading: SeatReading,
+  agent: AgentPlace,
+  settings: SeatMoverSettings,
+  arriving: number,
+): boolean {
+  const projected = reading.sessionPercent + settings.targetHeadroomPercent * (arriving + 1);
+  return projected < sessionStopFor(agent, settings);
+}
+
+/**
  * Why `seat` may not take `agent` in `placement`, or `undefined` when every
  * checklist item holds. The 5-hour stop is the agent's own, so a reviewer is
- * never placed where it would have to move again at once.
+ * never placed where it would have to move again at once. `arriving` is how
+ * many agents this pass already sends to the seat.
  */
 export function targetRefusal(
   seat: Seat,
@@ -157,6 +206,7 @@ export function targetRefusal(
   agents: readonly AgentPlace[],
   settings: SeatMoverSettings,
   now: Date,
+  arriving = 0,
 ): TargetRefusal | undefined {
   if (placement.get(agent.id) === seat.connectionId) {
     return "same-seat";
@@ -176,10 +226,10 @@ export function targetRefusal(
   if (seat.reading === undefined || seat.grantId === undefined) {
     return "unread";
   }
-  if (seat.quotaHit || seat.reading.sessionPercent >= sessionStopFor(agent, settings)) {
+  if (seat.quotaHit || seat.waiting || !sessionHasRoom(seat.reading, agent, settings, arriving)) {
     return "f-session-stop";
   }
-  if (!weekAllows(seat, settings, now)) {
+  if (!weekAllows(seat, agent, settings, now)) {
     return "a-week-stop";
   }
   const others = seatedOn(seat.connectionId, placement, agents).filter(
@@ -188,7 +238,10 @@ export function targetRefusal(
   return companyRefusal(agent, others, settings);
 }
 
-/** Items b, c and g: whether `agent` may join the agents already on a seat. */
+/**
+ * Items b, c and g: whether `agent` may join the agents already on a seat.
+ * Nobody joins a reviewer's seat; a reviewer joins only light agents.
+ */
 function companyRefusal(
   agent: AgentPlace,
   others: readonly AgentPlace[],
@@ -197,8 +250,8 @@ function companyRefusal(
   if (others.some((other) => isReviewer(other, settings))) {
     return "b-reviewer-seat";
   }
-  if (isReviewer(agent, settings) && others.length > 0) {
-    return "b-reviewer-needs-empty-seat";
+  if (isReviewer(agent, settings) && others.some((other) => crowdsReviewer(other, settings))) {
+    return "b-reviewer-company";
   }
   const heavy = others.filter((other) => countsAsHeavy(other, settings)).length;
   if (countsAsHeavy(agent, settings) && heavy >= settings.maxHeavyPerSeat) {
@@ -223,7 +276,7 @@ export interface Break {
 
 /**
  * The checklist items a placement breaks on the given seats: a reviewer with
- * anyone else, more heavy agents than allowed, anyone on an excluded seat or
+ * another reviewer, a heavy or a pinned agent, more heavy agents than allowed, anyone on an excluded seat or
  * on the paid API, a heavy agent on the quiet seat. (Items a and f are about
  * the seat's use, which a move doesn't change before the next reading;
  * `targetRefusal` covers them.)
@@ -259,7 +312,8 @@ function companyBreaks(
   settings: SeatMoverSettings,
 ): Break["rule"][] {
   const found: Break["rule"][] = [];
-  if (seated.length > 1 && seated.some((agent) => isReviewer(agent, settings))) {
+  const crowd = seated.filter((agent) => crowdsReviewer(agent, settings));
+  if (crowd.length > 1 && crowd.some((agent) => isReviewer(agent, settings))) {
     found.push("b-reviewer-not-alone");
   }
   const heavy = seated.filter((agent) => countsAsHeavy(agent, settings)).length;

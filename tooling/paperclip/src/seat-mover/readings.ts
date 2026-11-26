@@ -24,6 +24,8 @@ export interface ReadingsSeat {
   readonly at: string | undefined;
   readonly error: string | undefined;
   readonly sessionPercent: number | undefined;
+  /** The plugin's own text, such as `8:39pm (UTC)`. */
+  readonly sessionResets: string | undefined;
   readonly weekPercent: number | undefined;
   /** The plugin's own text, such as `Nov 27, 8pm (UTC)`. */
   readonly weekResets: string | undefined;
@@ -82,6 +84,7 @@ export function parseSeatReadings(body: unknown): ReadingsSeat[] {
         at: text(reading?.["at"]),
         error: text(reading?.["error"]),
         sessionPercent: number(session?.["percent"]),
+        sessionResets: text(session?.["resets"]),
         weekPercent: number(week?.["percent"]),
         weekResets: text(week?.["resets"]),
       },
@@ -139,9 +142,15 @@ function usableReading(
   if (!(age <= maxAgeMinutes * 60_000)) {
     return undefined;
   }
-  const weekResetsAt =
-    seat.weekResets === undefined ? undefined : parseResetText(seat.weekResets, at);
-  return { sessionPercent, weekPercent, weekResetsAt, at };
+  const resetTime = (resets: string | undefined) =>
+    resets === undefined ? undefined : parseResetText(resets, at);
+  return {
+    sessionPercent,
+    sessionResetsAt: resetTime(seat.sessionResets),
+    weekPercent,
+    weekResetsAt: resetTime(seat.weekResets),
+    at,
+  };
 }
 
 /**
@@ -156,14 +165,40 @@ function connectionState(status: string | undefined): ConnectionState {
 }
 
 /**
+ * Whether a `provider_quota` failure at `failedAt` marks the seat full now:
+ * when it came after the reading, or less than `fullMs` ago (readings lag
+ * behind, the board's audit rule 2). A 5-hour reset the reading reports
+ * between the failure and now ends it.
+ */
+export function quotaFull(
+  failedAt: string | undefined,
+  reading: SeatReading | undefined,
+  now: Date,
+  fullMs: number,
+): boolean {
+  if (failedAt === undefined) {
+    return false;
+  }
+  const failed = Date.parse(failedAt);
+  const reset =
+    reading?.sessionResetsAt === undefined ? Number.NaN : Date.parse(reading.sessionResetsAt);
+  if (reset > failed && reset <= now.getTime()) {
+    return false;
+  }
+  return (
+    reading === undefined || failed > Date.parse(reading.at) || now.getTime() - failed < fullMs
+  );
+}
+
+/**
  * The seats: every connection, named and read by the readings seat on it. One
  * that isn't `connected` (expired, revoked) stays in the list, marked, so its
  * agents get a reason to move (HAL-19394). A connection no readings seat names
  * keeps its id as its name and no reading, so nobody is moved onto it. `quotaAt` gives, per connection,
- * the newest `provider_quota` failure; it marks the seat full when it came
- * after the reading. After the board reset a seat by hand (`resets`,
+ * the newest `provider_quota` failure; `quotaFull` says when it marks the seat full. After the board reset a seat by hand (`resets`,
  * HAL-19490), a reading or quota failure from before the reset no longer
- * counts: the seat has no reading until the next one.
+ * counts: the seat has no reading until the next one. A seat in `waitingOn`
+ * has runs parked waiting for it, so it is full whatever its reading says.
  */
 export function buildSeats(
   connections: readonly Connection[],
@@ -172,6 +207,8 @@ export function buildSeats(
   now: Date,
   maxAgeMinutes: number,
   resets: SeatResets = {},
+  waitingOn: ReadonlySet<string> = new Set(),
+  quotaFullMinutes = 30,
 ): Seat[] {
   return connections
     .map((connection) => {
@@ -188,9 +225,8 @@ export function buildSeats(
         name: named?.name ?? connection.id,
         method: connection.method,
         reading,
-        quotaHit:
-          quota !== undefined &&
-          (reading === undefined || Date.parse(quota) > Date.parse(reading.at)),
+        quotaHit: quotaFull(quota, reading, now, quotaFullMinutes * 60_000),
+        waiting: waitingOn.has(connection.id),
         connection: connectionState(connection.status),
       };
     })

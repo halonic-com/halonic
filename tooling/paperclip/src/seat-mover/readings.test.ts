@@ -50,11 +50,13 @@ verifies("paperclip.seat-mover-job", () => {
       method: "subscription",
       reading: {
         sessionPercent: 42,
+        sessionResetsAt: "2026-11-26T11:39:00.000Z",
         weekPercent: 71,
         weekResetsAt: "2026-11-27T20:00:00.000Z",
         at: fresh.at,
       },
       quotaHit: false,
+      waiting: false,
       connection: "connected",
     });
   });
@@ -78,13 +80,31 @@ verifies("paperclip.seat-mover-job", () => {
     }
   });
 
-  test("a provider_quota failure after the reading marks the seat full; one before it doesn't", () => {
+  test("a provider_quota failure after the reading marks the seat full; one before it and over 30 minutes old doesn't", () => {
     const readings = parseSeatReadings(readingsBody(fresh));
     const connections = [connection("c-1")];
     const after = new Map([["c-1", "2026-11-26T09:55:00.000Z"]]);
     const before = new Map([["c-1", "2026-11-26T09:30:00.000Z"]]);
     expect(buildSeats(connections, readings, after, now, 45)[0]?.quotaHit).toBe(true);
     expect(buildSeats(connections, readings, before, now, 45)[0]?.quotaHit).toBe(false);
+  });
+
+  test("a provider_quota failure in the last 30 minutes marks the seat full even before a newer reading, until the reported 5-hour reset", () => {
+    const connections = [connection("c-1")];
+    // The reading at 09:47 lags: it shows 42% after a run failed on the seat's quota at 09:40.
+    const recent = new Map([["c-1", "2026-11-26T09:40:00.000Z"]]);
+    const lagging = parseSeatReadings(readingsBody(fresh));
+    expect(buildSeats(connections, lagging, recent, now, 45)[0]?.quotaHit).toBe(true);
+    const shorter = buildSeats(connections, lagging, recent, now, 45, {}, new Set(), 15);
+    expect(shorter[0]?.quotaHit).toBe(false);
+    // The reading reports the 5-hour window reset at 09:45, after the failure: the seat is free again.
+    const resetSince = parseSeatReadings(
+      readingsBody({
+        ...fresh,
+        usage: { ...fresh.usage, session: { percent: 42, resets: "9:45am (UTC)" } },
+      }),
+    );
+    expect(buildSeats(connections, resetSince, recent, now, 45)[0]?.quotaHit).toBe(false);
   });
 
   test("a revoked connection stays as a seat that isn't connected; one without a status is unknown; one no readings seat names has no reading", () => {

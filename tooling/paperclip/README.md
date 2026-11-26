@@ -1240,21 +1240,33 @@ minute, unless `seatMover.mode` is `off`, the job reads the seat readings plugin
 (`runtimeConfig.aiConnection`) and, from `heartbeat_runs`, the runs parked for
 a seat that never started and the `provider_quota` failures of the last hour.
 
-An agent leaves its seat at the 5-hour stop (80%, 70% for a reviewer), the
-weekly stop (88%), after a `provider_quota` failure on the seat since its
-reading, with runs parked on it, on an excluded seat or the paid API, beside a
-reviewer, as a heavy agent past the limit, as a running heavy agent on the
+An agent leaves its seat at the 5-hour stop (80%, 70% for a reviewer), at the
+weekly hard stop (95%), on a reserve seat (past the weekly stop, 88%) when it is
+a fast burner, after a `provider_quota` failure on the seat since its
+reading or in the last 30 minutes (until the 5-hour reset the reading reports),
+with runs parked on it or naming no seat, on an excluded seat or the paid API,
+as a running heavy agent beside a reviewer, as a heavy agent past the limit, as a running heavy agent on the
 quiet seat, or on a connection that isn't `connected` (expired or revoked). Every target passes the board's
-checklist (`src/seat-mover/checklist.ts`): (a) week below 88% unless the seat is
-on the reset-fill list or its weekly reset is under 24 hours away; (b) reviewers
-alone, on the seat with the most 5-hour room, and nobody joins them; (c) at
+checklist (`src/seat-mover/checklist.ts`): (a) week below 95%, and for a fast
+burner (`seatMover.fastBurners`) below 88% unless the seat's weekly reset is
+under 24 hours away; a reset-fill seat takes anyone; (b) reviewers
+alone (light agents may stay with them, but no other reviewer, running heavy
+agent or never-move agent), on an empty seat when one may take them, then the
+seat with the most 5-hour room, and nobody joins them; (c) at
 most two heavy agents a seat; (d) never an excluded seat (Admin, and the board
-adds its own); (e) never the paid API; (f) never a seat at its 5-hour stop;
+adds its own); (e) never the paid API; (f) never a seat at its 5-hour stop, counting 10% of the window
+(`seatMover.targetHeadroomPercent`) for the agent and each one the pass already
+sends there, so the next reading doesn't move them off again, or
+one with runs parked waiting for it or a fresh `provider_quota` failure;
 (g) for a running heavy agent, never the quiet seat (a seat an agent on
 `seatMover.pinned`, the seat starter or a timer agent, sits on).
-Among the legal seats, the one the pass has sent the fewest agents to comes
+Reviewers pick first, then the fast burners, then heavy agents, then everyone
+else. Among the legal seats, the one the pass has sent the fewest agents to comes
 first, so agents leaving one full seat spread out (HAL-19394). An agent no seat
-may take stays, and the board task hears of it once.
+may take stays, and the board task hears of it once. A paused agent is never
+moved, and an agent the mover moved less than two hours ago
+(`seatMover.moveCooldownMinutes`) moves again only when it is parked or its
+seat is full, not for who it sits with (the board's audit rules of 26 Nov).
 
 - `shadow` (the default): logs the plan and comments it on `seatMover.logTask`
   when it changes; moves nobody.

@@ -65,7 +65,7 @@ export const seatMoverConfigProperties = {
       },
       reviewers: list(
         "Reviewers",
-        "Url keys of the reviewers. Each sits alone, on the seat with the most 5-hour room; nobody joins a reviewer's seat.",
+        "Url keys of the reviewers. A reviewer never shares a seat with another reviewer, a running heavy agent or a never-move agent. It takes an empty seat when one has room, else a seat of light agents; nobody joins a reviewer's seat.",
         d.reviewers,
       ),
       heavy: list(
@@ -79,6 +79,11 @@ export const seatMoverConfigProperties = {
         title: "Heavy agents per seat",
         default: d.maxHeavyPerSeat,
       },
+      fastBurners: list(
+        "Fast burners",
+        "Url keys of the agents that burn a seat fastest. They pick a seat right after the reviewers and sit on a reserve seat (past the weekly stop) only when its weekly reset is less than the hours below away.",
+        d.fastBurners,
+      ),
       pinned: list("Never move", "Url keys of agents the mover never moves.", d.pinned),
       resetFill: list(
         "Reset-fill seats",
@@ -100,9 +105,22 @@ export const seatMoverConfigProperties = {
         "The same for a reviewer, who moves earlier (HAL-19202).",
         d.reviewerSessionMovePercent,
       ),
+      targetHeadroomPercent: percent(
+        "Room kept per moved agent",
+        "A seat takes a moved agent only while its 5-hour reading plus this much for that agent, and for each agent already sent there this pass, stays below the stop. Keeps the next reading from moving them off again.",
+        d.targetHeadroomPercent,
+      ),
+      quotaFullMinutes: {
+        type: "integer",
+        minimum: 1,
+        title: "Full after a quota failure (minutes)",
+        description:
+          "A seat a run failed on with provider_quota this recently is full, whatever its reading says, until the 5-hour reset its reading reports.",
+        default: d.quotaFullMinutes,
+      },
       weekMovePercent: percent(
         "Weekly stop",
-        "Agents move off, and never onto, a seat at this much of its week, unless it is a reset-fill seat or its weekly reset is less than the hours below away.",
+        "A seat at this much of its week is a reserve seat: only agents that aren't fast burners sit there, unless its weekly reset is less than the hours below away. Reset-fill seats take anyone.",
         d.weekMovePercent,
       ),
       resetSoonHours: {
@@ -113,9 +131,17 @@ export const seatMoverConfigProperties = {
       },
       weekHardStopPercent: percent(
         "Weekly hard stop",
-        "A seat whose weekly reset is soon still takes nobody at this much of its week (reset-fill seats excepted).",
+        "Nobody sits on a seat at this much of its week (reset-fill seats excepted).",
         d.weekHardStopPercent,
       ),
+      moveCooldownMinutes: {
+        type: "integer",
+        minimum: 1,
+        title: "Time between moves (minutes)",
+        description:
+          "An agent the mover moved this recently moves again only when it is parked or its seat is full, not for who it sits with.",
+        default: d.moveCooldownMinutes,
+      },
       readingMaxAgeMinutes: {
         type: "integer",
         minimum: 5,
