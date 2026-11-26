@@ -17,7 +17,14 @@ import type { ReviewerRoute } from "./handoff.ts";
 import { type HeldHead, withHeld } from "./held.ts";
 import { emptyMemory, isSelf, readMemory } from "./memory.ts";
 import { doneMessage, wakeMessage } from "./messages.ts";
-import { postponeUntil } from "./monitors.ts";
+import {
+  type DedupeReason,
+  dedupeReason,
+  dedupeWords,
+  isShortCheck,
+  type MonitorCheck,
+} from "./monitor-dedupe.ts";
+import { fallbackAheadMs, moveMonitor, postponeUntil } from "./monitors.ts";
 import { type Paperclip, type TaskRow, waitingRunStatuses } from "./paperclip.ts";
 import type { RebaseOnly } from "./rebase-only.ts";
 import { noReroute, rerouteStep } from "./reroute.ts";
@@ -62,6 +69,8 @@ export interface TickOptions {
   readonly acted?: ActionObserver;
   /** Whether a reviewer is parked or at a limit, by agent id (HAL-19203); without it, no review moves. */
   readonly limits?: ReviewerLimits | undefined;
+  /** A task's last kept monitor check, by identifier, to move a short check that adds nothing (HAL-20175); off when unset. */
+  readonly lastCheck?: (identifier: string) => Promise<MonitorCheck | undefined>;
 }
 
 /** Called with what the watcher read about one task its author holds. */
@@ -84,6 +93,10 @@ export interface TickSummary {
   readonly postponed: number;
   /** Monitors Paperclip refused to move; the log says why. */
   readonly postponeRefused: number;
+  /** Short checks moved because the watcher woke the author in the same pass (HAL-20175). */
+  readonly dedupedWake: number;
+  /** Short checks moved because nothing changed since the last monitor check (HAL-20175). */
+  readonly dedupedUnchanged: number;
   /** Tasks handed to their reviewer (HAL-17675). */
   readonly handedOff: number;
   /** Tasks warned about a push after an approval. */
@@ -274,37 +287,45 @@ async function act(options: TickOptions, task: TaskRow, decision: Decision): Pro
  * Only while one of its pull requests is open: once they are all closed, the
  * task is done or waits on its author. A refusal is logged and counted; it
  * doesn't fail the task, since its pull requests were still checked.
+ * The author's short check moves too when it would add nothing (HAL-20175).
  */
 async function keepMonitorBack(
   options: TickOptions,
   task: TaskRow,
   refs: TickRefs,
   decision: Decision,
-): Promise<"postponed" | "refused" | undefined> {
-  const until = postponeUntil(task.monitorNextCheckAt, options.now);
+): Promise<MonitorStep> {
+  const fallback = postponeUntil(task.monitorNextCheckAt, options.now);
+  const { lastCheck } = options;
+  const short = lastCheck !== undefined && isShortCheck(task.monitorNextCheckAt, options.now);
   // A parked task's monitor is its holder's own plan for when to pick it up.
-  if (decision.kind === "done" || until === undefined || task.parked === true) {
+  if (decision.kind === "done" || task.parked === true || (fallback === undefined && !short)) {
     return undefined;
   }
   const pulls = watchedPulls(task, refs.found, refs.owners).map((ref) => factsOf(ref, refs.facts));
   if (!pulls.some((pull) => pull.state === "open")) {
     return undefined;
   }
-  if (options.dryRun) {
-    options.log(`${task.identifier}: would move its monitor to ${until} (dry run)`);
-    return "postponed";
+  const reason =
+    fallback === undefined && lastCheck !== undefined
+      ? await dedupeReason(decision, pulls, () => lastCheck(task.identifier))
+      : undefined;
+  if (fallback === undefined && reason === undefined) {
+    return undefined;
   }
-  try {
-    if ((await options.paperclip.postponeMonitor(task.id, until)) === "unchanged") {
-      return undefined;
-    }
-    options.log(`${task.identifier}: moved its monitor to ${until}`);
-    return "postponed";
-  } catch (error) {
-    options.log(`${task.identifier}: couldn't move its monitor: ${(error as Error).message}`);
-    return "refused";
-  }
+  const until = fallback ?? new Date(options.now.getTime() + fallbackAheadMs).toISOString();
+  const lead =
+    reason === undefined
+      ? `${task.identifier}: `
+      : `Monitor dedupe: ${task.identifier}: ${dedupeWords[reason]}; `;
+  const moved = await moveMonitor(options, task.id, until, lead);
+  return moved === undefined ? undefined : { moved, ...(reason === undefined ? {} : { reason }) };
 }
+
+/** What moving a task's monitor did; `reason` is set when it was the author's short check. */
+type MonitorStep =
+  | { readonly moved: "postponed" | "refused"; readonly reason?: DedupeReason }
+  | undefined;
 
 /**
  * The review steps for a task the watcher had nothing else to say about:
@@ -358,6 +379,8 @@ const zero: Counts = {
   woken: 0,
   postponed: 0,
   postponeRefused: 0,
+  dedupedWake: 0,
+  dedupedUnchanged: 0,
   handedOff: 0,
   warned: 0,
   reviewWaits: 0,
@@ -397,8 +420,10 @@ async function checkTask(
     checked: 1,
     done: one(acted && decision.kind === "done"),
     woken: one(acted && decision.kind === "wake"),
-    postponed: one(monitor === "postponed"),
-    postponeRefused: one(monitor === "refused"),
+    postponed: one(monitor?.moved === "postponed" && monitor.reason === undefined),
+    postponeRefused: one(monitor?.moved === "refused"),
+    dedupedWake: one(monitor?.moved === "postponed" && monitor.reason === "wake"),
+    dedupedUnchanged: one(monitor?.moved === "postponed" && monitor.reason === "unchanged"),
     handedOff: one(review.handedOff),
     warned: one(review.warned),
     reviewWaits: one(waited.noted),
