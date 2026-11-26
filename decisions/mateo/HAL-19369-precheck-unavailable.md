@@ -3,6 +3,7 @@
 - Task: HAL-19369
 - Approval: Julian approved this edit of `paperclip.ready-for-review` on HAL-19369, comment 38a0fc23-7b8c-49c9-8167-625ffb96a91b; he reviews it and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:NNwMxMvsS4fvxcPM6XphlDs/SNFEI1flsuI0/lwk27acYkSGaU0QT7BpWb81YrcQhSszy+wHizQkgqY3cxGZDA==
 
 ## What changes
 
