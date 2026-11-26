@@ -213,6 +213,10 @@ export const paperclipRequests = {
   // each run's agent, status, start and the comments that woke it. The answer carries logs, errors
   // and wake text; the mapping keeps none of it.
   listIssueRuns: { method: "GET", path: "/api/issues/:task/runs" },
+  // Live events (`paperclip-client.live-events`, HAL-19338): the company's events socket, an
+  // upgrade only. `fetch` never sends it; only the transport's socket path does, with the key in
+  // the `Authorization` header and no query, so the key is never in an address.
+  liveEvents: { method: "GET", path: "/api/companies/:company/events/ws", upgrade: true },
 } as const satisfies Record<string, RequestRule>;
 
 /**
@@ -234,8 +238,8 @@ interface BodyRule {
 }
 
 /**
- * One row of the fixed list. A row sends a JSON body, a file, or neither, never both: the
- * `never` members make a row with both a type error.
+ * One row of the fixed list. A row sends a JSON body, a file, or neither, never both, and a
+ * WebSocket upgrade sends neither: the `never` members make any other mix a type error.
  */
 type RequestRule = {
   method: "GET" | "POST" | "PATCH" | "PUT";
@@ -245,11 +249,19 @@ type RequestRule = {
       /** For a write on a route that takes many fields: the only body it may send. */
       body?: BodyRule;
       upload?: never;
+      upgrade?: never;
     }
   | {
       /** For a file upload: the one file it may send, as multipart form data. */
       upload: UploadRule;
       body?: never;
+      upgrade?: never;
+    }
+  | {
+      /** For a WebSocket: sent only as an upgrade, by the transport's socket path, never by `fetch`. */
+      upgrade: true;
+      body?: never;
+      upload?: never;
     }
 );
 
@@ -385,6 +397,11 @@ export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
     allPrefixed &&
     pinned.every(([field, value]) => fields.get(field) === value)
   );
+}
+
+/** Whether row `name` is a WebSocket upgrade, which only the transport's socket path sends. */
+export function isUpgrade(name: PaperclipRequestName): boolean {
+  return (paperclipRequests[name] as RequestRule).upgrade === true;
 }
 
 /** Row `name`'s upload rule, or `undefined` for a row that sends no file. */

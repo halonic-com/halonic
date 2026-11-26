@@ -5,6 +5,7 @@ import {
   buildPath,
   fitsBody,
   fitsSegment,
+  isUpgrade,
   matchesRequest,
   type PaperclipRequestName,
   type PathValues,
@@ -149,6 +150,10 @@ export class PaperclipTransport {
       throw new PaperclipClientError("That request isn't on the request list.", "refused");
     }
     const { method } = paperclipRequests[name];
+    // An upgrade row goes only through `openSocket`, never through `fetch`.
+    if (isUpgrade(name)) {
+      throw new PaperclipClientError(`${method} ${name} is a WebSocket, not a request.`, "refused");
+    }
     const url = new URL(buildPath(name, details.path ?? {}), this.#origin);
     for (const [key, value] of Object.entries(details.query ?? {})) {
       url.searchParams.set(key, value);
@@ -163,6 +168,33 @@ export class PaperclipTransport {
     }
     const payload = payloadOf(name, details);
     return this.#guard((key) => this.#sendWith(key, name, url, payload, reader));
+  }
+
+  /**
+   * Opens WebSocket row `name` with `open`, under the same rules as {@link send}: the row must be
+   * an upgrade on the list, its IDs safe path segments, and the key goes through the guard into
+   * the `Authorization` header's value only. The address carries no query at all, so never a
+   * `?token=`. It is `wss`, or plain `ws` only where the origin may be plain `http` (this
+   * computer). `open` makes the connection and answers what came of it.
+   */
+  openSocket(
+    name: PaperclipRequestName,
+    path: PathValues,
+    open: (url: URL, authorization: string) => Promise<PaperclipAnswer>,
+  ): Promise<PaperclipAnswer> {
+    if (!Object.hasOwn(paperclipRequests, name) || !isUpgrade(name)) {
+      throw new PaperclipClientError("That request isn't a WebSocket on the list.", "refused");
+    }
+    const { method } = paperclipRequests[name];
+    const url = new URL(buildPath(name, path), this.#origin);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    if (!matchesRequest(name, method, url.pathname)) {
+      throw new PaperclipClientError(`${method} ${name} isn't on the request list.`, "refused");
+    }
+    return this.#guard((key) => {
+      checkKey(key);
+      return open(url, `Bearer ${key}`);
+    });
   }
 
   async #sendWith(

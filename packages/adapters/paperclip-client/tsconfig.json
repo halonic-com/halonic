@@ -1,5 +1,5 @@
 {
-  "extends": "@halonicjs/tooling-config/tsconfig/host.json",
+  "extends": "@halonicjs/tooling-config/tsconfig/node.json",
   "include": [
     "src"
   ],
