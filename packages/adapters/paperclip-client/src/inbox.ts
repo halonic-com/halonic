@@ -1,5 +1,6 @@
-import type { Attachment, InboxItem, MessagingProject } from "@halonicjs/ports";
+import type { Attachment, InboxItem, MessagingId, MessagingProject } from "@halonicjs/ports";
 import { PaperclipBoardRequests } from "./board-requests.ts";
+import { assignedToPerson, boardTaskToItem } from "./board-tasks.ts";
 import { cardFilesOf, type FilesOf, PaperclipCardFiles } from "./card-files.ts";
 import { approvalToItem, cardToItem } from "./cards.ts";
 import { mayBeChannel } from "./channels.ts";
@@ -92,8 +93,10 @@ export class PaperclipInbox {
     this.#webLinks = webLinks;
     this.#steppers = steppers;
     this.#boardRequests = new PaperclipBoardRequests(reader, company);
-    // A channel's members line is in its description, which the task list's index view leaves out.
-    this.#tasks = new PaperclipTaskList(reader, company, { readWhole: mayBeChannel });
+    // A channel's members line and a person's task's text are in the description, which the task
+    // list's index view leaves out.
+    const readWhole = (task: JsonRecord) => mayBeChannel(task) || assignedToPerson(task);
+    this.#tasks = new PaperclipTaskList(reader, company, { readWhole });
     this.files = new PaperclipCardFiles(reader);
   }
 
@@ -114,7 +117,8 @@ export class PaperclipInbox {
 
   /**
    * Every inbox item, newest first, each with its task's project when the
-   * task has one. `tasks` is the open-task list when the caller already
+   * task has one, and the open tasks assigned to the person that wait on
+   * nothing else. `tasks` is the open-task list when the caller already
    * read it in this poll, so one poll reads it once.
    */
   async list(context: MapContext, tasks?: readonly JsonRecord[]): Promise<InboxItem[]> {
@@ -130,12 +134,37 @@ export class PaperclipInbox {
       this.#steppers === undefined
         ? read
         : await this.#steppers.refresh(read, (item) => context.ids.read(item.id, "card")?.[0]);
+    const others = [...approvals, ...decisions, ...boardRequests, ...cards];
     const items = newestFirst(
-      [...approvals, ...decisions, ...boardRequests, ...cards],
+      [...others, ...this.#boardTasks(context, projectOf, open, others)],
       (item) => item.createdAt,
     );
     this.files.remember(context.ids, items);
     return items;
+  }
+
+  /**
+   * The open tasks assigned to the person. A task with a card or an approval that waits on them
+   * shows as that item only, so nothing shows twice.
+   */
+  #boardTasks(
+    context: MapContext,
+    projectOf: ProjectOf,
+    tasks: readonly JsonRecord[],
+    others: readonly InboxItem[],
+  ): InboxItem[] {
+    const waiting = new Set<MessagingId>(
+      others.flatMap((item) =>
+        item.state.kind === "open" && item.work !== undefined ? [item.work] : [],
+      ),
+    );
+    return tasks.flatMap((task) => {
+      const webLink = this.#webLinks.task(text(task, "identifier"));
+      const item = boardTaskToItem(context, task, webLink);
+      return item === undefined || waiting.has(item.id)
+        ? []
+        : [withProject(item, projectOf(text(task, "projectId")))];
+    });
   }
 
   /** The company's projects, read once per list, as a lookup. */
