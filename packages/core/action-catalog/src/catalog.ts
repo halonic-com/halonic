@@ -1,4 +1,4 @@
-import type { StepperCatalog, StepperDefinition } from "@halonicjs/action-steppers";
+import { routesOf, type StepperCatalog, type StepperDefinition } from "@halonicjs/action-steppers";
 import { catalogEntries } from "./catalog.generated.ts";
 
 /** A shipped definition with the SHA-256 of its source file, which records carry (architecture note, 4.2). */
@@ -28,12 +28,17 @@ export function sourceHashOf(id: string, version: number): string | undefined {
 /**
  * The catalog shipped with this Halonic. It holds whole definitions only:
  * no step types and no browser origins yet, so a request can name a shipped
- * definition but can't build an on-demand stepper from blocks. It has no
- * routes yet either: the generated route list lives in the desktop shell.
+ * definition but can't build an on-demand stepper from blocks. A step's route
+ * is built from its definition by `routesOf`, as the shell's generated route
+ * list is, and the shell checks every send against its own list.
  */
 export const shippedCatalog: StepperCatalog = {
   definition: (id, version) => findEntry(id, version)?.definition,
   stepType: () => undefined,
   browserOrigins: [],
-  route: () => undefined,
+  route: (id, version, step) => {
+    const definition = findEntry(id, version)?.definition;
+    if (definition === undefined) return undefined;
+    return routesOf(definition).find((route) => route.step === step);
+  },
 };

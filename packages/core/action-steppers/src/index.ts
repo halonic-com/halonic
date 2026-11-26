@@ -39,6 +39,7 @@ export {
   serverSessionPrompt,
 } from "./server-session-launch.ts";
 export { type ServerTarget, validateServerTarget } from "./server-target.ts";
+export { routesOf } from "./step-routes.ts";
 export {
   type BlockPreview,
   type PreviewNames,
@@ -62,7 +63,11 @@ export {
 export { planResume, type ResumePlan, type StepOutcome } from "./stepper-resume.ts";
 export { type StepperRisk, stepperRisks } from "./stepper-risk.ts";
 export type {
+  ApiStep,
   BrowserOrigin,
+  CallBodyField,
+  CallStep,
+  CheckStep,
   GuidedStep,
   InputStep,
   ManualForm,
@@ -77,6 +82,7 @@ export {
   type ChoiceParameter,
   type IntegerParameter,
   type ParameterField,
+  type ParameterSchema,
   strictParameters,
   type TextParameter,
 } from "./strict-parameters.ts";

@@ -106,6 +106,8 @@ function stepLines(step: Step, values: Values): string[] {
     }
     case "input":
       return inputLines(step, values);
+    case "call":
+    case "check":
     case "script":
       return [
         `Open ${fillAddress(step.manual.url, values)}`,
@@ -201,8 +203,9 @@ export function renderManualGuide(
 }
 
 /**
- * Why a definition can't be done by hand: every `script` step needs a manual
- * form with an `https` page and at least one instruction, and every `guided`
+ * Why a definition can't be done by hand: every API step (`call`, `check` or
+ * `script`) needs a manual form with an `https` page and at least one
+ * instruction, and every `guided`
  * step at least one instruction. The catalog's tests call it for each
  * definition, so one without a manual form fails before it ships.
  *
@@ -214,7 +217,7 @@ export function manualFormProblems(definition: StepperDefinition): string[] {
     if (step.kind === "guided" && step.instructions.length === 0) {
       return [`${where}: a guided step needs at least one instruction`];
     }
-    if (step.kind !== "script") return [];
+    if (step.kind === "guided" || step.kind === "input") return [];
     // The type requires `manual`, but a definition built from JSON or with a cast can still lack it.
     const manual: unknown = step.manual;
     if (manual === undefined || manual === null)

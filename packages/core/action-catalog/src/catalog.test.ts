@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { manualFormProblems } from "@halonicjs/action-steppers";
+import { manualFormProblems, routesOf } from "@halonicjs/action-steppers";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { shippedCatalog, shippedDefinitions, sourceHashOf } from "./catalog.ts";
@@ -38,9 +38,20 @@ verifies("action-catalog.discovery", () => {
       expect(sourceHashOf("github.unknown", 1)).toBeUndefined();
     });
 
-    it("has no step types and no routes yet, since the shell holds the route list", () => {
+    it("has no step types, and gives a step the route its definition builds", () => {
       expect(shippedCatalog.stepType("github.upload-social-preview", 1)).toBeUndefined();
-      expect(shippedCatalog.route("github.upload-social-preview", 1, 1)).toBeUndefined();
+      expect(shippedCatalog.route("github.upload-social-preview", 1, 1)).toMatchObject({
+        kind: "guided",
+        definition: "github.upload-social-preview",
+        step: 1,
+        address: "https://github.com/{owner}/{repo}/settings",
+      });
+      expect(shippedCatalog.route("github.upload-social-preview", 1, 2)).toBeUndefined();
+      expect(shippedCatalog.route("github.unknown", 1, 1)).toBeUndefined();
+    });
+
+    it.each(shippedDefinitions)("$key builds a route for each of its steps", (entry) => {
+      expect(() => routesOf(entry.definition)).not.toThrow();
     });
 
     it("carries the SHA-256 of a definition's source and the shared file it imports", () => {
