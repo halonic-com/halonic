@@ -6,6 +6,7 @@
 - Approval: Julian approves this note in his review of this pull request on HAL-19241, because
   Liam wrote it
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:0HrzBUAG4BYO2dWgWcHGvM/FgqpSPh/g0Sa9IagoEHS0MhFwAr4GCRX58zpDBsZ++WMnpDNwtKwzMaPPqITMAA==
 
 ## What changes
 
