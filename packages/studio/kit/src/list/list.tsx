@@ -49,6 +49,7 @@ export function List<Id extends string>({
   chevrons,
   columns,
   flush: flushProp,
+  plain = false,
   empty,
   loading = false,
   skeleton = {},
@@ -57,7 +58,7 @@ export function List<Id extends string>({
 }: ListProps<Id>) {
   checkColumns(columns);
   const phone = usePresentation() === "phone";
-  const look: ListLook = (flushProp ?? phone) ? "flush" : "bordered";
+  const look = lookOf(plain, flushProp ?? phone);
   const headingId = useId();
   const sections = sectionsOf(rows, groups);
   const allRows = sections.flatMap((section) => section.rows);
@@ -184,7 +185,7 @@ function GridTable<Id extends string>({
       role="grid"
       {...labelProps}
       aria-multiselectable={selection?.multiple === true ? true : undefined}
-      className="w-full table-fixed border-separate border-spacing-0"
+      className={`w-full table-fixed border-separate ${look === "plain" ? "border-spacing-x-0 border-spacing-y-1" : "border-spacing-0"}`}
       {...grid.gridProps}
       onFocus={() => {
         grid.gridProps.onFocus();
@@ -208,6 +209,14 @@ function GridTable<Id extends string>({
       ))}
     </table>
   );
+}
+
+/** The rows' look: `plain` over `flush`, else the bordered box. */
+function lookOf(plain: boolean, flush: boolean): ListLook {
+  if (plain) {
+    return "plain";
+  }
+  return flush ? "flush" : "bordered";
 }
 
 /** A run of rows in one box: a group under its heading, or all of a List's `rows`. */

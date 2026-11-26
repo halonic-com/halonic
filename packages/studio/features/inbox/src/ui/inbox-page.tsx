@@ -350,6 +350,8 @@ export function InboxView({
                 )
               }
               {...currentRow(open?.key ?? agent.openKey)}
+              // The Messenger's plain rows (`inbox.plain-rows`); still a grid, so the arrows work.
+              plain
               empty={
                 phone
                   ? { title: nothingWaiting.title, description: nothingWaiting.description }

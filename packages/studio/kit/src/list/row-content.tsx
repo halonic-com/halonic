@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { GridCellProps } from "../grid-navigation/use-grid-navigation.ts";
 import { ChevronRightIcon } from "../icons/chevron-right-icon.tsx";
 import { lineActionClasses } from "../line-frame/line-frame.tsx";
+import { UnreadMark } from "../plain-list/unread-mark.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
 import type { AnyListRow, ListColumn, ListRowAction } from "./list-props.ts";
 import { RowColumns } from "./row-columns.tsx";
@@ -58,10 +59,23 @@ function titleColour(row: AnyListRow): string {
   return row.muted === true ? "text-fg-muted" : "text-fg";
 }
 
+/**
+ * The title's weight: medium, or in a `plain` List regular, and semibold while unread (600, since
+ * at 14px only 600 reads as unread; Sofia, HAL-19512).
+ */
+function titleWeight(row: AnyListRow, plain: boolean): string {
+  if (!plain) {
+    return "text-body-strong";
+  }
+  return row.unread === undefined ? "text-body" : "text-body font-semibold";
+}
+
 /** The title, with its `titleEnd` at the line's end when the row has one. */
-function TitleLine({ row }: { readonly row: AnyListRow }) {
+function TitleLine({ row, plain }: { readonly row: AnyListRow; readonly plain: boolean }) {
   const title = (
-    <span className={`${titleFit(row)} text-body-strong ${titleColour(row)}`}>{row.title}</span>
+    <span className={`${titleFit(row)} ${titleWeight(row, plain)} ${titleColour(row)}`}>
+      {row.title}
+    </span>
   );
   if (row.titleEnd === undefined) {
     return title;
@@ -80,6 +94,8 @@ export interface RowContentProps {
   readonly row: AnyListRow;
   readonly phone: boolean;
   readonly dense: boolean;
+  /** The List's `plain` look: the title's weight and the unread mark follow the row's `unread`. */
+  readonly plain: boolean;
   /** The row opens a page of its own: it ends in a chevron (a phone List's `chevrons`). */
   readonly chevron: boolean;
   /**
@@ -128,6 +144,30 @@ function RowActions({
 }
 
 /**
+ * In a `plain` List, an unread row's meta line with the unread mark at its end, under the title
+ * line's end as `PlainRow`'s; any other row's meta line as it is.
+ */
+function UnreadLine({
+  row,
+  plain,
+  children,
+}: {
+  readonly row: AnyListRow;
+  readonly plain: boolean;
+  readonly children: ReactNode;
+}) {
+  if (!plain || row.unread === undefined) {
+    return children;
+  }
+  return (
+    <span className="flex items-center gap-2">
+      <span className="flex min-w-0 flex-1 flex-col">{children}</span>
+      <UnreadMark unread={row.unread} />
+    </span>
+  );
+}
+
+/**
  * The main cell's inside: the icon or avatar, the title, the meta line, what goes under it, the
  * actions and the trailing part.
  */
@@ -135,6 +175,7 @@ export function RowContent({
   row,
   phone,
   dense,
+  plain,
   chevron,
   reasonId,
   afterCheck,
@@ -168,8 +209,16 @@ export function RowContent({
     >
       <Leading row={row} small={dense && !phone} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TitleLine row={row} />
-        <MetaLine row={row} text={meta} id={reasonId} chip={trailingBelow ? trailing : undefined} />
+        <TitleLine row={row} plain={plain} />
+        <UnreadLine row={row} plain={plain}>
+          <MetaLine
+            row={row}
+            text={meta}
+            id={reasonId}
+            chip={trailingBelow ? trailing : undefined}
+            full={plain && row.unread !== undefined}
+          />
+        </UnreadLine>
         {row.under}
         {row.actions === undefined || row.actions.length === 0 ? null : (
           <RowActions actions={row.actions} actionCell={actionCell} />
