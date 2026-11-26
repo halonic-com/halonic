@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { fakeGitHub, recording } from "../pr-watcher/fakes.test-helper.ts";
 import { prStatus } from "./pr-status.ts";
 import { rebaseCheck, rebaseCheckText } from "./rebase-pr.ts";
+import { requiredAnswers } from "./required-workflows.test-helper.ts";
 
 const repo = "halonic-com/halonic";
 const head = "7651f8c1e4af38752f56d353156c5dd19ff54984";
@@ -30,7 +31,7 @@ function pr4588({
   approvals = ["Liam: approved on head `7651f8c`"],
 }: Pull4588 = {}) {
   const recorded = recording("review-finding");
-  return fakeGitHub(recorded, {
+  return fakeGitHub(recorded, requiredAnswers(repo, 4588, head), {
     [`${pulls}/4588`]: {
       ...(recorded[`${pulls}/4588`] as object),
       head: { sha: head, ref, repo: { full_name: repo } },
