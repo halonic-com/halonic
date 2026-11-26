@@ -2,7 +2,7 @@
 
 - Approval: the board approved quick ask on HAL-18594 (25 Nov); Liam approved the plan on HAL-18625 (https://paperclip.halonic.com/HAL/issues/HAL-18625), with this PR on its own task, HAL-18787; Julian reviews the security and Liam signs this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:q/Zba/TEUmJg5szSYyRZplE6dRuSLKzW/TLTJehsEzSFs8UcO/bol2f1NjYHSeMJeiC0MmUNG7JgYU2U5LQTCQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:460qvte7+jHrvK0LbdBPRf+q/1RhOZptv6PiOwZ5ZE4HcT45a500WplFWAoGYhKKIa6N2I7N0XYG/GMNnM9lAw==
 
 ## What changes
 
