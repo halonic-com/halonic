@@ -4,6 +4,7 @@ import type {
   AttachmentRead,
   Conversation,
   Message,
+  MessageReactions,
   MessagingAgent,
   MessagingId,
   MessagingRefusal,
@@ -91,6 +92,8 @@ export class Messenger {
   readonly now: () => Date;
   /** What the agents are doing, for the activity panel; none where no agent host serves it. */
   readonly activity: ActivityReads | undefined;
+  /** The reactions on the chats' messages; none where no agent host keeps them (`messenger.reactions`). */
+  readonly reactions: MessageReactions | undefined;
   private readonly messaging: AgentMessaging;
   /** The Inbox as last read, shared by the rows, Needs you and a channel's questions. */
   private readonly inbox: InboxFacts;
@@ -104,12 +107,14 @@ export class Messenger {
     now: () => Date = () => new Date(),
     activity?: ActivityReads,
     marks: ReadMarks = new StoredReadMarks(null),
+    reactions?: MessageReactions,
   ) {
     this.messaging = messaging;
     this.now = now;
     this.activity = activity;
     this.marks = marks;
     this.inbox = new InboxFacts(() => messaging.listInboxItems());
+    this.reactions = reactions;
     this.quickActions = new QuickActions(messaging);
     this.channels = new ChannelAdmin(messaging);
   }
