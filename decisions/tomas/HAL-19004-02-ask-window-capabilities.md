@@ -2,6 +2,7 @@
 
 - Approval: Liam approved the plan on HAL-19004 (https://paperclip.halonic.com/HAL/issues/HAL-19004), following up the reviews of #6271 on HAL-19003; Julian reviews the security and Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Ebo2x6cC4xxA7crBh3emkAokU7jEzx5lT6MCRo9fdWtRnbqiPWS6d1X3fm/OmIAZzNDLHQMqSBVbFNGEBlEdCg==
 
 ## What changes
 
