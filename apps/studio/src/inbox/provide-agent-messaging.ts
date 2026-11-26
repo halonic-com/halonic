@@ -1,6 +1,7 @@
 import {
   AgentHostActivity,
   AgentHostMessaging,
+  AgentHostReactions,
   AgentHostSyncDiagnostics,
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
@@ -14,6 +15,7 @@ import {
   AgentActivityService,
   AgentMessagingService,
   HostActiveAccount,
+  MessageReactionsService,
   SharedChanges,
   SyncDiagnosticsService,
   scopeToAccount,
@@ -33,8 +35,9 @@ export const agentMessagingFocusKey: ServiceKey<Disposable> = serviceKey<Disposa
  * Search and the overview with its daily recap read the same one through
  * their own keys. All of them see only the active account's sources.
  * The Messenger's activity panel reads the same host's runs and pull
- * requests through `AgentActivityService`, and Settings › Sync diagnostics
- * its sync counters through `SyncDiagnosticsService`.
+ * requests through `AgentActivityService`, Settings › Sync diagnostics
+ * its sync counters through `SyncDiagnosticsService`, and the reactions on
+ * a chat's messages through `MessageReactionsService`.
  * It also tells the host when the window comes to the front or goes to the
  * back, so the host polls every 30 seconds or every 5 minutes. Without an
  * agent host nothing is provided, and the features show no agent items.
@@ -98,5 +101,6 @@ export function provideAgentMessagingReaders(
   services.provide(OverviewMessagingService, scoped);
   services.provide(AgentActivityService, new AgentHostActivity(transport, location));
   services.provide(SyncDiagnosticsService, new AgentHostSyncDiagnostics(transport));
+  services.provide(MessageReactionsService, new AgentHostReactions(transport, location));
   return messaging;
 }

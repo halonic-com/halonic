@@ -149,6 +149,9 @@ verifies("agent-host.paperclip-key", () => {
         // Comments that mention the board (HAL-19669), pinned in board-mentions.test.ts.
         "boardMentions",
         "prWatcherPass",
+        // Message reactions (HAL-19139), pinned in reactions.test.ts.
+        "listReactions",
+        "setReaction",
         // Workflow task writes (HAL-17975), pinned in tasks.test.ts.
         "getTask",
         "wakeTask",

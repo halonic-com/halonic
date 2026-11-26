@@ -26,6 +26,7 @@ export {
 } from "./live-events.ts";
 export type { LiveEvent } from "./live-messages.ts";
 export { type SyncCollectionName, touchedBy } from "./live-touches.ts";
+export { PaperclipReactions, type ReactionsContext } from "./reactions.ts";
 export {
   findRequest,
   type PaperclipRequestName,

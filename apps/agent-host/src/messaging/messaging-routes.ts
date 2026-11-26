@@ -1,7 +1,13 @@
 import type { ServerResponse } from "node:http";
 import type { SyncScheduler } from "@halonicjs/host-paperclip-sync";
 import { readInboxAnswer } from "@halonicjs/host-server";
-import type { AgentMessaging, AnswerResult, AttachmentRead, TeamRunsQuery } from "@halonicjs/ports";
+import {
+  type AgentMessaging,
+  type AnswerResult,
+  type AttachmentRead,
+  reactionEmoji,
+  type TeamRunsQuery,
+} from "@halonicjs/ports";
 import { type Infer, type Schema, s } from "@halonicjs/schema-kit";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
@@ -40,6 +46,10 @@ const connectionsBody = s.object({ workspace }).strict();
 const isoTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const runsBody = s
   .object({ workspace, agent: id.optional(), since: s.string().regex(isoTime).optional() })
+  .strict();
+const reactionsBody = s.object({ workspace, conversation: id }).strict();
+const reactBody = s
+  .object({ workspace, message: id, emoji: s.enum([...reactionEmoji]), on: s.boolean() })
   .strict();
 const disconnectBody = s
   .object({ workspace, connection: s.string().regex(paperclipConnectionNamePattern) })
@@ -85,6 +95,11 @@ type ReadBody = Infer<typeof readBody>;
  *   `since`, kept in memory only (`agent-host.team-activity-routes`).
  * - `POST /v1/messaging/pull-requests` answers `{ items }`: each source's
  *   `PullRequestList`, under the team hub's freshness rules.
+ * - `POST /v1/messaging/reactions` with `{ conversation }` and
+ *   `POST /v1/messaging/react` with `{ message, emoji, on }` answer
+ *   `{ result }`: a conversation's message reactions, or the person's own
+ *   added or removed (`agent-host.message-reactions-routes`). A source that
+ *   keeps none answers `not-supported`.
  * - `POST /v1/paperclip/connections` answers `{ workspace, connections }`:
  *   the workspace's real path, as the host binds keys to it, and its
  *   connection files with their labels, addresses, companies and states,
@@ -139,6 +154,12 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
     })),
     inWorkspace("/v1/messaging/pull-requests", connectionsBody, async (messaging) => ({
       items: await messaging.activity.pullRequests(),
+    })),
+    inWorkspace("/v1/messaging/reactions", reactionsBody, async (messaging, body) => ({
+      result: await messaging.reactions.list(body.conversation),
+    })),
+    inWorkspace("/v1/messaging/react", reactBody, async (messaging, body) => ({
+      result: await messaging.reactions.react(body.message, body.emoji, body.on),
     })),
     inWorkspace("/v1/messaging/answer", answerBody, async (messaging, body) => {
       const answer = readInboxAnswer(body.answer);

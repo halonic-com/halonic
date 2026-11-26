@@ -336,6 +336,17 @@ export {
   VendorErrorText,
 } from "./llm-provider.ts";
 export {
+  isReactionEmoji,
+  type MessageReaction,
+  type MessageReactions,
+  messageReactionsVersion,
+  type ReactionEmoji,
+  type ReactionsByMessage,
+  type ReactionsRead,
+  type ReactResult,
+  reactionEmoji,
+} from "./message-reactions.ts";
+export {
   type MessagingSync,
   messagingSyncVersion,
   type SyncBatch,

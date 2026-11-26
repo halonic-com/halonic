@@ -159,3 +159,20 @@ export function toMessage(
 export function newestFirst<T>(items: readonly T[], key: (item: T) => string): T[] {
   return [...items].sort((left, right) => key(right).localeCompare(key(left)));
 }
+
+/** The tasks as work items, newest first. */
+export function workOf(context: MapContext, tasks: readonly JsonRecord[]): WorkItem[] {
+  const work = tasks.flatMap((record) => toWork(context, record) ?? []);
+  return newestFirst(work, (item) => item.updatedAt);
+}
+
+/** Each agent's name by its Paperclip ID, from the agent list; a record without both is left out. */
+export function agentNamesOf(records: readonly JsonRecord[]): Map<string, string> {
+  return new Map(
+    records.flatMap((record) => {
+      const id = text(record, "id");
+      const name = text(record, "name");
+      return id === undefined || name === undefined ? [] : [[id, name] as const];
+    }),
+  );
+}

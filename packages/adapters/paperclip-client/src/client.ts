@@ -32,8 +32,9 @@ import { PaperclipConversations } from "./conversations.ts";
 import { PaperclipFullAnswers } from "./full-answers.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
-import { asRecords, type JsonRecord, text } from "./json.ts";
-import { type MapContext, newestFirst, toAgent, toMessage, toWork } from "./map.ts";
+import { asRecords, type JsonRecord } from "./json.ts";
+import { agentNamesOf, type MapContext, newestFirst, toAgent, toMessage, workOf } from "./map.ts";
+import { PaperclipReactions } from "./reactions.ts";
 import { PaperclipReader } from "./reader.ts";
 import { type RefreshLists, RefreshReads } from "./refresh-reads.ts";
 import { isSafeSegment } from "./requests.ts";
@@ -151,13 +152,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const records = asRecords(
       await this.#reader.read("listAgents", { path: { company: this.#company } }),
     );
-    this.#agentNames = new Map(
-      records.flatMap((record) => {
-        const id = text(record, "id");
-        const name = text(record, "name");
-        return id === undefined || name === undefined ? [] : [[id, name] as const];
-      }),
-    );
+    this.#agentNames = agentNamesOf(records);
     const context = this.#context();
     return records.flatMap((record) => toAgent(context, record) ?? []);
   }
@@ -204,7 +199,8 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   async listWork(): Promise<readonly WorkItem[]> {
-    return this.#refreshReads.take("work") ?? this.#workFrom(await this.#inbox.openTasks());
+    const kept = this.#refreshReads.take("work");
+    return kept ?? workOf(this.#context(), await this.#inbox.openTasks());
   }
 
   /**
@@ -355,7 +351,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const lists: RefreshLists = {
       inboxItems: await this.#inboxFrom(tasks),
       conversations: await this.#conversations.list(this.#context(), tasks),
-      work: this.#workFrom(tasks),
+      work: workOf(this.#context(), tasks),
       channels: this.#browseFrom(tasks),
       ...(agents === undefined ? {} : { agents }),
     };
@@ -438,7 +434,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const inbox = await this.#inboxFrom(tasks);
     const conversations = await this.#conversations.list(this.#context(), tasks);
     const asOf = this.#inbox.tasksAsOf() ?? this.#now().toISOString();
-    return { agents, conversations, inbox, work: this.#workFrom(tasks), asOf };
+    return { agents, conversations, inbox, work: workOf(this.#context(), tasks), asOf };
   }
 
   async #inboxFrom(tasks: readonly JsonRecord[] | undefined): Promise<InboxItem[]> {
@@ -456,16 +452,20 @@ export class PaperclipMessaging implements AgentMessaging {
     return newestFirst(channels, (conversation) => conversation.updatedAt);
   }
 
-  #workFrom(tasks: readonly JsonRecord[]): WorkItem[] {
-    const context = this.#context();
-    const work = tasks.flatMap((record) => toWork(context, record) ?? []);
-    return newestFirst(work, (item) => item.updatedAt);
-  }
-
   async #knowAgents(): Promise<void> {
     if (this.#agentNames.size === 0) {
       await this.#agentsRead.run(() => this.#readAgents());
     }
+  }
+
+  /** This connection's message reactions (`paperclip-client.reactions`), named as its messages are. */
+  reactions(): PaperclipReactions {
+    return new PaperclipReactions({
+      reader: this.#reader,
+      company: this.#company,
+      context: () => this.#context(),
+      knowAgents: () => this.#knowAgents(),
+    });
   }
 
   #context(): MapContext {

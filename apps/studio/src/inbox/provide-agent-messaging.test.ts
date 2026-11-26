@@ -6,6 +6,7 @@ import {
   ActiveAccountService,
   AgentActivityService,
   AgentMessagingService,
+  MessageReactionsService,
 } from "@halonicjs/studio-services";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
@@ -66,11 +67,34 @@ it("provides the activity panel's reads from the same host, for the workspace", 
   expect(bodies).toEqual([["POST /v1/messaging/runs", { workspace: "/work/acme" }]]);
 });
 
+it("provides the reactions from the same host, for the workspace", async () => {
+  const services = new ServiceRegistry();
+  const bodies: unknown[] = [];
+  const read = { outcome: "read", reactions: {} };
+  const transport: AgentHostTransport = {
+    request: async (route, body) => {
+      bodies.push([route, body]);
+      return { status: 200, body: { result: read } };
+    },
+    stream: () => Promise.reject(new Error("No stream route is used here.")),
+  };
+  provideAgentMessaging(services, transport, "/work/acme", {});
+
+  expect(await services.get(MessageReactionsService).list("paperclip:acme:chat:t")).toEqual(read);
+  expect(bodies).toEqual([
+    [
+      "POST /v1/messaging/reactions",
+      { workspace: "/work/acme", conversation: "paperclip:acme:chat:t" },
+    ],
+  ]);
+});
+
 it("provides no activity reads without an agent host", () => {
   const services = new ServiceRegistry();
   provideAgentMessaging(services, undefined, "/work/acme", {});
 
   expect(services.has(AgentActivityService)).toBe(false);
+  expect(services.has(MessageReactionsService)).toBe(false);
 });
 
 /**

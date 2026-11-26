@@ -91,6 +91,8 @@ export const agentHostRequestRoutes = [
   "GET /v1/sync/diagnostics",
   "POST /v1/messaging/runs",
   "POST /v1/messaging/pull-requests",
+  "POST /v1/messaging/reactions",
+  "POST /v1/messaging/react",
   "POST /v1/messaging/server-engine/state",
   "POST /v1/messaging/server-engine/pair",
   "POST /v1/messaging/server-engine/pair-status",

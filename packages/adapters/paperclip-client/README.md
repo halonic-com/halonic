@@ -147,6 +147,8 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `chatNotes` | `GET /api/plugins/halonic.agent-tools/api/chat-notes/{task}?companyId=` | when a chat has a comment with no author: which comments the front bot posted, shown as the chat agent's automatic messages |
 | `boardMentions` | `GET /api/plugins/halonic.agent-tools/api/board/mentions?companyId=&since=` | every Inbox read: the comments on open tasks that mention the signed-in person with Paperclip's mention link, shown as `comment` items |
 | `prWatcherPass` | `GET /api/plugins/halonic.agent-tools/api/pr-watcher/pass?companyId=` | the served `pr-watcher` workflow: the last watcher pass's rule input and the actions the watcher took (`at`, `input`, `actions`, `truncated`) |
+| `listReactions` | `GET /api/plugins/halonic.agent-tools/api/reactions/{task}?companyId=` | a chat's message reactions, kept by the agent-tools plugin; 404 reads as not supported |
+| `setReaction` | `POST /api/plugins/halonic.agent-tools/api/reactions/{task}?companyId=` | adds or removes the person's own reaction; the body is exactly `{ commentId, emoji, on }` |
 | `getTask` | `GET /api/issues/{task}` | before a task write: the task's ID and company; once per chat whose full answer is linked by identifier: that identifier |
 | `wakeTask` | `PATCH /api/issues/{task}` with exactly `{ assigneeAgentId, status: "todo", comment }` | a workflow wakes an agent on a task |
 | `finishTask` | `PATCH /api/issues/{task}` with exactly `{ status: "done", comment }` | a workflow closes a task as done |

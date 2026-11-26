@@ -74,6 +74,7 @@ export {
   type HostAgentConnectionsOptions,
   signInPollMs,
 } from "./host-agent-connections.ts";
+export { MessageReactionsService } from "./message-reactions.ts";
 export {
   type InboxOpenRequests,
   inboxKeyOf,
