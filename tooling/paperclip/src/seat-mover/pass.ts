@@ -65,7 +65,11 @@ function connectionOf(agent: AgentRow): string | undefined {
   return connection?.["mode"] === "delegated" && typeof id === "string" ? id : undefined;
 }
 
-/** Where each agent sits, and whether it has runs parked on that seat. */
+/**
+ * Where each agent sits, and whether it has runs parked on that seat. Only a
+ * run pinned to the seat counts: a run that names no seat is never released
+ * after a move, so it would move the agent again every pass.
+ */
 export function agentPlaces(
   agents: readonly AgentRow[],
   parked: readonly ParkedRun[],
@@ -84,7 +88,7 @@ export function agentPlaces(
           (run) =>
             run.agentId === agent.id &&
             connectionId !== undefined &&
-            (run.connectionId === undefined || run.connectionId === connectionId),
+            run.connectionId === connectionId,
         ),
       };
     });

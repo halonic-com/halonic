@@ -112,7 +112,7 @@ export const plugin = definePlugin({
       waits.pass(companyId),
     );
     ctx.jobs.register("precheck-wake", () => precheckJob.dispatch());
-    // Off unless the board sets a mode; reads and moves through Paperclip's own API (HAL-19354).
+    // Does nothing until the board sets `readingsPlugin`; reads and moves through Paperclip's own API (HAL-19354).
     const seatJob = scheduledPerCompany(ctx, roster, "seat-move", (companyId, now) =>
       seatMovePass(ctx, (url, init) => fetch(url, init), companyId, now),
     );

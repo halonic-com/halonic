@@ -31,7 +31,7 @@ function scenario(seed: number): { seats: Seat[]; agents: AgentPlace[] } {
 }
 
 verifies("paperclip.seat-mover-checklist", () => {
-  test("a batch never leaves a break on a seat it sends agents to, over 500 random states", () => {
+  test("a batch never adds a break on a seat it sends agents to, over 500 random states", () => {
     let moved = 0;
     let stuck = 0;
     for (let seed = 1; seed <= 500; seed += 1) {
@@ -43,6 +43,7 @@ verifies("paperclip.seat-mover-checklist", () => {
           placement.set(one.id, one.connectionId);
         }
       }
+      const start = new Map(placement);
       // Each move, in order, passes the whole checklist against the placement so far.
       for (const move of plan.moves) {
         expect(
@@ -53,7 +54,11 @@ verifies("paperclip.seat-mover-checklist", () => {
       }
       const bySeat = new Map(seats.map((one) => [one.connectionId, one]));
       const targets = plan.moves.map((move) => move.to.connectionId);
-      expect(breaks(targets, bySeat, placement, agents, settings), `seed ${seed}`).toEqual([]);
+      // Only breaks the seats already had before the batch may remain.
+      const before = breaks(targets, bySeat, start, agents, settings);
+      for (const after of breaks(targets, bySeat, placement, agents, settings)) {
+        expect(before, `seed ${seed}`).toContainEqual(after);
+      }
       expect(plan.refused).toEqual([]);
       moved += plan.moves.length;
       stuck += plan.stuck.length;

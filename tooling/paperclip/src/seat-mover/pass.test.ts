@@ -249,6 +249,19 @@ verifies("paperclip.seat-mover-job", () => {
       expect(run.comments).toEqual([expect.stringContaining("Released 2 parked runs")]);
     });
 
+    test("a parked run that names no seat moves nobody, so the agent doesn't move every pass", async () => {
+      const agents = [row("kim", "A")];
+      const fake = world({ A: [30, 10], B: [20, 10] }, agents);
+      const parked: ParkedRun[] = [
+        { id: "r", agentId: "a-kim", issueId: "i", connectionId: undefined, retryAt: undefined },
+      ];
+      const run = deps(fake, agents, { settings: { mode: "act" }, parked });
+      await seatMoverPass(run.deps);
+      await seatMoverPass(run.deps);
+      expect(fake.writes).toEqual([]);
+      expect(run.comments).toEqual([]);
+    });
+
     test("tells the board once when an agent must move and no seat may take it, and moves nobody", async () => {
       const agents = [row("kim", "A")];
       const fake = world({ A: [85, 10], Admin: [0, 0], Week: [0, 90] }, agents);

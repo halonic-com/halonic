@@ -189,6 +189,8 @@ export function planMoves(
 class Batch {
   readonly seats: ReadonlyMap<string, Seat>;
   readonly agents: readonly AgentPlace[];
+  /** Where agents sat before the batch. */
+  readonly start: Placement;
   readonly placement = new Map<string, string>();
   readonly moves: Move[] = [];
   readonly stuck: Stuck[] = [];
@@ -210,6 +212,7 @@ class Batch {
         this.placement.set(agent.id, agent.connectionId);
       }
     }
+    this.start = new Map(this.placement);
   }
 
   reasonFor(agent: AgentPlace): MoveReason | undefined {
@@ -267,12 +270,20 @@ function sharesWithReviewer(
 }
 
 /**
- * The last check: the seats the batch sends agents to must break nothing in
- * the placement it leaves. If one would, nobody moves this pass.
+ * The last check: the batch must add no break on the seats it sends agents
+ * to. If it would, nobody moves this pass. A break those seats already had
+ * (say a third heavy agent that is stuck) doesn't stop the batch, or one
+ * stuck agent would stop every move, every pass.
  */
 function finish(batch: Batch): SeatPlan {
   const { moves, stuck } = batch;
   const targets = moves.map((move) => move.to.connectionId);
-  const refused = breaks(targets, batch.seats, batch.placement, batch.agents, batch.settings);
+  const breaksIn = (placement: Placement) =>
+    breaks(targets, batch.seats, placement, batch.agents, batch.settings);
+  const before = breaksIn(batch.start);
+  const refused = breaksIn(batch.placement).filter(
+    (found) =>
+      !before.some((had) => had.connectionId === found.connectionId && had.rule === found.rule),
+  );
   return { moves: refused.length > 0 ? [] : moves, stuck, refused };
 }

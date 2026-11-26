@@ -225,6 +225,24 @@ verifies("paperclip.seat-mover-checklist", () => {
       ]);
     });
 
+    test("a break the seats already had, such as a stuck third heavy agent, stops no other move", () => {
+      const seats = [seat("Three", 10, 10), seat("Full", 85, 10), seat("Empty", 20, 10)];
+      const agents = [
+        agent("elena", "Three"),
+        agent("priya", "Three"),
+        agent("tomas", "Three"),
+        agent("kim", "Full"),
+        agent("liam", "Full"),
+      ];
+      const plan = planMoves(seats, agents, settings, now);
+      // Tomas may go nowhere: Full is past the 5-hour stop and Empty is the reviewer's.
+      expect(plan.stuck.map((stuck) => `${stuck.agent.key} ${stuck.reason}`)).toEqual([
+        "tomas c-heavy-limit",
+      ]);
+      expect(movesOf(plan)).toEqual(["liam → Empty", "kim → Three"]);
+      expect(plan.refused).toEqual([]);
+    });
+
     test("a reviewer with only occupied seats left stays and is stuck", () => {
       const seats = [seat("A", 75, 10), seat("B", 0, 0)];
       const plan = planMoves(seats, [agent("liam", "A"), agent("kim", "B")], settings, now);
