@@ -12,6 +12,7 @@
 mod address;
 mod check;
 mod connect_result;
+mod dev_server;
 #[cfg(test)]
 mod fixtures;
 mod hello;
@@ -28,6 +29,7 @@ pub use check::{
     CheckedAddress, ConnectError, HELLO_TIMEOUT, Resolver, SystemResolver, check_address,
 };
 pub use connect_result::{ConnectResult, HelloBody, HelloReply, MAX_HELLO_BYTES};
+pub use dev_server::{Build, DevServer, is_own_page, navigation_destination_with};
 pub use hello::{AppVersions, Hello, HelloOutcome, NotHalonic, compare_versions, read_hello};
 pub use home_network::{Reach, reach};
 pub use local_network::{call_needs_local_network, lookup_needs_local_network};

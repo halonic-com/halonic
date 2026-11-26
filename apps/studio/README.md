@@ -99,6 +99,51 @@ pnpm exec tauri android build --debug --apk --target aarch64
 CI builds it for arm64 and x86_64 in the `android` job and keeps the APK as
 a download on the run for seven days.
 
+## Run the desktop app from a clone
+
+These steps take a fresh clone to a running debug Studio. They are written for
+Windows 11 in PowerShell; on macOS and Linux the steps are the same, without
+`.exe`. You need Git, Rust (the toolchain in `src-tauri/rust-toolchain.toml`
+installs itself) and Tauri's prerequisites for your system (on Windows: the
+Microsoft C++ Build Tools and WebView2, which Windows 11 has).
+
+1. Install from the repo root: `pnpm install`. The repo needs pnpm 12.18 or
+   a newer pnpm 12: `devEngines` in the root `package.json` refuses any other,
+   because the repo's settings in `pnpm-workspace.yaml` (the catalog and the
+   three-day wait for new releases) and its lockfile are written for pnpm 12,
+   and older versions would read them differently. `packageManager` names the
+   exact version, which pnpm 9.7 and newer switch to by themselves. If yours
+   stops with a version error instead, run `npx pnpm@12.18.0 install` once.
+2. Build the agent host, the program the shell starts beside itself:
+
+   ```powershell
+   cd apps/agent-host
+   pnpm build:sea
+   ```
+
+3. Put it where the debug shell looks for it, next to its own executable.
+   `tauri dev` doesn't copy it there, and Cargo leaves it in place across
+   builds, so this is needed once, and again after the agent host changes:
+
+   ```powershell
+   cd ../studio
+   New-Item -ItemType Directory -Force src-tauri/target/debug
+   Copy-Item ../agent-host/dist/halonic-agent-host.exe src-tauri/target/debug/
+   ```
+
+4. Quit any installed Halonic (Quit Halonic in its tray menu). Halonic runs once, so a
+   debug build started next to it only hands its start to the installed one.
+5. Start it: `pnpm exec tauri dev`. Tauri builds the page into `dist/studio`,
+   serves that folder on `http://127.0.0.1:1430` and opens the window on it.
+   The navigation guard keeps that address as the app's own page only in a
+   debug build (`studio.src-tauri.crates.connect.dev-server-page`). After you
+   change the page, run `pnpm build` here again and reload the window, or
+   start `tauri dev` again; Rust changes rebuild the shell by themselves.
+
+To try the bundled page as an installed Halonic loads it, run
+`pnpm exec tauri build --debug --no-bundle` instead of step 5, then start
+`src-tauri/target/debug/halonic-studio.exe`.
+
 ## The Windows installer
 
 `src-tauri/windows/installer.nsi` is Halonic's own NSIS template, based on
