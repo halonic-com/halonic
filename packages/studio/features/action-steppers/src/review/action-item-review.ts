@@ -163,6 +163,8 @@ function stepAction(
       const method = step.kind === "check" ? "GET" : step.method;
       return { kind: "call", call: { method, address: fill(step.path, parameters, true) } };
     }
+    case "sign-in":
+      return { kind: "sign-in", phase: step.phase };
     case "script":
       // A script step runs once the catalog has its call route; until then the review names it.
       return route?.kind === "call"

@@ -102,8 +102,33 @@ export interface CheckStep {
 /** A step that calls the service's API: a reviewed `call` or `check`, or a ToolScript's `script`. */
 export type ApiStep = CallStep | CheckStep | ScriptStep;
 
+/**
+ * The parts of a service's own sign-in, one step each (architecture note,
+ * row 15): `start` shows the code and the countdown, `approve` opens the
+ * approval page the start answered, `keep` waits for the approval and puts
+ * the key in the keychain, and `test` says who is signed in and revokes a
+ * test sign-in.
+ */
+export type SignInPhase = "start" | "approve" | "keep" | "test";
+
+/**
+ * One part of a service's own sign-in, run through the `ServiceSignIn` port
+ * in the foreground only (architecture note, 6.7). It isn't an API step: it
+ * sends no reviewed call and has no route, and the approval page comes from
+ * the sign-in's own answer, never from a template, so a definition can't
+ * name another host (Liam's approval on HAL-17545).
+ */
+export interface SignInStep {
+  kind: "sign-in";
+  /** Only Paperclip: another service is a reviewed change to the port. */
+  service: "paperclip";
+  phase: SignInPhase;
+  /** How to do this part by hand, for the manual guide. */
+  manual: ManualForm;
+}
+
 /** One step of a stepper definition. */
-export type Step = GuidedStep | InputStep | ApiStep;
+export type Step = GuidedStep | InputStep | ApiStep | SignInStep;
 
 /** Something a stepper touches, shown before anything runs, such as GitHub repository `acme/app`. */
 export interface StepperTarget {

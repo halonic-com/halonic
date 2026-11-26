@@ -98,6 +98,7 @@ export {
   idleProgram,
   readText,
 } from "./fake-sandbox-session.ts";
+export { FakeServiceSignIn, type FakeServiceSignInOptions } from "./fake-service-sign-in.ts";
 export { FakeTeamStatus, type FakeTeamStatusOptions } from "./fake-team-status.ts";
 export {
   type FakeToolScript,
@@ -286,6 +287,12 @@ export {
   secretsContract,
   tokenStoreContract,
 } from "./secrets.ts";
+export {
+  type MakeServiceSignIn,
+  type ServiceSignInHarness,
+  type ServiceSignInSetup,
+  serviceSignInContract,
+} from "./service-sign-in.ts";
 export {
   definitionWriteMethods,
   type MakeTargetCapabilityHarness,

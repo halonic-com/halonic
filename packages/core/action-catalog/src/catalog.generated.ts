@@ -12,6 +12,7 @@ import { definition as npmClaimPlaceholder } from "./npm/claim-placeholder.ts";
 import { definition as npmRenewTrustedPublisher } from "./npm/renew-trusted-publisher.ts";
 import { definition as npmSetTrustedPublisher } from "./npm/set-trusted-publisher.ts";
 import { definition as openrouterAddCredit } from "./openrouter/add-credit.ts";
+import { definition as paperclipConnectAndTest } from "./paperclip/connect-and-test.ts";
 import { definition as playFillDataSafety } from "./play/fill-data-safety.ts";
 import { definition as playSetUpClosedTest } from "./play/set-up-closed-test.ts";
 import { definition as registrarSetNameservers } from "./registrar/set-nameservers.ts";
@@ -65,6 +66,10 @@ export const catalogEntries = {
   "openrouter/add-credit": {
     definition: openrouterAddCredit,
     sourceHash: "76e5859453dfc2e0422ebe3314ded7ebe9c25e7d9ba8c7bf30c35dbde552f443",
+  },
+  "paperclip/connect-and-test": {
+    definition: paperclipConnectAndTest,
+    sourceHash: "17513dd30f629d9a462d286a11bfea51978ea3c9363fbd32094503e7e45c8f5e",
   },
   "play/fill-data-safety": {
     definition: playFillDataSafety,

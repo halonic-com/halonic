@@ -73,6 +73,8 @@ export type {
   ManualForm,
   ResultField,
   ScriptStep,
+  SignInPhase,
+  SignInStep,
   Step,
   StepperCatalog,
   StepperDefinition,
