@@ -39,6 +39,7 @@ verifies("paperclip-client.shadow-reads", () => {
       expect(Object.fromEntries(activity?.query ?? [])).toEqual({
         entityType: "approval",
         entityId: approvalId,
+        limit: "500",
       });
     });
 
