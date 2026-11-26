@@ -27,7 +27,6 @@ import { ConnectorTable } from "./connector/connector-table.ts";
 import { connectorPlaces } from "./connector-places.ts";
 import { hostDoctorRoutes } from "./doctor/host-doctor-routes.ts";
 import { type EngineIo, engineCommand } from "./engine/engine-command.ts";
-import { redactStandardError } from "./engine/secret-redactor.ts";
 import { RunLedger } from "./gateway/run-ledger.ts";
 import { googleRoutes } from "./google/google-routes.ts";
 import { harnessFolders } from "./harness/harness-folders.ts";
@@ -76,7 +75,7 @@ import { hostKeychainOf } from "./secrets/host-keychain.ts";
 import { healthRoute } from "./server/health-route.ts";
 import { type HostServices, relayPortForServing, serveHost } from "./serving-modes.ts";
 import { hostIntegrationSignIns } from "./sign-in/host-sign-ins.ts";
-import { takeStandardOutput } from "./stdio/standard-output.ts";
+import { standardIo } from "./stdio/standard-io.ts";
 import { openTerminal } from "./terminal/open-terminal.ts";
 import { hostThisComputer } from "./this-computer/host-this-computer.ts";
 import { thisComputerRoutes } from "./this-computer/this-computer-routes.ts";
@@ -103,17 +102,6 @@ export interface HostIo {
    * on, `write` and anything else that prints go to standard error.
    */
   takeOutput(): Writable;
-}
-
-/** The host's own standard input, output and error. */
-function standardIo(): HostIo {
-  return {
-    input: process.stdin,
-    write: (text) => process.stdout.write(text),
-    writeError: (text) => process.stderr.write(text),
-    redactStandardError: (redactor) => redactStandardError(redactor),
-    takeOutput: () => takeStandardOutput(),
-  };
 }
 
 /** The first line the host prints when it serves: where it listens, and its token. */
