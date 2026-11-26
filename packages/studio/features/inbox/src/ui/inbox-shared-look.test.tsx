@@ -132,7 +132,7 @@ verifies("inbox.agent-asks", () => {
     const { root } = await openInbox(fakeRuns([]).runs, messaging);
     await open(rowTitled(root, "Ship 0.2 today?"));
     const card = root.querySelector("section") as HTMLElement;
-    expect(card.querySelector("p")?.textContent).toBe("CChief · Chief of Staff asks");
+    expect(card.querySelector("p")?.textContent).toBe("Chief · Chief of Staff asks");
     expect(card.textContent?.split("Ship 0.2 today?")).toHaveLength(2);
   });
 
@@ -158,7 +158,29 @@ verifies("inbox.agent-asks", () => {
     messaging.listAgents = () => Promise.reject(new Error("fetch failed"));
     const { root } = await openInbox(fakeRuns([]).runs, messaging);
     await open(rowTitled(root, "Ship 0.2 today?"));
-    expect(root.querySelector("section p")?.textContent).toBe("CChief asks");
+    expect(root.querySelector("section p")?.textContent).toBe("Chief asks");
+  });
+});
+
+verifies("inbox.header-avatar", () => {
+  it("puts the asker's 40px picture before who asks and the title", async () => {
+    const { messaging } = acme("Ship 0.2 today?");
+    const { root } = await openInbox(fakeRuns([]).runs, messaging);
+    await open(rowTitled(root, "Ship 0.2 today?"));
+    const card = root.querySelector("section") as HTMLElement;
+    const picture = card.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(picture.textContent).toBe("C");
+    expect(picture.className.split(" ")).toContain("size-10");
+    const beside = picture.nextElementSibling as HTMLElement;
+    expect(beside.querySelector("p")?.textContent).toBe("Chief · Chief of Staff asks");
+    expect(beside.querySelector("h2")?.textContent).toBe("Ship 0.2 today?");
+  });
+
+  it("keeps the list's rows at 28px", async () => {
+    const { messaging } = acme("Ship 0.2 today?");
+    const { root } = await openInbox(fakeRuns([]).runs, messaging);
+    const mark = rowTitled(root, "Ship 0.2 today?").querySelector('[aria-hidden="true"]');
+    expect(mark?.className.split(" ")).toContain("size-7");
   });
 });
 

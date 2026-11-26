@@ -20,7 +20,7 @@ import {
   TextArea,
   waitingSince,
 } from "@halonicjs/studio-kit";
-import { useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import {
   agentItemBody,
   agentItemPageLink,
@@ -140,13 +140,14 @@ export function AgentItemCard({
   return (
     <section aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
-        <Asker from={item.from} agents={agents} />
-        <CardHeader
-          titleId={titleId}
-          title={agentItemTitle(item)}
-          heading={heading}
-          since={[label, since].filter((part) => part != null).join(" · ")}
-        />
+        <Asker from={item.from} agents={agents}>
+          <CardHeader
+            titleId={titleId}
+            title={agentItemTitle(item)}
+            heading={heading}
+            since={[label, since].filter((part) => part != null).join(" · ")}
+          />
+        </Asker>
         {work === undefined ? null : <p className="text-small text-fg-muted">{workLine(work)}</p>}
         <AgentBody text={agentItemBody(item)} />
         <AgentAttachments attachments={item.attachments} read={readAttachment} />
@@ -257,20 +258,29 @@ function AgentBody({ text }: { readonly text: string }) {
   return text === "" ? null : <AgentMarkdown text={text} />;
 }
 
-/** Who asks, with their picture, over the title; nothing for an item you wrote yourself. */
+/**
+ * The item's header: who asks, over the title, with their 40px picture before both, as the
+ * Messenger's chat header has it (HAL-19192, `inbox.header-avatar`). An item you wrote yourself
+ * has the title alone.
+ */
 function Asker({
   from,
   agents,
+  children,
 }: {
   readonly from: MessagingAuthor;
   readonly agents: readonly MessagingAgent[];
+  readonly children: ReactNode;
 }) {
-  if (from.kind === "me") return null;
+  if (from.kind === "me") return <>{children}</>;
   return (
-    <p className="flex items-center gap-2 text-small text-fg-muted">
-      <Avatar name={from.name} />
-      {askerLine(from, agents)}
-    </p>
+    <div className="flex items-start gap-3">
+      <Avatar name={from.name} size="header" />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="text-small text-fg-muted">{askerLine(from, agents)}</p>
+        {children}
+      </div>
+    </div>
   );
 }
 

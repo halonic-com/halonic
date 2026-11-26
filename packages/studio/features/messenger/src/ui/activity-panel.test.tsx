@@ -176,3 +176,16 @@ verifies("messenger.activity-panel", () => {
     });
   });
 });
+
+verifies("messenger.one-panel", () => {
+  it("joins the activity panel beside the chat with a line, not a card of its own", async () => {
+    const { page } = await chiefsChat(working);
+    const aside = panel(page) as HTMLElement;
+    const classes = aside.className.split(" ");
+
+    expect(classes).toEqual(expect.arrayContaining(["w-80", "border-s", "border-border"]));
+    expect(classes.some((name) => name.startsWith("rounded"))).toBe(false);
+    expect(classes).not.toContain("border");
+    expect((aside.parentElement as HTMLElement).className.split(" ")).not.toContain("gap-2");
+  });
+});
