@@ -16,12 +16,14 @@ export const liamFiles: readonly string[] = [
   "biome.json",
   ".changeset/config.json",
   "SECURITY.md",
-  // Julian doesn't approve a change to his own scope.
-  "tooling/paperclip/src/reviewer-paths.ts",
-  "tooling/paperclip/src/reviewer-paths.test.ts",
+  // Julian doesn't approve a change to his own scope, nor to the code that counts his and Nora's approvals.
   "tooling/paperclip/requirements/reviewer-paths.md",
+  "tooling/paperclip/src/merge-control/approval.ts",
+  "tooling/paperclip/src/merge-control/signed.ts",
+  "tooling/paperclip/src/pr-tools/approvals.ts",
+  "tooling/paperclip/requirements/routine-review.md",
+  "tooling/paperclip/src/routine-review.test.ts",
   // What the live Merger's loader needs from them (HAL-18282).
-  "tooling/paperclip/src/reviewer-paths-standalone.test.ts",
   "tooling/paperclip/requirements/reviewer-paths-standalone.md",
   // Who covers each role: the routing is a trust root (HAL-17982).
   "tooling/paperclip/src/routing.ts",
@@ -49,6 +51,8 @@ export const liamFolders: readonly string[] = [
   "docs/adr/",
   // The router's provider catalog and hard rules change what a run may do (HAL-16998).
   "packages/host/router/",
+  // A prefix, not a folder: this file, its tests and any file split off next to it (HAL-19246).
+  "tooling/paperclip/src/reviewer-paths",
 ];
 
 /** Words that make a code path Liam's; tests, Markdown and wording files don't count. */
@@ -335,28 +339,79 @@ function isLiamPackageChange(pull: RoutedPull): boolean {
   );
 }
 
-/**
- * The role that reviews a pull request: `second-reviewer` when it fits all
- * of the second reviewer's limits (Julian's, HAL-14809), otherwise
- * `code-reviewer`. The paths, words and sizes stay here; who covers each
- * role comes from the routing (`routing.ts`).
- */
-export function reviewerRoleFor(pull: RoutedPull): "second-reviewer" | "code-reviewer" {
-  if (
+/** Whether only the code reviewer may approve: Julian's limits (HAL-14809, HAL-18459) don't fit. */
+function needsCodeReviewer(pull: RoutedPull): boolean {
+  return (
     pull.sensitive ||
     overLineLimit(pull) !== undefined ||
     pull.files.some(isLiamPath) ||
     isLiamPackageChange(pull)
-  ) {
+  );
+}
+
+/**
+ * Folders the routine reviewer doesn't approve alone, on top of the code
+ * reviewer's paths (the board's decision on HAL-18424, 26 Nov): the core
+ * building blocks, the host and the spec helper the guard runs on.
+ */
+export const routineExcludedFolders: readonly string[] = [
+  "packages/core/",
+  "packages/host/",
+  "packages/testing/spec/",
+];
+
+/** A package's public interface: what its `src/index.ts` exports. */
+function isPublicInterface(path: string): boolean {
+  return /(^|\/)src\/index\.[cm]?tsx?$/.test(path);
+}
+
+/**
+ * Why the routine reviewer (Nora, HAL-19246) can't approve this pull request
+ * alone, or null when it can: it fits the second reviewer's limits and
+ * touches none of `routineExcludedFolders` and no public interface. A new
+ * package already needs the code reviewer (its `package.json` has no base).
+ * The PR watcher, the Agent tools plugin and the Merger's gate all call
+ * this, so they count the same approvals.
+ */
+export function routineRefusal(pull: RoutedPull): string | null {
+  if (needsCodeReviewer(pull)) {
+    return "outside the second reviewer's limits";
+  }
+  const excluded = pull.files.find((path) =>
+    routineExcludedFolders.some((folder) => path.startsWith(folder)),
+  );
+  if (excluded !== undefined) {
+    return `touches ${excluded}`;
+  }
+  const publicInterface = pull.files.find(isPublicInterface);
+  if (publicInterface !== undefined) {
+    return `changes a public interface (${publicInterface})`;
+  }
+  return null;
+}
+
+/** The roles that review a pull request on `halonic`, narrowest first. */
+export type ReviewRole = "routine-reviewer" | "second-reviewer" | "code-reviewer";
+
+/**
+ * The role that reviews a pull request: `routine-reviewer` when the routine
+ * reviewer may approve it alone (`routineRefusal`, HAL-19246),
+ * `second-reviewer` when it fits the second reviewer's limits (Julian's,
+ * HAL-14809), otherwise `code-reviewer`. The paths, words and sizes stay
+ * here; who covers each role comes from the routing (`routing.ts`).
+ */
+export function reviewerRoleFor(pull: RoutedPull): ReviewRole {
+  if (needsCodeReviewer(pull)) {
     return "code-reviewer";
   }
-  return "second-reviewer";
+  return routineRefusal(pull) === null ? "routine-reviewer" : "second-reviewer";
 }
 
 /**
  * The agent who reviews a pull request: its role (`reviewerRoleFor`),
  * covered by the person the routing names. Without a routing that is
- * `julian` or `liam`, as before; a refused routing is no routing.
+ * `julian` or `liam`, as before (the routine reviewer's role stays with
+ * Julian until Nora runs); a refused routing is no routing.
  */
 export function reviewerFor(pull: RoutedPull): "julian" | "liam";
 export function reviewerFor(pull: RoutedPull, routing: Routing | undefined): string;

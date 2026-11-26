@@ -6,6 +6,37 @@ Who reviews what is in the root `AGENTS.md` ("Review") and in
 full review of the whole repository before every release is in
 [release-review.md](release-review.md).
 
+## Who reviews what
+
+`reviewerFor` in `tooling/paperclip/src/reviewer-paths.ts` picks one of three
+roles by the paths and size of a pull request, and `pr_status` names who
+covers it. **One reviewer per pull request:** send the task to the reviewer
+`pr_status` names, not to whoever seems safest, and the others don't review it
+too. A reviewer who gets a pull request outside their scope passes it on.
+
+| Role | Who | Approves alone |
+| --- | --- | --- |
+| Routine reviewer | Nora (Julian until she runs) | Everything the second reviewer may approve, except `packages/core/`, `packages/host/`, `packages/testing/spec/` and a public interface (`src/index.ts`) |
+| Second reviewer | Julian | Everything outside the maintainer's paths and the security words, up to 1500 changed lines of code (800 in the kernel and the event types) |
+| Maintainer | Liam | Everything else: the maintainer's paths, security and release pull requests, anything that changes what a run may do |
+
+Tests, Markdown and wording files don't count toward the line limits. The
+exact lists are `paperclip.routine-review` and `paperclip.reviewer-paths` in
+`tooling/paperclip/requirements/`.
+
+On a pull request outside its scope, the routine reviewer may post a first
+pass of findings; the role `pr_status` names still gives the signed approval.
+The second reviewer keeps approving within its own scope, and its approval
+counts on routine pull requests too. The routine reviewer never approves a
+pull request from its own branch. A decision note is still signed by the
+maintainer (or, for the maintainer's own pull request, the second reviewer)
+right after the routine reviewer's approval, in one quick step.
+
+**Audit.** There is no shadow period (the board's decision of 26 Nov). The
+maintainer reads the routine reviewer's approvals afterwards, and the board
+then reviews how it did. An escaped `[blocker]` or `[major]` goes on the
+maintainer's review task and can narrow the scope again.
+
 ## Tag every finding
 
 A finding is something the author should change or decide. Start every

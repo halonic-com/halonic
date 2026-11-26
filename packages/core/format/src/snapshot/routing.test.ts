@@ -30,6 +30,8 @@ verifies("format.workspace-routing", () => {
       roles: { "code-reviewer": "liam", "second-reviewer": "julian" },
       areas: { "engine-and-cli": "priya" },
     });
+    const routine = readSnapshot(withRouting({ roles: { "routine-reviewer": "nora" } }));
+    expect(routine.ok && routine.value.routing?.roles).toEqual({ "routine-reviewer": "nora" });
     const empty = readSnapshot(withRouting({}));
     expect(empty.ok && empty.value.routing).toEqual({ roles: {}, areas: {} });
   });

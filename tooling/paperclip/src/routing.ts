@@ -19,6 +19,7 @@ export type { Routing };
 export const routingRoles: readonly RoutingRole[] = [
   "code-reviewer",
   "second-reviewer",
+  "routine-reviewer",
   "clarifier",
   "merge-captain",
 ];
@@ -30,9 +31,16 @@ export const agentNamePattern = /^[a-z][a-z0-9-]{0,39}$/;
 export const defaultRoles: Readonly<Record<RoutingRole, string>> = {
   "code-reviewer": "liam",
   "second-reviewer": "julian",
+  // Nora takes it once she runs (HAL-19246, no shadow trial); until then Julian keeps it.
+  "routine-reviewer": "julian",
   // Today the clarifier is a plugin setting and the merge captain is the code reviewer.
   clarifier: "liam",
   "merge-captain": "liam",
+};
+
+/** Who covers a role the routing leaves out: the routine reviewer's work falls back to the second reviewer. */
+const fallbackRoles: Readonly<Partial<Record<RoutingRole, RoutingRole>>> = {
+  "routine-reviewer": "second-reviewer",
 };
 
 function isRole(role: string): role is RoutingRole {
@@ -46,7 +54,8 @@ function agentName(name: unknown): string | undefined {
 
 /**
  * The agent who covers a role: from the routing when it names one, today's
- * person without a routing, and the code reviewer for an unknown role or
+ * person without a routing, the second reviewer for a routine review the
+ * routing leaves out, and the code reviewer for an unknown role or another
  * one the routing leaves out.
  *
  * @param role - the role, such as `second-reviewer`
@@ -58,6 +67,10 @@ export function personFor(role: string, routing: Routing | undefined): string {
     return isRole(role) ? defaultRoles[role] : defaultRoles["code-reviewer"];
   }
   const named = isRole(role) ? agentName(routing.roles[role]) : undefined;
+  const fallback = isRole(role) ? fallbackRoles[role] : undefined;
+  if (named === undefined && fallback !== undefined) {
+    return personFor(fallback, routing);
+  }
   return named ?? agentName(routing.roles["code-reviewer"]) ?? defaultRoles["code-reviewer"];
 }
 
