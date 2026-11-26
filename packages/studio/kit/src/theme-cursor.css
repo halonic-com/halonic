@@ -7,8 +7,9 @@
  *
  * In base and inside :where(), so a part's own `cursor-*` class still wins: a drag handle's
  * `cursor-col-resize`, a canvas port's `cursor-crosshair`. A text field keeps its text cursor, as
- * no selector here names it. cursor.test.ts holds the same list of tags and roles, and fails a
- * clickable element the list doesn't cover unless it carries `cursor-pointer` or another cursor.
+ * no selector here names it. The Studio app's cursor.test.ts holds the same list of tags and roles,
+ * checks this block against it, and fails a clickable element the list doesn't cover unless it
+ * carries `cursor-pointer` or another cursor.
  */
 @layer base {
   :where(

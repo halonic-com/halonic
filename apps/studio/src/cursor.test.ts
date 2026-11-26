@@ -7,8 +7,13 @@ import { describe, expect, it } from "vitest";
  * controls and the clickable roles below; this check catches what that rule can't see: an element
  * with an `onClick` that is none of those and has no cursor of its own, and a `cursor-default` or
  * `cursor-auto` class, which would take the pointer away again. It reads the kit, the shell, every
- * Studio feature and the Studio app, so a new screen is held to it with no list to edit.
+ * Studio feature and the Studio app, so a new screen is held to it with no list to edit. It lives
+ * in the app, not the kit, because the app depends on all of those: a change to any of them
+ * selects this test and misses Turbo's cache.
  */
+
+/** The Studio packages' folder, from this file. */
+const studioPackages = "../../../packages/studio/";
 
 /** The tags theme-cursor.css gives the pointer. An `a` counts only with an `href`. */
 const pointerTags = ["button", "summary", "select"];
@@ -144,8 +149,35 @@ function isCovered(file: string): boolean {
 
 /** The source folders of every Studio feature. */
 function featureFolders(): string[] {
-  const features = new URL("../../features/", import.meta.url);
-  return readdirSync(features).map((name) => `../../features/${name}/src/`);
+  const features = new URL(`${studioPackages}features/`, import.meta.url);
+  return readdirSync(features).map((name) => `${studioPackages}features/${name}/src/`);
+}
+
+/** The selectors of theme-cursor.css's first block, split at its top-level commas. */
+function selectorsOf(list: string): string[] {
+  const selectors: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const char of list.replace(/\s/g, "")) {
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (char === "," && depth === 0) {
+      selectors.push(current);
+      current = "";
+    } else current += char;
+  }
+  return [...selectors, current].filter((selector) => selector !== "");
+}
+
+/** The selectors the check counts as clickable, written as theme-cursor.css writes them. */
+function pointerSelectors(): string[] {
+  const types = pointerInputTypes.map((type) => `[type="${type}"]`).join(",");
+  return [
+    ...pointerTags,
+    "a[href]",
+    `input:is(${types})`,
+    ...pointerRoles.map((role) => `[role="${role}"]`),
+  ];
 }
 
 verifies("kit.pointer-cursor", () => {
@@ -200,25 +232,29 @@ verifies("kit.pointer-cursor", () => {
     });
   });
 
-  it("names every tag, type and role of the check in theme-cursor.css", () => {
-    const css = readFileSync(new URL("./theme-cursor.css", import.meta.url), "utf8");
-    for (const tag of [...pointerTags, "a[href]"]) expect(css).toContain(`${tag},`);
-    for (const type of pointerInputTypes) expect(css).toContain(`[type="${type}"]`);
-    for (const role of pointerRoles) expect(css).toContain(`[role="${role}"]`);
+  it("gives the pointer in theme-cursor.css to exactly the tags, types and roles of the check", () => {
+    const css = readFileSync(
+      new URL(`${studioPackages}kit/src/theme-cursor.css`, import.meta.url),
+      "utf8",
+    );
+    const firstBlock = /@layer base \{\s*:where\(([\s\S]*?)\)\s*\{([^}]*)\}/.exec(css);
+    expect(firstBlock).not.toBeNull();
+    expect(selectorsOf(firstBlock?.[1] ?? "").sort()).toEqual(pointerSelectors().sort());
+    expect(firstBlock?.[2]?.trim()).toBe("cursor: pointer;");
     expect(css).toMatch(/:is\(:disabled, \[aria-disabled="true"\]\)\s*\{\s*cursor: not-allowed;/);
-    expect(css).toMatch(/@layer base \{\s*:where\(/);
   });
 
   it.each([
-    ["the kit", "./"],
-    ["the shell", "../../shell/src/"],
-    ["the Studio app", "../../../../apps/studio/src/"],
-    ...featureFolders().map((folder) => [folder.split("/")[3] ?? folder, folder]),
+    ["the kit", `${studioPackages}kit/src/`],
+    ["the shell", `${studioPackages}shell/src/`],
+    ["the Studio app", "./"],
+    ...featureFolders().map((folder) => [folder.split("/")[6] ?? folder, folder]),
   ])("shows the pointer on every clickable element in %s", (_name, folder) => {
     const sourceFolder = new URL(folder, import.meta.url);
     const files = readdirSync(sourceFolder, { recursive: true, encoding: "utf8" }).filter(
       isCovered,
     );
+    expect(files.length).toBeGreaterThan(0);
     const offenders = files.flatMap((file) =>
       problems(file, readFileSync(new URL(file, sourceFolder), "utf8")),
     );
