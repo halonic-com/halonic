@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (https://paperclip.halonic.com/HAL/issues/HAL-19464, Julian's follow-up from his review of #6452); the reviewer signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:fSHrSYikqhzaLG1fcbqZzBVY+wNiNT3olSVcimc2IkXcUAxsZToBZ1lnLa9JPd+W9tavptcflxxppJeComfNCA==
 
 Julian's review of #6452 (HAL-19394) asked for this follow-up.
 `paperclip.seat-mover-spread` held two rules: spreading agents over the legal
