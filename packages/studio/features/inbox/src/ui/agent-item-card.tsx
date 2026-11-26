@@ -36,7 +36,9 @@ import {
   cardBodyClasses,
   cardClasses,
   FailedLine,
+  failedText,
   failureDetailOf,
+  type ManualAnswer,
   useEveryMinute,
 } from "./card-parts.tsx";
 import { OptionButtons } from "./option-buttons.tsx";
@@ -66,11 +68,22 @@ export interface AgentItemCardProps {
 /** How an action request ends when the user declines it: it never ran, so no step is listed. */
 const declined: InboxAnswer = { kind: "action-result", outcome: "declined", steps: [] };
 
+/**
+ * The failure line when the source refuses the answer as `bad-answer` (`inbox.answer-refused`):
+ * the same answer is refused the same way every time, so it says where to answer instead of
+ * offering **Try again**.
+ */
+const badAnswerLine: ManualAnswer = {
+  message: `${failedText} Your answer doesn't fit this card, so answer it in Paperclip.`,
+  command: undefined,
+};
+
 /** Where this card's own answer is. */
 type Sent =
   | { readonly kind: "idle" }
   | { readonly kind: "sending"; readonly answer: InboxAnswer }
   | { readonly kind: "failed"; readonly answer: InboxAnswer; readonly error?: unknown }
+  | { readonly kind: "bad-answer" }
   | { readonly kind: "answered"; readonly answer: InboxAnswer; readonly answeredAt: string }
   | { readonly kind: "elsewhere"; readonly by: MessagingAuthor; readonly answeredAt: string };
 
@@ -150,6 +163,7 @@ export function AgentItemCard({
         <FailedLine
           onRetry={sent.kind === "failed" ? () => void send(sent.answer) : null}
           detail={sent.kind === "failed" ? failureDetailOf(sent.error) : null}
+          manual={sent.kind === "bad-answer" ? badAnswerLine : null}
         />
         {item.action === undefined ? null : (
           <CannotRun
@@ -265,10 +279,11 @@ function sentAfter(result: AnswerResult, chosen: InboxAnswer): Sent {
       return { kind: "elsewhere", by: result.by, answeredAt: result.answeredAt };
     case "refused":
       // Offline or signed out, the source's own line says so once it is read again. Any other
-      // refusal, such as an item that is gone or an answer that doesn't fit, is a failure the
-      // card shows, never a silent reset (HAL-19350).
-      return result.reason === "offline" || result.reason === "signed-out"
-        ? { kind: "idle" }
+      // refusal is a failure the card shows, never a silent reset (HAL-19350). An answer that
+      // doesn't fit would be refused again, so it gets no Try again (HAL-19374).
+      if (result.reason === "offline" || result.reason === "signed-out") return { kind: "idle" };
+      return result.reason === "bad-answer"
+        ? { kind: "bad-answer" }
         : { kind: "failed", answer: chosen };
   }
 }
