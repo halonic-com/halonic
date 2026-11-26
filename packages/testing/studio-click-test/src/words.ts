@@ -114,7 +114,8 @@ export const screenText = {
     text: "Nothing is waiting for you.",
     file: "packages/studio/features/inbox/src/ui/needs-you-card.tsx",
   },
-  // An answered card can stay open; this takes step 8 back to the list (run 45834340178).
+  // An answered card can stay open; this takes step 8 back to the list (run 45834340178). Since
+  // #6615 it is the header's back arrow, found by its name.
   backToInbox: {
     text: "Back to Inbox",
     file: "packages/studio/features/inbox/src/ui/item-header.tsx",
