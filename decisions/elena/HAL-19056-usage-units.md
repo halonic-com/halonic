@@ -6,6 +6,7 @@
 - Task: HAL-19056, the follow-up named on HAL-19052 (S3-11 PR 3)
 - Approval: Liam approves this note in his review of this pull request on HAL-19056
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Cx+VGHA4llpJKf6mpdJIPewwOCDSnJqc+GPKV6RQNQ3fTGfXEK5/y2E9aPAcXM1v/rC4dxYkkc7gka0rSCR1BA==
 
 ## What changes
 
