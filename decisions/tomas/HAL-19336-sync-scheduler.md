@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19201
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Y9PascWoHieAsH/2kR4Df97d8Wghhr7yfKbvmSj32+WH6ILHJqMoGiBis9ZVaOLTM6JhCpSklTggx4nOGi0NAg==
 
 The sync service design (HAL-19201, approved by Liam) replaces the host's poller with a sync
 scheduler in `packages/host/paperclip-sync`. `agent-host.paperclip-polling` said the host reads
