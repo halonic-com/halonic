@@ -4,7 +4,12 @@ import { useEffect, useId, useState } from "react";
 import { messageParts, openChecked } from "./message-links.ts";
 import type { MessagingOutcome } from "./messaging-client.ts";
 import type { AgentNames, PhoneMessaging } from "./phone-messenger.tsx";
-import { sendLine, phoneMessengerWords as words } from "./phone-messenger-words.ts";
+import {
+  type ReadFailure,
+  sendLine,
+  phoneMessengerWords as words,
+} from "./phone-messenger-words.ts";
+import { ReadFailedLine } from "./read-failed-line.tsx";
 
 /** What a chat on the phone needs. */
 export interface PhoneChatProps {
@@ -19,7 +24,7 @@ export interface PhoneChatProps {
 /**
  * One chat on the phone (p04a): its messages, oldest first, and the box under them. In a channel,
  * `@` opens Name someone (k16b), whose picks fill the message's `to`, and Members lists who is in
- * it, read-only (k16c).
+ * it, read-only (k16c). Messages it couldn't read show why, with Try again.
  */
 export function PhoneChat(props: PhoneChatProps) {
   const { messaging, conversation, names, computer, onOpenLink, onBack } = props;
@@ -27,15 +32,21 @@ export function PhoneChat(props: PhoneChatProps) {
   const [to, setTo] = useState<readonly string[]>([]);
   const [sheet, setSheet] = useState<"none" | "name" | "members">("none");
   const [reads, setReads] = useState(0);
+  const [failure, setFailure] = useState<ReadFailure | undefined>(undefined);
   const members = conversation.members ?? [];
   const nameOf = (agent: string) => names.get(agent) ?? agent;
 
   useEffect(() => {
     let current = true;
     void messaging.readMessages(conversation.id).then((read) => {
+      if (!current) return;
+      if (read.kind !== "done") {
+        setFailure(read);
+        return;
+      }
+      setFailure(undefined);
       // Pages come newest first; the chat shows the oldest first.
-      if (current && read.kind === "done")
-        setMessages(read.value.items.filter(isMessage).reverse());
+      setMessages(read.value.items.filter(isMessage).reverse());
     });
     return () => {
       current = false;
@@ -60,6 +71,17 @@ export function PhoneChat(props: PhoneChatProps) {
           </Button>
         ) : null}
       </header>
+      {failure === undefined ? null : (
+        <ReadFailedLine
+          messaging={messaging}
+          failure={failure}
+          computer={computer}
+          onTryAgain={() => {
+            setFailure(undefined);
+            setReads((count) => count + 1);
+          }}
+        />
+      )}
       <ol className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
         {messages.map((message) => (
           <li key={message.id} className={message.author.kind === "me" ? "self-end" : ""}>
