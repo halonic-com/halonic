@@ -14,7 +14,7 @@ When a tool call fails inside the runner, Halonic's side shall put on the `Runne
 - Given two calls running at once, one refused with `403` and one with `429`,
   when both fail,
   then each error holds only its own request.
-- Given a call whose `GET` got `429` and whose `POST` still waits for its answer,
+- Given a call whose `GET` got `429` and whose `POST` still waits for its answer, or whose `GET` the kit waits to try again after a `429`,
   when the call fails,
   then its error has no `callRequests`.
 - Given a call whose request's reply holds a canary and whose request carries a placed secret,

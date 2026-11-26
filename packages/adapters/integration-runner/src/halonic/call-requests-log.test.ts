@@ -23,7 +23,7 @@ const policy = {
 
 /**
  * The kit's real client over a server that answers each path with its
- * status, and never answers a path in `hanging`, calling `onHang` instead:
+ * status, a 429 with a wait the kit won't make, and never answers a path in `hanging`, calling `onHang` instead:
  * the request waits until it is aborted.
  */
 function realKit(
@@ -41,7 +41,9 @@ function realKit(
         });
       }
       const status = statuses[path] ?? 200;
-      return new Response(`{"note":"${replyCanary}"}`, { status });
+      // A wait longer than the kit's 30 s, so it gives a 429 back without trying again.
+      const headers = status === 429 ? { "retry-after": "60" } : undefined;
+      return new Response(`{"note":"${replyCanary}"}`, { status, ...(headers ? { headers } : {}) });
     },
   };
   return createLimitedHttpClient({
@@ -143,6 +145,34 @@ verifies("integration-runner.call-requests-log", () => {
       throw new Error("Too many requests.");
     };
     const kit = realKit({ "/v1/items": 429 }, ["/v1/orders"], () => postArrived());
+    const { run } = await bridged(tool, kit);
+    const error = await failure(run());
+    expect(error).not.toHaveProperty("callRequests");
+  });
+
+  it("carries none while the kit waits to try a 429 again", async () => {
+    let firstTry: () => void = () => undefined;
+    const triedOnce = new Promise<void>((resolve) => {
+      firstTry = resolve;
+    });
+    const transport: HttpClient = {
+      fetch: async () => {
+        firstTry();
+        return new Response("slow down", { status: 429, headers: { "retry-after": "30" } });
+      },
+    };
+    const kit = createLimitedHttpClient({
+      policy,
+      transport,
+      secrets: { get: async () => fakeSecret },
+      log: new RequestLog(),
+    });
+    const tool: Tool = async (host) => {
+      // The kit logs the 429, then waits to try again: the request isn't done.
+      void host.http.fetch("https://api.example.com/v1/slow").catch(() => {});
+      await triedOnce;
+      throw new Error("Gave up.");
+    };
     const { run } = await bridged(tool, kit);
     const error = await failure(run());
     expect(error).not.toHaveProperty("callRequests");
