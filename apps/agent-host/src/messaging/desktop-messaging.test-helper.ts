@@ -274,9 +274,12 @@ export async function startDesktop(): Promise<Desktop> {
       await poller.stop();
       messaging.close();
       await host.close();
-      await rm(workspace, { recursive: true, force: true });
-      await rm(otherWorkspace, { recursive: true, force: true });
-      await rm(profile, { recursive: true, force: true });
+      // A team read the test started may still be writing its cache file, and on
+      // Windows removing a folder meanwhile fails with ENOTEMPTY: Node's own retries wait for it.
+      const removal = { recursive: true, force: true, maxRetries: 5 } as const;
+      await rm(workspace, removal);
+      await rm(otherWorkspace, removal);
+      await rm(profile, removal);
     },
   };
 }
