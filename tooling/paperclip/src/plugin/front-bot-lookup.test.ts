@@ -26,7 +26,7 @@ const openPr: PrStatusResult = {
 };
 
 const prAnswer =
-  "*Automatic answer · from PR status:* PR #6129: open; ci-ok green; no conflict; not in the merge queue; approved on its current head.";
+  "*Automatic answer · from PR status:* PR #6129: open; ci-ok green; no conflict; not in the merge queue; approved on its latest commit.";
 
 /** A first reply Haiku would give, so a test sees whether the message went on to it. */
 const firstReply = { reply: "About PR #6129. Depends on the merge queue." };
@@ -76,7 +76,7 @@ verifies("paperclip.front-bot-lookups", () => {
     });
     expect(harness.sourceReads).toEqual(["task:HAL-123"]);
     expect(harness.posted().map((comment) => comment.body)).toEqual([
-      "*Automatic answer · from run status:* HAL-123: in progress; Liam's run is running, started 14:02 UTC.",
+      "*Automatic answer · from run status:* HAL-123: in progress; Liam's run is under way, started 14:02 UTC.",
     ]);
     expect(harness.requests).toEqual([]);
   });

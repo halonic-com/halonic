@@ -8,8 +8,8 @@ When a board user's message on a chat task is in scope for the front bot, the fr
 
 ## Examples
 
-- Given the lookups on and PR #6129 open with ci-ok green, no conflict, not queued and approved on its head, when a board user writes "Is #6129 merged?", then the plugin posts "*Automatic answer · from PR status:* PR #6129: open; ci-ok green; no conflict; not in the merge queue; approved on its current head." with no author.
-- Given the lookups on and HAL-123 in progress with Liam's run running since 14:02, when a board user writes "Is HAL-123 running?", then the plugin posts "*Automatic answer · from run status:* HAL-123: in progress; Liam's run is running, started 14:02 UTC.".
+- Given the lookups on and PR #6129 open with ci-ok green, no conflict, not queued and approved on its head, when a board user writes "Is #6129 merged?", then the plugin posts "*Automatic answer · from PR status:* PR #6129: open; ci-ok green; no conflict; not in the merge queue; approved on its latest commit." with no author.
+- Given the lookups on and HAL-123 in progress with Liam's run running since 14:02, when a board user writes "Is HAL-123 running?", then the plugin posts "*Automatic answer · from run status:* HAL-123: in progress; Liam's run is under way, started 14:02 UTC.".
 - Given the lookups on, when a board user writes "Please merge #6129", then the plugin reads no source, posts no answer and logs `write_request`.
 - Given the lookups on and GitHub failing, when a board user writes "Is #6129 merged?", then the plugin posts no answer, logs `lookup_failed`, and the first reply runs as before.
 - Given `frontBotLookups` off, when a board user writes "Is #6129 merged?", then the plugin reads no lookup source.

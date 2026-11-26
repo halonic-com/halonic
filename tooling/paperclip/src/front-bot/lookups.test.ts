@@ -135,7 +135,7 @@ verifies("paperclip.front-bot-lookups", () => {
     test("an open PR", () => {
       expect(answerFor(askPr, openPr)).toEqual({
         ok: true,
-        body: "*Automatic answer · from PR status:* PR #6129: open; ci-ok green; no conflict; not in the merge queue; approved on its current head.",
+        body: "*Automatic answer · from PR status:* PR #6129: open; ci-ok green; no conflict; not in the merge queue; approved on its latest commit.",
       });
     });
 
@@ -152,7 +152,7 @@ verifies("paperclip.front-bot-lookups", () => {
     test("a task with a running run, and one with none", () => {
       expect(answerFor(askTask, runningTask)).toEqual({
         ok: true,
-        body: "*Automatic answer · from run status:* HAL-123: in progress; Liam's run is running, started 14:02 UTC.",
+        body: "*Automatic answer · from run status:* HAL-123: in progress; Liam's run is under way, started 14:02 UTC.",
       });
       expect(answerFor(askTask, { ...runningTask, status: "done", run: undefined })).toEqual({
         ok: true,
@@ -160,11 +160,45 @@ verifies("paperclip.front-bot-lookups", () => {
       });
     });
 
+    test("a draft PR that conflicts with its base branch and has no approval", () => {
+      const draft = {
+        ...openPr,
+        draft: true,
+        mergeable: "conflict",
+        approvedOnHead: false,
+      } as const;
+      expect(answerFor(askPr, draft)).toEqual({
+        ok: true,
+        body: `${lookupLabel("pr_status")}PR #6129: open as a draft; ci-ok green; conflicts with its base branch; not in the merge queue; not approved on its latest commit.`,
+      });
+    });
+
+    test("a queued run never has a start time, and a running one may have none", () => {
+      const queued = {
+        ...runningTask,
+        status: "todo",
+        run: {
+          status: "queued",
+          agentName: undefined,
+          startedAt: new Date("2026-11-26T14:02:30Z"),
+        },
+      };
+      expect(answerFor(askTask, queued)).toEqual({
+        ok: true,
+        body: `${lookupLabel("run_status")}HAL-123: to do; an agent's run is queued, not started yet.`,
+      });
+      const noStart = { ...runningTask, run: { ...runningTask.run, startedAt: undefined } };
+      expect(answerFor(askTask, noStart as RunStatusResult)).toEqual({
+        ok: true,
+        body: `${lookupLabel("run_status")}HAL-123: in progress; Liam's run is under way.`,
+      });
+    });
+
     test("every PR answer starts with its label and uses only fixed words and the number", () => {
       const fixedWords = new Set(
         (
-          "pr open draft ci-ok green red running no yet conflict conflicts with its base github is " +
-          "still checking for conflicts in not the merge queue approved on current head approval " +
+          "pr open as a draft ci-ok green red running no yet conflict conflicts with its base branch " +
+          "github is still checking for conflicts in not the merge queue approved on latest commit " +
           "merged closed without merging"
         ).split(" "),
       );

@@ -181,7 +181,7 @@ const ciOkWords: Readonly<Record<CheckState, string>> = {
 
 const mergeableWords: Readonly<Record<PrStatusResult["mergeable"], string>> = {
   yes: "no conflict",
-  conflict: "conflicts with its base",
+  conflict: "conflicts with its base branch",
   unknown: "GitHub is still checking for conflicts",
 };
 
@@ -198,8 +198,8 @@ const taskStatusWords: Readonly<Record<string, string>> = {
 
 /** Run statuses as an answer says them; any other status goes to the agent. */
 const runStatusWords: Readonly<Record<string, string>> = {
-  queued: "queued",
-  running: "running",
+  queued: "queued, not started yet",
+  running: "under way",
 };
 
 function words(table: Readonly<Record<string, string>>, key: string): string | undefined {
@@ -211,11 +211,11 @@ function prText(result: PrStatusResult): string {
   if (result.state === "merged") return `${name}: merged.`;
   if (result.state === "closed") return `${name}: closed without merging.`;
   return [
-    `${name}: open${result.draft ? ", draft" : ""}`,
+    `${name}: open${result.draft ? " as a draft" : ""}`,
     ciOkWords[result.ciOk],
     mergeableWords[result.mergeable],
     result.inQueue ? "in the merge queue" : "not in the merge queue",
-    result.approvedOnHead ? "approved on its current head." : "no approval on its current head.",
+    result.approvedOnHead ? "approved on its latest commit." : "not approved on its latest commit.",
   ].join("; ");
 }
 
@@ -227,8 +227,11 @@ function runText(result: RunStatusResult): string | undefined {
   if (runStatus === undefined) return undefined;
   const whose =
     result.run.agentName === undefined ? "an agent's run" : `${result.run.agentName}'s run`;
+  // A queued run hasn't started, so its answer never carries a start time.
   const started =
-    result.run.startedAt === undefined ? "" : `, started ${clockTime(result.run.startedAt)} UTC`;
+    result.run.status !== "running" || result.run.startedAt === undefined
+      ? ""
+      : `, started ${clockTime(result.run.startedAt)} UTC`;
   return `${result.task}: ${status}; ${whose} is ${runStatus}${started}.`;
 }
 
