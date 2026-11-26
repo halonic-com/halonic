@@ -124,6 +124,7 @@ export function routedFromRest(
     branch: pull.head.ref,
     crossRepository: pull.head.repo?.full_name.toLowerCase() !== repo.toLowerCase(),
     labels: (pull.labels ?? []).map((label) => label.name),
+    author: pull.user?.login ?? null,
   };
   return {
     files: files.map((file) => file.filename),

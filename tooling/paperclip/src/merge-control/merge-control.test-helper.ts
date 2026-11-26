@@ -78,6 +78,7 @@ export function pull(number: number, changes: Partial<GatePull> = {}): GatePull 
     head,
     createdAt: ago(600 - number),
     draft: false,
+    author: "halonic-dev",
     labels: ["built-on:paperclip"],
     crossRepository: false,
     headOwner: "halonic-com",

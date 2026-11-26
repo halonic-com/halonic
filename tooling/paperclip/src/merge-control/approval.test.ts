@@ -278,6 +278,11 @@ verifies("paperclip.routine-review", () => {
     expect(outsideNoraScope(pull(1, fork))).toBe("not written by the team");
     const bot = { ...routine, texts: [nora], branch: "dependabot/npm_and_yarn/acme-1.2.3" };
     expect(reasonsOf(bot).added).toEqual([]);
+    // A team-named branch opened by another account: the origin check uses the fetched author (HAL-19779).
+    const outsider = { ...routine, texts: [nora], author: "acme-contributor" };
+    expect(reasonsOf(outsider).added).toEqual([]);
+    expect(outsideNoraScope(pull(1, outsider))).toBe("not written by the team");
+    expect(outsideNoraScope(pull(1, { ...routine, author: null }))).toBe("not written by the team");
     const trust = { ...routine, texts: [nora], labels: ["area: trust and sandbox"] };
     expect(outsideNoraScope(pull(1, trust))).toBe("a security or release pull request");
   });

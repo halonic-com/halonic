@@ -86,12 +86,20 @@ verifies("paperclip.merge-control-security-signoff", () => {
 });
 
 verifies("paperclip.merge-control-other-base", () => {
-  test("a release-branch base says how it reaches main, not 'stacked' (#6416)", () => {
-    const release = pull(6416, { base: "release/0.1.3", headCommittedAt: ago(60) });
-    expect(reasonsOf(release)).toContain(
-      "targets release/0.1.3, not main: retarget to main, or the release captain merges it into the release branch",
+  test("a release-branch base says how it reaches main in the live Merger's words, not 'stacked' (#6416)", () => {
+    for (const base of ["release/0.1.3", "changeset-release/main", "hotfix/0.1.4"]) {
+      const release = pull(6416, { base, headCommittedAt: ago(60) });
+      expect(reasonsOf(release)).toContain(
+        `targets ${base}, not main (a release branch): retarget it to main, or the release captain merges it into the release branch`,
+      );
+      expect(reasonsOf(release)).not.toContain("stacked");
+    }
+  });
+
+  test("any other base that isn't an open PR's branch counts as a stack, as live does", () => {
+    expect(reasonsOf(pull(6417, { base: "mateo/HAL-1-gone" }))).toContain(
+      "targets mateo/HAL-1-gone, not main (stacked PR)",
     );
-    expect(reasonsOf(release)).not.toContain("stacked");
   });
 
   test("a base that is an open PR's branch keeps the stacked wording", () => {

@@ -95,6 +95,8 @@ export interface PullDetails {
   };
   readonly base: { readonly ref: string; readonly repo?: { readonly private?: boolean } | null };
   readonly labels?: readonly { readonly name: string }[];
+  /** Who opened it; missing in a recording from before HAL-19779. */
+  readonly user?: { readonly login: string } | null;
 }
 
 /**

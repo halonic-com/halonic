@@ -15,6 +15,7 @@ function answers(files: readonly string[]) {
       deletions: 10,
       base: { ref: "main" },
       head: { sha: head, ref: "mateo/HAL-5701-work", repo: { full_name: repo } },
+      user: { login: "halonic-dev" },
     },
     [`/repos/${repo}/pulls/5701/files?per_page=100&page=1`]: files.map((filename) => ({
       filename,

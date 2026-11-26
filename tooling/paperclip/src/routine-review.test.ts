@@ -164,8 +164,16 @@ verifies("paperclip.routine-review", () => {
       "not written by the team",
     );
     expect(reviewerFor({ files, changedLines: 2, sensitive: false, ours: false })).toBe("julian");
-    const ours = { branch: "mateo/HAL-5701-work", crossRepository: false, labels: [] };
+    const ours = {
+      branch: "mateo/HAL-5701-work",
+      crossRepository: false,
+      labels: [],
+      author: "halonic-dev",
+    };
     expect(writtenByTeam(ours)).toBe(true);
+    // The live Merger's origin check reads the fetched author (26 Nov 09:17 UTC, HAL-19779).
+    expect(writtenByTeam({ ...ours, author: "acme-contributor" })).toBe(false);
+    expect(writtenByTeam({ ...ours, author: null })).toBe(false);
     expect(writtenByTeam({ ...ours, crossRepository: true })).toBe(false);
     expect(writtenByTeam({ ...ours, branch: "dependabot/npm_and_yarn/acme-1.2.3" })).toBe(false);
     expect(writtenByTeam({ ...ours, branch: "fix-typo" })).toBe(false);
