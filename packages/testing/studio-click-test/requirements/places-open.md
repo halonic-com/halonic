@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-18716 point 6 (the board's yes, 25 Nov), HAL-18870
 
-After the steps of `studio-click-test.try-it-steps`, the click test shall close a Settings dialog left open, open Inbox, Runs, Library and Changes in turn from the demo's Places list, and pass when each page shows its own text, read from the feature's words or UI file: the Inbox's New request, the Runs app's "No runs yet today." (a fresh install's demo has no run), the Library's Skills sentence, and any of the Changes page's states except its load failure. It shall check every place even after one fails, fail with the first failure's code, the place's load-failure line's code when the page shows it, else `NO_<PLACE>_PAGE`, and name every failing place in the note.
+When the steps of `studio-click-test.try-it-steps` have run, the click test shall close a Settings dialog left open, open Inbox, Runs, Library and Changes in turn from the demo's Places list, and pass when each page shows its own text, read from the feature's words or UI file: the Inbox's New request, the Runs app's "No runs yet today." (a fresh install's demo has no run), the Library's Skills sentence, and any of the Changes page's states except its load failure. It shall check every place even after one fails, fail with the first failure's code, the place's load-failure line's code when the page shows it, else `NO_<PLACE>_PAGE`, and name every failing place in the note.
 
 ## Examples
 
