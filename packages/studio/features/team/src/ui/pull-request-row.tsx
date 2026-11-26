@@ -1,9 +1,16 @@
-import { isAllowedWebLink, type MessagingAuthor, type PullRequestState } from "@halonicjs/ports";
+import {
+  isAllowedWebLink,
+  type MessagingAuthor,
+  type MessagingId,
+  type PullRequest,
+  type PullRequestState,
+} from "@halonicjs/ports";
 import { Button, StatusChip, type StatusChipTone } from "@halonicjs/studio-kit";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode, useContext } from "react";
 import { formatAge, pullRequestWords, type StateWords } from "../pull-request-words.ts";
 import type { PullRequestRow } from "../pull-requests.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
+import { Chevron } from "./detail-frame.tsx";
 
 /** Where a web link may open: the connection's Paperclip origin, and the opener the shell gives. */
 export interface WebLinkOpener {
@@ -38,6 +45,40 @@ export function WebLinkButton(props: {
         {link}
       </bdi>
     </span>
+  );
+}
+
+/** Opens a PR's own page (P12); without it, a row's title opens nothing. */
+export const OpenPullRequest = createContext<((id: MessagingId) => void) | undefined>(undefined);
+
+/** The `data-opens` key of the title that opens a PR's page, so Back can focus it again. */
+export const pullRequestKey = (id: MessagingId) => `pr:${id}`;
+
+/**
+ * A row's "#5641 title", as a button with › that opens the PR's page when the screen has one. The
+ * title is written by whoever opened the PR, outsiders included, so it's React text: never
+ * Markdown or a link.
+ */
+export function PullRequestTitle({ pullRequest }: { pullRequest: PullRequest }) {
+  const open = useContext(OpenPullRequest);
+  const words = (
+    <>
+      <span className="font-mono text-small text-fg-muted">{pullRequest.label}</span>{" "}
+      {pullRequest.title}
+    </>
+  );
+  if (open === undefined) return <p className="wrap-anywhere text-body-strong">{words}</p>;
+  return (
+    <p data-opens={pullRequestKey(pullRequest.id)} className="wrap-anywhere text-body-strong">
+      <button
+        type="button"
+        onClick={() => open(pullRequest.id)}
+        className="inline-flex items-start gap-1 rounded-xs text-start hover:underline focus-ring"
+      >
+        <span>{words}</span>
+        <Chevron />
+      </button>
+    </p>
   );
 }
 
@@ -89,7 +130,7 @@ function Dot() {
  * The state line: a StatusChip in the state's tone with its symbol and word, the muted detail
  * after it, and the Fast-track tag. Colour is never the only sign: the chip always has its words.
  */
-function StateLine({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
+export function StateLine({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
   const { chip, detail } = stateWords(row, clock);
   return (
     <span className="flex flex-wrap items-center gap-y-1 text-small">
@@ -137,8 +178,7 @@ export function OwnerLine({ row, opener }: { row: PullRequestRow; opener: WebLin
 /**
  * One PR row: its number and title over its state, with its author and task on the right (under
  * them on a phone). The title and the reason are written by whoever opened the PR, outsiders
- * included, so they're React text: never Markdown, a link or a button. A row opens nothing yet:
- * its › comes with the One PR page (HAL-17515 P12).
+ * included, so they're React text: never Markdown or a link. The title opens the PR's page (P12).
  */
 export function PullRequestRowView(props: {
   row: PullRequestRow;
@@ -150,10 +190,7 @@ export function PullRequestRowView(props: {
   return (
     <li className="flex items-start justify-between gap-x-4 gap-y-2 px-4 py-3 phone:flex-col">
       <span className="flex min-w-0 flex-col gap-1">
-        <p className="wrap-anywhere text-body-strong">
-          <span className="font-mono text-small text-fg-muted">{pullRequest.label}</span>{" "}
-          {pullRequest.title}
-        </p>
+        <PullRequestTitle pullRequest={pullRequest} />
         <StateLine row={row} clock={clock} />
       </span>
       <OwnerLine row={row} opener={opener} />

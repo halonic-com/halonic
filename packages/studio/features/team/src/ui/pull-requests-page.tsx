@@ -1,5 +1,6 @@
+import type { MessagingId } from "@halonicjs/ports";
 import { Callout, EmptyState, LockIcon, SkeletonBar } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { pullRequestWords } from "../pull-request-words.ts";
 import type { PullRequests, PullRequestsState } from "../pull-requests.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
@@ -7,8 +8,9 @@ import { type TeamLink, teamWords } from "../team-words.ts";
 import { LinkButton, TeamLinks } from "./money-tiles.tsx";
 import { PageFrame, TryAgain } from "./page-frame.tsx";
 import { listBox } from "./pr-list-parts.tsx";
+import { PullRequestDetailPage } from "./pull-request-detail.tsx";
 import { PullRequestLists } from "./pull-request-lists.tsx";
-import type { WebLinkOpener } from "./pull-request-row.tsx";
+import { OpenPullRequest, pullRequestKey, type WebLinkOpener } from "./pull-request-row.tsx";
 
 /** The props of {@link PullRequestsPage}. */
 export interface PullRequestsPageProps {
@@ -31,7 +33,8 @@ const oldAfterMinutes = 30;
 /**
  * The Pull requests screen (requirement `team.pull-requests`, HAL-17515
  * renders P1–P10, P18–P22): Needs attention with the stuck PRs worst first and
- * those coming up, All open grouped by state, the merge queue and Merged today. It reads when it opens, when a
+ * those coming up, All open grouped by state, the merge queue and Merged today. A row's title
+ * opens the PR's own page (P12–P17) in place. It reads when it opens, when a
  * source says it changed and on **Try again**. It only shows: nothing merges,
  * queues or approves from here, and links open outside the app.
  */
@@ -65,25 +68,61 @@ export function PullRequestsPage({ pullRequests, opener, onLink }: PullRequestsP
 
   const clock = pullRequests.timeClock;
   const read = shown.kind === "read" && shown.state.kind === "read" ? shown.state : undefined;
-  // One frame for every state, so the main and h1 stay put when a read lands.
+  const { opened, open, back, list } = useOpenedPullRequest();
+  // One frame for every state, so the main and h1 stay put when a read lands. The lists stay
+  // mounted under a PR's page, so Back finds the same tab and the title that opened it.
   return (
     <TeamLinks.Provider value={onLink === undefined ? "none" : "on"}>
-      <PageFrame
-        title={<PageTitle repo={read?.repo} />}
-        loadingSpoken={pullRequestWords.loadingSpoken}
-        busy={shown.kind === "loading"}
-        freshness={freshness(shown, read, clock)}
-      >
-        <ShownBody
-          shown={shown}
-          clock={clock}
+      <OpenPullRequest.Provider value={open}>
+        <div ref={list} hidden={opened !== undefined}>
+          <PageFrame
+            title={<PageTitle repo={read?.repo} />}
+            loadingSpoken={pullRequestWords.loadingSpoken}
+            busy={shown.kind === "loading"}
+            freshness={freshness(shown, read, clock)}
+          >
+            <ShownBody
+              shown={shown}
+              clock={clock}
+              opener={opener}
+              onLink={onLink ?? noLink}
+              onTryAgain={readAgain}
+            />
+          </PageFrame>
+        </div>
+      </OpenPullRequest.Provider>
+      {opened === undefined ? null : (
+        <PullRequestDetailPage
+          pullRequests={pullRequests}
+          id={opened}
           opener={opener}
-          onLink={onLink ?? noLink}
-          onTryAgain={readAgain}
+          onBack={back}
         />
-      </PageFrame>
+      )}
     </TeamLinks.Provider>
   );
+}
+
+/**
+ * The PR whose page is open, if any. Back closes it and focuses the title that opened it again,
+ * since the page that had focus goes away (WCAG 2.4.3).
+ */
+function useOpenedPullRequest() {
+  const [opened, setOpened] = useState<MessagingId | undefined>(undefined);
+  const [cameBack, setCameBack] = useState<MessagingId | undefined>(undefined);
+  const list = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (cameBack === undefined) return;
+    const key = pullRequestKey(cameBack);
+    const titles = list.current?.querySelectorAll<HTMLElement>("[data-opens]") ?? [];
+    const title = [...titles].find((each) => each.dataset["opens"] === key);
+    title?.querySelector("button")?.focus();
+  }, [cameBack]);
+  const back = () => {
+    setCameBack(opened);
+    setOpened(undefined);
+  };
+  return { opened, open: setOpened, back, list };
 }
 
 /** Never called: with no `onLink`, no link button is drawn. */
