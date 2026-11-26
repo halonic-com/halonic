@@ -1,7 +1,8 @@
 import type { SeatMoverSettings } from "./settings.ts";
 
 /**
- * The board's pre-move checklist (HAL-19354, a–g), as code. A seat is a legal
+ * The board's pre-move checklist (HAL-19354, a–g, with the board's audit
+ * rules of 26 Nov), as code. A seat is a legal
  * target for an agent only when every item holds; `breaks` checks a whole
  * placement against the items that are about who sits together, so a batch is
  * never sent that leaves one of them broken. No I/O here.
@@ -34,6 +35,8 @@ export interface Seat {
   readonly reading: SeatReading | undefined;
   /** A run on this seat failed with `provider_quota` since its reading: it is full now. */
   readonly quotaHit: boolean;
+  /** Runs are parked waiting for this seat: it is full now, whatever its reading says. */
+  readonly waiting: boolean;
   /**
    * Nobody may sit on a `not-connected` seat. An `unknown` one takes nobody
    * new but moves nobody off, like a seat without a reading.
@@ -51,6 +54,8 @@ export interface AgentPlace {
   readonly connectionId: string | undefined;
   /** It has never-started runs parked on its seat (pool wait or a `provider_quota` retry). */
   readonly parked: boolean;
+  /** The mover moved it less than `moveCooldownMinutes` ago. */
+  readonly recentlyMoved: boolean;
 }
 
 /** Agent id → connection id. */
@@ -79,6 +84,9 @@ export const isReviewer = (agent: AgentPlace, settings: SeatMoverSettings) =>
 export const isHeavy = (agent: AgentPlace, settings: SeatMoverSettings) =>
   settings.heavy.includes(agent.key);
 
+export const isFastBurner = (agent: AgentPlace, settings: SeatMoverSettings) =>
+  settings.fastBurners.includes(agent.key);
+
 /** Pinned agents (the seat starter and the timer agents) are never moved. */
 export const isPinned = (agent: AgentPlace, settings: SeatMoverSettings) =>
   settings.pinned.includes(agent.key);
@@ -101,18 +109,31 @@ export function weekResetsSoon(seat: Seat, settings: SeatMoverSettings, now: Dat
 }
 
 /**
- * Item a: the week is below the weekly stop, or the seat is on the reset-fill
- * list, or its weekly reset is less than a day away (and it is below the hard stop).
+ * Item a: whether `agent` may sit on the seat for its week. A reset-fill seat
+ * takes anyone. Otherwise nobody sits at the hard stop (95%), and a reserve
+ * seat (past the weekly stop, 88%) takes no fast burner unless its weekly
+ * reset is less than a day away.
  */
-export function weekAllows(seat: Seat, settings: SeatMoverSettings, now: Date): boolean {
+export function weekAllows(
+  seat: Seat,
+  agent: AgentPlace,
+  settings: SeatMoverSettings,
+  now: Date,
+): boolean {
   const week = seat.reading?.weekPercent;
   if (week === undefined) {
     return false;
   }
-  if (isResetFill(seat, settings) || week < settings.weekMovePercent) {
+  if (isResetFill(seat, settings)) {
     return true;
   }
-  return weekResetsSoon(seat, settings, now) && week < settings.weekHardStopPercent;
+  if (week >= settings.weekHardStopPercent) {
+    return false;
+  }
+  if (week < settings.weekMovePercent) {
+    return true;
+  }
+  return !isFastBurner(agent, settings) || weekResetsSoon(seat, settings, now);
 }
 
 /** The agents on a seat in a placement, from the full list of agents. */
@@ -176,10 +197,14 @@ export function targetRefusal(
   if (seat.reading === undefined || seat.grantId === undefined) {
     return "unread";
   }
-  if (seat.quotaHit || seat.reading.sessionPercent >= sessionStopFor(agent, settings)) {
+  if (
+    seat.quotaHit ||
+    seat.waiting ||
+    seat.reading.sessionPercent >= sessionStopFor(agent, settings)
+  ) {
     return "f-session-stop";
   }
-  if (!weekAllows(seat, settings, now)) {
+  if (!weekAllows(seat, agent, settings, now)) {
     return "a-week-stop";
   }
   const others = seatedOn(seat.connectionId, placement, agents).filter(

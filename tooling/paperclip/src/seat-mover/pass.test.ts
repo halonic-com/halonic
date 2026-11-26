@@ -205,27 +205,19 @@ verifies("paperclip.seat-mover-job", () => {
     });
 
     test("doesn't send a later move whose target relied on an earlier one that failed", async () => {
-      // Priya (parked) leaves Two for B, which makes room on Two for Tomas, a second heavy agent.
-      const agents = [row("elena", "Two"), row("priya", "Two"), row("tomas", "Full")];
-      const usage: Usage = { Two: [10, 10], Full: [85, 10], B: [50, 10] };
-      const parked: ParkedRun[] = [
-        { id: "p", agentId: "a-priya", issueId: "i", connectionId: "c-Two", retryAt: undefined },
-      ];
+      // Liam (reviewer, past its 70% stop) leaves Two for Empty, which frees Two for Kim.
+      const agents = [row("liam", "Two"), row("kim", "Full")];
+      const usage: Usage = { Two: [72, 10], Full: [85, 10], Empty: [10, 10] };
       const working = world(usage, agents);
-      await seatMoverPass(deps(working, agents, { settings: { mode: "act" }, parked }).deps);
-      expect(working.writes).toEqual([
-        "move a-priya c-B",
-        "move a-tomas c-Two",
-        "cancel p",
-        "resolve i hold-p todo",
-      ]);
+      await seatMoverPass(deps(working, agents, { settings: { mode: "act" } }).deps);
+      expect(working.writes).toEqual(["move a-liam c-Empty", "move a-kim c-Two"]);
 
       const fake = world(usage, agents);
       const send = fake.api.setRuntimeConfig;
       fake.api.setRuntimeConfig = (agentId, config) =>
-        agentId === "a-priya" ? Promise.reject(new Error("refused")) : send(agentId, config);
-      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" }, parked }).deps);
-      // Priya stayed, so Tomas would be Two's third heavy agent: not sent.
+        agentId === "a-liam" ? Promise.reject(new Error("refused")) : send(agentId, config);
+      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" } }).deps);
+      // Liam stayed, so Kim would join a reviewer's seat: not sent.
       expect(fake.writes).toEqual([]);
     });
 
@@ -271,7 +263,7 @@ verifies("paperclip.seat-mover-job", () => {
 
     test("tells the board once when an agent must move and no seat may take it, and moves nobody", async () => {
       const agents = [row("kim", "A")];
-      const fake = world({ A: [85, 10], Admin: [0, 0], Week: [0, 90] }, agents);
+      const fake = world({ A: [85, 10], Admin: [0, 0], Week: [0, 95] }, agents);
       const run = deps(fake, agents, { settings: { mode: "act" } });
       await seatMoverPass(run.deps);
       await seatMoverPass(run.deps);
@@ -281,6 +273,52 @@ verifies("paperclip.seat-mover-job", () => {
           /^HAL-9: \*\*Seat mover: no legal seat\.\*\* Kim stays on the A seat/,
         ),
       ]);
+    });
+  });
+});
+
+verifies("paperclip.seat-mover-job", () => {
+  describe("the board's audit rules (26 Nov)", () => {
+    test("a seat another agent's run is parked waiting for takes nobody", async () => {
+      const agents = [row("kim", "Full"), row("mara", "B")];
+      const fake = world({ Full: [85, 10], B: [10, 10], C: [50, 10] }, agents);
+      const parked: ParkedRun[] = [
+        { id: "p", agentId: "a-mara", issueId: "i", connectionId: "c-B", retryAt: undefined },
+      ];
+      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" }, parked }).deps);
+      expect(fake.writes.filter((write) => write.startsWith("move a-kim"))).toEqual([
+        "move a-kim c-C",
+      ]);
+    });
+
+    test("the mover remembers each move and keeps the agent there for two hours unless its seat is full", async () => {
+      const agents = [row("kim", "Full")];
+      const fake = world({ Full: [85, 10], B: [10, 10] }, agents);
+      const run = deps(fake, agents, { settings: { mode: "act" } });
+      await seatMoverPass(run.deps);
+      expect(run.memory.value.movedAt).toEqual({ "a-kim": now.toISOString() });
+
+      // Priya is the third heavy agent on A: she moves only once her last move is two hours old.
+      const heavy = [row("elena", "A"), row("mateo", "A"), row("priya", "A")];
+      const at = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString();
+      const recent = world({ A: [10, 10], B: [10, 10] }, heavy);
+      const recentMemory = { value: { movedAt: { "a-priya": at(30) } } };
+      await seatMoverPass(
+        deps(recent, heavy, { settings: { mode: "act" }, memory: recentMemory }).deps,
+      );
+      expect(recent.writes).toEqual([]);
+      const old = world({ A: [10, 10], B: [10, 10] }, heavy);
+      const oldMemory = { value: { movedAt: { "a-priya": at(150) } } };
+      await seatMoverPass(deps(old, heavy, { settings: { mode: "act" }, memory: oldMemory }).deps);
+      expect(old.writes).toEqual(["move a-priya c-B"]);
+      expect(oldMemory.value.movedAt).toEqual({ "a-priya": now.toISOString() });
+    });
+
+    test("a paused agent is never moved, even off a full seat", async () => {
+      const agents = [row("kim", "Full", "paused")];
+      const fake = world({ Full: [100, 99], B: [10, 10] }, agents);
+      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" } }).deps);
+      expect(fake.writes).toEqual([]);
     });
   });
 });

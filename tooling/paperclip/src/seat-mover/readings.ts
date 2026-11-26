@@ -163,7 +163,8 @@ function connectionState(status: string | undefined): ConnectionState {
  * the newest `provider_quota` failure; it marks the seat full when it came
  * after the reading. After the board reset a seat by hand (`resets`,
  * HAL-19490), a reading or quota failure from before the reset no longer
- * counts: the seat has no reading until the next one.
+ * counts: the seat has no reading until the next one. A seat in `waitingOn`
+ * has runs parked waiting for it, so it is full whatever its reading says.
  */
 export function buildSeats(
   connections: readonly Connection[],
@@ -172,6 +173,7 @@ export function buildSeats(
   now: Date,
   maxAgeMinutes: number,
   resets: SeatResets = {},
+  waitingOn: ReadonlySet<string> = new Set(),
 ): Seat[] {
   return connections
     .map((connection) => {
@@ -191,6 +193,7 @@ export function buildSeats(
         quotaHit:
           quota !== undefined &&
           (reading === undefined || Date.parse(quota) > Date.parse(reading.at)),
+        waiting: waitingOn.has(connection.id),
         connection: connectionState(connection.status),
       };
     })

@@ -4,6 +4,7 @@ import {
   breaks,
   breaksQuietSeat,
   isExcluded,
+  isFastBurner,
   isHeavy,
   isPaidApi,
   isPinned,
@@ -61,6 +62,19 @@ export interface SeatPlan {
   readonly refused: readonly Break[];
 }
 
+/**
+ * Reasons about who sits together, not about the seat being full or unusable.
+ * An agent the mover moved lately doesn't move again for one of these (the
+ * board's audit rule 6): only when it is parked or its seat is full.
+ */
+const companyReasons: ReadonlySet<MoveReason> = new Set<MoveReason>([
+  "b-reviewer-seat",
+  "b-reviewers-share",
+  "b-reviewer-not-alone",
+  "c-heavy-limit",
+  "g-quiet-seat",
+]);
+
 /** The fixed order: by url key. */
 const byKey = (a: AgentPlace, b: AgentPlace) => a.key.localeCompare(b.key);
 
@@ -73,6 +87,10 @@ function moveReason(
   settings: SeatMoverSettings,
   now: Date,
 ): MoveReason | undefined {
+  if (agent.paused) {
+    // The board's audit rule 5: a paused agent is never moved.
+    return undefined;
+  }
   const connectionId = placement.get(agent.id);
   const seat = connectionId === undefined ? undefined : seats.get(connectionId);
   if (seat !== undefined && isExcluded(seat, settings)) {
@@ -87,10 +105,6 @@ function moveReason(
   const others = connectionId === undefined ? [] : seatedOn(connectionId, placement, agents);
   if (!isReviewer(agent, settings) && others.some((other) => isReviewer(other, settings))) {
     return "b-reviewer-seat";
-  }
-  if (agent.paused) {
-    // A paused agent uses nothing: only where it sits can be wrong.
-    return undefined;
   }
   return (
     usageReason(agent, seat, settings, now) ??
@@ -118,7 +132,7 @@ function usageReason(
   if (seat.reading.sessionPercent >= sessionStopFor(agent, settings)) {
     return "session-stop";
   }
-  return weekAllows(seat, settings, now) ? undefined : "week-stop";
+  return weekAllows(seat, agent, settings, now) ? undefined : "week-stop";
 }
 
 /** The heavy agents past the limit leave, the last by url key first. */
@@ -186,11 +200,15 @@ export function planMoves(
   for (const reviewer of reviewers) {
     batch.moveIfNeeded(reviewer, batch.reasonFor(reviewer) ?? reviewerSeatReason(reviewer, batch));
   }
-  // Then heavy agents, whose limit is the tighter one, then everyone else.
+  // Then the fast burners, who get the freshest seats left (the board's audit
+  // rule 3), then heavy agents, whose limit is the tighter one, then everyone else.
   const rest = movable.filter((agent) => !isReviewer(agent, settings));
+  const fast = rest.filter((agent) => isFastBurner(agent, settings));
+  const slow = rest.filter((agent) => !isFastBurner(agent, settings));
   const ordered = [
-    ...rest.filter((agent) => isHeavy(agent, settings)),
-    ...rest.filter((agent) => !isHeavy(agent, settings)),
+    ...fast,
+    ...slow.filter((agent) => isHeavy(agent, settings)),
+    ...slow.filter((agent) => !isHeavy(agent, settings)),
   ];
   for (const agent of ordered) {
     batch.moveIfNeeded(agent, batch.reasonFor(agent));
@@ -240,7 +258,10 @@ class Batch {
 
   /** Moves the agent to the best seat the checklist allows, or lists it as stuck. */
   moveIfNeeded(agent: AgentPlace, reason: MoveReason | undefined): void {
-    if (reason === undefined) {
+    if (reason === undefined || agent.paused) {
+      return;
+    }
+    if (agent.recentlyMoved && companyReasons.has(reason)) {
       return;
     }
     const from = this.placement.get(agent.id);

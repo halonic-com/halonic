@@ -4,12 +4,16 @@ import { type AgentPlace, breaks, type Seat, targetRefusal } from "./checklist.t
 import { planMoves } from "./plan.ts";
 import { agent, now, seat, settings } from "./seat-mover.test-helper.ts";
 
-/** A small fixed-seed generator, so every run checks the same states. */
+/**
+ * A small fixed-seed generator, so every run checks the same states. It draws
+ * from the high bits: the low bits of this generator repeat every few draws,
+ * which made almost every agent paused.
+ */
 function random(seed: number) {
   let state = seed;
   return (below: number) => {
     state = (state * 1_103_515_245 + 12_345) % 2_147_483_648;
-    return state % below;
+    return Math.floor((state / 2_147_483_648) * below);
   };
 }
 
@@ -33,11 +37,16 @@ function scenario(seed: number): { seats: Seat[]; agents: AgentPlace[] } {
     seat(index === 0 ? "Admin" : `S${index}`, pick(100), pick(100), {
       method: pick(10) === 0 ? "api_key" : "subscription",
       quotaHit: pick(12) === 0,
+      waiting: pick(12) === 0,
       weekResetsAt: new Date(now.getTime() + (1 + pick(120)) * 3_600_000).toISOString(),
     }),
   );
   const agents = names.map((key) =>
-    agent(key, seats[pick(seats.length)]?.name, { parked: pick(6) === 0, paused: pick(8) === 0 }),
+    agent(key, seats[pick(seats.length)]?.name, {
+      parked: pick(6) === 0,
+      paused: pick(8) === 0,
+      recentlyMoved: pick(5) === 0,
+    }),
   );
   return { seats, agents };
 }

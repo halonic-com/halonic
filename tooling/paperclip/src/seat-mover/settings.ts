@@ -13,6 +13,11 @@ export interface SeatMoverSettings {
   readonly reviewers: readonly string[];
   /** Url keys of the heavy agents: at most `maxHeavyPerSeat` of them share a seat. */
   readonly heavy: readonly string[];
+  /**
+   * Url keys of the fast burners: they pick a seat right after the reviewers,
+   * and never sit on a reserve seat (one past the weekly stop).
+   */
+  readonly fastBurners: readonly string[];
   /** Url keys of agents the mover never moves (the seat starter). */
   readonly pinned: readonly string[];
   /** Seat names the board is draining to its weekly limit: the weekly stop doesn't apply to them. */
@@ -25,12 +30,17 @@ export interface SeatMoverSettings {
   readonly sessionMovePercent: number;
   /** The same for a reviewer, who moves earlier (HAL-19202). */
   readonly reviewerSessionMovePercent: number;
-  /** Move off, and never onto, a seat at this much of its week … */
+  /**
+   * A seat at this much of its week is a reserve seat: only agents that aren't
+   * fast burners sit there, unless its weekly reset is less than
+   * `resetSoonHours` away.
+   */
   readonly weekMovePercent: number;
-  /** … unless its weekly reset is less than this many hours away … */
   readonly resetSoonHours: number;
-  /** … and below this much of its week even then. */
+  /** Nobody sits on a seat at this much of its week (reset-fill seats excepted). */
   readonly weekHardStopPercent: number;
+  /** An agent the mover moved this recently moves again only when parked or its seat is full. */
+  readonly moveCooldownMinutes: number;
   readonly maxHeavyPerSeat: number;
   /** A reading older than this many minutes counts as unknown: nobody moves onto that seat. */
   readonly readingMaxAgeMinutes: number;
@@ -44,6 +54,7 @@ export const defaultSeatMoverSettings: SeatMoverSettings = {
   mode: "shadow",
   reviewers: ["liam", "julian"],
   heavy: ["mateo", "elena", "tomas", "owen", "priya", "ravi"],
+  fastBurners: ["julian", "liam", "elena", "tomas"],
   pinned: ["pip"],
   resetFill: ["Ravi"],
   excludedSeats: ["Admin"],
@@ -52,7 +63,8 @@ export const defaultSeatMoverSettings: SeatMoverSettings = {
   reviewerSessionMovePercent: 70,
   weekMovePercent: 88,
   resetSoonHours: 24,
-  weekHardStopPercent: 98,
+  weekHardStopPercent: 95,
+  moveCooldownMinutes: 120,
   maxHeavyPerSeat: 2,
   readingMaxAgeMinutes: 45,
   logTask: undefined,
@@ -91,6 +103,7 @@ export function readSeatMoverSettings(
     mode,
     reviewers: words(section["reviewers"], d.reviewers),
     heavy: words(section["heavy"], d.heavy),
+    fastBurners: words(section["fastBurners"], d.fastBurners),
     pinned: words(section["pinned"], d.pinned),
     resetFill: words(section["resetFill"], d.resetFill),
     excludedSeats: words(section["excludedSeats"], d.excludedSeats),
@@ -103,6 +116,7 @@ export function readSeatMoverSettings(
     weekMovePercent: percent(section["weekMovePercent"], d.weekMovePercent),
     resetSoonHours: positive(section["resetSoonHours"], d.resetSoonHours),
     weekHardStopPercent: percent(section["weekHardStopPercent"], d.weekHardStopPercent),
+    moveCooldownMinutes: positive(section["moveCooldownMinutes"], d.moveCooldownMinutes),
     maxHeavyPerSeat: positive(section["maxHeavyPerSeat"], d.maxHeavyPerSeat),
     readingMaxAgeMinutes: positive(section["readingMaxAgeMinutes"], d.readingMaxAgeMinutes),
     logTask: text(section["logTask"]),

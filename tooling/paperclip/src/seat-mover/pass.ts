@@ -33,6 +33,8 @@ export interface SeatMoverMemory {
   readonly lastShadow?: string;
   /** `agentId|seat` of each agent the board was told has no legal seat. */
   readonly stuckNoted?: readonly string[];
+  /** Agent id → when the mover last moved it, for the cooldown; older entries are dropped. */
+  readonly movedAt?: Readonly<Record<string, string>>;
 }
 
 export interface SeatMoverDeps {
@@ -69,20 +71,51 @@ function connectionOf(agent: AgentRow): string | undefined {
 }
 
 /**
- * Where each agent sits, and whether it has runs parked on that seat. Only a
- * run pinned to the seat counts: a run that names no seat is never released
- * after a move, so it would move the agent again every pass. A run already
- * due (released by a seat reset, HAL-19490) is about to start, so it doesn't
- * count either.
+ * The parked runs still waiting. A run already due (released by a seat reset,
+ * HAL-19490) is about to start, so it doesn't count.
+ */
+function stillWaiting(parked: readonly ParkedRun[], now: Date): ParkedRun[] {
+  return parked.filter(
+    (run) => run.retryAt === undefined || Date.parse(run.retryAt) > now.getTime(),
+  );
+}
+
+/** The seats runs are parked waiting for: each counts as full (the board's audit rule 2). */
+export function seatsWaitedOn(parked: readonly ParkedRun[], now: Date): Set<string> {
+  return new Set(
+    stillWaiting(parked, now).flatMap((run) =>
+      run.connectionId === undefined ? [] : [run.connectionId],
+    ),
+  );
+}
+
+/** The agents the mover moved less than the cooldown ago, from its memory. */
+export function recentlyMovedIds(
+  memory: SeatMoverMemory,
+  settings: SeatMoverSettings,
+  now: Date,
+): Set<string> {
+  const since = now.getTime() - settings.moveCooldownMinutes * 60_000;
+  return new Set(
+    Object.entries(memory.movedAt ?? {})
+      .filter(([, at]) => Date.parse(at) > since)
+      .map(([agentId]) => agentId),
+  );
+}
+
+/**
+ * Where each agent sits, whether it has runs parked on that seat, and whether
+ * the mover moved it lately. Only a run pinned to the seat counts: a run that
+ * names no seat is never released after a move, so it would move the agent
+ * again every pass.
  */
 export function agentPlaces(
   agents: readonly AgentRow[],
   parked: readonly ParkedRun[],
   now: Date,
+  recentlyMoved: ReadonlySet<string> = new Set(),
 ): AgentPlace[] {
-  const waiting = parked.filter(
-    (run) => run.retryAt === undefined || Date.parse(run.retryAt) > now.getTime(),
-  );
+  const waiting = stillWaiting(parked, now);
   return agents
     .filter((agent) => agent.status !== "terminated")
     .map((agent) => {
@@ -99,6 +132,7 @@ export function agentPlaces(
             connectionId !== undefined &&
             run.connectionId === connectionId,
         ),
+        recentlyMoved: recentlyMoved.has(agent.id),
       };
     });
 }
@@ -119,9 +153,11 @@ export async function seatMoverPass(deps: SeatMoverDeps): Promise<SeatPlan | und
   ]);
   const quotaAt = new Map(quota.map((failure) => [failure.connectionId, failure.at]));
   const maxAge = settings.readingMaxAgeMinutes;
-  const seatList = buildSeats(connections, readings, quotaAt, now, maxAge, resets);
+  const waitingOn = seatsWaitedOn(parked, now);
+  const seatList = buildSeats(connections, readings, quotaAt, now, maxAge, resets, waitingOn);
   const seats = new Map(seatList.map((seat) => [seat.connectionId, seat]));
-  const agents = agentPlaces(agentRows, parked, now);
+  const recentlyMoved = recentlyMovedIds(await deps.memory.get(), settings, now);
+  const agents = agentPlaces(agentRows, parked, now, recentlyMoved);
   const plan = planMoves(seatList, agents, settings, now);
   if (plan.refused.length > 0) {
     deps.logError("Seat mover: the batch would break the checklist, so nobody moves this pass.", {
@@ -136,6 +172,7 @@ export async function seatMoverPass(deps: SeatMoverDeps): Promise<SeatPlan | und
     return plan;
   }
   const moved = await applyMoves(deps, plan, seats, agents);
+  await rememberMoves(deps, moved);
   const released = await releaseParked(deps, agents, moved, parked);
   if (settings.logTask !== undefined && (plan.moves.length > 0 || released > 0)) {
     await deps.comment(settings.logTask, batchComment(plan, seats, "act", released));
@@ -206,6 +243,18 @@ async function applyMoves(
     }
   }
   return moved;
+}
+
+/** Notes when each agent moved, for the cooldown, and drops entries past it. */
+async function rememberMoves(deps: SeatMoverDeps, moved: ReadonlyMap<string, string>) {
+  const memory = await deps.memory.get();
+  const recent = recentlyMovedIds(memory, deps.settings, deps.now);
+  const kept = Object.entries(memory.movedAt ?? {}).filter(([agentId]) => recent.has(agentId));
+  const movedNow = [...moved.keys()].map((agentId) => [agentId, deps.now.toISOString()]);
+  if (movedNow.length === 0 && kept.length === Object.keys(memory.movedAt ?? {}).length) {
+    return;
+  }
+  await deps.memory.set({ ...memory, movedAt: Object.fromEntries([...kept, ...movedNow]) });
 }
 
 /** Releases runs parked on seats their agents have left; wakes each task once. Answers how many. */

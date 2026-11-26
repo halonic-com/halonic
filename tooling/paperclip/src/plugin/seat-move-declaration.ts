@@ -79,6 +79,11 @@ export const seatMoverConfigProperties = {
         title: "Heavy agents per seat",
         default: d.maxHeavyPerSeat,
       },
+      fastBurners: list(
+        "Fast burners",
+        "Url keys of the agents that burn a seat fastest. They pick a seat right after the reviewers and never sit on a reserve seat (past the weekly stop).",
+        d.fastBurners,
+      ),
       pinned: list("Never move", "Url keys of agents the mover never moves.", d.pinned),
       resetFill: list(
         "Reset-fill seats",
@@ -102,7 +107,7 @@ export const seatMoverConfigProperties = {
       ),
       weekMovePercent: percent(
         "Weekly stop",
-        "Agents move off, and never onto, a seat at this much of its week, unless it is a reset-fill seat or its weekly reset is less than the hours below away.",
+        "A seat at this much of its week is a reserve seat: only agents that aren't fast burners sit there, unless its weekly reset is less than the hours below away. Reset-fill seats take anyone.",
         d.weekMovePercent,
       ),
       resetSoonHours: {
@@ -113,9 +118,17 @@ export const seatMoverConfigProperties = {
       },
       weekHardStopPercent: percent(
         "Weekly hard stop",
-        "A seat whose weekly reset is soon still takes nobody at this much of its week (reset-fill seats excepted).",
+        "Nobody sits on a seat at this much of its week (reset-fill seats excepted).",
         d.weekHardStopPercent,
       ),
+      moveCooldownMinutes: {
+        type: "integer",
+        minimum: 1,
+        title: "Time between moves (minutes)",
+        description:
+          "An agent the mover moved this recently moves again only when it is parked or its seat is full, not for who it sits with.",
+        default: d.moveCooldownMinutes,
+      },
       readingMaxAgeMinutes: {
         type: "integer",
         minimum: 5,

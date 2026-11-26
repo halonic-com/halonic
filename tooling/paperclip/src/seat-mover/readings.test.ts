@@ -55,6 +55,7 @@ verifies("paperclip.seat-mover-job", () => {
         at: fresh.at,
       },
       quotaHit: false,
+      waiting: false,
       connection: "connected",
     });
   });

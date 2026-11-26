@@ -19,9 +19,20 @@ verifies("paperclip.seat-mover-checklist", () => {
       expect(plan.moves[0]?.reason).toBe("session-stop");
     });
 
-    test("an agent leaves a seat at 88% of its week", () => {
+    test("a fast burner leaves a reserve seat (88% of its week); a slow agent stays", () => {
       const plan = planMoves(
         [seat("A", 10, 88), seat("B", 30, 10)],
+        [agent("elena", "A"), agent("kim", "A")],
+        settings,
+        now,
+      );
+      expect(movesOf(plan)).toEqual(["elena → B"]);
+      expect(plan.moves[0]?.reason).toBe("week-stop");
+    });
+
+    test("everyone leaves a seat at the weekly hard stop (95%)", () => {
+      const plan = planMoves(
+        [seat("A", 10, 95), seat("B", 30, 10)],
         [agent("kim", "A")],
         settings,
         now,
@@ -46,6 +57,32 @@ verifies("paperclip.seat-mover-checklist", () => {
       expect(plan.moves[0]?.reason).toBe("quota-hit");
     });
 
+    test("a seat runs are parked waiting for takes nobody, whatever its reading says", () => {
+      const seats = [seat("A", 85, 10), seat("Waited", 0, 0, { waiting: true }), seat("C", 50, 10)];
+      expect(movesOf(planMoves(seats, [agent("kim", "A")], settings, now))).toEqual(["kim → C"]);
+    });
+
+    test("an agent the mover moved lately moves again only when parked or its seat is full", () => {
+      const seats = [seat("A", 30, 10), seat("Full", 85, 10), seat("B", 20, 10)];
+      const agents = [
+        agent("elena", "A"),
+        agent("mateo", "A"),
+        agent("priya", "A", { recentlyMoved: true }),
+        agent("kim", "Full", { recentlyMoved: true }),
+      ];
+      const plan = planMoves(seats, agents, settings, now);
+      // Priya is the third heavy agent on A, but sitting together isn't a full seat: she stays.
+      expect(movesOf(plan)).toEqual(["kim → B"]);
+      expect(plan.stuck).toEqual([]);
+    });
+
+    test("fast burners pick a seat before the others", () => {
+      const seats = [seat("Full", 85, 10), seat("B", 40, 10), seat("C", 10, 10)];
+      const fastZed = { ...settings, fastBurners: [...settings.fastBurners, "zed"] };
+      const agents = [agent("kim", "Full"), agent("zed", "Full")];
+      expect(movesOf(planMoves(seats, agents, fastZed, now))).toEqual(["zed → C", "kim → B"]);
+    });
+
     test("a seat below every stop keeps its agents, and an unread seat moves nobody for use", () => {
       const seats = [seat("A", 79, 87), seat("U", 0, 0, { reading: undefined }), seat("B", 0, 0)];
       expect(
@@ -53,7 +90,7 @@ verifies("paperclip.seat-mover-checklist", () => {
       ).toEqual([]);
     });
 
-    test("a paused agent isn't moved for use, and a pinned agent is never moved", () => {
+    test("a paused agent and a pinned agent are never moved", () => {
       const seats = [seat("A", 95, 95), seat("B", 0, 0)];
       const agents = [agent("leo", "A", { paused: true }), agent("pip", "A", { parked: true })];
       expect(planMoves(seats, agents, settings, now).moves).toEqual([]);
@@ -61,9 +98,20 @@ verifies("paperclip.seat-mover-checklist", () => {
   });
 
   describe("a. the weekly stop", () => {
-    test("a seat at 88% of its week is never a target", () => {
+    test("a reserve seat (88% of its week) takes a slow agent but never a fast burner", () => {
       const plan = planMoves(
         [seat("A", 85, 10), seat("B", 0, 88)],
+        [agent("kim", "A"), agent("tomas", "A")],
+        settings,
+        now,
+      );
+      expect(movesOf(plan)).toEqual(["kim → B"]);
+      expect(plan.stuck.map((stuck) => stuck.agent.key)).toEqual(["tomas"]);
+    });
+
+    test("a seat at the weekly hard stop (95%) is never a target", () => {
+      const plan = planMoves(
+        [seat("A", 85, 10), seat("B", 0, 95, { weekResetsAt: hours(2) })],
         [agent("kim", "A")],
         settings,
         now,
@@ -77,23 +125,23 @@ verifies("paperclip.seat-mover-checklist", () => {
       expect(movesOf(planMoves(seats, [agent("kim", "A")], settings, now))).toEqual(["kim → Ravi"]);
     });
 
-    test("a seat whose weekly reset is under 24 hours away takes agents above the stop, below the hard stop", () => {
+    test("a seat whose weekly reset is under 24 hours away takes a fast burner above the stop, below the hard stop", () => {
       const soon = seat("Soon", 10, 92, { weekResetsAt: hours(20) });
-      const full = seat("Full", 5, 98, { weekResetsAt: hours(2) });
+      const full = seat("Full", 5, 95, { weekResetsAt: hours(2) });
       const later = seat("Later", 0, 92, { weekResetsAt: hours(30) });
       const plan = planMoves(
         [seat("A", 85, 10), soon, full, later],
-        [agent("kim", "A")],
+        [agent("tomas", "A")],
         settings,
         now,
       );
-      expect(movesOf(plan)).toEqual(["kim → Soon"]);
+      expect(movesOf(plan)).toEqual(["tomas → Soon"]);
     });
 
     test("agents stay on a seat the weekly stop allows them on, so they don't bounce back", () => {
       const soon = seat("Soon", 10, 92, { weekResetsAt: hours(20) });
       expect(
-        planMoves([soon, seat("B", 0, 0)], [agent("kim", "Soon")], settings, now).moves,
+        planMoves([soon, seat("B", 0, 0)], [agent("tomas", "Soon")], settings, now).moves,
       ).toEqual([]);
     });
   });
@@ -121,12 +169,19 @@ verifies("paperclip.seat-mover-checklist", () => {
       expect(movesOf(planMoves(seats, agents, settings, now))).toEqual(["kim → B"]);
     });
 
-    test("an agent sharing a reviewer's seat moves off, paused or not", () => {
+    test("an agent sharing a reviewer's seat moves off", () => {
+      const seats = [seat("Rev", 10, 10), seat("B", 20, 10)];
+      const plan = planMoves(seats, [agent("liam", "Rev"), agent("nora", "Rev")], settings, now);
+      expect(movesOf(plan)).toEqual(["nora → B"]);
+      expect(plan.moves[0]?.reason).toBe("b-reviewer-seat");
+    });
+
+    test("a paused agent sharing a reviewer's seat stays, so the reviewer leaves for an empty seat", () => {
       const seats = [seat("Rev", 10, 10), seat("B", 20, 10)];
       const agents = [agent("liam", "Rev"), agent("nora", "Rev", { paused: true })];
       const plan = planMoves(seats, agents, settings, now);
-      expect(movesOf(plan)).toEqual(["nora → B"]);
-      expect(plan.moves[0]?.reason).toBe("b-reviewer-seat");
+      expect(movesOf(plan)).toEqual(["liam → B"]);
+      expect(plan.moves[0]?.reason).toBe("b-reviewer-not-alone");
     });
 
     test("two reviewers on one seat: the second by url key moves to an empty seat", () => {
@@ -253,7 +308,7 @@ verifies("paperclip.seat-mover-checklist", () => {
       const seats = [
         seat("A", 85, 10),
         seat("Admin", 0, 0),
-        seat("Week", 0, 90),
+        seat("Week", 0, 95),
         seat("Api", 0, 0, { method: "api_key" }),
       ];
       const plan = planMoves(seats, [agent("kim", "A")], settings, now);
@@ -328,16 +383,17 @@ verifies("paperclip.seat-mover-spread", () => {
 
 verifies("paperclip.seat-mover-not-connected", () => {
   describe("a seat whose connection isn't connected (HAL-19394)", () => {
-    test("its agents move to a legal seat, paused or not, and it takes nobody", () => {
+    test("its running agents move to a legal seat, a paused one stays, and it takes nobody", () => {
       const seats = [
         seat("Gone", 0, 0, { connection: "not-connected" }),
         seat("A", 85, 10),
         seat("B", 30, 10),
       ];
-      const agents = [agent("kim", "Gone", { paused: true }), agent("mara", "A")];
+      const agents = [agent("kim", "Gone", { paused: true }), agent("mara", "Gone")];
       const plan = planMoves(seats, agents, settings, now);
-      expect(movesOf(plan)).toEqual(["kim → B", "mara → B"]);
+      expect(movesOf(plan)).toEqual(["mara → B"]);
       expect(plan.moves[0]?.reason).toBe("not-connected");
+      expect(plan.stuck).toEqual([]);
     });
 
     test("with no legal seat, the agent stays and is listed as stuck", () => {
