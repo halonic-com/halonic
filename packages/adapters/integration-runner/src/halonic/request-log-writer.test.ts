@@ -9,6 +9,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeSecret } from "../pipes.test-helper.ts";
 import { RunnerToolError } from "./limits.ts";
 import { loadLocalIntegration } from "./local-integration.ts";
+import { RequestLogWriter } from "./request-log-writer.ts";
 
 const workspace = "0123456789abcdef0123456789abcdef";
 const canaryReply = "canary-reply-body-7f3a";
@@ -129,5 +130,37 @@ verifies("app.integration-request-log", () => {
       { type: "request", host: "api.example.com", path: "/v2/forecast/{…}", status: 200 },
       { type: "failure", tool: "forecast", kind: "unavailable", fields: ["today.high"] },
     ]);
+  });
+
+  it("skips a code file over the size cap, so a word only it holds stays masked", async () => {
+    const files = memoryFiles();
+    const store = new RequestLogStore(files);
+    // The word is in a file just over 1 MB, and in no other file.
+    await writeFile(join(folder, "big.js"), `const huge = "/ordersbig/"; ${" ".repeat(1_000_001)}`);
+    const writer = new RequestLogWriter({ store, workspace }, "weather", folder, ["forecast"]);
+    await writer.request({
+      method: "GET",
+      host: "api.example.com",
+      path: "/v2/forecast/ordersbig",
+      durationMs: 3,
+      outcome: "ok",
+      status: 200,
+    });
+    expect(await store.lines(workspace, "weather")).toMatchObject([
+      { type: "request", path: "/v2/forecast/{…}" },
+    ]);
+
+    await writeFile(join(folder, "big.js"), `const huge = "/ordersbig/";`);
+    await writer.request({
+      method: "GET",
+      host: "api.example.com",
+      path: "/v2/forecast/ordersbig",
+      durationMs: 3,
+      outcome: "ok",
+      status: 200,
+    });
+    expect((await store.lines(workspace, "weather")).at(-1)).toMatchObject({
+      path: "/v2/forecast/ordersbig",
+    });
   });
 });

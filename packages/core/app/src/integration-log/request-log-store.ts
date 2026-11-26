@@ -5,7 +5,7 @@
 // headers and no bodies, as the kit's log doesn't, and paths are masked when
 // an entry is written, never when it is read (Liam, HAL-18391).
 
-import { maskedPath, maskedSegment } from "./masked-path.ts";
+import { maskedSegment, PathMasker } from "./masked-path.ts";
 
 /** One request an integration made, as the kit's request log has it. */
 export interface LoggedRequest {
@@ -60,12 +60,36 @@ const methodPattern = /^[A-Z][A-Z-]{0,15}$/;
 const hostPattern = /^(?:[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*|\[[0-9A-Fa-f:.]+\])(?::[0-9]{1,5})?$/;
 const maxHostLength = 260;
 
-/** The store of every integration's local request log. */
+/**
+ * Reads the integration's code as it is now, for masking. The store calls it
+ * once for each write that holds requests, never earlier, and keeps no copy.
+ */
+export type ReadCode = () => Promise<string>;
+
+/** A line waiting for its file's next write, with the promise its add returned. */
+interface WaitingLine {
+  /** For a request, the path is masked only when the line is written. */
+  readonly line: RequestLogLine;
+  readonly readCode: ReadCode | undefined;
+  readonly settle: (error?: unknown) => void;
+}
+
+/**
+ * The store of every integration's local request log.
+ *
+ * A runner can make refused requests in a tight loop, so writes are bounded
+ * (Julian, HAL-19170). While a file's write runs, new lines wait, then go in
+ * one write with one read of the code. At most `limit` requests and `limit`
+ * failure notes wait for each file; past that the oldest of that type is
+ * dropped, as the file would drop it anyway, and its add resolves at once.
+ */
 export class RequestLogStore {
   readonly #files: RequestLogFiles;
   readonly #limit: number;
-  /** The write running for each file, so two writes never interleave. */
+  /** The last write queued for each file, so two writes never interleave. */
   readonly #writes = new Map<string, Promise<void>>();
+  /** The lines waiting for each file's next write; that write is already queued. */
+  readonly #waiting = new Map<string, WaitingLine[]>();
   readonly #now: () => Date;
 
   /** @param limit - how many requests, and how many failure notes, each file keeps */
@@ -76,31 +100,33 @@ export class RequestLogStore {
   }
 
   /**
-   * Adds a request, with every path segment `code` doesn't hold masked. A
-   * method or host that isn't in its plain shape is stored as `{…}`; an
-   * empty host stays empty.
+   * Adds a request. When it is written, every path segment the code doesn't
+   * hold is masked, against the code as `readCode` reads it then. A method
+   * or host that isn't in its plain shape is stored as `{…}`; an empty host
+   * stays empty. Lines are written in the order they were added.
    *
-   * @param code - the integration's code as it is now
+   * @param readCode - reads the integration's code as it is at write time
    * @throws RangeError when the workspace key or integration id can't name a file
    */
   async addRequest(
     workspace: string,
     integration: string,
     request: LoggedRequest,
-    code: string,
+    readCode: ReadCode,
   ): Promise<void> {
     const { method, host, path, status, durationMs, outcome, refusal } = request;
-    await this.#add(workspace, integration, {
+    const line: RequestLogLine = {
       type: "request",
       at: this.#now().toISOString(),
       method: methodPattern.test(method) ? method : maskedSegment,
       host: host === "" || isPlainHost(host) ? host : maskedSegment,
-      path: maskedPath(path, code),
+      path,
       ...(status === undefined ? {} : { status }),
       durationMs,
       outcome,
       ...(refusal === undefined ? {} : { refusal }),
-    });
+    };
+    await this.#add(workspace, integration, line, readCode);
   }
 
   /** Adds the note of a failed call. A field name that isn't a plain path is stored as `{…}`. */
@@ -117,30 +143,93 @@ export class RequestLogStore {
     });
   }
 
-  /** The integration's log, oldest first. */
+  /** The integration's log, oldest first, once the lines added before are written. */
   async lines(workspace: string, integration: string): Promise<RequestLogLine[]> {
     await this.#writes.get(fileKey(workspace, integration))?.catch(() => undefined);
     return parseLines(await this.#files.read(workspace, fileName(workspace, integration)));
   }
 
-  /** Deletes the integration's log, as when the integration is removed. */
+  /** Deletes the integration's log, as when the integration is removed, dropping what waits first. */
   async removeIntegration(workspace: string, integration: string): Promise<void> {
-    await this.#queue(workspace, integration, () =>
-      this.#files.remove(workspace, fileName(workspace, integration)),
-    );
+    const file = fileName(workspace, integration);
+    const key = fileKey(workspace, integration);
+    this.#dropWaiting(key);
+    await this.#queue(key, () => this.#files.remove(workspace, file));
   }
 
-  /** Deletes the logs of every integration in the workspace, as when the workspace is forgotten. */
+  /**
+   * Deletes the logs of every integration in the workspace, as when the
+   * workspace is forgotten. What waits is dropped first, and a write already
+   * running is waited for, so it can't bring the folder back.
+   */
   async forgetWorkspace(workspace: string): Promise<void> {
     checkWorkspace(workspace);
-    await Promise.allSettled(this.#writes.values());
+    const keys = [...this.#writes.keys()].filter((key) => key.startsWith(`${workspace}/`));
+    for (const key of keys) this.#dropWaiting(key);
+    await Promise.allSettled(keys.map((key) => this.#writes.get(key)));
     await this.#files.removeWorkspace(workspace);
   }
 
-  async #add(workspace: string, integration: string, line: RequestLogLine): Promise<void> {
+  /**
+   * Puts the line in the file's waiting batch, queueing that batch's write
+   * when it is the first line. Runs before its caller's first `await`, so
+   * lines wait in the order they were added.
+   */
+  #add(
+    workspace: string,
+    integration: string,
+    line: RequestLogLine,
+    readCode?: ReadCode,
+  ): Promise<void> {
     const file = fileName(workspace, integration);
-    await this.#queue(workspace, integration, async () => {
-      const lines = [...parseLines(await this.#files.read(workspace, file)), line];
+    const key = fileKey(workspace, integration);
+    return new Promise((resolve, reject) => {
+      let batch = this.#waiting.get(key);
+      if (batch === undefined) {
+        const queued: WaitingLine[] = [];
+        this.#waiting.set(key, queued);
+        void this.#queue(key, () => this.#writeBatch(workspace, file, key, queued)).catch(
+          () => undefined,
+        );
+        batch = queued;
+      }
+      batch.push({
+        line,
+        readCode,
+        settle: (error) => (error === undefined ? resolve() : reject(error)),
+      });
+      this.#dropOldest(batch, line.type);
+    });
+  }
+
+  /** Drops the oldest waiting line of `type` while more than the limit wait. */
+  #dropOldest(batch: WaitingLine[], type: RequestLogLine["type"]): void {
+    if (batch.filter((waiting) => waiting.line.type === type).length <= this.#limit) return;
+    const oldest = batch.findIndex((waiting) => waiting.line.type === type);
+    const [dropped] = batch.splice(oldest, 1);
+    dropped?.settle();
+  }
+
+  /** Drops every line waiting for the file; their adds resolve, and the queued write finds nothing. */
+  #dropWaiting(key: string): void {
+    const batch = this.#waiting.get(key);
+    this.#waiting.delete(key);
+    for (const waiting of batch?.splice(0) ?? []) waiting.settle();
+  }
+
+  /** Writes the batch with the file's kept lines, reading the code once if it holds a request. */
+  async #writeBatch(
+    workspace: string,
+    file: string,
+    key: string,
+    batch: WaitingLine[],
+  ): Promise<void> {
+    // From here on, new lines wait for the next write.
+    if (this.#waiting.get(key) === batch) this.#waiting.delete(key);
+    if (batch.length === 0) return;
+    try {
+      const added = await maskedLines(batch);
+      const lines = [...parseLines(await this.#files.read(workspace, file)), ...added];
       const kept = new Set([
         ...lastOf(lines, "request", this.#limit),
         ...lastOf(lines, "failure", this.#limit),
@@ -150,12 +239,15 @@ export class RequestLogStore {
         .map((each) => `${JSON.stringify(each)}\n`)
         .join("");
       await this.#files.write(workspace, file, text);
-    });
+      for (const waiting of batch) waiting.settle();
+    } catch (error) {
+      for (const waiting of batch) waiting.settle(error);
+      throw error;
+    }
   }
 
   /** Runs `write` after the file's earlier writes; a failed write doesn't stop the next one. */
-  async #queue(workspace: string, integration: string, write: () => Promise<void>): Promise<void> {
-    const key = fileKey(workspace, integration);
+  async #queue(key: string, write: () => Promise<void>): Promise<void> {
     const next = (this.#writes.get(key) ?? Promise.resolve()).catch(() => undefined).then(write);
     this.#writes.set(key, next);
     try {
@@ -164,6 +256,17 @@ export class RequestLogStore {
       if (this.#writes.get(key) === next) this.#writes.delete(key);
     }
   }
+}
+
+/** The batch's lines, each request's path masked against one read of the code. */
+async function maskedLines(batch: readonly WaitingLine[]): Promise<RequestLogLine[]> {
+  const readCode = batch.findLast((waiting) => waiting.readCode !== undefined)?.readCode;
+  const masker = readCode === undefined ? undefined : new PathMasker(await readCode());
+  return batch.map(({ line }) =>
+    line.type === "request" && masker !== undefined
+      ? { ...line, path: masker.masked(line.path) }
+      : line,
+  );
 }
 
 function isPlainHost(host: string): boolean {

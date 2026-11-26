@@ -13,6 +13,7 @@ const otherWorkspace = "fedcba9876543210fedcba9876543210";
 /** The integration's code: it calls `/v2/orders/<id>` and nothing else. */
 // biome-ignore lint/suspicious/noTemplateCurlyInString: the integration's code, as text
 const code = "export const order = (id) => http.fetch(`https://shop.example.com/v2/orders/${id}`);";
+const readCode = async () => code;
 
 function request(path: string): LoggedRequest {
   return {
@@ -49,7 +50,7 @@ verifies("app.integration-request-log", () => {
       );
 
     it("keeps entries and failure notes across a restart", async () => {
-      await storeIn(profile).addRequest(workspace, "shop", request("/v2/orders"), code);
+      await storeIn(profile).addRequest(workspace, "shop", request("/v2/orders"), readCode);
       await storeIn(profile).addFailure(workspace, "shop", {
         tool: "order",
         kind: "unavailable",
@@ -65,7 +66,7 @@ verifies("app.integration-request-log", () => {
     it("keeps only the last requests up to its limit, and the failure notes beside them", async () => {
       const store = storeIn(profile, 2);
       for (const path of ["/v2", "/v2/orders", "/orders"]) {
-        await store.addRequest(workspace, "shop", request(path), code);
+        await store.addRequest(workspace, "shop", request(path), readCode);
       }
       await store.addFailure(workspace, "shop", { tool: "order" });
       expect(await paths(store)).toEqual(["/v2/orders", "/orders", "failed order"]);
@@ -74,7 +75,7 @@ verifies("app.integration-request-log", () => {
     it("keeps 200 requests by default", async () => {
       const store = storeIn(profile);
       for (let n = 0; n < 201; n += 1) {
-        await store.addRequest(workspace, "shop", request(n === 0 ? "/v2" : "/orders"), code);
+        await store.addRequest(workspace, "shop", request(n === 0 ? "/v2" : "/orders"), readCode);
       }
       const kept = await paths(store);
       expect(kept).toHaveLength(200);
@@ -87,20 +88,25 @@ verifies("app.integration-request-log", () => {
         workspace,
         "shop",
         request("/v2/orders/1001/customers/x@example.com"),
-        code,
+        readCode,
       );
-      await store.addRequest(workspace, "shop", request("/v2/orders/1001"), `${code} limit = 1001`);
+      await store.addRequest(
+        workspace,
+        "shop",
+        request("/v2/orders/1001"),
+        async () => `${code} limit = 1001`,
+      );
       expect(await paths(store)).toEqual(["/v2/orders/{…}/{…}/{…}", "/v2/orders/{…}"]);
     });
 
     it("masks against the code when written: an entry keeps its mask after the code changes", async () => {
       const store = storeIn(profile);
-      await store.addRequest(workspace, "shop", request("/v2/orders/1001"), code);
+      await store.addRequest(workspace, "shop", request("/v2/orders/1001"), readCode);
       await store.addRequest(
         workspace,
         "shop",
         request("/v2/orders/1001"),
-        `${code} "/v2/orders/1001"`,
+        async () => `${code} "/v2/orders/1001"`,
       );
       expect(await paths(store)).toEqual(["/v2/orders/{…}", "/v2/orders/1001"]);
     });
@@ -117,7 +123,7 @@ verifies("app.integration-request-log", () => {
     });
 
     it("writes a private file in the profile, outside the workspace", async () => {
-      await storeIn(profile).addRequest(workspace, "shop", request("/v2"), code);
+      await storeIn(profile).addRequest(workspace, "shop", request("/v2"), readCode);
       const file = join(profile, "integration-logs", workspace, "shop.jsonl");
       expect(relative(workspaceRoot, file).startsWith("..")).toBe(true);
       // Windows has no file modes, so only the place is checked there.
@@ -128,8 +134,8 @@ verifies("app.integration-request-log", () => {
 
     it("deletes an integration's log when it is removed, and keeps the others", async () => {
       const store = storeIn(profile);
-      await store.addRequest(workspace, "shop", request("/v2"), code);
-      await store.addRequest(workspace, "weather", request("/v2"), code);
+      await store.addRequest(workspace, "shop", request("/v2"), readCode);
+      await store.addRequest(workspace, "weather", request("/v2"), readCode);
       await store.removeIntegration(workspace, "shop");
       expect(await store.lines(workspace, "shop")).toEqual([]);
       expect(await readdir(join(profile, "integration-logs", workspace))).toEqual([
@@ -139,8 +145,8 @@ verifies("app.integration-request-log", () => {
 
     it("deletes the workspace's whole folder of logs when the workspace is forgotten", async () => {
       const store = storeIn(profile);
-      await store.addRequest(workspace, "shop", request("/v2"), code);
-      await store.addRequest(otherWorkspace, "shop", request("/v2"), code);
+      await store.addRequest(workspace, "shop", request("/v2"), readCode);
+      await store.addRequest(otherWorkspace, "shop", request("/v2"), readCode);
       await store.forgetWorkspace(workspace);
       expect(await readdir(join(profile, "integration-logs"))).toEqual([otherWorkspace]);
     });
@@ -153,7 +159,7 @@ verifies("app.integration-request-log", () => {
           throw new Error("disk full");
         },
       });
-      await expect(store.addRequest(workspace, "shop", request("/v2"), code)).rejects.toThrow();
+      await expect(store.addRequest(workspace, "shop", request("/v2"), readCode)).rejects.toThrow();
       expect(await store.lines(workspace, "shop")).toEqual([]);
       await store.forgetWorkspace(workspace);
     });
@@ -169,7 +175,7 @@ verifies("app.integration-request-log", () => {
         { method: "POST", host: "x".repeat(261) },
       ];
       for (const shape of sent) {
-        await store.addRequest(workspace, "shop", { ...request("/v2"), ...shape }, code);
+        await store.addRequest(workspace, "shop", { ...request("/v2"), ...shape }, readCode);
       }
       const kept = await store.lines(workspace, "shop");
       expect(kept.map((line) => (line.type === "request" ? [line.method, line.host] : []))).toEqual(
@@ -186,12 +192,12 @@ verifies("app.integration-request-log", () => {
 
     it("refuses a workspace key or integration id that could lead out of its folder", async () => {
       const store = storeIn(profile);
-      await expect(store.addRequest("..", "shop", request("/v2"), code)).rejects.toThrow(
+      await expect(store.addRequest("..", "shop", request("/v2"), readCode)).rejects.toThrow(
         RangeError,
       );
-      await expect(store.addRequest(workspace, "../shop", request("/v2"), code)).rejects.toThrow(
-        RangeError,
-      );
+      await expect(
+        store.addRequest(workspace, "../shop", request("/v2"), readCode),
+      ).rejects.toThrow(RangeError);
     });
   });
 });
