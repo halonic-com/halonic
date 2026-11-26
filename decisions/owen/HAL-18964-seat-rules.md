@@ -3,6 +3,7 @@
 - Task: HAL-18964, plan HAL-17960 PR 1
 - Approval: Liam approved the plan with conditions on HAL-18963 and `projects.read` (read-only, cut by `paperclipAccess`) on HAL-18967; Liam signs this note in his review of https://github.com/halonic-com/halonic/pull/6276
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:j1MjtEsrU0rWrhn2ZmcPQUxgXrJY1qLZcbz2LdRrLyisy9qKERFADrjjt3RZQJ5yN8286abtcxZuadyA+m7IDg==
 
 ## What changes
 
