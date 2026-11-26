@@ -1,6 +1,6 @@
 import { AgentActivityService, AgentMessagingService } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
-import { MessengerService } from "./api.ts";
+import { ChatClicksService, MessengerService } from "./api.ts";
 import { Messenger } from "./messenger.ts";
 import { messengerWords } from "./messenger-words.ts";
 
@@ -14,8 +14,9 @@ export const messengerFeature = defineFeature({
   id: "messenger",
   title: "Messenger",
   // Wanted, not needed: until the engine serves AgentMessaging, Studio still opens. Without
-  // AgentActivity the Messenger offers no activity panel.
-  wants: [AgentMessagingService, AgentActivityService],
+  // AgentActivity the Messenger offers no activity panel. Only Messenger's desktop window gets
+  // the shell's handed chats (`messenger.handed-chats`).
+  wants: [AgentMessagingService, AgentActivityService, ChatClicksService],
   provides: [MessengerService],
   register(studio) {
     studio.services.provide(
