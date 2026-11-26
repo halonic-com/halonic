@@ -870,7 +870,8 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   would add nothing, split into `monitors.deduped_wake` (the watcher woke the
   author in the same pass) and `monitors.deduped_unchanged` (head and `ci-ok`
   unchanged since the last monitor wake, which the `state-packet` data key
-  keeps per task). Each move logs a line starting `Monitor dedupe:`; the
+  keeps per task; never with a failed `ci-ok` or a review finding on the
+  head). Each move logs a line starting `Monitor dedupe:`; the
   `monitorDedupe` setting (`on` by default) turns it off
   (`paperclip.monitor-dedupe`, HAL-20175).
 - **Each tool call** (tags `companyId`, `tool`, `outcome`): `tools.calls` and

@@ -8,8 +8,8 @@ import { shortCheckMs } from "./monitors.ts";
  * a second wake when the watcher wakes the author in the same pass, and an
  * empty one when nothing changed on the pull requests since the last
  * monitor wake. In both cases the watcher moves it out like a fallback
- * monitor: a red `ci-ok` or a conflict wakes the author through the
- * watcher, a green one hands the task to its reviewer.
+ * monitor. A failed `ci-ok` or a review finding never counts as unchanged
+ * (`mustStayShort`).
  */
 
 /** The `monitorDedupe` setting: `on` (the default) or `off`. */
@@ -72,6 +72,20 @@ function sameMarks(a: readonly string[], b: readonly string[]): boolean {
 }
 
 /**
+ * Whether "unchanged" can't be trusted for these pull requests. A failed
+ * `ci-ok` stays the newest one until a same-head re-run's jobs finish, and
+ * the watcher reports a red head only once, so the short check is the
+ * author's only wake then. An open finding needs the short check pending, so
+ * a progress note doesn't count as an answer (`answerOf`).
+ */
+function mustStayShort(pulls: readonly PullFacts[]): boolean {
+  return pulls.some(
+    (pull) =>
+      pull.state === "open" && (pull.ciOkOnHead === "failure" || pull.latestReview !== undefined),
+  );
+}
+
+/**
  * Why the short check of a task with these pull requests adds nothing, or
  * undefined when it may fire. `last` is read only when the watcher doesn't
  * wake the author anyway.
@@ -83,6 +97,9 @@ export async function dedupeReason(
 ): Promise<DedupeReason | undefined> {
   if (decision.kind === "wake") {
     return "wake";
+  }
+  if (mustStayShort(pulls)) {
+    return undefined;
   }
   const marks = factMarks(pulls);
   if (marks === null || marks.length === 0) {

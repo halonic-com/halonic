@@ -1,7 +1,8 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import type { PullLine } from "../state-packet/pull-line.ts";
-import type { PullFacts } from "./decide.ts";
+import { prStatus } from "../pr-tools/pr-status.ts";
+import { type PullLine, statusLine } from "../state-packet/pull-line.ts";
+import type { Decision, PullFacts } from "./decide.ts";
 import {
   agents,
   fakeGitHub,
@@ -11,7 +12,13 @@ import {
   restFacts,
   task,
 } from "./fakes.test-helper.ts";
-import { factMarks, isShortCheck, lineMarks, type MonitorCheck } from "./monitor-dedupe.ts";
+import {
+  dedupeReason,
+  factMarks,
+  isShortCheck,
+  lineMarks,
+  type MonitorCheck,
+} from "./monitor-dedupe.ts";
 import { tick } from "./watch.ts";
 
 const now = new Date("2026-11-23T10:00:00Z");
@@ -119,6 +126,22 @@ verifies("paperclip.monitor-dedupe", () => {
     }
   });
 
+  test("never counts a red ci-ok or an open finding as unchanged", async () => {
+    const [pull] = await factsOf("green", 4605);
+    if (pull === undefined) {
+      throw new Error("the green recording has no pull request");
+    }
+    const skip: Decision = { kind: "skip", why: "nothing new" };
+    const unchanged = async (pulls: PullFacts[]) =>
+      dedupeReason(skip, pulls, async () => checkOf(pulls));
+    expect(await unchanged([pull])).toBe("unchanged");
+    // A same-head re-run: the old failed ci-ok is the newest until the re-run's jobs finish.
+    expect(await unchanged([{ ...pull, ciOkOnHead: "failure" }])).toBeUndefined();
+    // An open finding: the short check keeps a progress note from counting as an answer.
+    const finding = { id: "review-1", at: inMinutes(-30), by: "Julian" };
+    expect(await unchanged([{ ...pull, latestReview: finding }])).toBeUndefined();
+  });
+
   test("leaves a monitor already due, and short checks with the setting off, alone", async () => {
     const last = await checkOf(await factsOf("green", 4605));
     const due = fakePaperclip([task(4605, agents.mateo, { monitorNextCheckAt: inMinutes(-1) })]);
@@ -169,6 +192,26 @@ describe("marks", () => {
       lineMarks([line({ number: 42 }), line({ state: "merged", number: 7 }), line({})]),
     ).toEqual(["acme/rockets#41@abc1234 pending", "acme/rockets#42@abc1234 pending"]);
     expect(lineMarks([line({}), line({ number: 42, draft: true })])).toBeNull();
+  });
+
+  test("a monitor wake's lines mark a pull request as the watcher's facts do", async () => {
+    const facts = await factsOf("green", 4605);
+    const [pull] = facts;
+    if (pull === undefined) {
+      throw new Error("the green recording has no pull request");
+    }
+    // The recording holds what the watcher reads; what only `pr_status` reads answers empty.
+    const recorded = fakeGitHub(recording("green")).get;
+    const get = async (path: string) => {
+      try {
+        return await recorded(path);
+      } catch {
+        return /\/compare\//.test(path) ? {} : [];
+      }
+    };
+    const status = await prStatus(get, pull.repo, pull.number);
+    expect(factMarks(facts)).toHaveLength(1);
+    expect(lineMarks([statusLine(status, [], now.toISOString())])).toEqual(factMarks(facts));
   });
 
   test("a short check is due after now and within the hour", () => {
