@@ -3,6 +3,7 @@
 - Task: HAL-19240
 - Approval: Liam asks for this change in his review of #6541 and #6545 on HAL-19240 (https://paperclip.halonic.com/HAL/issues/HAL-19240#comment-72a25c0f-f9fa-4f91-a0c5-c6f3f8a96e7d), after approving the plan on HAL-19671. A team decision with no board card (HAL-2282 rule).
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lBXpbmr4eaKBiEN9c4w1Q4ErpTHkYtqEICBZpw6fd0hsoqsEHnWlrAbNtqjylduGRnviQVLohAmuaiKBtn6lAA==
 
 ## What changes
 
