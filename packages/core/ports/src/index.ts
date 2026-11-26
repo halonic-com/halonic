@@ -329,6 +329,13 @@ export {
   runFailureReasonOfModelCall,
   VendorErrorText,
 } from "./llm-provider.ts";
+export {
+  type MessagingSync,
+  messagingSyncVersion,
+  type SyncBatch,
+  type SyncChange,
+  type SyncCollection,
+} from "./messaging-sync.ts";
 export { type ModelPrice, priceOf } from "./model-price.ts";
 export {
   checkCodeFromBytes,
