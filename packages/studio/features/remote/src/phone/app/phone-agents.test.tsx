@@ -97,6 +97,14 @@ async function press(name: string): Promise<void> {
   await settle();
 }
 
+/** Picks the computer's tab `name`; on a phone each tab also holds a hidden copy of its label. */
+async function openTab(name: string): Promise<void> {
+  const tab = document.querySelector(`[role="tab"][id$="${name.toLowerCase()}"]`);
+  expect(tab, name).not.toBeNull();
+  await act(async () => (tab as HTMLButtonElement | null)?.click());
+  await settle();
+}
+
 /** Taps the Agents list's row of the agent `title`. */
 async function tapRow(title: string): Promise<void> {
   const row = [...document.querySelectorAll("li > button")].find((each) =>
@@ -142,6 +150,8 @@ verifies("remote.phone-computer-agents", () => {
       tunnel.push(computer, { state: "connected" });
       host.connectAndList([sorter, reporter]);
     });
+    // The screen opens on the Inbox tab; the agents are on their own tab.
+    await openTab("Agents");
     expect(host.tunnel.sentOf("watch").map((watch) => watch.sessionId)).toEqual([
       "s-sorter",
       "s-reporter",
@@ -234,13 +244,14 @@ verifies("remote.phone-computer-agents", () => {
       tunnel.push(computer, { state: "connected" });
       host.connectAndList([reporter]);
     });
+    await openTab("Agents");
     await tapRow("Reporter");
     await step(() => tunnel.push(computer, { state: "removed" }));
     expect(document.querySelector("h2")?.textContent).toBe("Removed from Tim's laptop");
     expect(text()).not.toContain("Reporter");
   });
 
-  it("offers Agents only, with Update Halonic on…, when the computer speaks only version 3", async () => {
+  it("puts Update Halonic on… in the Inbox tab, and the agents on theirs, when the computer speaks only version 3", async () => {
     const { tunnel, hosts } = await mountApp();
     await press("Scan code");
     await press("Open agents");
@@ -263,10 +274,18 @@ verifies("remote.phone-computer-agents", () => {
       });
       host.list([reporter]);
     });
-    expect(text()).toContain(
+    // The Inbox tab is p05c, whole: its title, its text and its hint, and nothing else.
+    const older = [
+      "Update Halonic on Tim's laptop",
       "Update Halonic on Tim's laptop to use Inbox and Messenger from your phone.",
-    );
-    expect(text()).toContain("Agents still works.");
+      "Agents still works.",
+    ];
+    const panel = document.querySelector('[role="tabpanel"]');
+    expect(panel?.textContent).toBe(older.join(""));
+    expect(host.tunnel.sentOf("msg-read")).toEqual([]);
+    // The Agents tab lists the agents, with none of p05c's words.
+    await openTab("Agents");
     expect(text()).toContain("Reporter");
+    for (const words of older) expect(text()).not.toContain(words);
   });
 });

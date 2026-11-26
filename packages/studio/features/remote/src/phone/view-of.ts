@@ -61,6 +61,7 @@ export function viewOf(holding: ClientHolding): RemoteView {
     canAnswer: live,
     offReason: live ? undefined : notLiveReason,
     answersRisky: holding.answersRisky,
+    ownerCheckAvailable: holding.ownerCheckAvailable,
     updateNeeded: holding.updateNeeded,
     olderComputer: holding.olderComputer,
   };

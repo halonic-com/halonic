@@ -27,6 +27,7 @@ export function holdGateway(
       subscribe: (onChange) => client.subscribe(onChange),
       answer: (sessionId, approvalId, decision) => client.answer(sessionId, approvalId, decision),
       prompt: (sessionId, text) => client.prompt(sessionId, text),
+      messaging: client.messaging,
       dispose: () => {
         document.removeEventListener("visibilitychange", follow);
         client.dispose();

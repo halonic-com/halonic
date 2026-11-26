@@ -7,12 +7,11 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { AgentsList, rowButtonOf } from "../agents-list.tsx";
+import { rowButtonOf } from "../agents-list.tsx";
 import { routeOf } from "../computers-words.ts";
 import type { ReachRoute } from "../connection-check.ts";
 import { ConnectionCheckSheet } from "../connection-check-sheet.tsx";
 import { CantReachPanel, ReachingLine } from "../first-reach.tsx";
-import { OlderComputerNote } from "../older-computer-note.tsx";
 import type { PhoneState } from "../phone-status.ts";
 import type { PairedComputer, PhoneStatus } from "../phone-tunnel.ts";
 import { PromptBox } from "../prompt-box.tsx";
@@ -22,6 +21,7 @@ import { StaleBanner } from "../stale-banner.tsx";
 import { StandingScreen } from "../standing-screen.tsx";
 import { PhoneStatusHeader } from "../status-header.tsx";
 import { StatusSheet, type StatusSheetOf } from "../status-sheet.tsx";
+import { type ComputerTab, ComputerViews } from "./computer-tabs.tsx";
 import type { ComputerSheet, PhoneAppRouter } from "./phone-app-router.ts";
 
 /** What the phone does outside the page: Android's settings for Halonic, and Tailscale. */
@@ -35,8 +35,8 @@ export interface PhoneOutside {
  * can't reach it, the status sheet the label opens, and Removed or Can't confirm in place of the
  * body. Until the computer first answers, the body is the first reach's waiting line or its
  * give-up, which open Check this connection (first-run-progress 6). After that it is the
- * computer's agents from its gateway client, under "Update Halonic on…" while that computer speaks
- * only version 3, with the prompt box docked under them; a tapped
+ * tab bar: the Inbox, or "Update Halonic on…" in its place while that computer speaks only
+ * version 3, and the agents from its gateway client with the prompt box docked under them; a tapped
  * agent's run detail shows in place of the whole screen. The computer's name is the screen's h1
  * on every state, hidden while the label shows; focus goes to it when the screen opens, and back
  * to the agent's row when its run detail closes (C48).
@@ -67,6 +67,7 @@ export function ComputerScreen({
   const now = useNow(sheetOf?.kind === "reconnecting");
   const tryAgain = () => router.tryAgain(computer.id);
   const closeRun = useCallback(() => router.closeRun(), [router]);
+  const [tab, setTab] = useState<ComputerTab>("inbox");
   const onOpen = (shown: PhoneState) => {
     if (shown !== "removed" && shown !== "cantConfirm") return router.openSheet();
     // Removed and Can't confirm have no sheet: the label moves focus to the screen's heading.
@@ -127,15 +128,20 @@ export function ComputerScreen({
               banner={banner}
               remote={remote}
               view={view}
+              tab={tab}
+              onTab={setTab}
+              onOpenSettings={outside.onOpenSettings}
             />
           </div>
-          <DockedPrompt
-            router={router}
-            computer={computer}
-            state={state}
-            remote={remote}
-            view={view}
-          />
+          {tab === "agents" ? (
+            <DockedPrompt
+              router={router}
+              computer={computer}
+              state={state}
+              remote={remote}
+              view={view}
+            />
+          ) : null}
         </>
       )}
       {sheetOf === undefined ? null : (
@@ -209,7 +215,7 @@ function CheckSheet({
 
 /**
  * Removed or Can't confirm in place of the body; until the first answer, the waiting line or
- * its give-up; else the agents, under the stale banner while the phone can't reach the computer.
+ * its give-up; else the tab bar, under the stale banner while the phone can't reach the computer.
  */
 function ComputerBody({
   router,
@@ -218,6 +224,9 @@ function ComputerBody({
   banner,
   remote,
   view,
+  tab,
+  onTab,
+  onOpenSettings,
 }: {
   readonly router: PhoneAppRouter;
   readonly computer: PairedComputer;
@@ -225,6 +234,9 @@ function ComputerBody({
   readonly banner: ReactNode;
   readonly remote: PhoneRemote | undefined;
   readonly view: RemoteView | undefined;
+  readonly tab: ComputerTab;
+  readonly onTab: (tab: ComputerTab) => void;
+  readonly onOpenSettings: () => void;
 }) {
   if (state === "removed" || state === "cantConfirm") {
     return (
@@ -260,19 +272,19 @@ function ComputerBody({
       </div>
     );
   }
+  if (remote === undefined || view === undefined) return banner;
   return (
     <>
       {banner}
-      {view?.olderComputer === true ? <OlderComputerNote computer={computer.name} /> : null}
-      {remote === undefined || view === undefined ? null : (
-        <AgentsList
-          view={view}
-          onOpen={(sessionId) => router.openRun(sessionId)}
-          onAnswer={(sessionId, approvalId, decision) =>
-            remote.answer(sessionId, approvalId, decision)
-          }
-        />
-      )}
+      <ComputerViews
+        router={router}
+        computer={computer.name}
+        remote={remote}
+        view={view}
+        tab={tab}
+        onTab={onTab}
+        onOpenSettings={onOpenSettings}
+      />
     </>
   );
 }
