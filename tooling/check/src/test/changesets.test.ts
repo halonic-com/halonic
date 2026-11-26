@@ -69,3 +69,60 @@ verifies("check.changesets-patch-only", () => {
     expect(problem?.message).toContain("Use patch until a minor release is approved");
   });
 });
+
+/** A patch changeset with this text as its body. */
+function changeset(body: string): string {
+  return `---\n"@halonicjs/app-studio": patch\n---\n\n${body}\n`;
+}
+
+verifies("check.changesets-no-bare-placeholders", () => {
+  test("fails on a bare <Agent> in the text, with its line", () => {
+    expect(
+      problems({ ".changeset/a.md": changeset('The Messenger shows "<Agent> is typing…".') }),
+    ).toEqual([".changeset/a.md:5"]);
+  });
+
+  test("fails on a placeholder of two words", () => {
+    expect(
+      problems({ ".changeset/a.md": changeset('It shows "What should change in <skill name>?".') }),
+    ).toEqual([".changeset/a.md:5"]);
+  });
+
+  test("passes a placeholder inside backticks", () => {
+    expect(
+      problems({
+        ".changeset/a.md": changeset("`halonic deploy <deployment>` deploys the workspace."),
+      }),
+    ).toEqual([]);
+  });
+
+  test("passes a placeholder written as {name}", () => {
+    expect(problems({ ".changeset/a.md": changeset('The chat says "About: {name}".') })).toEqual(
+      [],
+    );
+  });
+
+  test("passes an autolink", () => {
+    expect(
+      problems({
+        ".changeset/a.md": changeset("See <https://halonic.dev> or <mailto:hello@halonic.dev>."),
+      }),
+    ).toEqual([]);
+  });
+
+  test("passes a placeholder inside a fenced block, and checks the lines after it", () => {
+    const body = "Run it like this:\n\n```sh\nhalonic run <x>\n```\n\nThen <Agent> answers.";
+    expect(problems({ ".changeset/a.md": changeset(body) })).toEqual([".changeset/a.md:11"]);
+  });
+
+  test("names the file and line and says to write {name} or use backticks", () => {
+    const [problem] = runChecks([], {
+      rules: ["changesets"],
+      extraFiles: { ".changeset/a.md": changeset('It shows "<Agent> is typing…".') },
+    });
+    expect(problem?.message).toContain(".changeset/a.md");
+    expect(problem?.message).toContain("line 5");
+    expect(problem?.message).toContain("Write placeholders as {name}");
+    expect(problem?.message).toContain("put the command in backticks");
+  });
+});
