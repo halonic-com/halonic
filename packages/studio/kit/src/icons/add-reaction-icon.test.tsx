@@ -24,4 +24,20 @@ verifies("kit.add-reaction-icon", () => {
 
     expect(svg?.querySelectorAll("path")).toHaveLength(6);
   });
+
+  it("leaves a gap in the ring where the + sits, wider than the line, so the ring never closes", () => {
+    const paths = render(<AddReactionIcon />).container.querySelectorAll("path");
+    const ring = Array.from(paths, (path) => path.getAttribute("d") ?? "").find((d) =>
+      d.includes("a8 8"),
+    );
+    const commands = ring?.replace(/[^a-zA-Z]/g, "");
+    const numbers = (ring?.match(/-?\d*\.?\d+/g) ?? []).map(Number);
+    // "M x y a rx ry rotation large-arc sweep dx dy": a single arc ends dx, dy from where it starts.
+    const gap = Math.hypot(numbers[7] ?? 0, numbers[8] ?? 0);
+
+    // One move and one arc, with no close and no second arc that could bring the ring back round.
+    expect(commands).toBe("Ma");
+    // Round caps reach half the 1.8 line past each end, so a gap under 1.8 would look closed.
+    expect(gap).toBeGreaterThan(1.8);
+  });
 });

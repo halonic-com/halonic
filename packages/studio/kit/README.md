@@ -2576,7 +2576,8 @@ group, so a long action ("Sign in with Google") goes under the text and lines up
 
 ## Other exports
 
-The icons `AlertIcon`, `BackIcon`, `ForwardIcon`, `HandIcon` (an open raised palm, the agent map's
+The icons `AddReactionIcon` (a smiling face with a + at its top right, the Messenger's "Add a
+reaction" button, drawn like the place icons), `AlertIcon`, `BackIcon`, `ForwardIcon`, `HandIcon` (an open raised palm, the agent map's
 "asks first" hand, drawn like the place icons), `HelpIcon` (a circled ?, the sidebar's Help row,
 drawn like the place icons), `InfoIcon`, `LaptopIcon` (a screen on a base, the phone's paired computers), `MaximiseIcon` (⤢), `RefreshIcon`
 (a circle arrow, the ↻ of a plugin card), `RestoreIcon` (the restore mark), `SettingsIcon` (a gear, the sidebar's Settings row, drawn like
