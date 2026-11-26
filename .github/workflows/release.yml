@@ -223,10 +223,12 @@ jobs:
           # the tarball for that warning to reach users.
           engines=$(tar -xzOf "$tarball" package/package.json | node -p 'JSON.parse(require("node:fs").readFileSync(0, "utf8")).engines?.node')
           [ "$engines" = ">=26.12.0" ] || { echo "::error::The CLI package's engines.node is '$engines', expected '>=26.12.0'."; exit 1; }
-          # What npm would publish, without publishing: no login needed.
-          npm publish --dry-run "$tarball" --tag latest
           clean=$(mktemp -d)
           cd "$clean"
+          # What npm would publish, without publishing: no login needed. It
+          # runs in the empty folder: at the repo root npm refuses because the
+          # root package.json's devEngines asks for pnpm (EBADDEVENGINES).
+          npm publish --dry-run "$tarball" --tag latest
           # The tarball is a file dependency, so this is a plain `npm install`.
           printf '{"private":true,"dependencies":{"halonic":"file:%s"}}\n' "$tarball" > package.json
           npm install --no-audit --no-fund
@@ -732,16 +734,22 @@ jobs:
           title="Halonic $VERSION"
           base="https://github.com/$GH_REPO/releases/download/$TAG"
           link="[Download for Windows]($base/$INSTALLER) · [Download for Android]($base/$APK)"
-          notes="$link"
+          # Someone who arrives through GitHub Releases also needs the command
+          # line route and what changed (HAL-19286). The words copy the npm
+          # README; the changelog link points at the tag, so it never moves.
+          cli="**Command line** (Windows WSL 2, macOS, Linux): \`npm install -g halonic\`, with Node.js 26.12 or later. Then try \`halonic init --example acme\`. [Getting started](https://docs.halonic.dev/getting-started)"
+          changes="[What changed](https://github.com/$GH_REPO/blob/$TAG/apps/studio/CHANGELOG.md)"
+          body="$link"$'\n\n'"$cli"$'\n\n'"$changes"
+          notes="$body"
           flags=()
           if [ "$SIGNED" != "true" ]; then
-            notes="**The Windows installer is not signed yet, so Windows SmartScreen shows \"Windows protected your PC\". Choose More info, then Run anyway. Check the download against SHA256SUMS first.**"$'\n\n'"$link"
+            notes="**The Windows installer is not signed yet, so Windows SmartScreen shows \"Windows protected your PC\". Choose More info, then Run anyway. Check the download against SHA256SUMS first.**"$'\n\n'"$body"
           fi
           if [ "$DRY_RUN" = "true" ]; then
             title="DRY RUN Halonic $VERSION"
             how="signed with a test certificate"
             [ "$SIGNED" = "true" ] || how="unsigned"
-            notes="**Dry run, $how, with placeholder files for the APK. Do not publish. Delete this draft.**"$'\n\n'"$link"
+            notes="**Dry run, $how, with placeholder files for the APK. Do not publish. Delete this draft.**"$'\n\n'"$body"
             flags+=(--prerelease)
           fi
           gh release create "$TAG" dist/* --draft \
