@@ -1,8 +1,16 @@
-import { EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
+import { type ConnectorTrouble, integrationsFolder } from "@halonicjs/app";
+import { Button, EmptyState, SkeletonBar, StatusChip } from "@halonicjs/studio-kit";
 import { type EngineWords, engineWords, errorMessageFor } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useId, useRef, useSyncExternalStore } from "react";
 import { type ConnectionState, connectionStateTable } from "../connection-state.ts";
+import type { ConnectorStatus } from "../connector-status-host.ts";
 import { type ConnectorStatusModel, refusalLimit } from "../connector-status-model.ts";
+import {
+  connectorTroubleWords,
+  troubleAsk,
+  troubleHasLook,
+  troubleLine,
+} from "../connector-trouble-line.ts";
 import { type RefusalLinePart, refusalLine, refusalLineText } from "../refusal-line.ts";
 import { statusWords } from "../status-words.ts";
 
@@ -13,6 +21,11 @@ export interface ConnectorStatusSectionProps {
   readonly words?: EngineWords;
   /** Reads a state change to screen readers (`announcer.announceState`); without it nothing is read. */
   readonly announceState?: (key: string, text: string) => void;
+  /**
+   * Opens a Build chat about the connector with `ask` in its box, for **Let the assistant look**
+   * under a local integration's trouble; without it the line shows no button.
+   */
+  readonly onLook?: ((ask: string) => void) | undefined;
 }
 
 /**
@@ -25,6 +38,7 @@ export function ConnectorStatusSection({
   model,
   words = engineWords["desktop-app"],
   announceState,
+  onLook,
 }: ConnectorStatusSectionProps) {
   const subscribe = useCallback((listener: () => void) => model.subscribe(listener), [model]);
   const state = useSyncExternalStore(subscribe, () => model.state);
@@ -46,6 +60,13 @@ export function ConnectorStatusSection({
           )}
         </div>
       )}
+      {state.connector?.trouble === undefined ? null : (
+        <TroubleLine
+          connector={state.connector}
+          trouble={state.connector.trouble}
+          onLook={onLook}
+        />
+      )}
       <div className="flex min-w-0 flex-col gap-2">
         <h2 id={headingId} className="text-heading [overflow-wrap:anywhere]">
           {statusWords.refusalsHeading}
@@ -63,6 +84,49 @@ export function ConnectorStatusSection({
         <WaitingForApproval
           lines={state.waiting.map((tool) => statusWords.waitingLine(tool.name))}
         />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * What went wrong with a local integration's last call, as one plain line, with **Let the
+ * assistant look** when new code can fix it and a chat can open. The parts are text, never markup.
+ */
+function TroubleLine({
+  connector,
+  trouble,
+  onLook,
+}: {
+  readonly connector: ConnectorStatus;
+  readonly trouble: ConnectorTrouble;
+  readonly onLook: ((ask: string) => void) | undefined;
+}) {
+  const { name, connection } = connector;
+  const folder =
+    connection?.kind === "integration" ? `${integrationsFolder}/${connection.folder}` : "";
+  const look = onLook !== undefined && folder !== "" && troubleHasLook(trouble);
+  return (
+    <div className="flex min-w-0 flex-col items-start gap-2">
+      <p className="min-w-0 text-body [overflow-wrap:anywhere]">
+        {troubleLine(trouble, name).map((part, index) =>
+          part.code === true ? (
+            <code key={`${index}:${part.text}`} className="font-mono text-code">
+              {part.text}
+            </code>
+          ) : (
+            part.text
+          ),
+        )}
+      </p>
+      {look ? (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => onLook(troubleAsk(trouble, name, folder))}
+        >
+          {connectorTroubleWords.look}
+        </Button>
       ) : null}
     </div>
   );

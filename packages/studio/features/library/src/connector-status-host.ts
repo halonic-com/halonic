@@ -1,3 +1,4 @@
+import type { ConnectorTrouble } from "@halonicjs/app";
 import type { ChatTurnRefusal, ChatTurnWaiting } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { ConnectionState } from "./connection-state.ts";
@@ -36,6 +37,11 @@ export interface ConnectorStatus {
    * (flow-library 8.2). Absent when nothing blocks it.
    */
   readonly blocked?: true;
+  /**
+   * For a local integration's connector: what went wrong with its last call, as its request log
+   * says (`app.connector-trouble`). Absent when nothing did, or the log can't be read.
+   */
+  readonly trouble?: ConnectorTrouble;
 }
 
 /** One refusal and the time it arrived. */

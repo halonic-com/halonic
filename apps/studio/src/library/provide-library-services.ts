@@ -18,6 +18,7 @@ import {
   type RefusalsFeed,
 } from "@halonicjs/studio-feature-library/api";
 import { secretsKey, shellKeychain, tokenStoreKey } from "@halonicjs/studio-services";
+import { engineRequestLogs } from "../assistant/chat-request-log.ts";
 import { agentHostToolLister, noHttpInStudio } from "../connect/agent-host-tool-lister.ts";
 import type { WorkspaceTrust } from "../studio/workspace-trust.ts";
 import { WorkspaceConnectorStatus } from "./workspace-connector-status.ts";
@@ -61,6 +62,10 @@ export function provideLibraryServices(
       folder: parts.location,
       onFocus: parts.onFocus,
       onWatchError: (error) => console.error(error),
+      requestLogs:
+        parts.transport === undefined
+          ? undefined
+          : engineRequestLogs(parts.transport, parts.location),
     }),
   );
   if (parts.transport === undefined) return;
