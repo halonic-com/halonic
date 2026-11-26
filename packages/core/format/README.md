@@ -230,6 +230,33 @@ deployments:
 - `meter: config` with no limits at all counts nothing, like `meter: none`, so it warns
   (`users-config-limits-missing`).
 
+A `mode: many` deployment lists in `users.exposed` the workflows its end users may start, and
+everything they see of them (requirement `deployments-users-exposed`). The deploy file is the one
+place for this; workflow files don't change.
+
+```yaml
+    users:
+      mode: many
+      exposed:
+        - workflow: support-reply
+          name: Ask support
+          description: Answers a question about your order.
+          kind: chat                       # chat or form
+          inputs:
+            question: { label: Your question, help: One or two lines. }
+          shows:
+            answers: [reply]               # states whose answers are shown
+            results: [summary]             # context keys shown as results
+            approvals:
+              shop/refund: "Refund {amount} to {customer}?"
+```
+
+- Nothing is exposed or shown unless it's listed: no `exposed`, an empty list or an empty
+  `answers`, `results` or `approvals` shows nothing, and there are no wildcards.
+- `{arg}` places in an approval text are filled with the call's arguments; the text is shown as
+  plain text, never as markup.
+- `exposed` on a deployment whose `mode` isn't `many` fails (`users-exposed-needs-many`).
+
 `config` may also list `organisations`: groups of people who share one pool of limits, in the
 shape of an organisation in Halonic Cloud.
 
