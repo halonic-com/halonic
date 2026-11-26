@@ -25,7 +25,7 @@ The checks on this page are in
 | Service user | `halonic-engine`, home `/srv/halonic-engine`, no login shell |
 | Checkout of `halonic` | `/srv/halonic-engine/halonic`, pinned to one `main` commit |
 | Engine workspace | `/srv/halonic-engine/workspace`, with the routines, and no key |
-| Profile folder | `/srv/halonic-engine/.local/share/halonic`: the sign-in password, runs, cache |
+| Profile folder | `/srv/halonic-engine/.local/share/halonic`: the sign-in password, the Paperclip keys the sign-in stores, runs, cache |
 | Service | `halonic-engine.service`, listening on `127.0.0.1:4747` |
 
 The profile folder is outside the checkout, so a deploy or a rollback never
@@ -284,8 +284,9 @@ reaches Paperclip uses the key of one of the engine workspace's connection
 files, `connections/paperclip/<connection>.yaml`. The owner signs in to that
 connection on the server (`server.paperclip-sign-in`), the board approves it
 in Paperclip, and the server stores the key in the profile's own secret store
-as `halonic_token_paperclip-<connection>` (`server.paperclip-key-store`). The
-key never passes through a file, the unit, an environment variable or the
+as `halonic_token_paperclip-<connection>` (`server.paperclip-key-store`). That
+secrets file in the profile folder is the only place the key is kept: it never
+passes through a file you write, the unit, an environment variable or the
 engine workspace, and no device ever holds it. Don't put it in any of them by
 hand: the server reads it only from the record the sign-in stores.
 
@@ -306,29 +307,72 @@ cookie goes into a private file that you delete at the end:
 ```sh
 jar="$(mktemp)"
 api() { curl -s -b "$jar" -c "$jar" -H 'Content-Type: application/json' --data @- "http://127.0.0.1:4747/api/$1"; echo; }
-read -rs pw
+read -rsp 'serve-password: ' pw; echo
 printf '%s' "$pw" | jq -Rs '{password: .}' | api login
 printf '%s' "$pw" | jq -Rs '{password: ., connection: "<connection>", address: "<connection address>"}' | api paperclip-keys/sign-in/start
+unset pw
 ```
 
-`login` answers with no error. `sign-in/start` answers a `signInId`, a
-`phrase`, an `approvalUrl` and an `expiresAt` ten minutes on. The board opens
-the approval page, on Paperclip's usual address if the connection's address
-is loopback, and approves only when Paperclip shows the same phrase. Then
-poll:
+`login` answers `{"signedIn":true}`. `sign-in/start` answers a `signInId`, a
+`phrase`, an `approvalUrl` and an `expiresAt` ten minutes on. The
+`approvalUrl` is on the connection file's own address, such as
+`http://127.0.0.1:<Paperclip port>/cli-auth/…`, which the board's computer
+can't open. The board opens the same path and query on Paperclip's usual
+address, and approves only when Paperclip shows the same phrase.
+
+`sign-in/start` can also answer `refused`, with a reason:
+`address-not-allowed` (no connection file has that address),
+`unreachable` (Paperclip doesn't answer at that address) or
+`too-many-sign-ins` (cancel or wait out an open one). Fix that and start again.
+
+Poll until the answer isn't `pending`; the poll takes no password:
 
 ```sh
 jq -n --arg id '<signInId>' '{signInId: $id}' | api paperclip-keys/sign-in/poll
-unset pw; rm -f "$jar"
 ```
 
-The poll answers `pending` until the board approved, then `connected` with the
-connection's name, address and company, never the key. `wrong-company` means
-the board user doesn't belong to the connection file's company: the server
-revoked that key and stored nothing. `halonic serve devices` lists "Paperclip
-key for <connection> connected", made by `browser`. To remove the key, send
-`{password, connection}` the same way to `paperclip-keys/disconnect`: it
-revokes the key at Paperclip and deletes the record.
+The answers:
+
+- `pending`: the board hasn't approved yet. Poll again.
+- `connected`, with the connection's name, address and company, never the
+  key. `halonic serve devices` lists "Paperclip key for <connection>
+  connected", made by `browser`.
+- `wrong-company`: the board user doesn't belong to the connection file's
+  company. The server stored nothing.
+- `expired`: nobody approved within ten minutes. Start again.
+- `unknown`: the server no longer knows that sign-in, for example after a
+  restart. Start again, and the board doesn't approve the old one.
+
+When an answer carries `keyMayWork: true` (with `wrong-company`, `expired` or
+`cancelled`), the server couldn't revoke the key Paperclip made, so it may
+still work: the board revokes it in Paperclip. The service's log says why
+(`server.paperclip-sign-in-failures`).
+
+Once the answer isn't `pending`, end the password session, then delete the
+cookie:
+
+```sh
+api logout < /dev/null
+rm -f "$jar"
+```
+
+To remove a stored key, sign in to the server again and send Disconnect. It
+revokes the key at Paperclip, then deletes the record and the connection's
+messaging cache:
+
+```sh
+jar="$(mktemp)"
+read -rsp 'serve-password: ' pw; echo
+printf '%s' "$pw" | jq -Rs '{password: .}' | api login
+printf '%s' "$pw" | jq -Rs '{password: ., connection: "<connection>"}' | api paperclip-keys/disconnect
+unset pw
+api logout < /dev/null
+rm -f "$jar"
+```
+
+When it answers `revoked: false`, Paperclip didn't revoke the key: the record
+is gone from the server, but the key may still work until it expires, so the
+board revokes it in Paperclip.
 
 ## Pair Studio with the server
 
@@ -373,7 +417,7 @@ wakes anyone or marks a task done.
    the engine workspace, owned by `halonic-engine`:
 
    ```sh
-   sudo cp -r <workspace-company checkout>/hubs/pr-watcher /srv/halonic-engine/workspace/hubs/pr-watcher
+   sudo cp -rT <workspace-company checkout>/hubs/pr-watcher /srv/halonic-engine/workspace/hubs/pr-watcher
    sudo chown -R halonic-engine:halonic-engine /srv/halonic-engine/workspace/hubs/pr-watcher
    ```
 
@@ -430,10 +474,25 @@ wakes anyone or marks a task done.
    This lists a run of `pr-watcher` every 10 minutes, completed.
 
 A pass whose dones or wakes differ from what today's watcher wrote fails its
-run at the `check` step, so it shows in the Inbox of a Studio paired with the
-server. Each run's output, in
-`engine runs show <run id> --output --dir /srv/halonic-engine/workspace`, carries `truncated`: `true` when the plugin's pass left tasks out, so the
-comparison didn't cover all of them.
+run at the `check` step. A Studio paired with the server doesn't show it: its
+Inbox lists failed runs from its own computer only, and pairing moves only the
+Messaging engine. Check the server for failed runs during the dry run:
+
+```sh
+engine runs --workflow pr-watcher --status failed --dir /srv/halonic-engine/workspace
+engine runs show <run id> --dir /srv/halonic-engine/workspace
+```
+
+`runs show` names the difference in the failed step's error.
+
+Each run's `decision`, written by the `decide` step, carries `truncated`:
+`true` when the plugin's pass left tasks out, so the comparison didn't cover
+all of them. It is in the run's events, not in `--output`, which prints only
+model steps' output:
+
+```sh
+engine runs show <run id> --json --dir /srv/halonic-engine/workspace | jq '.events[] | select(.type == "context.updated" and .key == "decision") | .value.truncated'
+```
 
 ## Deploy a new commit
 
