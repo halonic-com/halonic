@@ -21,7 +21,7 @@ export function UpdateNotes({
   if (notes === null && notesUrl === null) return null;
   return (
     <section className="flex flex-col gap-2" aria-labelledby={headingId}>
-      <h3 id={headingId} className="text-body font-medium">
+      <h3 id={headingId} className="text-body-strong text-fg">
         {heading}
       </h3>
       {notes === null ? (
