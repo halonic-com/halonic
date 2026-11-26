@@ -32,7 +32,7 @@ verifies("messenger.shared-layout", () => {
     const page = await openMessenger(acme());
     const row = chiefRow(page);
 
-    expect(row.name).toContain("text-body-strong");
+    expect(row.name).toContain("font-semibold");
     expect(row.line).toContain("text-fg");
   });
 
@@ -45,6 +45,7 @@ verifies("messenger.shared-layout", () => {
     expect(header.firstElementChild?.className.split(" ")).toContain("size-10");
     expect(header.querySelector("h2")?.textContent).toBe("Chief");
     expect(row.name).toContain("text-body");
+    expect(row.name).not.toContain("font-semibold");
     expect(row.line).toContain("text-fg-muted");
   });
 });
