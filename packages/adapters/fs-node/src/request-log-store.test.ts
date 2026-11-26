@@ -145,6 +145,19 @@ verifies("app.integration-request-log", () => {
       expect(await readdir(join(profile, "integration-logs"))).toEqual([otherWorkspace]);
     });
 
+    it("still reads the log and forgets the workspace after a write failed", async () => {
+      const files = requestLogFilesIn(profile);
+      const store = new RequestLogStore({
+        ...files,
+        write: async () => {
+          throw new Error("disk full");
+        },
+      });
+      await expect(store.addRequest(workspace, "shop", request("/v2"), code)).rejects.toThrow();
+      expect(await store.lines(workspace, "shop")).toEqual([]);
+      await store.forgetWorkspace(workspace);
+    });
+
     it("refuses a workspace key or integration id that could lead out of its folder", async () => {
       const store = storeIn(profile);
       await expect(store.addRequest("..", "shop", request("/v2"), code)).rejects.toThrow(

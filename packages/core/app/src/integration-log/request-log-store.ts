@@ -108,7 +108,7 @@ export class RequestLogStore {
 
   /** The integration's log, oldest first. */
   async lines(workspace: string, integration: string): Promise<RequestLogLine[]> {
-    await this.#writes.get(fileKey(workspace, integration));
+    await this.#writes.get(fileKey(workspace, integration))?.catch(() => undefined);
     return parseLines(await this.#files.read(workspace, fileName(workspace, integration)));
   }
 
@@ -122,7 +122,7 @@ export class RequestLogStore {
   /** Deletes the logs of every integration in the workspace, as when the workspace is forgotten. */
   async forgetWorkspace(workspace: string): Promise<void> {
     checkWorkspace(workspace);
-    await Promise.all(this.#writes.values());
+    await Promise.allSettled(this.#writes.values());
     await this.#files.removeWorkspace(workspace);
   }
 
