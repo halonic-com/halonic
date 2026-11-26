@@ -134,7 +134,7 @@ pub fn first_open<R: Runtime>(handle: &AppHandle<R>, labels: &[&str]) -> Option<
 /// the pointer is on.
 pub fn show<R: Runtime>(handle: &AppHandle<R>, app: Option<FocusedApp>) -> tauri::Result<()> {
     if app == Some(FocusedApp::Ask) {
-        return crate::quick_ask::show(handle);
+        return crate::quick_ask::show_box(handle);
     }
     let label = app.map_or(STUDIO_WINDOW, FocusedApp::name);
     if let Some(window) = handle.get_webview_window(label) {

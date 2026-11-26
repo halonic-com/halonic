@@ -16,7 +16,7 @@ use super::keys::{
     Area, KeyState, box_closes_after, default_shortcut, desktop_allows_keys, placement,
     saved_shortcut,
 };
-use super::{QuickAsk, hide, owns, shortcut, shortcut_set, show};
+use super::{QuickAsk, hide, owns, shortcut, shortcut_set, show, show_box};
 
 #[test]
 fn the_default_keys_are_ctrl_alt_space_or_option_space() {
@@ -162,13 +162,55 @@ fn webview(app: &App<MockRuntime>, label: &str) -> Webview<MockRuntime> {
 #[test]
 fn the_box_opens_once_under_its_own_label_and_only_it_can_hide_itself() {
     let app = app_with(&["main"]);
-    show(app.handle()).expect("the box shows");
-    show(app.handle()).expect("the box shows again");
+    show_box(app.handle()).expect("the box shows");
+    show_box(app.handle()).expect("the box shows again");
     let mut labels: Vec<String> = app.webview_windows().into_keys().collect();
     labels.sort();
     assert_eq!(labels, ["ask", "main"]);
     assert_eq!(hide(webview(&app, "main")), Err("not_the_box"));
     assert_eq!(hide(webview(&app, "ask")), Ok(()));
+}
+
+fn show_from(app: &App<MockRuntime>, label: &str) -> Result<(), &'static str> {
+    tauri::async_runtime::block_on(show(webview(app, label)))
+}
+
+/// `studio.src-tauri.quick-ask-show`
+#[test]
+fn studios_window_shows_the_box_once_under_its_own_label() {
+    let app = app_with(&["main"]);
+    assert_eq!(show_from(&app, "main"), Ok(()));
+    assert_eq!(show_from(&app, "main"), Ok(()));
+    assert_eq!(labels(&app), ["ask", "main"]);
+}
+
+/// `studio.src-tauri.quick-ask-show`
+#[test]
+fn no_other_window_may_show_the_box() {
+    let app = app_with(&["inbox", "messenger"]);
+    for label in ["inbox", "messenger"] {
+        assert_eq!(show_from(&app, label), Err("not_studio"));
+    }
+    assert_eq!(labels(&app), ["inbox", "messenger"]);
+    show_box(app.handle()).expect("the box shows");
+    assert_eq!(show_from(&app, "ask"), Err("not_studio"));
+}
+
+/// `studio.src-tauri.quick-ask-show`
+#[test]
+fn only_studios_window_is_granted_show_and_only_on_this_computer() {
+    let granted = capability(include_str!("../capabilities/desktop-quick-ask-show.json"));
+    assert_eq!(granted["windows"], json!(["main"]));
+    assert_eq!(granted["permissions"], json!(["quick-ask:allow-show"]));
+    let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/capabilities");
+    for entry in std::fs::read_dir(folder).expect("the capabilities folder") {
+        let path = entry.expect("a capability file").path();
+        let text = std::fs::read_to_string(&path).expect("a readable capability");
+        let named = path.file_name().and_then(|name| name.to_str());
+        if named != Some("desktop-quick-ask-show.json") {
+            assert!(!text.contains("quick-ask:allow-show"), "{}", path.display());
+        }
+    }
 }
 
 #[test]

@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-quick-ask-show",
+  "description": "On desktop, Studio's own window may show quick ask's box through plugin:quick-ask|show, for Help › Quick ask and its Ctrl K entry (HAL-19411), as the tray's Ask… does. The command takes nothing, shows only the box and is refused from any other window, the box's own included. It is local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "quick-ask:allow-show"
+  ]
+}

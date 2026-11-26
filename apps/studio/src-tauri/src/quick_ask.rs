@@ -12,7 +12,9 @@
 //! and changes them, for Settings › Shortcuts (`plugin:quick-ask|shortcut`,
 //! `plugin:quick-ask|shortcut_set`). The keys work while Halonic runs in
 //! the tray, with Studio's window closed too. Where the keys can't work,
-//! the tray's Ask… and `--app ask` still open the box.
+//! the tray's Ask… and `--app ask` still open the box, and so do Help ›
+//! Quick ask and Ctrl K in Studio's window (`plugin:quick-ask|show`,
+//! HAL-19411), which also tell people the box is there.
 //!
 //! The box hands a chat over to Messenger through `plugin:quick-ask|open_chat`,
 //! and Messenger's page takes the chat that opened its window through
@@ -28,7 +30,7 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::Shortcut;
 
-use crate::focused_apps::FocusedApp;
+use crate::focused_apps::{FocusedApp, STUDIO_WINDOW};
 use crate::global_keys::shortcuts;
 
 #[path = "quick_ask_chat.rs"]
@@ -61,6 +63,7 @@ pub fn commands<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new("quick-ask")
         .invoke_handler(tauri::generate_handler![
             hide,
+            show,
             shortcut,
             shortcut_set,
             chat::open_chat,
@@ -167,14 +170,14 @@ pub fn pressed<R: Runtime>(app: &AppHandle<R>) {
         hide_window(&window);
         return;
     }
-    if let Err(error) = show(app) {
+    if let Err(error) = show_box(app) {
         log(format!("the box didn't open: {error}"));
     }
 }
 
 /// Shows the box on the screen the pointer is on, with the focus, opening
 /// its window the first time.
-pub fn show<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+pub fn show_box<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let window = match app.get_webview_window(FocusedApp::Ask.name()) {
         Some(window) => window,
         None => open(app)?,
@@ -263,6 +266,22 @@ fn hide<R: Runtime>(webview: Webview<R>) -> Result<(), &'static str> {
         return Err("not_the_box");
     }
     webview.window().hide().map_err(|_| "failed")
+}
+
+/// Shows the box from Studio's own window, for Help › Quick ask and the
+/// Ctrl K entry, as the tray's Ask… does. Takes nothing and shows only the
+/// box. Refused as `not_studio` from any other window, the box's own
+/// included. Async, because Windows can't open a window from a command on
+/// the main thread.
+#[tauri::command]
+async fn show<R: Runtime>(webview: Webview<R>) -> Result<(), &'static str> {
+    if webview.label() != STUDIO_WINDOW {
+        return Err("not_studio");
+    }
+    show_box(webview.app_handle()).map_err(|error| {
+        log(format!("the box didn't open: {error}"));
+        "failed"
+    })
 }
 
 /// Quick ask's keys and whether they work, for Settings › Shortcuts. Async,
