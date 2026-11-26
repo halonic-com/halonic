@@ -3,11 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { MemoryScheduler } from "@halonicjs/adapter-memory";
 import { MessagingHub } from "@halonicjs/host-agent-messaging-hub";
+import { pollRates, SyncScheduler } from "@halonicjs/host-paperclip-sync";
 import type { TeamStatus } from "@halonicjs/ports";
 import { FakeAgentMessaging, FakeTeamStatus } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
-import { MessagingPoller } from "./messaging-poller.ts";
 import { TeamStatusHub, teamStatusMaxAgeMs, teamStatusTickTimer } from "./team-status-hub.ts";
 
 let folder: string;
@@ -61,42 +61,45 @@ async function startBoth() {
     warn: () => {},
     report: () => {},
   });
-  const pollers: MessagingPoller[] = [];
+  const syncs: SyncScheduler[] = [];
+  const every = { windowOpenMs: teamStatusMaxAgeMs, windowClosedMs: teamStatusMaxAgeMs };
   const scheduler = new MemoryScheduler(
     {
       onTimer: async (timer) => {
-        for (const poller of pollers) if (await poller.onTimer(timer)) return;
+        for (const sync of syncs) if (await sync.onTimer(timer)) return;
       },
       onTick: async () => {},
     },
     clock,
   );
-  pollers.push(
-    new MessagingPoller({ scheduler, clock, poll: () => messagingHub.refresh() }),
-    new MessagingPoller({
+  syncs.push(
+    new SyncScheduler({ scheduler, clock, poll: () => messagingHub.refresh() }),
+    new SyncScheduler({
       scheduler,
       clock,
       poll: () => teamHub.refresh(),
       timer: teamStatusTickTimer,
-      every: { inFrontMs: teamStatusMaxAgeMs, inBackgroundMs: teamStatusMaxAgeMs },
+      rates: { ...pollRates, connected: every, down: every },
     }),
   );
-  for (const poller of pollers) await poller.start(true);
+  for (const sync of syncs) await sync.start(true);
   const wait = async (ms: number) => {
     now += ms;
     await scheduler.runDue();
   };
+  // Both start with a read at once, the first full load; the tests count the reads after it.
+  await wait(0);
   return { wait, messagingReads: () => messagingReads, seatReads: () => seatReads };
 }
 
 verifies("agent-host.paperclip-polling", () => {
-  it("reads a connection's messaging on the 30-second poll, and its team status only on the 5-minute tick", async () => {
+  it("reads a connection's messaging on the 10-second poll, and its team status only on the 5-minute tick", async () => {
     const { wait, messagingReads, seatReads } = await startBoth();
 
-    await wait(30_000);
+    await wait(10_000);
 
-    expect(messagingReads()).toBe(1);
-    expect(seatReads()).toBe(0);
+    expect(messagingReads()).toBe(2);
+    expect(seatReads()).toBe(1);
   });
 });
 
@@ -105,12 +108,12 @@ verifies("agent-host.team-status-hub", () => {
     const { wait, seatReads } = await startBoth();
 
     await wait(teamStatusMaxAgeMs - 1);
-    expect(seatReads()).toBe(0);
-
-    await wait(1);
     expect(seatReads()).toBe(1);
 
-    await wait(teamStatusMaxAgeMs);
+    await wait(1);
     expect(seatReads()).toBe(2);
+
+    await wait(teamStatusMaxAgeMs);
+    expect(seatReads()).toBe(3);
   });
 });

@@ -23,4 +23,4 @@ Don't run `pnpm verify` by default: CI runs the full suite (HAL-2418).
 ## Local rules
 
 - The store holds only `AgentMessaging` port types. A provider converts its records before they reach a `SyncCollection`; never add a field for a provider's record, request or key.
-- Files, folders and timers stay in the host that uses this package: persistence goes through `SyncPersistence`, and syncs are started by the caller.
+- Files and folders stay in the host that uses this package: persistence goes through `SyncPersistence`. Every wait goes through the `Scheduler` port, never a timer of its own, and every poll rate is in the one table in `poll-rates.ts`.

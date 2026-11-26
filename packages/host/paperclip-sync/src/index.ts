@@ -7,6 +7,7 @@ export {
   type KeptCollectionOptions,
   keptItemsMax,
 } from "./kept-collection.ts";
+export { type EventsState, type PollRates, pollRates } from "./poll-rates.ts";
 export {
   StoredAgentMessaging,
   type StoredAgentMessagingOptions,
@@ -18,4 +19,9 @@ export {
   storeFormat,
 } from "./stored-collection.ts";
 export type { SyncPersistence } from "./sync-persistence.ts";
+export {
+  SyncScheduler,
+  type SyncSchedulerOptions,
+  syncPollTimer,
+} from "./sync-scheduler.ts";
 export { SyncStore } from "./sync-store.ts";

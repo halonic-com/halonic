@@ -5,6 +5,7 @@ import { NodeScheduler } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
 import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
 import { type PaperclipBinding, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
+import { SyncScheduler } from "@halonicjs/host-paperclip-sync";
 import type { PhoneMessaging, Scheduler, SecretStore } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -23,7 +24,6 @@ import {
 } from "./connection-file.ts";
 import { DesktopMessaging } from "./desktop-messaging.ts";
 import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
-import { MessagingPoller } from "./messaging-poller.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
 import { paperclipFeedback } from "./paperclip-provider.ts";
 import { ReplyWatch } from "./reply-watch.ts";
@@ -45,7 +45,7 @@ export const messagingCacheFolderName = "agent-messaging-cache";
 /**
  * The desktop engine's agent messaging, for the agent host: the key
  * hand-over, Paperclip's sign-in, Studio's messaging routes and Disconnect,
- * feedback's sender, and the poller and the sign-ins' time limits on a scheduler of its own. Without a profile folder there is nowhere outside
+ * feedback's sender, and the sync's polls and the sign-ins' time limits on a scheduler of its own. Without a profile folder there is nowhere outside
  * the workspaces for the cache, so only the hand-over and feedback's sender
  * are served and no provider ever starts.
  *
@@ -54,9 +54,10 @@ export const messagingCacheFolderName = "agent-messaging-cache";
  * without one a workspace set to a server reads as signed out and the
  * pairing routes answer 409 `keychain_needed`.
  *
- * Polling starts with the host but reads only connected sources, and none is
- * connected until Studio hands a key over, so a host that starts calls
- * nobody.
+ * The sync starts with the host, with its first full load at once, but reads
+ * only connected sources, and none is connected until Studio hands a key
+ * over, so a host that starts calls nobody. No source's live events are
+ * connected yet, so it polls at the rates without events.
  */
 export function hostMessaging(
   profile: ProfileFolder | undefined,
@@ -98,9 +99,9 @@ export function hostMessaging(
   });
   const scheduler = new NodeScheduler(
     {
-      // Each timer is the poller's or a sign-in's time limit; each checks its own key.
+      // Each timer is the sync's poll or a sign-in's time limit; each checks its own key.
       onTimer: async (timer) => {
-        if (await poller.onTimer(timer)) return;
+        if (await sync.onTimer(timer)) return;
         await signIn.onTimer(timer);
       },
       // The poll needs no tick: its own timer brings every poll.
@@ -117,17 +118,15 @@ export function hostMessaging(
     clock: systemClock,
     report: (error) => report({ provider: "messaging", action: "watch replies", error }),
   });
-  const poller = new MessagingPoller({
+  const sync = new SyncScheduler({
     scheduler,
     clock: systemClock,
     poll: () => messaging.refresh(),
     waiting: () => replies.waiting(),
   });
-  const signIn = hostSignIn(keys, messaging, scheduler, poller);
+  const signIn = hostSignIn(keys, messaging, scheduler, sync);
   const usesServer = (workspace: string) => messaging.usesServer(workspace);
-  poller
-    .start()
-    .catch((error: unknown) => report({ provider: "scheduler", action: "start", error }));
+  sync.start().catch((error: unknown) => report({ provider: "scheduler", action: "start", error }));
   return {
     routes: [
       ...paperclipKeyRoutes({
@@ -138,7 +137,7 @@ export function hostMessaging(
         log,
         usesServer,
       }),
-      ...messagingRoutes({ messaging, poller, replies, log }),
+      ...messagingRoutes({ messaging, sync, replies, log }),
       ...paperclipSignInRoutes({ signIn, workspaceRoots, log, usesServer }),
       ...feedback,
       ...serverPairingRoutes({
@@ -154,7 +153,7 @@ export function hostMessaging(
       ? {}
       : { phone: phoneWorkspaceMessaging(() => messaging.lastAsked()) }),
     stop: async () => {
-      await poller.stop();
+      await sync.stop();
       await scheduler.close();
       messaging.close();
     },
@@ -164,14 +163,14 @@ export function hostMessaging(
 /**
  * Paperclip's sign-in on the host's scheduler: an approved key is kept in
  * memory for its connection, whose file is written first when it is new,
- * and starts the connection's provider, which the poller then reads at once
+ * and starts the connection's provider, which the sync then polls at once
  * (`agent-host.paperclip-first-poll`).
  */
 function hostSignIn(
   keys: PaperclipKeys,
   messaging: DesktopMessaging,
   scheduler: Scheduler,
-  poller: Pick<MessagingPoller, "pollNow">,
+  sync: Pick<SyncScheduler, "pollNow">,
 ): PaperclipSignIn {
   return new PaperclipSignIn({
     callsFor: (address) => new PaperclipSignInClient({ address }),
@@ -183,7 +182,7 @@ function hostSignIn(
         ),
       connect: async (workspace, name) => {
         await (await messaging.of(workspace))?.connect(name);
-        await poller.pollNow();
+        await sync.pollNow();
       },
       readConnection: readConnectionFile,
       writeConnection: writeConnectionFile,

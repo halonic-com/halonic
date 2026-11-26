@@ -8,6 +8,7 @@ import {
 } from "@halonicjs/adapter-agent-host-client";
 import { ManualClock, MemoryScheduler, MemorySecretStore } from "@halonicjs/adapter-memory";
 import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
+import { SyncScheduler } from "@halonicjs/host-paperclip-sync";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
 import { profileOf } from "../profile-folder.ts";
 import { webCryptoDigest } from "../profile-token-key.ts";
@@ -16,7 +17,6 @@ import { randomLaunchToken } from "../server/launch-token.ts";
 import { readConnectionFile } from "./connection-file.ts";
 import { DesktopMessaging } from "./desktop-messaging.ts";
 import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
-import { MessagingPoller } from "./messaging-poller.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
 import { ReplyWatch } from "./reply-watch.ts";
 import { ServerPairings } from "./server-engine.ts";
@@ -265,17 +265,19 @@ export async function startDesktop(): Promise<Desktop> {
     now: () => clock.now(),
   });
   const scheduler = new MemoryScheduler(
-    { onTimer: async (timer) => void (await poller.onTimer(timer)), onTick: async () => {} },
+    { onTimer: async (timer) => void (await sync.onTimer(timer)), onTick: async () => {} },
     clock,
   );
   const replies = new ReplyWatch({ clock, report: (error) => log(`watch replies ${error}\n`) });
-  const poller = new MessagingPoller({
+  const sync = new SyncScheduler({
     scheduler,
     clock,
     poll: () => messaging.refresh(),
     waiting: () => replies.waiting(),
   });
-  await poller.start();
+  await sync.start();
+  // The first full load is due at once, as the host's own scheduler would deliver it.
+  await scheduler.runDue();
   const token = randomLaunchToken();
   const host: HostServer = await startHostServer(token, [
     ...paperclipKeyRoutes({
@@ -285,7 +287,7 @@ export async function startDesktop(): Promise<Desktop> {
       log,
       usesServer: (folder) => messaging.usesServer(folder),
     }),
-    ...messagingRoutes({ messaging, poller, replies, log }),
+    ...messagingRoutes({ messaging, sync, replies, log }),
   ]);
   const answers: string[] = [];
   const transport = pageTransport(host.url, token, answers);
@@ -319,7 +321,7 @@ export async function startDesktop(): Promise<Desktop> {
     writeConnection: (address, company) => writeConnection(address, company),
     filesIn,
     close: async () => {
-      await poller.stop();
+      await sync.stop();
       messaging.close();
       await host.close();
       // A team read the test started may still be writing its cache file, and on
