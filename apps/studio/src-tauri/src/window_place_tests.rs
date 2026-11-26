@@ -26,6 +26,9 @@ const RIGHT_SCREEN: Rect = Rect {
     height: 1080,
 };
 
+/// The frame slack at 100%.
+const SLACK: i64 = 8;
+
 fn window(x: i32, y: i32, width: u32, height: u32) -> Rect {
     Rect {
         x,
@@ -72,11 +75,11 @@ fn a_window_snapped_to_a_zone_stays_exactly_there() {
     let inbox = window(-7, 0, 2574, 2119);
     let messenger = window(2553, 0, 2574, 2119);
     assert_eq!(
-        fallback(inbox, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA)),
+        fallback(inbox, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA), SLACK),
         None
     );
     assert_eq!(
-        fallback(messenger, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA)),
+        fallback(messenger, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA), SLACK),
         None
     );
 }
@@ -85,7 +88,12 @@ fn a_window_snapped_to_a_zone_stays_exactly_there() {
 fn a_window_on_a_second_screen_stays_there() {
     let inbox = window(8000, 100, 1200, 800);
     assert_eq!(
-        fallback(inbox, &[ULTRAWIDE, RIGHT_SCREEN], Some(ULTRAWIDE_WORK_AREA)),
+        fallback(
+            inbox,
+            &[ULTRAWIDE, RIGHT_SCREEN],
+            Some(ULTRAWIDE_WORK_AREA),
+            SLACK
+        ),
         None
     );
 }
@@ -94,7 +102,7 @@ fn a_window_on_a_second_screen_stays_there() {
 fn a_window_on_a_screen_now_gone_moves_to_the_middle_of_the_primary() {
     let inbox = window(8000, 100, 1200, 800);
     assert_eq!(
-        fallback(inbox, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA)),
+        fallback(inbox, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA), SLACK),
         Some(window(3240, 656, 1200, 800))
     );
 }
@@ -113,7 +121,7 @@ fn a_window_bigger_than_the_primary_shrinks_to_its_work_area() {
     };
     let studio = window(-9000, 0, 3840, 2112);
     assert_eq!(
-        fallback(studio, &[laptop], Some(laptop_work_area)),
+        fallback(studio, &[laptop], Some(laptop_work_area), SLACK),
         Some(window(0, 0, 1920, 1032))
     );
 }
@@ -123,7 +131,12 @@ fn a_window_barely_on_screen_moves_fully_onto_it() {
     // Only 20 pixels of it are left on the ultrawide's right edge.
     let messenger = window(7660, 400, 1200, 800);
     assert_eq!(
-        fallback(messenger, &[ULTRAWIDE_WORK_AREA], Some(ULTRAWIDE_WORK_AREA)),
+        fallback(
+            messenger,
+            &[ULTRAWIDE_WORK_AREA],
+            Some(ULTRAWIDE_WORK_AREA),
+            SLACK
+        ),
         Some(window(6480, 400, 1200, 800))
     );
 }
@@ -132,7 +145,12 @@ fn a_window_barely_on_screen_moves_fully_onto_it() {
 fn a_window_partly_below_the_taskbar_moves_up_onto_the_work_area() {
     let inbox = window(1000, 1700, 1200, 800);
     assert_eq!(
-        fallback(inbox, &[ULTRAWIDE_WORK_AREA], Some(ULTRAWIDE_WORK_AREA)),
+        fallback(
+            inbox,
+            &[ULTRAWIDE_WORK_AREA],
+            Some(ULTRAWIDE_WORK_AREA),
+            SLACK
+        ),
         Some(window(1000, 1312, 1200, 800))
     );
 }
@@ -148,7 +166,7 @@ fn after_the_resolution_went_down_a_window_shrinks_onto_the_screen() {
     };
     let studio = window(400, 200, 2000, 1200);
     assert_eq!(
-        fallback(studio, &[smaller], Some(smaller)),
+        fallback(studio, &[smaller], Some(smaller), SLACK),
         Some(window(0, 0, 1920, 1032))
     );
 }
@@ -169,10 +187,48 @@ fn a_window_across_two_screens_of_different_scales_moves_onto_the_one_it_overlap
         width: 1920,
         height: 1032,
     };
-    let messenger = window(3500, 100, 1000, 700);
+    // Its lower part on the right is below the 1080p screen's work area.
+    let messenger = window(3500, 600, 1000, 700);
     assert_eq!(
-        fallback(messenger, &[left_4k, right_1080p], Some(left_4k)),
-        Some(window(3840, 100, 1000, 700))
+        fallback(messenger, &[left_4k, right_1080p], Some(left_4k), SLACK),
+        Some(window(3840, 332, 1000, 700))
+    );
+}
+
+#[test]
+fn a_window_across_two_screens_all_on_them_stays() {
+    let left = Rect {
+        x: 0,
+        y: 0,
+        width: 1920,
+        height: 1032,
+    };
+    let right = Rect { x: 1920, ..left };
+    let messenger = window(1500, 100, 1000, 700);
+    assert_eq!(fallback(messenger, &[left, right], Some(left), SLACK), None);
+}
+
+#[test]
+fn the_frame_slack_grows_with_the_scale() {
+    assert_eq!(frame_slack(1.0), 8);
+    assert_eq!(frame_slack(2.0), 16);
+    assert_eq!(frame_slack(3.0), 24);
+    assert_eq!(frame_slack(0.5), 8);
+}
+
+#[test]
+fn a_window_snapped_on_a_screen_at_300_percent_stays_exactly_there() {
+    // The invisible border is about 21 pixels at 300%.
+    let screen = Rect {
+        x: 0,
+        y: 0,
+        width: 3840,
+        height: 2088,
+    };
+    let inbox = window(-21, 0, 1962, 2109);
+    assert_eq!(
+        fallback(inbox, &[screen], Some(screen), frame_slack(3.0)),
+        None
     );
 }
 
@@ -182,7 +238,8 @@ fn a_maximised_window_on_a_screen_still_there_stays() {
         stretched_fallback(
             RIGHT_SCREEN,
             &[ULTRAWIDE, RIGHT_SCREEN],
-            Some(ULTRAWIDE_WORK_AREA)
+            Some(ULTRAWIDE_WORK_AREA),
+            SLACK,
         ),
         None
     );
@@ -191,7 +248,7 @@ fn a_maximised_window_on_a_screen_still_there_stays() {
 #[test]
 fn a_maximised_or_fullscreen_window_on_a_screen_now_gone_stretches_over_the_primary() {
     assert_eq!(
-        stretched_fallback(RIGHT_SCREEN, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA)),
+        stretched_fallback(RIGHT_SCREEN, &[ULTRAWIDE], Some(ULTRAWIDE_WORK_AREA), SLACK),
         Some(ULTRAWIDE_WORK_AREA)
     );
 }
@@ -208,7 +265,8 @@ fn a_primary_screen_off_the_origin_is_centred_in_its_own_area() {
         fallback(
             window(9000, 9000, 1000, 600),
             &[left_primary],
-            Some(left_primary)
+            Some(left_primary),
+            SLACK,
         ),
         Some(window(-1460, 40, 1000, 600))
     );
@@ -217,7 +275,7 @@ fn a_primary_screen_off_the_origin_is_centred_in_its_own_area() {
 #[test]
 fn with_no_primary_screen_the_window_stays_where_it_is() {
     let inbox = window(8000, 100, 1200, 800);
-    assert_eq!(fallback(inbox, &[], None), None);
+    assert_eq!(fallback(inbox, &[], None, SLACK), None);
 }
 
 #[test]

@@ -8,9 +8,9 @@
 //!
 //! The plugin restores nothing by itself: `window.rs` calls `restore` on a
 //! window that is still hidden, after its taskbar ID is set, so it shows in
-//! its place at once. A place that isn't all on one screen's work area, say
-//! after a screen was unplugged or its resolution went down, moves fully
-//! onto the screen it overlaps most, or to the middle of the primary screen
+//! its place at once. A place that isn't all on the connected screens' work
+//! areas, say after a screen was unplugged or its resolution went down,
+//! moves fully onto the screen it overlaps most, or to the middle of the primary screen
 //! when it overlaps none (HAL-19534). Every rectangle is in physical pixels,
 //! so screens at different scales compare in one unit. The plugin saves
 //! each window's place when it closes (Studio's hides to the tray) and when
@@ -23,11 +23,17 @@ use tauri_plugin_window_state::{Builder, StateFlags, WindowExt};
 
 use crate::focused_apps::window_labels;
 
-/// How far, in pixels, a window's frame may reach past a work area's edge
-/// and still count as on it: Windows draws an invisible resize border of
-/// about 7 pixels at 100% (14 at 200%) around every window, and a window
-/// snapped to a screen's edge has it past that edge.
-const FRAME_SLACK: i64 = 16;
+/// How far, in pixels at 100%, a window's frame may reach past a work
+/// area's edge and still count as on it: Windows draws an invisible resize
+/// border of about 7 pixels at 100% (14 at 200%) around every window, and a
+/// window snapped to a screen's edge has it past that edge.
+const FRAME_SLACK_AT_100: f64 = 8.0;
+
+/// The frame slack in physical pixels on screens up to `scale_factor`.
+fn frame_slack(scale_factor: f64) -> i64 {
+    // At most a few dozen pixels, so the cast can't overflow.
+    (FRAME_SLACK_AT_100 * scale_factor.max(1.0)).ceil() as i64
+}
 
 /// What the shell keeps of each window: never whether it shows, since
 /// Studio's window hides to the tray and must not come back hidden.
@@ -67,11 +73,17 @@ pub fn restore<R: Runtime>(window: &WebviewWindow<R>) {
 }
 
 fn keep_on_screen<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
-    let screens: Vec<Rect> = window
-        .available_monitors()?
+    let monitors = window.available_monitors()?;
+    let screens: Vec<Rect> = monitors
         .iter()
         .map(|monitor| Rect::new(monitor.work_area().position, monitor.work_area().size))
         .collect();
+    let slack = frame_slack(
+        monitors
+            .iter()
+            .map(tauri::Monitor::scale_factor)
+            .fold(1.0, f64::max),
+    );
     let primary = window
         .primary_monitor()?
         .map(|monitor| Rect::new(monitor.work_area().position, monitor.work_area().size));
@@ -80,7 +92,7 @@ fn keep_on_screen<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
     if window.is_fullscreen()? || window.is_maximized()? {
         return keep_stretched_on_screen(window, current, &screens, primary);
     }
-    let Some(place) = fallback(current, &screens, primary) else {
+    let Some(place) = fallback(current, &screens, primary, slack) else {
         return Ok(());
     };
     // The plugin sets the inner size; the frame around it stays the same.
@@ -152,13 +164,29 @@ impl Rect {
         across.max(0) * down.max(0)
     }
 
-    /// Whether all of it is on `screen`, give or take the frame's
-    /// invisible border.
-    fn is_on(self, screen: Rect) -> bool {
-        i64::from(self.x) >= i64::from(screen.x) - FRAME_SLACK
-            && i64::from(self.y) >= i64::from(screen.y) - FRAME_SLACK
-            && self.right() <= screen.right() + FRAME_SLACK
-            && self.bottom() <= screen.bottom() + FRAME_SLACK
+    fn area(self) -> i64 {
+        i64::from(self.width) * i64::from(self.height)
+    }
+
+    /// It with `slack` pixels taken off each side.
+    fn inset(self, slack: i64) -> Rect {
+        let slack_i32 = i32::try_from(slack).unwrap_or(i32::MAX);
+        let slack_u32 = u32::try_from(slack.saturating_mul(2)).unwrap_or(u32::MAX);
+        Rect {
+            x: self.x.saturating_add(slack_i32),
+            y: self.y.saturating_add(slack_i32),
+            width: self.width.saturating_sub(slack_u32),
+            height: self.height.saturating_sub(slack_u32),
+        }
+    }
+
+    /// Whether all of it is on `screens` together, give or take `slack`
+    /// pixels of the frame's invisible border. Work areas don't overlap, so
+    /// it is covered when its overlaps with them add up to its own area.
+    fn is_on(self, screens: &[Rect], slack: i64) -> bool {
+        let inner = self.inset(slack);
+        let covered: i64 = screens.iter().map(|screen| inner.overlap(*screen)).sum();
+        covered >= inner.area()
     }
 
     /// Whether its middle is on `screen`.
@@ -171,12 +199,13 @@ impl Rect {
 }
 
 /// Where `window` goes, given the screens' work areas: `None` to keep it,
-/// when all of it is on one of `screens`. Otherwise fully onto the screen
+/// when all of it, give or take `slack` pixels, is on `screens` together,
+/// even across two of them. Otherwise fully onto the screen
 /// it overlaps most, as near its place as fits and no bigger than that
 /// screen, or, when it overlaps none, the middle of `primary`'s work area.
 /// `None` too when there is no `primary` screen to move it to.
-pub fn fallback(window: Rect, screens: &[Rect], primary: Option<Rect>) -> Option<Rect> {
-    if screens.iter().any(|screen| window.is_on(*screen)) {
+pub fn fallback(window: Rect, screens: &[Rect], primary: Option<Rect>, slack: i64) -> Option<Rect> {
+    if window.is_on(screens, slack) {
         return None;
     }
     let nearest = screens

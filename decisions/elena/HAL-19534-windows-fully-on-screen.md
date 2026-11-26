@@ -8,10 +8,12 @@
 of it were on any screen, and then always to the middle of the primary
 screen. A window half off a screen stayed half off it. The board wants every
 window back fully on a visible screen. So the rule changes: a window not all
-on one screen's work area (give or take a 16-pixel frame border, which a
+on the connected screens' work areas taken together (give or take the
+frame's invisible border, 8 pixels times the highest screen scale, which a
 window snapped to an edge has past it) moves fully onto the work area it
-overlaps most, as near its place as fits; one that overlaps no screen still
-goes to the middle of the primary screen. Work areas replace the screens'
+overlaps most, as near its place as fits. A window across two connected
+screens, all of it on them, stays where it is. One that overlaps no screen
+still goes to the middle of the primary screen. Work areas replace the screens'
 full sizes, so a window no longer comes back under the taskbar.
 
 One test's expectation changes with it:
