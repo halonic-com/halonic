@@ -101,6 +101,15 @@ verifies("app.connector-factories", () => {
   });
 
   describe("connectorConfigOf", () => {
+    it("takes a Paperclip connector's connection name, and no secret", () => {
+      const paperclip = { paperclip: { connection: "halonic" } };
+      expect(connectorConfigOf(connectorFile(paperclip))).toEqual({
+        id: "notes",
+        transport: { kind: "paperclip", connection: "halonic" },
+        secretEnv: {},
+      });
+    });
+
     it("takes an http connector's address, headers and secret", () => {
       const http = { http: { url: "https://notes.acme.test/mcp", headers: { "x-acme": "1" } } };
       expect(connectorConfigOf(connectorFile(http, "notes-token"))).toEqual({

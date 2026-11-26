@@ -212,6 +212,28 @@
             "plugin"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "paperclip": {
+              "type": "object",
+              "properties": {
+                "connection": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+                }
+              },
+              "required": [
+                "connection"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "paperclip"
+          ],
+          "additionalProperties": false
         }
       ]
     },

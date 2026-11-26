@@ -106,9 +106,10 @@ export class WorkspaceListedTools implements ListedToolsHost {
   async review(connectorId: string): Promise<ListedToolsSnapshot> {
     const source = await this.#open(connectorId);
     const sourceName = source.connector.name ?? source.connector.id;
-    // Neither way has tools Studio can list: Google's are built in, and an http server's can't be
-    // read here yet. The connector's page gives `halonic tools review` for those instead of asking.
-    if ("google" in source.connector.transport || "http" in source.connector.transport) {
+    // None of these has tools Studio can list: Google's and Paperclip's are built in, and an http
+    // server's can't be read here yet. The connector's page gives `halonic tools review` for those.
+    const { transport } = source.connector;
+    if ("google" in transport || "paperclip" in transport || "http" in transport) {
       return nothingToReview(sourceName);
     }
     // A tool the connector's `tools.allow` leaves out is never offered to agents, so it isn't shown (HAL-12340).
@@ -128,7 +129,7 @@ export class WorkspaceListedTools implements ListedToolsHost {
     picks: readonly ListedToolPick[],
   ): Promise<ListedToolsApproval> {
     const source = await this.#open(connectorId);
-    if ("google" in source.connector.transport) {
+    if ("google" in source.connector.transport || "paperclip" in source.connector.transport) {
       throw new Error("this connector's tools are built in, so there is nothing to approve");
     }
     const check = await this.#check(source);

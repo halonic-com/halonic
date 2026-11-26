@@ -71,6 +71,7 @@ import {
 import { serveRequestLog } from "./request-log.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
 import { openServePaperclip } from "./serve-paperclip.ts";
+import { ServePaperclipTools } from "./serve-paperclip-tools.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
 import { servedRuleIsolate } from "./serve-rules.ts";
 import { servedModelChoice } from "./served-model-choice.ts";
@@ -96,7 +97,7 @@ export interface ServeSetup extends RunSetup {
   readonly studioApp?: string;
   /** How `serve` offers its console to `serve pair` and `serve devices`; the Unix socket by default. */
   readonly console?: ConsoleTransport;
-  /** The `fetch` the Paperclip providers send with; the global one by default. */
+  /** The `fetch` the Paperclip providers and the `paperclip` connector send with; the global one by default. */
   readonly paperclipFetch?: typeof fetch;
 }
 
@@ -217,6 +218,12 @@ async function serveVersions(
   // The port the server takes, then the one it got: a run's bridge never calls it (HAL-15251).
   let servePort = listen.port;
   const routines = await servedRoutines(context, setup, dir, typedDir, workspace, versions);
+  // A served run's tool steps reach Paperclip only through the stored key (HAL-19721).
+  const paperclipTools = new ServePaperclipTools({
+    workspace: await realpath(dir.root),
+    keys: openSecretStore(setup.profile ?? nodeProfileEnvironment()),
+    ...(setup.paperclipFetch === undefined ? {} : { fetch: setup.paperclipFetch }),
+  });
   const engine = await openWorkspaceEngine(context, setup, {
     holder: "serve",
     dir,
@@ -230,6 +237,7 @@ async function serveVersions(
     ending: serveMessages.nothingServed(),
     ownPorts: () => [servePort],
     routines: (parts) => routines.ticks(parts),
+    builtInConnectors: [paperclipTools],
     ...servedRuleIsolate(inNpmPackage),
   });
   try {

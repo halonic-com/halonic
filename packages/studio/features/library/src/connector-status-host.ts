@@ -11,7 +11,9 @@ export type ConnectorConnection =
   /** `secrets` names the workspace secrets the integration gets, as its file picks them. */
   | { readonly kind: "integration"; readonly folder: string; readonly secrets: readonly string[] }
   /** `name` is the plugin's display name, when its sheet gives one. */
-  | { readonly kind: "plugin"; readonly id: string; readonly name?: string };
+  | { readonly kind: "plugin"; readonly id: string; readonly name?: string }
+  /** `connection` names the workspace's Paperclip connection; its key stays on the server's computer. */
+  | { readonly kind: "paperclip"; readonly connection: string };
 
 /**
  * Which of a connector's tools ask a person first, as its file says, when the New connector dialog

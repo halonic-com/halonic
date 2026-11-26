@@ -133,9 +133,7 @@ async function joinedProviders(
 
 /**
  * The provider for one connection, or `undefined` when no usable key is stored for it or its
- * file is gone. Every request goes through the key guard of HAL-17495 with the record read
- * again from the store and the connection file read again from the workspace: only when the
- * file's address and company still match the record's is the request sent, with the key.
+ * file is gone. Every request goes through {@link storedKeyGuard}.
  */
 async function storedKeyProvider(
   options: ServeMessagingOptions,
@@ -145,8 +143,32 @@ async function storedKeyProvider(
   const madeFor = await readStoredKey(keys, connection);
   const file = await readConnectionFile(workspace, connection);
   if (madeFor === undefined || file === undefined) return undefined;
+  return new PaperclipMessaging({
+    address: madeFor.address,
+    key: storedKeyGuard(workspace, keys, connection, madeFor),
+    connection,
+    company: madeFor.company,
+    label: `Paperclip · ${file.label}`,
+    warn: options.warn,
+    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+}
+
+/**
+ * The key guard of HAL-17495 for `connection`'s stored key: at every request it reads the record
+ * again from the store and the connection file again from `workspace`, and sends the request,
+ * with the key, only when the file's address and company still match the record's and the
+ * address is still the one `madeFor` was read with. Otherwise it answers `signed-out`.
+ */
+export function storedKeyGuard(
+  workspace: string,
+  keys: Pick<SecretStore, "get">,
+  connection: string,
+  madeFor: PaperclipKeyEntry,
+): PaperclipKeyGuard {
   const binding = { workspace, connection };
-  const guard: PaperclipKeyGuard = async (request) => {
+  return async (request) => {
     const entry = await readStoredKey(keys, connection);
     const now = await readConnectionFile(workspace, connection);
     if (entry === undefined || now === undefined) return signedOut;
@@ -159,16 +181,6 @@ async function storedKeyProvider(
         : Promise.resolve(signedOut),
     );
   };
-  return new PaperclipMessaging({
-    address: madeFor.address,
-    key: guard,
-    connection,
-    company: madeFor.company,
-    label: `Paperclip · ${file.label}`,
-    warn: options.warn,
-    ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
-    ...(options.now === undefined ? {} : { now: options.now }),
-  });
 }
 
 /**

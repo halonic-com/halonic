@@ -13,7 +13,13 @@ import type {
   LocalRunConnectorsInput,
 } from "@halonicjs/adapter-workspace-engine-node";
 import type { RoutineEngine, RoutineTicks } from "@halonicjs/engine";
-import type { HttpClient, Secrets, ToolScriptIsolate, TrustGrant } from "@halonicjs/ports";
+import type {
+  ConnectorFactory,
+  HttpClient,
+  Secrets,
+  ToolScriptIsolate,
+  TrustGrant,
+} from "@halonicjs/ports";
 import { type ProfileEnvironment, profileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
 import { recordingSrtSandbox } from "@halonicjs/target-node-harness";
@@ -128,6 +134,8 @@ export interface WorkspaceEngineTarget {
   readonly sandboxChecked?: readonly PlacedAgent[];
   /** Halonic's other ports on this computer, which a harness run's bridge never calls: `serve`'s. */
   readonly ownPorts?: () => Iterable<number>;
+  /** The built-in connectors the command connects, such as `serve`'s `paperclip` (HAL-19721). */
+  readonly builtInConnectors?: readonly ConnectorFactory[];
   /** The routine scheduler on the engine's tick, for `routines watch`; none for a single run. */
   readonly routines?: (engine: RoutineEngine) => RoutineTicks;
   /**
@@ -339,7 +347,7 @@ export async function checkEngineRuns(
  */
 function computerRunConnectors(
   trust: TrustGrant | null,
-  target: Pick<WorkspaceEngineTarget, "dir" | "workspace">,
+  target: Pick<WorkspaceEngineTarget, "dir" | "workspace" | "builtInConnectors">,
   lines: RunConnectorLines,
   secrets: Secrets,
   deniedPaths: readonly string[],
@@ -386,6 +394,7 @@ function computerRunConnectors(
       fence,
       openLocalIntegration(integrations),
       new PluginConnectorFactory(pluginSources, secrets),
+      target.builtInConnectors,
     ),
     // The CLI connects no built-in Google connector yet, the only kind that reads sign-ins.
     context: { http: machine.http, tokens: machine.tokens },

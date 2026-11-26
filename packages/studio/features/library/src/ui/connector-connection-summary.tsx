@@ -18,6 +18,8 @@ function detailRowOf(connection: ConnectorConnection): { label: string; value: s
       return connection.name === undefined
         ? { label: labels.pluginId, value: connection.id }
         : { label: labels.pluginName, value: connection.name };
+    case "paperclip":
+      return { label: labels.paperclip, value: connection.connection };
   }
 }
 
@@ -36,6 +38,7 @@ function secretsOf(connection: ConnectorConnection): readonly string[] | null {
       return [];
     case "integration":
     case "plugin":
+    case "paperclip":
       return null;
   }
 }

@@ -85,8 +85,21 @@ const IntegrationTransport = s
 /** A plugin's backend, started in the I5 runner. Same rules as a local integration. */
 const PluginTransport = s.object({ plugin: s.object({ id }).strict() }).strict();
 
+/**
+ * Built-in Paperclip task tools (`format.connector-paperclip`, HAL-19721) over one of the
+ * workspace's Paperclip connections, `connections/paperclip/<connection>.yaml`. The file
+ * names the connection only: the key is the one its owner stored in the server's profile.
+ */
+const PaperclipTransport = s
+  .object({
+    paperclip: s
+      .object({ connection: s.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u) })
+      .strict(),
+  })
+  .strict();
+
 /** The keys that name a kind of transport, as the union below lists them. */
-const transportKinds = ["http", "stdio", "google", "integration", "plugin"];
+const transportKinds = ["http", "stdio", "google", "integration", "plugin", "paperclip"];
 
 /** Whether `transport` is a map with exactly one key that names a kind of transport. */
 function namesOneTransport(transport: unknown): boolean {
@@ -117,11 +130,18 @@ export const Connector = s
      * mistake inside keeps Zod's message: "needs one of" would be wrong there.
      */
     transport: s.union(
-      [HttpTransport, StdioTransport, GoogleTransport, IntegrationTransport, PluginTransport],
+      [
+        HttpTransport,
+        StdioTransport,
+        GoogleTransport,
+        IntegrationTransport,
+        PluginTransport,
+        PaperclipTransport,
+      ],
       {
         error: (issue) =>
           issue.code === "invalid_union" && !namesOneTransport(issue.input)
-            ? "transport needs exactly one of: http, stdio, google, integration or plugin."
+            ? "transport needs exactly one of: http, stdio, google, integration, plugin or paperclip."
             : undefined,
       },
     ),
@@ -152,7 +172,7 @@ export const Connector = s
       })
       .strict()
       .default({ approve: [] }),
-    /** Runs on this machine or your own network. Default: true for stdio and localhost URLs, false for integrations and plugins, whose sheet can name outside sites. */
+    /** Runs on this machine or your own network. Default: true for stdio and localhost URLs, false for integrations and plugins, whose sheet can name outside sites, and for Paperclip. */
     local: s.boolean().optional(),
   })
   .strict();

@@ -35,7 +35,12 @@ export function connectorIsLocal(
   if ("stdio" in transport) {
     return true;
   }
-  if ("google" in transport || "integration" in transport || "plugin" in transport) {
+  if (
+    "google" in transport ||
+    "integration" in transport ||
+    "plugin" in transport ||
+    "paperclip" in transport
+  ) {
     return false;
   }
   const hostname = loopbackCandidate(transport.http.url);

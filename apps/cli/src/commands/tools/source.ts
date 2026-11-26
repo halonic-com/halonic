@@ -149,7 +149,7 @@ export async function checkToolSource(
   machine: ToolsMachine,
   context: Pick<CommandContext, "secrets">,
 ): Promise<ListedToolApprovalCheck | NoToolsToApprove> {
-  if ("google" in source.connector.transport) {
+  if ("google" in source.connector.transport || "paperclip" in source.connector.transport) {
     return "built_in";
   }
   if ("plugin" in source.connector.transport) {

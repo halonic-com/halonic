@@ -265,7 +265,12 @@ export type ConnectorTransport =
       secretNames?: Readonly<Record<string, string>>;
     }
   /** A plugin's backend in the I5 runner. */
-  | { kind: "plugin"; id: string };
+  | { kind: "plugin"; id: string }
+  /**
+   * Built-in Paperclip task tools over the workspace's Paperclip connection
+   * `connection`; the key is the one stored for it on the computer, never in the workspace.
+   */
+  | { kind: "paperclip"; connection: string };
 
 /** A connector as the workspace configures it. */
 export interface ConnectorConfig {

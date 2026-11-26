@@ -6,11 +6,26 @@ import { paperclipKeySecretName } from "../commands/serve/serve-messaging.ts";
 export const canaryKey = "pcp_board_canary-key-for-serve-tests-only";
 export const acme = { address: "https://paperclip.acme.test", company: "acme-company" };
 
+/** The agent-tools plugin's last PR watcher pass, as the fake serves it: #12 has red checks. */
+export const watcherPass = {
+  at: "2026-11-10T14:00:00.000Z",
+  input: { prs: [{ number: 12, task: "task-7", author: "agent-ada", checks: "red" }] },
+  actions: [],
+};
+
+/** The plugin route that serves {@link watcherPass}. */
+export const watcherPassPath = "/api/plugins/halonic.agent-tools/api/pr-watcher/pass";
+
+/** Ada's task with PR #12, which the routine's tool steps read and write. */
+export const watchedTask = "/api/issues/task-7";
+
 /** One request the fake Paperclip saw. */
 export interface SeenRequest {
   url: string;
   method: string;
   authorization: string | null;
+  /** The JSON a write sent, if any. */
+  body?: unknown;
 }
 
 /**
@@ -27,7 +42,13 @@ export class FakePaperclip {
     const request = new Request(input, init);
     if (this.offline) throw new TypeError("fetch failed");
     const authorization = request.headers.get("authorization");
-    this.seen.push({ url: request.url, method: request.method, authorization });
+    const body = await jsonOf(request);
+    this.seen.push({
+      url: request.url,
+      method: request.method,
+      authorization,
+      ...(body === undefined ? {} : { body }),
+    });
     if (this.failing) return json({ error: `bad key ${authorization}` }, 500);
     const path = new URL(request.url).pathname;
     if (path === `/api/companies/${acme.company}/agents`) {
@@ -54,8 +75,24 @@ export class FakePaperclip {
     if (path === `/api/companies/${acme.company}/join-requests`) return json([]);
     if (path === `/api/companies/${acme.company}/projects`) return json([]);
     if (path === "/api/issues/task-1/comments") return json([]);
-    return json({ error: "API route not found" }, 404);
+    return toolStepAnswer(path, request.method, body);
   };
+}
+
+/** The answers to a served routine's tool steps: the pass, and the watched task's read and update. */
+function toolStepAnswer(path: string, method: string, body: unknown): Response {
+  if (path === watcherPassPath) return json(watcherPass);
+  if (path === watchedTask) {
+    const task = { id: "task-7", companyId: acme.company, status: "in_progress" };
+    return json(method === "PATCH" ? { ...task, ...(body as object) } : task);
+  }
+  return json({ error: "API route not found" }, 404);
+}
+
+/** The JSON a request sent, or `undefined` for none. */
+async function jsonOf(request: Request): Promise<unknown> {
+  const sent = request.method === "GET" ? "" : await request.text();
+  return sent === "" ? undefined : JSON.parse(sent);
 }
 
 function json(body: unknown, status = 200): Response {
