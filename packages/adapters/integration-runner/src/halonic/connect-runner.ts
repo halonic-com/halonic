@@ -145,7 +145,7 @@ class RunnerBridge {
     this.#requests = new RequestTable(options.http, this.#calls, limits, {
       send: (frame) => this.#send(frame),
       violation: (detail) => this.#violation(detail),
-      onLeakAttempt: (code) => options.onBlocked?.({ kind: "leak-attempt", code }),
+      onBlocked: (block) => options.onBlocked?.(block),
       sentMark: () => ({ nextCall: this.#calls.nextCall, nextPing: this.#heartbeat.nextPing }),
     });
     this.#stderr = new StderrLog(limits.maxStderrBytesPerCall, (text) => options.onStderr?.(text));

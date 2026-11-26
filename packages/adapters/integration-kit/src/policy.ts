@@ -1,4 +1,4 @@
-import { IntegrationRefusedError } from "./integration/index.ts";
+import { IntegrationRefusedError, type RefusedUrl } from "./integration/index.ts";
 import { isLocalAddress } from "./local-address.ts";
 
 /**
@@ -78,19 +78,22 @@ export const namePattern = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 
 /**
  * Parses a URL the integration asked for, refusing anything but an allowed
- * `https` host or an allowed local `http` host.
+ * `https` host or an allowed local `http` host. For a redirect hop,
+ * `redirectFrom` is the URL that answered with the redirect: a relative
+ * `Location` is read against it, and a refusal says the service chose the URL.
  */
-export function allowedUrl(policy: IntegrationPolicy, raw: unknown, base?: URL): URL {
+export function allowedUrl(policy: IntegrationPolicy, raw: unknown, redirectFrom?: URL): URL {
   let url: URL;
   try {
     if (typeof raw !== "string") throw new TypeError("not a string");
-    url = new URL(raw, base);
+    url = new URL(raw, redirectFrom);
   } catch {
     throw new IntegrationRefusedError(
       "bad-url",
       `${policy.name}: the request URL is not a valid absolute URL`,
     );
   }
+  const refused: RefusedUrl = { host: url.host, fromRedirect: redirectFrom !== undefined };
   const plainLocal =
     url.protocol === "http:" &&
     hostIn(policy.localHosts ?? [], url) &&
@@ -99,18 +102,21 @@ export function allowedUrl(policy: IntegrationPolicy, raw: unknown, base?: URL):
     throw new IntegrationRefusedError(
       "scheme-not-allowed",
       `${policy.name}: only https is allowed, not ${url.protocol.replace(/:$/, "")}`,
+      refused,
     );
   }
   if (url.username !== "" || url.password !== "") {
     throw new IntegrationRefusedError(
       "bad-url",
       `${policy.name}: a URL may not carry a user name or password`,
+      refused,
     );
   }
   if (!plainLocal && !hostIn(policy.hosts, url)) {
     throw new IntegrationRefusedError(
       "host-not-allowed",
       `${policy.name}: ${url.host} is not one of the hosts in its permission sheet`,
+      refused,
     );
   }
   return url;

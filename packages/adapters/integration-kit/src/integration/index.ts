@@ -41,7 +41,12 @@ export {
   type ReplyIssue,
   type ReplySchema,
 } from "./check-reply.ts";
-export { IntegrationRefusedError, IntegrationTimeoutError, type RefusalCode } from "./refused.ts";
+export {
+  IntegrationRefusedError,
+  IntegrationTimeoutError,
+  type RefusalCode,
+  type RefusedUrl,
+} from "./refused.ts";
 export { retryDelayMs } from "./retry-after.ts";
 export {
   type ArgumentCheck,

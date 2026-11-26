@@ -64,23 +64,23 @@ verifies("integration-runner.requests", () => {
       expect(options.blocks).toEqual([{ kind: "leak-attempt", code: "secret-in-request" }]);
     });
 
-    it("doesn't report a refusal that isn't on the leak list", async () => {
+    it("doesn't report a refusal that is an ordinary mistake", async () => {
       const kit = fakeKitClient(() => {
         throw new IntegrationRefusedError(
-          "host-not-allowed",
-          "example: shop.example.net is not allowed",
+          "request-too-large",
+          "example: the request body is too large",
         );
       });
       const { run, options } = await bridged(async (host) => {
         try {
-          await host.http.fetch("https://shop.example.net/");
+          await host.http.fetch("https://api.example.com/v1/upload");
           return "sent";
         } catch (error) {
           return (error as IntegrationRefusedError).code;
         }
       }, kit);
 
-      expect(await run()).toBe("host-not-allowed");
+      expect(await run()).toBe("request-too-large");
       expect(options.blocks).toEqual([]);
     });
 

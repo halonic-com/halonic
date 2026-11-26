@@ -58,6 +58,14 @@ const refusalKinds: Readonly<Record<RefusalCode, ErrorKind>> = {
   "token-not-declared": "denied",
 };
 
+/** The URL a refusal is about, so Halonic can tell who chose it. */
+export interface RefusedUrl {
+  /** The URL's host, as `host` or `host:port`. */
+  readonly host: string;
+  /** The URL came from a redirect: the service chose it, not the integration's own code. */
+  readonly fromRedirect: boolean;
+}
+
 /**
  * The kit refused something the permission sheet doesn't allow. The message
  * names the integration, the host and the path, never a query, a header or a
@@ -71,11 +79,14 @@ export class IntegrationRefusedError extends Error {
   override readonly name = "IntegrationRefusedError";
   readonly code: RefusalCode;
   readonly kind: ErrorKind;
+  /** The refused URL, when the kit refused the URL itself, such as `host-not-allowed`. */
+  declare readonly url?: RefusedUrl;
 
-  constructor(code: RefusalCode, message: string) {
+  constructor(code: RefusalCode, message: string, url?: RefusedUrl) {
     super(message);
     this.code = code;
     this.kind = refusalKinds[code];
+    if (url !== undefined) this.url = url;
   }
 }
 

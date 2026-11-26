@@ -90,12 +90,21 @@ export type RunnerStop =
 /**
  * Something the connector should be paused for and recorded as
  * `sandbox.blocked`: a frame outside the protocol, a kit refusal on the
- * kit's leak list (`leakAttemptCodes`), or an access the fence refused.
+ * kit's leak list (`leakAttemptCodes`), a request the integration's own code
+ * sent to a host its sheet doesn't list, or an access the fence refused.
  */
 export type RunnerBlock =
   | { kind: "protocol"; detail: string }
-  | { kind: "leak-attempt"; code: RefusalCode }
+  | RequestBlock
   | { kind: "fence"; block: SandboxBlock };
+
+/**
+ * A block a kit refusal of one request reports. A redirect to an undeclared
+ * host reports none: the service chose that host, not the integration.
+ */
+export type RequestBlock =
+  | { kind: "leak-attempt"; code: RefusalCode }
+  | { kind: "host-not-declared"; host: string };
 
 /** A call or a start that failed because the runner stopped. */
 export class RunnerStoppedError extends Error {

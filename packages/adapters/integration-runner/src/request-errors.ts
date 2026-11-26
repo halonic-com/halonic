@@ -1,6 +1,7 @@
 // How a failed request crosses the bridge: Halonic turns the kit's error into
 // an `error` frame, and the runner turns the frame back into the error the
-// integration would have got in-process.
+// integration would have got in-process, with its code and message. A
+// refusal's `url` stays on Halonic's side: the frame doesn't carry it.
 
 import {
   IntegrationRefusedError,
