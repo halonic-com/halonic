@@ -13,21 +13,39 @@ import { ConnectorPage } from "./connector-page.tsx";
 
 afterEach(unmountAll);
 
-/** The local integration Shop orders, whose last call `shop.example.com` answered with `kind`. */
-function shopOrders(kind: ConnectorTroubleKind, secrets: readonly string[]): ConnectorStatusHost {
+/**
+ * The local integration Shop orders, whose last call `shop.example.com` answered with `kind`.
+ * `rename` gives it other secret names and tells the page, as a changed file does.
+ */
+function shopOrders(
+  kind: ConnectorTroubleKind,
+  secrets: readonly string[],
+): ConnectorStatusHost & { rename(names: readonly string[]): Promise<void> } {
+  let names = secrets;
+  const listeners = new Set<() => void>();
   return {
     list: async () => [
       {
         id: "orders",
         name: "Shop orders",
         state: "not-checked",
-        connection: { kind: "integration", folder: "shop-orders", secrets },
+        connection: { kind: "integration", folder: "shop-orders", secrets: names },
         trouble: { kind, host: "shop.example.com", fields: [] },
       },
     ],
     refusals: async () => [],
     waiting: async () => [],
-    subscribe: () => () => {},
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    rename: async (renamed) => {
+      names = renamed;
+      await act(async () => {
+        for (const listener of listeners) listener();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+    },
   };
 }
 
@@ -95,6 +113,23 @@ verifies("library.connector-paste-token", () => {
     const root = await openPage(shopOrders("not-accepted", ["backup-key", "shop-key"]));
     act(() => pasteToken(root)?.click());
     expect(document.activeElement).toBe(entryOf(root, "backup-key"));
+  });
+
+  it("moves focus once per press, not again when the entries are drawn again", async () => {
+    const status = shopOrders("not-accepted", ["shop-key"]);
+    const root = await openPage(status);
+    const button = pasteToken(root);
+    act(() => button?.click());
+    expect(document.activeElement).toBe(entryOf(root, "shop-key"));
+
+    act(() => button?.focus());
+    // New names draw the section's entries again, with a new first one.
+    await status.rename(["acme-key", "shop-key"]);
+    expect(entryOf(root, "acme-key")).toBeDefined();
+    expect(document.activeElement).toBe(button);
+
+    act(() => button?.click());
+    expect(document.activeElement).toBe(entryOf(root, "acme-key"));
   });
 
   it("shows no Paste a new token when the integration gets no secret", async () => {

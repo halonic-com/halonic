@@ -69,15 +69,34 @@ function secretsSectionOf(
 function SecretsPart({
   section,
   sourceName,
-  focusRequest,
+  takeFocus,
 }: {
   readonly section: ReturnType<typeof secretsSectionOf>;
   readonly sourceName: string;
-  readonly focusRequest: number;
+  readonly takeFocus: () => boolean;
 }) {
   return section === undefined ? null : (
-    <ConnectorSecretsSection {...section} sourceName={sourceName} focusRequest={focusRequest} />
+    <ConnectorSecretsSection {...section} sourceName={sourceName} takeFocus={takeFocus} />
   );
+}
+
+/**
+ * **Paste a new token**'s request to focus the token's entry (HAL-19445): `ask` makes one, and
+ * `take` answers yes once per request. The page keeps what was taken, not the entry, so an entry
+ * drawn again later (new secret names, a file unreadable for a moment) doesn't take focus with no
+ * new press: that entry saves on Enter and on leaving it, so typing meant for elsewhere could
+ * replace the stored token.
+ */
+function useTokenFocusRequest(): { readonly ask: () => void; readonly take: () => boolean } {
+  const [asked, setAsked] = useState(0);
+  const taken = useRef(0);
+  const ask = useCallback(() => setAsked((count) => count + 1), []);
+  const take = useCallback(() => {
+    if (taken.current >= asked) return false;
+    taken.current = asked;
+    return true;
+  }, [asked]);
+  return { ask, take };
 }
 
 /**
@@ -127,8 +146,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
   // A trouble's **Let the assistant look** opens a Build chat about the connector (I7, HAL-19175).
   const itemChat = context.services.find(ItemChatService);
   const secretsSection = secretsSectionOf(context, connector);
-  // A 401 trouble's **Paste a new token** moves focus to the token's entry (HAL-19445).
-  const [tokenFocus, setTokenFocus] = useState(0);
+  const tokenFocus = useTokenFocusRequest();
   // A phone has no tabs to open the file in, so the sentence stays and the link goes.
   const desktop = usePresentation() !== "phone";
   const title = useRef<HTMLHeadingElement | null>(null);
@@ -223,7 +241,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
           secretsOnPage={secretsSection !== undefined}
         />
       )}
-      <SecretsPart section={secretsSection} sourceName={name} focusRequest={tokenFocus} />
+      <SecretsPart section={secretsSection} sourceName={name} takeFocus={tokenFocus.take} />
       {connector?.connection === undefined ? null : (
         <ConnectionPart
           connection={connector.connection}
@@ -243,9 +261,7 @@ export function ConnectorPage({ item, context, Sections }: ItemViewProps) {
                 void itemChat.askAbout(about, name, context, ask);
               }
         }
-        onPasteToken={
-          secretsSection === undefined ? undefined : () => setTokenFocus((count) => count + 1)
-        }
+        onPasteToken={secretsSection === undefined ? undefined : tokenFocus.ask}
       />
       <Sections />
     </div>

@@ -144,11 +144,11 @@ verifies("studio.workspace-connector-status", () => {
         "library/connectors/shop.connector.yaml": [
           "version: 1",
           "id: shop",
-          "secret: shop-key",
+          "secret: acme-unused-key",
           "transport:",
           "  integration:",
           "    folder: shop-orders",
-          "    secrets: { api-key: shop-key, backup-key: acme-backup-key }",
+          "    secrets: { api-key: shop-key, backup-key: acme-backup-key, token: shop-key }",
         ].join("\n"),
       }),
       refusals: new RefusalsFeed(),
@@ -180,6 +180,7 @@ verifies("studio.workspace-connector-status", () => {
         connection: {
           kind: "integration",
           folder: "shop-orders",
+          // The connector's own `secret` is left out: the runner gives the integration only its picks.
           secrets: ["acme-backup-key", "shop-key"],
         },
       },
