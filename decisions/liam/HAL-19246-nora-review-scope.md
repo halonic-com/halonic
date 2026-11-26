@@ -2,6 +2,7 @@
 
 - Approval: the board's decision of 26 Nov for a review-only agent; scope set by the board on HAL-18424. Julian signs, since Liam wrote the pull request
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:NYrjpAalFFUCaZDVsrsgvwEuQUhjEp0D5j4tAPwq8AN7wLCHwfz2FTLu35U5TkDKTaP46VYw+TcQUaN4HOl7BA==
 
 The routing gets a third review role, `routine-reviewer`, for the pull requests the
 review-only agent (Nora) may approve alone: everything Julian may approve, except
