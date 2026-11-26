@@ -33,9 +33,6 @@ import { companyConfig } from "./job.ts";
  * nobody.
  */
 
-/** Route key, as the manifest declares it. */
-export const seatResetRouteKey = "seat-reset";
-
 /** The part of the plugin context the route uses, so tests can fake it. */
 export interface SeatResetRouteApi {
   readonly config: Pick<PluginConfigClient, "get">;
