@@ -1,5 +1,12 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Avatar, EmptyState, enter, isComposing, leave } from "@halonicjs/studio-kit";
+import {
+  Avatar,
+  ChevronDownIcon,
+  EmptyState,
+  enter,
+  isComposing,
+  leave,
+} from "@halonicjs/studio-kit";
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -38,6 +45,20 @@ const boxClasses = [
   "border border-[light-dark(var(--color-border),var(--color-border-strong))]",
   "inset-shadow-[0_1px_0_light-dark(transparent,rgb(255_255_255/0.06))]",
 ].join(" ");
+
+/** The agent chip: a 32 px pill with the agent's picture, its name and a chevron (design section 4). */
+const agentChipClasses = [
+  "order-first flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border",
+  "py-0.5 ps-0.5 pe-2 text-body text-fg hover:bg-surface-muted focus-ring",
+].join(" ");
+
+/** **Ask**: quiet on the muted tile while the box is empty, primary once there's text, as Messenger's Send. */
+function askClasses(hasText: boolean): string {
+  const look = hasText
+    ? "bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-hover"
+    : "bg-surface-muted text-fg";
+  return `grid size-control-md shrink-0 place-items-center rounded-sm border border-transparent focus-ring ${look}`;
+}
 
 /**
  * Quick ask's box (requirement `quick-ask.box`, design HAL-18594 sections 4–6): a `dialog`
@@ -199,7 +220,7 @@ interface QuestionRowProps {
 
 /**
  * The box's top row: the text box first, so the focus starts there, then the picked agent's
- * button, drawn before it, and **Ask** with its drawn arrow.
+ * chip, drawn before it, and **Ask** with its drawn arrow.
  */
 function QuestionRow({
   name,
@@ -234,9 +255,13 @@ function QuestionRow({
         aria-haspopup="listbox"
         aria-expanded={picking}
         onClick={onAgent}
-        className="order-first flex shrink-0 items-center rounded-full p-0.5 hover:bg-surface-muted focus-ring"
+        className={agentChipClasses}
       >
         <Avatar name={name} />
+        <span className="truncate">{name}</span>
+        <span className="size-3.5 shrink-0 text-fg-muted">
+          <ChevronDownIcon />
+        </span>
       </button>
       <button
         ref={ask}
@@ -244,7 +269,7 @@ function QuestionRow({
         aria-label={quickAskWords.ask}
         aria-keyshortcuts="Enter"
         onClick={() => model.send()}
-        className="grid size-control-md shrink-0 place-items-center rounded-sm border border-transparent bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-hover focus-ring"
+        className={askClasses(value.trim() !== "")}
       >
         <ArrowUp />
       </button>

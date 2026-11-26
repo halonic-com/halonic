@@ -1,5 +1,5 @@
-import { Avatar, enter, isComposing } from "@halonicjs/studio-kit";
-import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { Avatar, enter, isComposing, SearchIcon } from "@halonicjs/studio-kit";
+import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { AskAgent } from "../ask-session.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
 import { agentKey, type PickerGroup, pickerGroups } from "./picker-groups.ts";
@@ -56,23 +56,25 @@ export function AgentPicker({ agents, picked, onPick, onClose }: AgentPickerProp
   });
 
   return (
-    <div ref={panel} data-agent-picker="" className="border-t border-border px-3.5 py-2">
-      <input
-        // biome-ignore lint/a11y/noAutofocus: the picker opens from Tab or a click, to type in.
-        autoFocus
-        type="text"
-        role="combobox"
-        aria-label={quickAskWords.findAgent}
-        aria-expanded={shown.length > 0}
-        aria-controls={listId}
-        aria-activedescendant={active === undefined ? undefined : optionId(active)}
-        aria-autocomplete="list"
-        placeholder={quickAskWords.findAgent}
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        onKeyDown={onKeyDown}
-        className="w-full rounded-sm border border-border-control bg-surface px-2 py-1 text-body text-fg focus-ring"
-      />
+    <div ref={panel} data-agent-picker="" className="border-t border-border px-1.5 py-1.5">
+      <SearchRow>
+        <input
+          // biome-ignore lint/a11y/noAutofocus: the picker opens from Tab or a click, to type in.
+          autoFocus
+          type="text"
+          role="combobox"
+          aria-label={quickAskWords.findAgent}
+          aria-expanded={shown.length > 0}
+          aria-controls={listId}
+          aria-activedescendant={active === undefined ? undefined : optionId(active)}
+          aria-autocomplete="list"
+          placeholder={quickAskWords.findAgent}
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={onKeyDown}
+          className="min-w-0 flex-1 bg-transparent py-1 text-body text-fg outline-none placeholder:text-fg-muted"
+        />
+      </SearchRow>
       <PickerList
         listId={listId}
         groups={groups}
@@ -124,13 +126,46 @@ function PickerList({
               onClick={() => onPick(each)}
               className={optionClasses}
             >
-              <Avatar name={each.agent.name} />
-              <span>{each.agent.name}</span>
+              <AgentRow agent={each} />
             </div>
           ))}
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * The search box as the design draws it: no box of its own, the lens before it and a rule under
+ * it, as the Ctrl K palette's search row. The focus stays in it while the picker is open, so the
+ * active row, not a ring, shows where the keys go, as in the palette.
+ */
+function SearchRow({ children }: { readonly children: ReactNode }) {
+  return (
+    <div className="mx-2 flex items-center gap-2 border-b border-border py-1.5">
+      <span aria-hidden="true" className="size-icon-sm shrink-0 text-fg-muted *:size-full">
+        <SearchIcon />
+      </span>
+      {children}
+    </div>
+  );
+}
+
+/** One agent's row: its picture, its name with "· role" muted when the source has one, and what it's doing on the right. */
+function AgentRow({ agent }: { readonly agent: AskAgent }) {
+  const { name, title, activity } = agent.agent;
+  const doing = quickAskWords.activity[activity];
+  return (
+    <>
+      <Avatar name={name} />
+      <span className="min-w-0 flex-1 truncate">
+        {name}
+        {title === undefined ? null : (
+          <span className="text-small text-fg-muted">{` · ${title}`}</span>
+        )}
+      </span>
+      {doing === "" ? null : <span className="shrink-0 text-caption text-fg-muted">{doing}</span>}
+    </>
   );
 }
 

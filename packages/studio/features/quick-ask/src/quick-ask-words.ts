@@ -1,3 +1,5 @@
+import type { AgentActivity } from "@halonicjs/ports";
+
 /**
  * Every word the quick-ask box shows or says, copied from the approved design (HAL-18594,
  * sections 4–7). "Quick ask" is the working name until the chosen one replaces it everywhere.
@@ -32,6 +34,14 @@ export const quickAskWords = {
    * to group them under. The team chose these words (HAL-18997); the design has none for this case.
    */
   noSource: "No longer connected",
+  /** What an agent is doing, on the right of its picker row: Messenger's approved words. */
+  activity: {
+    idle: "Idle",
+    working: "Working",
+    waiting: "Waiting",
+    paused: "Paused",
+    other: "",
+  } satisfies Record<AgentActivity, string>,
   /** The working line while the agent works on the question. */
   working: (agent: string) => `${agent} is working`,
   /** Under the question while it waits: the box can close, the answer isn't lost. */

@@ -83,9 +83,9 @@ verifies("quick-ask.box", () => {
       messenger.reply(chief, "The release card is with the board.", "2026-11-25T13:41:00.000Z");
       await act(async () => messenger.change("acme"));
 
-      expect(page.querySelector("[data-answer]")?.textContent).toBe(
-        "The release card is with the board.",
-      );
+      expect(
+        page.querySelector('[data-answer] [data-chat-message="reply"] > div')?.textContent,
+      ).toBe("The release card is with the board.");
       expect(region?.getAttribute("aria-live")).toBe("polite");
       expect(page.querySelector("[data-answer]")?.closest("[aria-live]")).toBe(region);
       expect(page.querySelector("[data-pending]")).toBeNull();
@@ -138,7 +138,7 @@ verifies("quick-ask.box", () => {
       const question = page.querySelector("[data-question]");
 
       expect(question?.textContent).toBe("Where are we?");
-      expect(question?.className).toContain("border-danger");
+      expect(question?.closest("[data-question-bubble]")?.className).toContain("border-danger");
       expect(textBox(page).value).toBe("");
       expect(page.textContent).toContain("Not sent · Try again");
       expect(page.textContent).toContain(

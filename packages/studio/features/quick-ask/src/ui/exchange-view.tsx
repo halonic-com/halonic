@@ -1,5 +1,13 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { Button, ChatText, enter, standaloneLinkClasses } from "@halonicjs/studio-kit";
+import {
+  Avatar,
+  Button,
+  ChatMessage,
+  ChatText,
+  decidedAt,
+  enter,
+  standaloneLinkClasses,
+} from "@halonicjs/studio-kit";
 import { type ReactNode, useEffect, useId, useRef } from "react";
 import { type AnswerState, isAnswered } from "../ask-answer.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
@@ -27,14 +35,21 @@ export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProp
   return (
     <li className="flex flex-col">
       <Arriving className="flex flex-col items-end">
-        <p
-          data-question=""
-          className={`max-w-[85%] whitespace-pre-wrap rounded-lg bg-surface-muted px-3 py-2 text-body ${
+        <div
+          data-question-bubble=""
+          className={`flex max-w-[85%] flex-col items-end rounded-lg bg-surface-muted px-3 py-2 ${
             notSent ? "border border-danger" : "border border-transparent"
           }`}
         >
-          {exchange.question}
-        </p>
+          <p data-question="" className="self-stretch whitespace-pre-wrap text-body">
+            {exchange.question}
+          </p>
+          {exchange.sentAt === undefined ? null : (
+            <p data-question-time="" className="text-caption text-fg-muted">
+              {decidedAt(new Date(exchange.sentAt))}
+            </p>
+          )}
+        </div>
       </Arriving>
       {sent && !arrived ? <PendingLines agent={agent} answer={exchange.answer} /> : null}
       {/* Only what comes back is read out, once: not the question just typed, nor the waiting
@@ -101,7 +116,7 @@ function AnswerView({
   if (answer.kind === "waiting" || answer.kind === "working") return null;
   return (
     <Arriving data-answer="" className="flex flex-col gap-2">
-      <Replies messages={answer.messages} />
+      <Replies agent={agent} messages={answer.messages} />
       {answer.kind === "card" ? (
         <CardAsks agent={agent} question={answer.card.question} onAnswer={onAnswerCard} />
       ) : null}
@@ -138,12 +153,38 @@ function CardAsks({
   );
 }
 
-function Replies({ messages }: { readonly messages: readonly Message[] }) {
-  return messages.map((message) => (
-    <div key={message.id} className="text-body">
-      <ChatText>{message.body}</ChatText>
+/**
+ * The agent's replies under its picture and "Chief · 14:06", the time of its first reply, as
+ * Messenger starts an agent's run of messages. The line is for the eye; the reply's hidden heading
+ * says the same to a screen reader.
+ */
+function Replies({
+  agent,
+  messages,
+}: {
+  readonly agent: string;
+  readonly messages: readonly Message[];
+}) {
+  const first = messages[0];
+  if (first === undefined) return null;
+  const time = decidedAt(new Date(first.sentAt));
+  return (
+    <div className="flex items-start gap-2.5">
+      <Avatar name={agent} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p data-answer-author="" aria-hidden="true" className="text-small text-fg-muted">
+          <bdi className="text-fg">{agent}</bdi> · {time}
+        </p>
+        <ChatMessage from="reply" heading={`${agent} · ${time}`} headingLevel={2}>
+          {messages.map((message) => (
+            <div key={message.id} className="text-body">
+              <ChatText>{message.body}</ChatText>
+            </div>
+          ))}
+        </ChatMessage>
+      </div>
     </div>
-  ));
+  );
 }
 
 function CanClose({ agent }: { readonly agent: string }) {

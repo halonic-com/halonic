@@ -11,6 +11,8 @@ export interface Exchange {
   readonly status: "sending" | "sent" | "not-sent";
   /** Where the answer stands once the question is sent. */
   readonly answer: AnswerState | undefined;
+  /** When Messenger sent the question, as ISO text: its bubble shows the time. */
+  readonly sentAt?: string;
 }
 
 /** What the box shows: nothing while it reads, no agents, or the agents and the questions asked. */
@@ -189,7 +191,7 @@ async function deliverQuestion(
       update({ ...exchange, status: "not-sent" });
       return;
     }
-    const sent: Exchange = { ...exchange, status: "sent" };
+    const sent: Exchange = { ...exchange, status: "sent", sentAt: outcome.question.sentAt };
     update(sent);
     watch.replace(() => {
       const stop = session.watch(exchange.agent, outcome.question, (answer) =>
