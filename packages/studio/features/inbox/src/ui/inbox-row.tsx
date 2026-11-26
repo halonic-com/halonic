@@ -1,5 +1,6 @@
 import { shortRunId } from "@halonicjs/app";
 import { markHiddenName } from "@halonicjs/std";
+import { sampleAnswersWord } from "@halonicjs/studio-feature-runs/api";
 import { isLate, type ListRow, movesOnMeta, StatusChip, waitingFor } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import { type InboxItem, isRunItem, type SetupItem } from "../inbox-items.ts";
@@ -31,8 +32,10 @@ export function inboxRow(item: InboxItem, now: Date, runFacts: RunFactsOf | unde
  * A row (flow-inbox 3.2), the same in the Inbox and on Home's Needs you: the card's title, then
  * since when it waits and, for a wait step with a timer, when it moves on: "Waiting 6 h · moves on
  * Mon 14:00". With the run's facts the line starts with its workflow and the run's short id, so two
- * runs of one workflow read apart (a11y check Q1), and a wait step says it is a person's:
- * "Support reply · run 891b5a · a person step · Waiting 6 h". A setup item has its own row.
+ * runs of one workflow read apart (a11y check Q1), then "Sample answers" when the test model wrote
+ * the run's answers, as the card's meta line says it (`inbox.wait-context`), and a wait step says
+ * it is a person's: "Support reply · Sample answers · run 891b5a · a person step · Waiting 6 h". A
+ * setup item has its own row.
  */
 export function rowFor(item: InboxItem, now: Date, facts?: RunFacts): ListRow {
   if (item.kind === "setup") return setupRow(item);
@@ -47,12 +50,20 @@ export function rowFor(item: InboxItem, now: Date, facts?: RunFacts): ListRow {
   const what =
     facts === undefined
       ? ""
-      : `${facts.workflow} · run ${shortRunId(item.runId)}${personStep ? " · a person step" : ""} · `;
+      : `${workflowMeta(facts.workflow, facts.sample === true)} · run ${shortRunId(item.runId)}${personStep ? " · a person step" : ""} · `;
   const row = { id: item.key, title: itemTitle(item), meta: `${what}${waiting}${movesOn}` };
   // Amber says "have a look": a day or more of waiting (the waiting time stays muted).
   return isLate(new Date(item.since), now)
     ? { ...row, trailing: <StatusChip tone="attention">Late</StatusChip> }
     : row;
+}
+
+/**
+ * The run's workflow and, on Sample answers, that model's label, as the CLI prints them: "Support
+ * reply · Sample answers" (`inbox.wait-context`).
+ */
+export function workflowMeta(workflow: string, sample: boolean): string {
+  return sample ? `${workflow} · ${sampleAnswersWord}` : workflow;
 }
 
 /**

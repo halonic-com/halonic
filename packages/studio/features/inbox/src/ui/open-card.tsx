@@ -13,6 +13,7 @@ import { PlanLimitCard } from "./plan-limit-card.tsx";
 import { ProposalCard } from "./proposal-card.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { SetupPane } from "./setup-pane.tsx";
+import { useStartInput } from "./use-start-input.ts";
 import { WaitCard } from "./wait-card.tsx";
 import type { TrustReview } from "./workspace-trust.ts";
 
@@ -80,6 +81,7 @@ export function OpenCard({
     item.kind === "wait" ? runsSource : undefined,
     item.kind === "wait" ? item.runId : undefined,
   );
+  const quote = useStartInput(runsSource, item, facts?.startField);
   // Open run needs the run's hub, which the Runs list gives; without it the card has no button.
   const openThisRun =
     openRun === undefined || facts === undefined
@@ -192,6 +194,9 @@ export function OpenCard({
       trust={trust}
       answeredViews={{ inbox, close, openItem: openPage }}
       sample={modelPath === "sample"}
+      workflow={facts?.workflow}
+      quote={quote}
+      description={facts?.stepDescription?.(item.state)}
     />
   );
 }
