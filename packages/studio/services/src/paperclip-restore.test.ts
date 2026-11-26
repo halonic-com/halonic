@@ -6,7 +6,7 @@ import type {
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it, vi } from "vitest";
 import { paperclipKeyEntryText } from "./paperclip-key.ts";
-import { restorePaperclipKeys, restoreWhenTrusted, sameWorkspace } from "./paperclip-restore.ts";
+import { restorePaperclipKeys, restoreWhenMayStart, sameWorkspace } from "./paperclip-restore.ts";
 
 // A made-up key: no real one appears in tests.
 const fakeKey = "acme-test-board-key";
@@ -215,39 +215,51 @@ verifies("services.paperclip-restore", () => {
     });
   });
 
-  describe("restoreWhenTrusted", () => {
-    /** A trust that a test sets, telling its listeners as a finished check does. */
-    function trustOf(trusted: boolean) {
+  describe("restoreWhenMayStart", () => {
+    /**
+     * A trust that a test sets, telling its listeners as a finished check does.
+     * `mayStart` is the page's `mayStartNow`: trusted, or reaching only the test model.
+     */
+    function trustOf(mayStart: boolean) {
       const listeners = new Set<() => void>();
       return {
-        trusted,
-        isTrusted() {
-          return this.trusted;
+        mayStart,
+        mayStartNow() {
+          return this.mayStart;
         },
         subscribe(listener: () => void) {
           listeners.add(listener);
           return () => void listeners.delete(listener);
         },
         set(value: boolean) {
-          this.trusted = value;
+          this.mayStart = value;
           for (const listener of [...listeners]) listener();
         },
         listening: () => listeners.size,
       };
     }
 
-    it("restores at once in a workspace the person trusted", () => {
+    it("restores at once in a workspace that may start: trusted, or reaching only the test model", () => {
       const trust = trustOf(true);
       const restore = vi.fn(async () => {});
-      restoreWhenTrusted(trust, restore);
+      restoreWhenMayStart(trust, restore);
       expect(restore).toHaveBeenCalledTimes(1);
       expect(trust.listening()).toBe(0);
     });
 
-    it("asks nothing while the workspace isn't trusted, and restores once when it is", () => {
+    it("restores only once, even when a later check says no and then yes again", () => {
+      const trust = trustOf(true);
+      const restore = vi.fn(async () => {});
+      restoreWhenMayStart(trust, restore);
+      trust.set(false);
+      trust.set(true);
+      expect(restore).toHaveBeenCalledTimes(1);
+    });
+
+    it("asks nothing while the workspace may not start, and restores once when it may", () => {
       const trust = trustOf(false);
       const restore = vi.fn(async () => {});
-      restoreWhenTrusted(trust, restore);
+      restoreWhenMayStart(trust, restore);
       trust.set(false);
       expect(restore).not.toHaveBeenCalled();
       trust.set(true);
@@ -259,7 +271,7 @@ verifies("services.paperclip-restore", () => {
     it("stops waiting when told to", () => {
       const trust = trustOf(false);
       const restore = vi.fn(async () => {});
-      restoreWhenTrusted(trust, restore)();
+      restoreWhenMayStart(trust, restore)();
       trust.set(true);
       expect(restore).not.toHaveBeenCalled();
     });
