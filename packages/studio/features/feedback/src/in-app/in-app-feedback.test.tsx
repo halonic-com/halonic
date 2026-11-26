@@ -132,8 +132,9 @@ function overlay() {
   return document.querySelector("[data-feedback-overlay]");
 }
 
+/** The Send feedback dialog; the overlay is a <dialog> too, so it is left out. */
 function dialog() {
-  return document.querySelector("dialog");
+  return document.querySelector<HTMLDialogElement>("dialog:not([data-feedback-overlay])");
 }
 
 function ends(shell: ReturnType<typeof fakeShell>) {
