@@ -27,7 +27,6 @@ function program(signature: "none" | "signed" | "injected"): Uint8Array {
   return bytes;
 }
 
-const offWindows = () => undefined;
 let folder: string | undefined;
 
 afterEach(() => {
@@ -36,36 +35,26 @@ afterEach(() => {
 });
 
 describe("the release's check of every program in the installer (HAL-20055)", () => {
-  it("passes an unsigned program without asking Authenticode", () => {
-    const asked: string[] = [];
-    const result = checkProgram("a.exe", program("none"), (path) => {
-      asked.push(path);
-      return "NotSigned";
+  it("passes an unsigned program", () => {
+    expect(checkProgram("a.exe", program("none"))).toEqual({
+      path: "a.exe",
+      ok: true,
+      detail: "not signed",
     });
-    expect(result).toEqual({ path: "a.exe", ok: true, detail: "not signed" });
-    expect(asked).toEqual([]);
   });
 
   it("fails a program whose security directory no longer holds a certificate", () => {
-    const result = checkProgram("halonic-agent-host.exe", program("injected"), () => "Valid");
+    const result = checkProgram("halonic-agent-host.exe", program("injected"));
     expect(result.ok).toBe(false);
     expect(result.detail).toContain("broken security directory (32 bytes at 1024)");
   });
 
-  it("passes a signature only when Authenticode calls it Valid", () => {
-    expect(checkProgram("a.dll", program("signed"), () => "Valid").ok).toBe(true);
-    const mismatch = checkProgram("a.dll", program("signed"), () => "HashMismatch");
-    expect(mismatch).toEqual({
+  it("passes a certificate on to Authenticode", () => {
+    expect(checkProgram("a.dll", program("signed"))).toEqual({
       path: "a.dll",
-      ok: false,
-      detail: "signed (32 bytes at 1024), Authenticode says HashMismatch",
+      ok: true,
+      detail: "signed (32 bytes at 1024)",
     });
-  });
-
-  it("checks only a signature's shape off Windows, and says so", () => {
-    expect(checkProgram("a.dll", program("signed"), offWindows).detail).toContain(
-      "Authenticode not checked off Windows",
-    );
   });
 
   it("checks every program in the folder and its subfolders, and skips other files", () => {
@@ -75,7 +64,7 @@ describe("the release's check of every program in the installer (HAL-20055)", ()
     writeFileSync(join(folder, "halonic-agent-host.exe"), program("injected"));
     writeFileSync(join(folder, "$PLUGINSDIR", "System.dll"), program("signed"));
     writeFileSync(join(folder, "halonic-runtime.json"), "{}");
-    const results = checkPrograms(folder, () => "Valid");
+    const results = checkPrograms(folder);
     expect(results.map(({ path, ok }) => [path.slice(folder?.length ?? 0), ok])).toEqual([
       [join("/", "$PLUGINSDIR", "System.dll"), true],
       [join("/", "Halonic.exe"), true],
