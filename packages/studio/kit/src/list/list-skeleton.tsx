@@ -116,14 +116,14 @@ export function ListSkeleton({
       <div aria-busy="true">
         {wait === "early" ? null : (
           <>
-            {grouped ? <HeadingBar /> : null}
+            {grouped ? <HeadingBar look={look} /> : null}
             {/* Nothing in it takes focus, so it can clip the rows to the box's corners. */}
             <div
               aria-hidden="true"
-              className={`overflow-hidden ${boxClasses[look]} ${columns === undefined ? "" : "@container"}`}
+              className={`overflow-hidden ${boxClasses[look]} ${skeletonSpacing(look)} ${columns === undefined ? "" : "@container"}`}
             >
               {/* The heading is the box's first line, as in the real List. */}
-              {heading === undefined ? null : <HeadingBar />}
+              {heading === undefined ? null : <HeadingBar look={look} />}
               {barWidths.map((widths, index) => {
                 const line = index === 0 ? "" : lineClasses[look].main;
                 const row = (
@@ -164,13 +164,26 @@ export function ListSkeleton({
   );
 }
 
-/** In the heading's place, at the height of its one line of caption text. */
-function HeadingBar() {
+/**
+ * In the heading's place, at the height of its one line of caption text, and at its inset: 12px
+ * in a `plain` List, else 16px (HAL-19956). In a `plain` List it takes back the 4px gap below it,
+ * since the real rows start right under the heading.
+ */
+function HeadingBar({ look }: { readonly look: ListLook }) {
+  const inset = look === "plain" ? "px-3 -mb-1" : "px-4";
   return (
-    <div aria-hidden="true" className="flex h-4 items-center px-4 pt-4 pb-1 box-content">
+    <div aria-hidden="true" className={`flex h-4 items-center ${inset} pt-4 pb-1 box-content`}>
       <SkeletonBar kind="heading" />
     </div>
   );
+}
+
+/**
+ * A `plain` List's rows sit 4px apart with no space at the edges, as its real rows do, so they
+ * don't drop when the rows arrive (HAL-19916, `kit.list-plain-edges`).
+ */
+function skeletonSpacing(look: ListLook): string {
+  return look === "plain" ? "flex flex-col gap-1" : "";
 }
 
 /** A skeleton row's height: a `plain` List's sidebar row, else a real row with a meta line. */
@@ -201,7 +214,7 @@ function SkeletonRow({
   const leading = look === "plain" && shape.leading === "avatar" ? "sidebar" : shape.leading;
   return (
     <div
-      className={`flex items-center gap-3 bg-surface px-4 ${skeletonHeight(look, phone)} ${line}`}
+      className={`flex items-center gap-3 bg-surface ${look === "plain" ? "px-3" : "px-4"} ${skeletonHeight(look, phone)} ${line}`}
     >
       {leading === undefined ? null : <SkeletonBar kind={leading} />}
       <div className="flex min-w-0 flex-1 flex-col gap-2">

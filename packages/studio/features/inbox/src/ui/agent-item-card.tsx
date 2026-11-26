@@ -12,6 +12,7 @@ import type {
 } from "@halonicjs/ports";
 import {
   Avatar,
+  agentTint,
   Button,
   Callout,
   ExternalLink,
@@ -275,7 +276,11 @@ function Asker({
   if (from.kind === "me") return <>{children}</>;
   return (
     <div className="flex items-start gap-3">
-      <Avatar name={from.name} size="header" />
+      <Avatar
+        name={from.name}
+        size="header"
+        tint={from.kind === "agent" ? agentTint(from.agent) : undefined}
+      />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="text-small text-fg-muted">{askerLine(from, agents)}</p>
         {children}

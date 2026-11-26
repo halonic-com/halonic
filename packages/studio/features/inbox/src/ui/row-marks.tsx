@@ -1,5 +1,5 @@
 import type { InboxItem as AgentItem } from "@halonicjs/ports";
-import { Avatar, HelpIcon, type ListRow, SettingsIcon } from "@halonicjs/studio-kit";
+import { Avatar, agentTint, HelpIcon, type ListRow, SettingsIcon } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 
@@ -18,10 +18,16 @@ export function itemMark(item: InboxItem): Pick<ListRow, "avatar"> {
   return { avatar: <MarkTile glyph={<SettingsIcon />} /> };
 }
 
-/** The mark of an agent's row: the agent's picture (its initials for now), else a question mark. */
+/**
+ * The mark of an agent's row: the agent's picture (its initials for now) on the agent's own tint,
+ * keyed on its ID as in the Messenger (`kit.agent-tint`), else a question mark.
+ */
 export function agentMark(item: AgentItem | undefined): Pick<ListRow, "avatar"> {
-  if (item?.from.kind === "agent")
-    return { avatar: <Avatar name={item.from.name} size="sidebar" /> };
+  if (item?.from.kind === "agent") {
+    return {
+      avatar: <Avatar name={item.from.name} size="sidebar" tint={agentTint(item.from.agent)} />,
+    };
+  }
   return { avatar: <MarkTile glyph={<HelpIcon />} /> };
 }
 

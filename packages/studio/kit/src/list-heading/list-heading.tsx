@@ -34,7 +34,18 @@ export interface ListHeadingProps {
   readonly headingRef?: Ref<HTMLHeadingElement>;
 }
 
-const shared = "px-4 pt-4 pb-1 text-label uppercase";
+/**
+ * Where the heading's text starts: 16px in, or 12px over a `plain` List's rows, which start
+ * there (HAL-19956, `kit.list-plain-edges`).
+ */
+export type ListHeadingInset = "default" | "plain";
+
+const shared = "pt-4 pb-1 text-label uppercase";
+
+const insetClasses: Record<ListHeadingInset, string> = {
+  default: "px-4",
+  plain: "px-3",
+};
 
 const toneClasses: Record<ListHeadingTone | "none", string> = {
   none: "text-fg-muted",
@@ -54,7 +65,15 @@ const layoutClasses: Record<ListHeadingLayout, string> = {
  * @example
  * <ListHeading name="Acme" detail="Workspace settings" id="settings-acme" layout="stacked" />
  */
-export function ListHeading({
+export function ListHeading(props: ListHeadingProps) {
+  return <InsetListHeading {...props} inset="default" />;
+}
+
+/**
+ * `ListHeading` at a chosen inset. The List draws its own headings with it, so a `plain` List's
+ * line up with its rows; it isn't in the kit's index.
+ */
+export function InsetListHeading({
   name,
   detail,
   headingLevel = 2,
@@ -62,7 +81,8 @@ export function ListHeading({
   layout = "inline",
   tone,
   headingRef,
-}: ListHeadingProps) {
+  inset,
+}: ListHeadingProps & { readonly inset: ListHeadingInset }) {
   const Heading = `h${headingLevel}` as const;
   const hasDetail = detail !== undefined && detail !== null && detail !== false && detail !== "";
 
@@ -71,7 +91,7 @@ export function ListHeading({
       ref={headingRef}
       id={id}
       tabIndex={headingRef === undefined ? undefined : -1}
-      className={`${shared} ${toneClasses[tone ?? "none"]} ${layoutClasses[layout]}`}
+      className={`${insetClasses[inset]} ${shared} ${toneClasses[tone ?? "none"]} ${layoutClasses[layout]}`}
     >
       <span className="min-w-0 truncate">{name}</span>
       {hasDetail ? (
