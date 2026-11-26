@@ -4,10 +4,10 @@
 - Since: unreleased
 - Source: board request (26 Nov): the shortcut only in the focused window, the overlay inside it; the shell's commands in `studio.src-tauri.feedback-capture`
 
-In each of Studio's own windows on the desktop (Studio, Halonic Inbox, Halonic Messenger), the
-Feedback feature shall hear the feedback shortcut only while that window is focused, before the rest
-of the window, including while the person types in a text field; nothing shall be registered
-system-wide. The shortcut is the host setting `feedback.shortcut`, Ctrl+Shift+F (⌘⇧F on macOS) until
+While one of Studio's own windows on the desktop (Studio, Halonic Inbox, Halonic Messenger) is
+focused, the Feedback feature shall hear the feedback shortcut in that window and only there, before
+the rest of the window, including while the person types in a text field; nothing shall be
+registered system-wide. The shortcut is the host setting `feedback.shortcut`, Ctrl+Shift+F (⌘⇧F on macOS) until
 another is saved, matched by its physical key and exactly its modifiers; a saved shortcut that holds
 none of Ctrl, Alt and ⌘ shall count as Ctrl+Shift+F. When the person presses it
 and no overlay shows, the feature shall call `plugin:feedback|start` and, when the shell answers the
@@ -15,7 +15,7 @@ still's width and height, show the selection overlay (`feedback.overlay`) in tha
 shell refuses with `send_open`, `unavailable` or `busy`, the feature shall show nothing. When the
 person presses it while the overlay shows, the feature shall take the overlay away and call
 `plugin:feedback|end`. When the overlay has shown for two minutes, the time the shell holds the
-still, the feature shall take it away. A held key's repeats shall do nothing.
+still, the feature shall take it away. The feature shall ignore a held key's repeats.
 
 ## Examples
 
