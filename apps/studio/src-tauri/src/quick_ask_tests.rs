@@ -270,6 +270,7 @@ fn the_box_gets_exactly_the_commands_its_page_calls() {
         "allow-reopen-folder",
         "allow-show-main-window",
         "quick-ask:allow-hide",
+        "quick-ask:allow-open-chat",
     ]
     .map(str::to_owned)
     .into();
