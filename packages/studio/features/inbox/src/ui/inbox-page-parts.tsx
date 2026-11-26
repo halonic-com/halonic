@@ -1,6 +1,7 @@
 // The Inbox page's layout parts: the list's title and column, the open item's place, and the item
 // the decided card's **Next** opens. Kept apart from `InboxView`, which puts them together.
 
+import { framedPanelClass } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 import type { NextItem } from "./card-parts.tsx";
@@ -32,20 +33,47 @@ export function ListHeader({ phone, onePane, newRequest }: ListHeaderProps) {
 }
 
 /**
- * The list's column: 360 px beside the card, else (one pane at a time) the whole page, and gone
- * while an item is open.
+ * The Inbox's two panes. In its own window (`framed`) they are the kit's framed sidebar, as the
+ * Messenger's and Studio's (`inbox.framed-sidebar`): the list on the window's frame and the item
+ * on a framed panel 8px beside it, and the page is the window's `main`, since the window draws no
+ * panel. In Studio's window, whose framed panel the page already sits on, the two panes sit side
+ * by side with the list's line between them.
  */
-export function listPaneClass(onePane: boolean, itemOpen: boolean): string {
-  if (!onePane) return "flex w-90 shrink-0 flex-col border-e border-border";
+export function InboxPanes({
+  framed,
+  children,
+}: {
+  readonly framed: boolean;
+  readonly children: ReactNode;
+}) {
+  if (!framed) return <div className="flex h-full min-h-0 w-full">{children}</div>;
+  return (
+    <main data-sidebar-frame="" className="flex h-full min-h-0 w-full gap-2">
+      {children}
+    </main>
+  );
+}
+
+/**
+ * The list's column: 360 px beside the card, else (one pane at a time) the whole page, and gone
+ * while an item is open. On the window's frame (`framed`) it has no line of its own.
+ */
+export function listPaneClass(onePane: boolean, itemOpen: boolean, framed = false): string {
+  if (!onePane)
+    return framed
+      ? "flex w-90 shrink-0 flex-col"
+      : "flex w-90 shrink-0 flex-col border-e border-border";
   return `${itemOpen ? "hidden" : "flex"} w-full flex-col`;
 }
 
 /**
  * The open item's column, its header over its card: beside the list, else (one pane at a time)
- * the whole page while an item or an agent's card is open, and gone while none is.
+ * the whole page while an item or an agent's card is open, and gone while none is. In the Inbox's
+ * own window (`framed`) it is the kit's framed panel.
  */
-export function itemPaneClass(onePane: boolean, itemOpen: boolean): string {
-  return `${onePane && !itemOpen ? "hidden" : "flex"} min-w-0 flex-1 flex-col overflow-y-auto`;
+export function itemPaneClass(onePane: boolean, itemOpen: boolean, framed = false): string {
+  const shown = `${onePane && !itemOpen ? "hidden" : "flex"} min-w-0 flex-1 flex-col overflow-y-auto`;
+  return framed ? `${shown} ${framedPanelClass()}` : shown;
 }
 
 /** A row that waits, in list order, with how many items it holds (an agents' bundle holds several). */

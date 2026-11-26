@@ -1,12 +1,11 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Button, useNarrow } from "@halonicjs/studio-kit";
+import { Button, FramedPanel, SidebarFrame, useNarrow } from "@halonicjs/studio-kit";
 import type { ChatOpens } from "@halonicjs/studio-services";
 import {
   connectFrom,
   type EngineWords,
   engineWords,
   engineWordsOf,
-  focusedPanelClass,
   NoConnections,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
@@ -38,9 +37,10 @@ export interface MessengerPageProps {
 }
 
 /**
- * The Messenger (HAL-17421 render 4a): the list on the left, on the frame,
- * and the open conversation as the one panel on the right (`messenger.framed-list`). It reads
- * the list when it opens and whenever a source says it changed.
+ * The Messenger (HAL-17421 render 4a): the list on the left, on the frame, and the open
+ * conversation as the framed panel on the right, 8px from it: the kit's framed sidebar, the same
+ * as the Inbox's and Studio's (`messenger.framed-list`, `kit.framed-sidebar`). It reads the list when it
+ * opens and whenever a source says it changed.
  *
  * A window narrower than 900px (`useNarrow`, such as 320px or 400 % zoom) shows one pane at a
  * time, as the Inbox does: the list, or the open chat with **Back to chats**, which puts focus
@@ -121,33 +121,40 @@ export function MessengerPage({
     back();
   };
   return (
-    <div className="flex h-full min-h-0 gap-2">
-      <h1 className="sr-only">{messengerWords.title}</h1>
-      <p role="status" className="sr-only" data-page-status>
-        <span key={said.count}>{said.text}</span>
-      </p>
-      {onePane && panelFirst ? null : (
-        <ListColumn listRef={list} onePane={onePane} connected={connected}>
-          <ChatsColumn
-            messenger={messenger}
-            rows={rows}
-            connected={connected}
-            failure={failure}
-            words={words}
-            onRetry={readAgain}
-            selected={selected}
-            onSelect={select}
-            pictures={pictures}
-            waiting={waiting}
-            needsYou={needsYou}
-            onNeedsYou={openNeedsYou}
-            newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
-          />
-        </ListColumn>
-      )}
+    <SidebarFrame
+      sidebar={
+        // The page's heading and status come first, so they read before the list, and stay while
+        // one pane shows the chat; both are out of the flow, so they take no room on the frame.
+        <>
+          <h1 className="sr-only">{messengerWords.title}</h1>
+          <p role="status" className="sr-only" data-page-status>
+            <span key={said.count}>{said.text}</span>
+          </p>
+          {onePane && panelFirst ? null : (
+            <ListColumn listRef={list} onePane={onePane} connected={connected}>
+              <ChatsColumn
+                messenger={messenger}
+                rows={rows}
+                connected={connected}
+                failure={failure}
+                words={words}
+                onRetry={readAgain}
+                selected={selected}
+                onSelect={select}
+                pictures={pictures}
+                waiting={waiting}
+                needsYou={needsYou}
+                onNeedsYou={openNeedsYou}
+                newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
+              />
+            </ListColumn>
+          )}
+        </>
+      }
+    >
       {onePane && !panelFirst ? null : (
         <WithActivity messenger={messenger} row={open} words={words}>
-          <main ref={chat} className={`flex min-w-0 flex-1 flex-col ${focusedPanelClass}`}>
+          <FramedPanel as="main" ref={chat}>
             {onePane && (open !== undefined || needsYou) ? (
               <div className="px-2 pt-2">
                 <Button variant="ghost" size="sm" onClick={back}>
@@ -177,10 +184,10 @@ export function MessengerPage({
                 onMarkUnread={markUnread}
               />
             )}
-          </main>
+          </FramedPanel>
         </WithActivity>
       )}
-    </div>
+    </SidebarFrame>
   );
 }
 

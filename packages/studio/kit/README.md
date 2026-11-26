@@ -1320,6 +1320,25 @@ left, the title in `text-heading` on one line, then the actions slot. The footer
 with the bottom safe area. `initialFocus` is ignored there: it would open the keyboard over a
 screen you haven't seen yet.
 
+## SidebarFrame and FramedPanel
+
+The framed sidebar the Messenger, the Inbox and Studio share (`kit.framed-sidebar`): the sidebar
+sits straight on the window's frame, with no fill or line, and the content sits 8px beside it on a
+framed panel with 12px corners and a 1px line. `tone` picks the panel's fill: `app` (a focused
+app's panel, the default) or `studio` (the page's `surface`). `as="main"` makes the panel the
+page's `main`; `ref` points at it.
+
+```tsx
+<SidebarFrame sidebar={<nav aria-label="Chats">…</nav>}>
+  <FramedPanel as="main" ref={chat}>
+    …
+  </FramedPanel>
+</SidebarFrame>
+```
+
+A part that sits beside the panel as a second card, such as the Messenger's activity panel, takes
+`framedPanelClass()`, 8px away (`gap-2`).
+
 ## Checkbox
 
 A choice that is on or off. It's a native checkbox with its own look, so the browser keeps the

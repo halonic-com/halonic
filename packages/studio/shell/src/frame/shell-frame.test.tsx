@@ -73,13 +73,16 @@ function nextFrame(): Promise<void> {
 }
 
 verifies("shell.frame", () => {
-  it("shows the title bar on the halo and the panel with the page and the status bar on the desktop, and no toolbar row", () => {
+  it("shows the title bar on the halo and the framed panel with the page and the status bar on the desktop, and no toolbar row", () => {
     const { container } = renderFrame();
     const frame = container.querySelector('[data-layout="desktop"]') as HTMLElement;
-    const [titleBar, panel] = Array.from(frame.children);
+    const [titleBar] = Array.from(frame.children);
+    const panel = container.querySelector("[data-framed-panel]");
     expect(titleBar?.tagName).toBe("HEADER");
     expect(titleBar?.className).toContain("h-titlebar");
-    expect(panel?.className).toContain("rounded-md");
+    expect(panel?.className.split(" ")).toEqual(
+      expect.arrayContaining(["rounded-lg", "border", "border-border", "bg-surface"]),
+    );
     expect(titleBar?.textContent).toBe("Back");
     expect(panel?.firstElementChild?.querySelector("main")).not.toBeNull();
     expect(panel?.querySelector("main")?.textContent).toBe("desktop");
@@ -352,7 +355,7 @@ verifies("shell.frame", () => {
     expect(polite?.textContent).toBe("fin@acme.example is signed in.");
   });
 
-  it("shows the window's toasts once, over the sidebar and the page, never over the status bar", () => {
+  it("shows the window's toasts once, over the page, never over the status bar", () => {
     const { container, toasts } = renderFrame();
     act(() => {
       toasts.show({ tone: "success", title: "Saved key for Anthropic" });
@@ -411,7 +414,7 @@ verifies("shell.engine-line", () => {
     });
     expect(container.textContent).not.toContain(lineText);
     act(() => connection.set("lost"));
-    const line = container.querySelector('[data-layout="desktop"] > div')?.firstElementChild;
+    const line = container.querySelector("[data-framed-panel]")?.firstElementChild;
     expect(line?.textContent).toBe(lineText);
     expect(line?.closest("[aria-live]")).toBeNull();
     expect(line?.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");

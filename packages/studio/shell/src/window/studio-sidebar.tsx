@@ -58,8 +58,9 @@ export interface StudioSidebarProps {
 /**
  * The desktop sidebar (component specs 24.4): the workspace switcher, the Search box, then the
  * places and Settings, followed by its resize edge. It starts 264px wide and keeps the width the edge sets while
- * the window is open. In a narrow window the frame puts it in the Places drawer, which sets its
- * width, and the edge hides itself.
+ * the window is open. It has no fill or line of its own: it sits on the window's halo, beside the
+ * framed panel (`kit.framed-sidebar`). In a narrow window the frame puts it in the Places drawer,
+ * which sets its width and fill, and the edge hides itself.
  *
  * A place's signal is read again each time the tabs change, and each time its place says it
  * changed through `subscribeSignal`.
@@ -84,7 +85,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
       <div
         id={sidebarId}
         style={{ width }}
-        className="flex shrink-0 flex-col gap-2 overflow-y-auto border-e border-border bg-surface-subtle p-2"
+        className="flex shrink-0 flex-col gap-2 overflow-y-auto p-2"
       >
         {props.switcher === undefined ? null : <WorkspaceSwitcher {...props.switcher} />}
         <SidebarSearch platform={props.platform} onOpen={props.onSearch} />

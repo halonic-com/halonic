@@ -1,6 +1,7 @@
 import {
   EmptyState,
   FieldAnnounceProvider,
+  framedPanelClass,
   ModalRegionsProvider,
   NarrowProvider,
   PresentationProvider,
@@ -34,8 +35,8 @@ import { appName } from "./window-title.ts";
  */
 export const focusedFrameClass = "bg-app-frame";
 
-/** The focused app's one content panel on {@link focusedFrameClass}. */
-export const focusedPanelClass = "overflow-hidden rounded-lg border border-border bg-app-panel";
+/** The focused app's one content panel on {@link focusedFrameClass}: the kit's framed panel. */
+export const focusedPanelClass = framedPanelClass("app");
 
 /** What a focused app's window says while Halonic has no workspace to open in it. */
 export const focusedWindowWords = {

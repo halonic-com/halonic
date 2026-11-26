@@ -41,6 +41,7 @@ import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
+  InboxPanes,
   itemPaneClass,
   ListHeader,
   listPaneClass,
@@ -74,8 +75,11 @@ import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
 const newConnectorCommand = "library.new-connector";
 const openBudgetCommand = "workspace.open-budget";
 
-/** The Inbox place's page: the open workspace's Inbox, from `InboxService`. */
-export function InboxPage({ context }: PlaceViewProps) {
+/**
+ * The Inbox place's page: the open workspace's Inbox, from `InboxService`. In the Inbox's own
+ * window it is `framed`: its list on the window's frame (`inbox.framed-sidebar`).
+ */
+export function InboxPage({ context, framed }: PlaceViewProps & { readonly framed?: boolean }) {
   const { openItem } = context;
   const inbox = context.services.get(InboxService);
   const appNotices = context.services.find(InboxNoticesService);
@@ -93,6 +97,7 @@ export function InboxPage({ context }: PlaceViewProps) {
   return (
     <InboxView
       inbox={inbox}
+      framed={framed}
       runs={runs}
       runFacts={runFacts}
       words={engineWordsOf(context)}
@@ -120,9 +125,16 @@ export function InboxPage({ context }: PlaceViewProps) {
   );
 }
 
+/** The Inbox's own window, Halonic Inbox: the Inbox page, framed (`inbox.framed-sidebar`). */
+export function InboxWindow({ context }: PlaceViewProps) {
+  return <InboxPage context={context} framed />;
+}
+
 /** Props for {@link InboxView}. */
 export interface InboxViewProps {
   readonly inbox: Inbox;
+  /** In the Inbox's own window: the list on the frame and the item on a framed panel. */
+  readonly framed?: boolean | undefined;
   /** The clock for the waiting times; tests pass a fixed one. */
   readonly now?: () => Date;
   /**
@@ -205,6 +217,7 @@ export interface InboxViewProps {
  */
 export function InboxView({
   inbox,
+  framed = false,
   now = () => new Date(),
   words = engineWords["desktop-app"],
   requests,
@@ -309,8 +322,8 @@ export function InboxView({
   });
 
   return (
-    <div className="flex h-full min-h-0 w-full">
-      <div ref={listPane} data-pane="list" className={listPaneClass(onePane, itemPage)}>
+    <InboxPanes framed={framed}>
+      <div ref={listPane} data-pane="list" className={listPaneClass(onePane, itemPage, framed)}>
         <ListHeader phone={phone} onePane={onePane} newRequest={request.newRequest} />
         <StaleLine
           error={state.loaded ? state.error : undefined}
@@ -392,7 +405,7 @@ export function InboxView({
         </div>
       </div>
       {request.sheet}
-      <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen)}>
+      <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen, framed)}>
         {heading === undefined ? null : (
           <ItemHeader heading={heading} back={onePane} place={place} close={close} />
         )}
@@ -431,7 +444,7 @@ export function InboxView({
           )}
         </div>
       </div>
-    </div>
+    </InboxPanes>
   );
 }
 

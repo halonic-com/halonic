@@ -372,6 +372,7 @@ export {
 } from "./sheet/panel-sheet-dialog.tsx";
 export { SheetFrame, type SheetFrameProps } from "./sheet/sheet-frame.tsx";
 export { SidePanel, type SidePanelProps } from "./side-panel/side-panel.tsx";
+export { FramedPanel, framedPanelClass, SidebarFrame } from "./sidebar-frame/sidebar-frame.tsx";
 export {
   SkeletonBar,
   type SkeletonBarKind,
