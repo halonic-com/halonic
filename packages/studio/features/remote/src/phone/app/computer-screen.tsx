@@ -55,6 +55,7 @@ export function ComputerScreen({
   status,
   sheet,
   run,
+  tab,
   outside,
 }: {
   readonly router: PhoneAppRouter;
@@ -64,6 +65,8 @@ export function ComputerScreen({
   readonly sheet: ComputerSheet;
   /** The agent whose run detail shows, if any. */
   readonly run: string | undefined;
+  /** The picked tab, which a shortcut may have picked. */
+  readonly tab: ComputerTab;
   readonly outside: PhoneOutside;
 }) {
   const state = router.stateOf(computer);
@@ -75,7 +78,6 @@ export function ComputerScreen({
   const now = useNow(sheetOf?.kind === "reconnecting");
   const tryAgain = () => router.tryAgain(computer.id);
   const closeRun = useCallback(() => router.closeRun(), [router]);
-  const [tab, setTab] = useState<ComputerTab>("inbox");
   const viewsId = useId();
   const inbox = useComputerInbox(remote, view);
   const onOpen = (shown: PhoneState) => {
@@ -154,7 +156,7 @@ export function ComputerScreen({
             inbox={inbox}
             tab={tab}
             viewsId={viewsId}
-            onTab={setTab}
+            onTab={(picked) => router.selectTab(picked)}
           />
         </>
       )}

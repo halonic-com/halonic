@@ -81,6 +81,7 @@ export async function startPage(options: PageOptions): Promise<void> {
       ? {}
       : { ownerCheckAvailable: options.ownerCheckAvailable }),
     ...(options.saved === undefined ? {} : { saved: options.saved }),
+    ...(options.shortcuts === undefined ? {} : { shortcuts: options.shortcuts }),
     scanner: options.scanner,
     ...(options.nearby === undefined ? {} : { nearby: options.nearby }),
     window: options.window,

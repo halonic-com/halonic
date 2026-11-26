@@ -32,6 +32,7 @@ export function PairingScreens({
   onOpenAgents,
   onCamera,
   onFocusTitle,
+  note,
 }: {
   readonly flow: PhonePairingFlow;
   /** The typed route's screen with the computer picker (`TypedStep`), which needs the app's lists. */
@@ -46,6 +47,8 @@ export function PairingScreens({
   readonly onCamera: (showing: boolean) => void;
   /** Moves focus to the screen's title, for a step whose pressed button has gone (C48 PF1). */
   readonly onFocusTitle?: () => void;
+  /** One more line on the first step, such as which screen opens after pairing. */
+  readonly note?: string | undefined;
 }) {
   const view = useSyncExternalStore(flow.subscribe, () => flow.view);
   const scanButton = useRef<HTMLButtonElement>(null);
@@ -83,6 +86,7 @@ export function PairingScreens({
           scanRef={scanButton}
           onScan={() => flow.scan()}
           onTypeInstead={() => flow.typeInstead()}
+          note={note}
         />
       );
     case "scanning":

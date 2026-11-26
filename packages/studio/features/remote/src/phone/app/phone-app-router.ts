@@ -12,7 +12,9 @@ import type {
 } from "../phone-tunnel.ts";
 import type { PhoneRemote } from "../remote-view.ts";
 import { type SavedDataStore, SavedMessaging } from "../saved-messaging.ts";
+import type { ComputerTab } from "./computer-tabs.tsx";
 import { type FirstReach, FirstReaches } from "./first-reaches.ts";
+import { landed, type ShortcutTab } from "./shortcut-landing.ts";
 
 /** The sheet over a computer's screen: the header label's status sheet, or Check this connection. */
 export type ComputerSheet = "none" | "status" | "check";
@@ -40,6 +42,8 @@ export type PhoneAppScreen =
       readonly sheet: ComputerSheet;
       /** The agent whose run detail shows in place of the Agents list, if any. */
       readonly run?: string;
+      /** The picked tab; the Inbox when none is. */
+      readonly tab?: ComputerTab;
     }
   | { readonly screen: "computers" };
 
@@ -56,6 +60,8 @@ export interface PhoneAppView {
    * gone: the app says it is forgotten. Paired computers says so itself.
    */
   readonly forgotten?: ListedComputer;
+  /** The tab a shortcut asked for, kept until a computer's screen opens: pairing says so. */
+  readonly landing?: ShortcutTab;
 }
 
 export interface PhoneAppRouterOptions {
@@ -88,6 +94,7 @@ export class PhoneAppRouter {
   readonly #reaches: FirstReaches;
   readonly #listeners = new Set<() => void>();
   #forgotten: ListedComputer | undefined;
+  #landing: ShortcutTab | undefined;
   #view: PhoneAppView;
   #unwatch: (() => void) | undefined;
 
@@ -109,8 +116,12 @@ export class PhoneAppRouter {
     return () => this.#listeners.delete(listener);
   };
 
-  /** Lists the computers and opens the one connected last, else Pair with a computer. */
-  async start(): Promise<void> {
+  /**
+   * Lists the computers and opens the one connected last, else Pair with a computer. A shortcut's
+   * `opening` tab is where that computer's screen opens, after pairing when none is paired.
+   */
+  async start(opening?: ShortcutTab): Promise<void> {
+    if (opening !== undefined) this.#landing = opening;
     this.#unwatch = this.#options.tunnel.onStatus((computer, status) => {
       this.#statuses.set(computer, status);
       if (status.state === "removed") {
@@ -170,6 +181,22 @@ export class PhoneAppRouter {
     const top = this.#top();
     if (top.screen !== "computer" || top.run === undefined) return;
     this.#stack = [...this.#stack.slice(0, -1), withoutRun(top)];
+    this.#changed();
+  }
+
+  /** A tab in the tab bar was picked. */
+  selectTab(tab: ComputerTab): void {
+    const top = this.#top();
+    if (top.screen !== "computer" || (top.tab ?? "inbox") === tab) return;
+    this.#stack = [...this.#stack.slice(0, -1), { ...top, tab }];
+    this.#changed();
+  }
+
+  /** A shortcut tapped while the app runs: its tab now (`landed`), else once a computer opens. */
+  openShortcut(tab: ShortcutTab): void {
+    const stack = landed(this.#stack, tab);
+    this.#landing = stack === undefined ? tab : undefined;
+    if (stack !== undefined) this.#stack = stack;
     this.#changed();
   }
 
@@ -303,7 +330,14 @@ export class PhoneAppRouter {
       this.#startReach(computer.id);
       this.#connect(computer.id);
     }
-    return { screen: "computer", computer: computer.id, sheet: "none" };
+    const tab = this.#landing;
+    this.#landing = undefined;
+    return {
+      screen: "computer",
+      computer: computer.id,
+      sheet: "none",
+      ...(tab === undefined ? {} : { tab }),
+    };
   }
 
   /**
@@ -379,6 +413,7 @@ export class PhoneAppRouter {
       statuses: new Map(this.#statuses),
       canGoBack: this.#stack.length > 1 || this.#somewhereOnScreen(),
       ...(this.#forgotten === undefined ? {} : { forgotten: this.#forgotten }),
+      ...(this.#landing === undefined ? {} : { landing: this.#landing }),
     };
   }
 
