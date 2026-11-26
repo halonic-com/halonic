@@ -3,10 +3,14 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-// Every plugin whose worker (or anything it imports) lists companies must ask for
-// "companies.read", or Paperclip rejects each call at run time (halonic.seats, 24-26 Nov).
+// Every plugin whose worker (or anything it imports) makes one of these calls must ask for
+// the capability, or Paperclip rejects each call at run time (halonic.seats, 24-26 Nov;
+// the chief line's new threads, HAL-19471).
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const USES_COMPANIES = /companies\.list\s*\(|\bcompaniesFor\s*\(/;
+const CALLS: ReadonlyArray<[capability: string, call: RegExp]> = [
+  ["companies.read", /companies\.list\s*\(|\bcompaniesFor\s*\(/],
+  ["issues.create", /\bissues\.create\s*\(/],
+];
 
 function pluginDirs(dir: string): string[] {
   const out: string[] = [];
@@ -31,7 +35,7 @@ function localImports(file: string, text: string): string[] {
   return out;
 }
 
-function workerUsesCompanies(entry: string): boolean {
+function workerUses(entry: string, call: RegExp): boolean {
   const seen = new Set<string>();
   const stack = [entry];
   while (stack.length > 0) {
@@ -39,7 +43,7 @@ function workerUsesCompanies(entry: string): boolean {
     if (seen.has(file) || !existsSync(file)) continue;
     seen.add(file);
     const text = readFileSync(file, "utf8");
-    if (USES_COMPANIES.test(text)) return true;
+    if (call.test(text)) return true;
     stack.push(...localImports(file, text));
   }
   return false;
@@ -51,10 +55,12 @@ describe("plugin manifests ask for the capabilities their workers use", () => {
     expect(dirs.length).toBeGreaterThanOrEqual(2);
   });
   for (const d of dirs) {
-    it(`${d.slice(SRC.length + 1)}: companies.read when the worker lists companies`, async () => {
-      if (!workerUsesCompanies(join(d, "worker.ts"))) return;
-      const { manifest } = await import(join(d, "manifest.ts"));
-      expect(manifest.capabilities).toContain("companies.read");
-    });
+    for (const [capability, call] of CALLS) {
+      if (!workerUses(join(d, "worker.ts"), call)) continue;
+      it(`${d.slice(SRC.length + 1)}: ${capability}, because the worker uses it`, async () => {
+        const { manifest } = await import(join(d, "manifest.ts"));
+        expect(manifest.capabilities).toContain(capability);
+      });
+    }
   }
 });

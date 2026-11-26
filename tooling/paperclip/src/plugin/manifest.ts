@@ -68,6 +68,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     "companies.read",
     "agents.read",
     "issues.read",
+    // Only the chief line's findOrCreateThread (src/plugin/chief-line.ts, pinned by host.test.ts): a line
+    // with no live thread gets a new "[chief-line] …" or "[line] <caller> → <agent>" task (HAL-19471).
+    "issues.create",
     // Only `done`, `todo` with the reviewer as assignee, and `todo` on a blocked task whose
     // blockers all finished (HAL-17692): src/plugin/host.ts is the one place that writes a
     // status, through doneOnly, handoffOnly and todoOnly.
