@@ -23,7 +23,8 @@ type QuestionCard = InboxItem & { readonly questions: readonly InboxQuestion[] }
  */
 export function asksQuestions(card: InboxItem): card is QuestionCard {
   if (card.questions === undefined) return false;
-  return card.state.kind === "open" || card.state.answer.kind === "answers";
+  if (card.state.kind === "open") return true;
+  return card.state.kind === "answered" && card.state.answer.kind === "answers";
 }
 
 /**

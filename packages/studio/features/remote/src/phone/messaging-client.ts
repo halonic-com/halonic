@@ -144,7 +144,8 @@ export class MessagingClient {
       (message) =>
         message.type === "msg-result" &&
         message.result.outcome !== "answered" &&
-        message.result.outcome !== "already-answered"
+        message.result.outcome !== "already-answered" &&
+        message.result.outcome !== "closed"
           ? message.result
           : undefined,
     );

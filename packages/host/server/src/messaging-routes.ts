@@ -31,13 +31,18 @@ interface MessagingRoute {
 }
 
 /** What a call of the port answered: a refusal becomes the route's error, anything else is `{ result }`. */
-function resultResponse(result: {
+function resultResponse(result: { readonly outcome: string }): Response {
+  return isRefusal(result) ? refusalResponse(result.reason) : Response.json({ result });
+}
+
+/**
+ * Whether the port refused the call. Only `refused` carries a refusal: a `closed` answer's
+ * `reason` says why the item closed and is answered as a result.
+ */
+function isRefusal(result: {
   readonly outcome: string;
-  readonly reason?: MessagingRefusal;
-}): Response {
-  return result.outcome === "refused" && result.reason !== undefined
-    ? refusalResponse(result.reason)
-    : Response.json({ result });
+}): result is { readonly outcome: "refused"; readonly reason: MessagingRefusal } {
+  return result.outcome === "refused" && "reason" in result;
 }
 
 /** A list read with no arguments, answered as `{ items }`. */

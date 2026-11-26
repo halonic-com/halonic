@@ -30,6 +30,7 @@ export {
   type FullAnswer,
   type InboxAnswer,
   type InboxAnswerElsewhere,
+  type InboxClosedReason,
   type InboxItem,
   type InboxItemOption,
   type InboxItemState,

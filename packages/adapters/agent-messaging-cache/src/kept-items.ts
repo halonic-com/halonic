@@ -140,6 +140,10 @@ function keptAuthor(author: MessagingAuthor): MessagingAuthor {
 
 function keptState(state: InboxItemState): InboxItemState {
   if (state.kind === "open") return { kind: "open" };
+  if (state.kind === "closed") {
+    const { reason, closedAt, by } = state;
+    return { kind: "closed", reason, closedAt, ...(by !== undefined && { by: keptAuthor(by) }) };
+  }
   return {
     kind: "answered",
     by: keptAuthor(state.by),

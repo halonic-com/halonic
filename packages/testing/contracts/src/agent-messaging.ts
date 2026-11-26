@@ -45,7 +45,8 @@ async function firstChange(
 
 /**
  * The contract every `AgentMessaging` passes, whatever carries it
- * (requirements `contracts.agent-messaging` and `contracts.agent-messaging-questions`): each call of the port gives what
+ * (requirements `contracts.agent-messaging`, `contracts.agent-messaging-questions` and
+ * `contracts.agent-messaging-closed`): each call of the port gives what
  * the fake behind it holds, refusals keep their reason, files keep their
  * bytes, and `changes` names the source that changed.
  */
@@ -212,6 +213,36 @@ export function agentMessagingContract(name: string, make: MakeAgentMessaging): 
         expect(answered.outcome).toBe("answered");
         expect(listed?.questions).toEqual(asking.questions);
         expect(listed?.state).toMatchObject({ kind: "answered", answer: answers });
+      });
+    });
+  });
+
+  verifies("contracts.agent-messaging-closed", () => {
+    describe(`AgentMessaging contract, closed items: ${name}`, () => {
+      it("lists an item closed elsewhere with why, when and who, and takes no answer to it", async () => {
+        const { fake, port, item } = await setUp();
+        const ada = { kind: "person", name: "Ada" } as const;
+
+        fake.closeElsewhere(item.id, "cancelled", ada);
+        const [listed] = (await port.listInboxItems()).filter((each) => each.id === item.id);
+        const result = await port.answer(item.id, { kind: "option", option: "yes" });
+
+        const closedAt = "2026-11-24T10:00:00.000Z";
+        expect(listed?.state).toEqual({ kind: "closed", reason: "cancelled", closedAt, by: ada });
+        expect(result).toEqual({ outcome: "closed", reason: "cancelled", closedAt });
+      });
+
+      it("lists an item whose time ran out with no one named", async () => {
+        const { fake, port, item } = await setUp();
+
+        fake.closeElsewhere(item.id, "expired");
+        const [listed] = (await port.listInboxItems()).filter((each) => each.id === item.id);
+
+        expect(listed?.state).toEqual({
+          kind: "closed",
+          reason: "expired",
+          closedAt: "2026-11-24T10:00:00.000Z",
+        });
       });
     });
   });
