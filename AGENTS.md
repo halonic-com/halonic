@@ -194,8 +194,10 @@ Stacks stay short, so a closed pull request never strands work above it:
   `tooling/paperclip/src/reviewer-paths.ts`; `pr_status` names them). Send the task to that
   reviewer, and nobody else reviews it too:
   - the routine reviewer approves alone what the second reviewer may approve, except
-    `packages/core/`, `packages/host/`, `packages/testing/spec/` and a public interface
-    (`src/index.ts`). Until it runs, the second reviewer covers these;
+    `packages/core/`, `packages/host/`, `packages/testing/spec/`, `tooling/config/`, this file,
+    `CLAUDE.md`, `.gitattributes`, the legal files and a public interface (an entry point a
+    package exports, such as `src/index.ts` or `src/api.ts`, or its `exports`). A renamed file
+    counts by its old path too;
   - the second reviewer approves the rest outside the maintainer's paths, up to 1500 changed lines
     of code (800 in the engine's kernel and the event types);
   - the maintainer reviews everything else: the maintainer's paths (the guard, `.github/`, the

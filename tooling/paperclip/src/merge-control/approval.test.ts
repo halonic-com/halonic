@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { reviewerFor } from "../reviewer-paths.ts";
-import { approvalOf } from "./approval.ts";
+import { approvalOf, outsideJulianScope } from "./approval.ts";
 import {
   actionsOf,
   ago,
@@ -224,5 +224,59 @@ verifies("paperclip.merge-control-change-request", () => {
     ];
     const decision = pass(snapshot({ pulls: [pull(1, { texts })], queue: [entry(1, 1)] }));
     expect(actionsOf(decision, "dequeue").map((each) => each.reason)).toEqual(["change-request"]);
+  });
+});
+
+verifies("paperclip.routine-review", () => {
+  const nora = said(`Nora: approved on head \`${head.slice(0, 7)}\``);
+  const routine = { files: ["apps/cli/src/commands/run.ts"], filesTotal: 1, fileNet: {} };
+
+  test("Nora's signed approval counts on a routine pull request (HAL-19283)", () => {
+    expect(reasonsOf({ ...routine, texts: [nora] }).added).toEqual([1]);
+    expect(approvalOf(pull(1, { ...routine, texts: [nora] }), "halonic-dev", {}).approval).toEqual({
+      ok: true,
+      nora: true,
+      at: nora.at,
+    });
+  });
+
+  test("it doesn't count on packages/core/, a public interface, her own branch or from before the last push", () => {
+    const core = { files: ["packages/core/app/src/a.ts"], filesTotal: 1, fileNet: {} };
+    expect(reasonsOf({ ...core, texts: [nora] }).added).toEqual([]);
+    expect(approvalOf(pull(1, { ...core, texts: [nora] }), "halonic-dev", {}).reasons).toContain(
+      "Nora approved, but it is outside the routine scope (touches packages/core/app/src/a.ts): needs Julian or Liam",
+    );
+    const api = { ...routine, files: ["packages/studio/features/inbox/src/api.ts"] };
+    expect(reasonsOf({ ...api, texts: [nora] }).added).toEqual([]);
+    expect(reasonsOf({ ...routine, texts: [nora], branch: "nora/HAL-1-x" }).added).toEqual([]);
+    expect(reasonsOf({ ...routine, texts: [nora], forcePushedAt: [ago(10)] }).added).toEqual([]);
+  });
+
+  test("a renamed file counts by its old path: out of reviewer-paths.ts, or unknown, needs Liam", () => {
+    const moved = "tooling/paperclip/src/routing/paths.ts";
+    const renamed = (old: string | null) => ({
+      files: [moved],
+      filesTotal: 1,
+      fileNet: {},
+      previousPaths: { [moved]: old },
+    });
+    const julian = said(`Julian: approved on head \`${head.slice(0, 7)}\``);
+    const out = renamed("tooling/paperclip/src/reviewer-paths.ts");
+    expect(reasonsOf({ ...out, texts: [julian] }).added).toEqual([]);
+    expect(reasonsOf({ ...out, texts: [nora] }).added).toEqual([]);
+    expect(outsideJulianScope(pull(1, renamed(null)))).toBe(
+      `renames ${moved} from a path that isn't known`,
+    );
+    expect(reasonsOf({ ...renamed("tooling/paperclip/src/a.ts"), texts: [nora] }).added).toEqual([
+      1,
+    ]);
+  });
+
+  test("Nora's change request holds a pull request Julian approved", () => {
+    const texts = [
+      said(`Julian: approved on head \`${head.slice(0, 7)}\``, 30),
+      said("Nora: [major] needs a fix in the reader", 10),
+    ];
+    expect(reasonsOf({ ...routine, texts }).added).toEqual([]);
   });
 });

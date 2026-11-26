@@ -6,6 +6,7 @@ import {
   type ManifestChange,
   overLineLimit,
   reviewerFor,
+  reviewerRoleFor,
   touchesPackageFields,
 } from "./reviewer-paths.ts";
 
@@ -30,9 +31,14 @@ function change(edit: Record<string, unknown>): ManifestChange {
 }
 
 verifies("paperclip.reviewer-paths", () => {
-  test("a change outside Liam's paths goes to Julian", () => {
+  test("a change outside Liam's paths goes to Julian, or to Nora when it is routine", () => {
     const files = ["packages/studio/features/inbox/src/view.tsx"];
-    expect(reviewerFor({ files, changedLines: 120, sensitive: false })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 120, sensitive: false })).toBe("nora");
+    expect(reviewerRoleFor({ files, changedLines: 120, sensitive: false })).toBe(
+      "routine-reviewer",
+    );
+    const core = ["packages/core/app/src/view.ts"];
+    expect(reviewerFor({ files: core, changedLines: 120, sensitive: false })).toBe("julian");
   });
 
   test.each([
@@ -147,7 +153,8 @@ verifies("paperclip.reviewer-paths", () => {
   test("a package.json goes to Julian only without lockfile or publish changes", () => {
     const files = ["apps/cli/package.json"];
     const manifests = { "apps/cli/package.json": change({ main: "b.js" }) };
-    expect(reviewerFor({ files, changedLines: 2, sensitive: false, manifests })).toBe("julian");
+    // Within Julian's limits and routine (HAL-19246), so Nora's.
+    expect(reviewerFor({ files, changedLines: 2, sensitive: false, manifests })).toBe("nora");
     expect(reviewerFor({ files, changedLines: 2, sensitive: false })).toBe("liam");
     expect(
       reviewerFor({

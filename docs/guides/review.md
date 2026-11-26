@@ -16,11 +16,13 @@ too. A reviewer who gets a pull request outside their scope passes it on.
 
 | Role | Who | Approves alone |
 | --- | --- | --- |
-| Routine reviewer | Nora (Julian until she runs) | Everything the second reviewer may approve, except `packages/core/`, `packages/host/`, `packages/testing/spec/` and a public interface (`src/index.ts`) |
+| Routine reviewer | Nora | Everything the second reviewer may approve, except `packages/core/`, `packages/host/`, `packages/testing/spec/`, `tooling/config/`, the root `AGENTS.md` and `CLAUDE.md`, `.gitattributes`, the legal files (`LICENSE`, `NOTICE`, `CONTRIBUTING.md`) and a public interface (an entry point a package exports, such as `src/index.ts` or `src/api.ts`, or a change to its `exports`) |
 | Second reviewer | Julian | Everything outside the maintainer's paths and the security words, up to 1500 changed lines of code (800 in the kernel and the event types) |
 | Maintainer | Liam | Everything else: the maintainer's paths, security and release pull requests, anything that changes what a run may do |
 
-Tests, Markdown and wording files don't count toward the line limits. The
+Tests, Markdown and wording files don't count toward the line limits. A
+renamed file counts by its old path as well as its new one, and one whose old
+path isn't known goes to the maintainer. The
 exact lists are `paperclip.routine-review` and `paperclip.reviewer-paths` in
 `tooling/paperclip/requirements/`.
 

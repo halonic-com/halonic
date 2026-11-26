@@ -127,15 +127,27 @@ function queueExitOf(node: PullNode): GatePull["queueExit"] {
   return { at: last.createdAt, reason: (last.reason ?? "").toUpperCase() };
 }
 
-function filesOf(node: PullNode): Pick<GatePull, "files" | "filesTotal" | "fileNet"> {
+function filesOf(
+  node: PullNode,
+): Pick<GatePull, "files" | "filesTotal" | "fileNet" | "previousPaths"> {
   const files = node.files?.nodes ?? [];
   const fileNet: Record<string, number> = {};
+  const previousPaths: Record<string, string | null> = {};
   for (const file of files) {
     if (file.changeType !== "DELETED") {
       fileNet[file.path] = file.additions - file.deletions;
     }
+    // GraphQL names no old path: the reader asks REST for it (`previousPathsOf`).
+    if (file.changeType === "RENAMED") {
+      previousPaths[file.path] = null;
+    }
   }
-  return { files: files.map((file) => file.path), filesTotal: node.changedFiles, fileNet };
+  return {
+    files: files.map((file) => file.path),
+    filesTotal: node.changedFiles,
+    fileNet,
+    ...(Object.keys(previousPaths).length === 0 ? {} : { previousPaths }),
+  };
 }
 
 /** Whether one of the labels is a `built-on:*` label, a known one or not. */
@@ -162,7 +174,10 @@ export function isGatePull(node: PullNode, autoLabelAuthors: readonly string[] =
   );
 }
 
-/** A gate pull request without its manifests and red fast-track run, which need REST reads. */
+/**
+ * A gate pull request without its manifests, renamed files' old paths and
+ * red fast-track run, which need REST reads.
+ */
 export function gatePullOf(node: PullNode): GatePull {
   const rollup = rollupOf(node);
   const checks = (rollup?.contexts.nodes ?? [])

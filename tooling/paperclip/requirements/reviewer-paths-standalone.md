@@ -10,7 +10,7 @@ The reviewer path list shall load on its own the way the live Merger loads it: s
 
 - Given `reviewer-paths.ts` and the `routing.ts` it imports, copied into an empty folder,
   when Node imports `reviewer-paths.ts` there with type stripping only,
-  then `reviewerFor` sends a change to `packages/studio/features/inbox/src/view.tsx` to Julian and one to `pnpm-lock.yaml` to Liam.
+  then `reviewerFor` sends a change to `packages/studio/features/inbox/src/view.tsx` to Nora and one to `pnpm-lock.yaml` to Liam.
 - Given `reviewer-paths.ts` with a runtime import of `@halonicjs/format`,
   when the check runs,
   then it fails naming `reviewer-paths.ts`, `@halonicjs/format` and the Merger's loader rule.

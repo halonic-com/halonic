@@ -1,6 +1,18 @@
-import { type ChangedFile, linesByFile, readManifests } from "../pr-tools/manifests.ts";
+import {
+  type ChangedFile,
+  linesByFile,
+  previousPathsOf,
+  readManifests,
+} from "../pr-tools/manifests.ts";
 import { branchPath, type PullDetails } from "../pr-tools/pr-status.ts";
-import { isSecurityPath, julianRebaseRefusal, reviewerFor } from "../reviewer-paths.ts";
+import {
+  isSecurityPath,
+  julianRebaseRefusal,
+  type RoutedPull,
+  reviewerFor,
+  routedPaths,
+  routineRefusal,
+} from "../reviewer-paths.ts";
 import { everyPage, type GitHubGet } from "./github.ts";
 import type { ReviewerRoute } from "./handoff.ts";
 
@@ -27,18 +39,21 @@ export function gitHubRoute(get: GitHubGet): ReviewerRoute {
       base: compare.merge_base_commit?.sha,
       head,
     });
-    const paths = files.map((file) => file.filename);
-    const reviewer = reviewerFor({
-      files: paths,
+    const routed: RoutedPull = {
+      files: files.map((file) => file.filename),
       changedLines: (pull.additions ?? 0) + (pull.deletions ?? 0),
       sensitive: false,
       manifests,
       fileLines: linesByFile(files),
-    });
+      previousPaths: previousPathsOf(files),
+    };
+    // A renamed file counts by its old path too (HAL-19283).
+    const paths = routedPaths(routed);
     return {
-      reviewer,
+      reviewer: reviewerFor(routed),
       security: paths.some(isSecurityPath),
       rebaseRefusal: julianRebaseRefusal({ files: paths, branch: pull.head.ref }),
+      routineRefusal: routineRefusal(routed),
     };
   };
 }

@@ -15,12 +15,14 @@ import {
   type RoutedPull,
   reviewerFor,
   reviewerRoleFor,
+  routedPaths,
+  routineRefusal,
 } from "../reviewer-paths.ts";
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import type { Routing } from "../routing.ts";
 import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
-import { type ChangedFile, linesByFile, readManifests } from "./manifests.ts";
+import { type ChangedFile, linesByFile, previousPathsOf, readManifests } from "./manifests.ts";
 import { requiredWorkflowsOf } from "./required-workflows.ts";
 
 /**
@@ -183,22 +185,24 @@ export async function prStatus(
   const ours = pull.head.repo?.full_name.toLowerCase() === repo.toLowerCase();
   const author = ours ? branchOwner(pull.head.ref) : undefined;
   // The author says whether it's a security or release pull request; the paths can't tell.
-  const paths = files.map((file) => file.filename);
   const routed: RoutedPull = {
-    files: paths,
+    files: files.map((file) => file.filename),
     changedLines,
     sensitive: false,
     manifests,
     fileLines: linesByFile(files),
+    previousPaths: previousPathsOf(files),
   };
+  // A renamed file counts by its old path too (HAL-19283).
+  const paths = routedPaths(routed);
   const rebaseRefusal = julianRebaseRefusal({ files: paths, branch: pull.head.ref });
-  // Approvals are judged against the people in code (HAL-14809), never the routing's.
+  // Approvals are judged by the roles in code (HAL-14809, HAL-19283), never the routing's people.
   const judged = approvals(comments, {
     head,
     author,
-    reviewer: reviewerFor(routed),
-    role: reviewerRoleFor(routed),
+    reviewer: reviewerRoleFor(routed) === "code-reviewer" ? "liam" : "julian",
     rebaseRefusal,
+    routineRefusal: routineRefusal(routed),
   });
   const { approvals: found, copyError } =
     copies === undefined

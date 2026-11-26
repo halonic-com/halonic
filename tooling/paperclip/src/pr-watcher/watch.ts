@@ -136,7 +136,7 @@ function reviewerHeldPulls(
 ): readonly PullRef[] {
   const pulls = found.get(task.identifier) ?? [];
   const holder = task.assigneeAgentId;
-  const reviewers = [owners.get("liam"), owners.get("julian")];
+  const reviewers = [owners.get("liam"), owners.get("julian"), owners.get("nora")];
   const author = ownerOf(
     pulls.map((ref) => ref.branch),
     owners,

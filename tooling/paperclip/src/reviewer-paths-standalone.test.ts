@@ -94,7 +94,7 @@ verifies("paperclip.reviewer-paths-standalone", () => {
         env: { PATH: process.env["PATH"] ?? "" },
       });
       expect(run.status, `${loaderRule}.\n${run.stderr}`).toBe(0);
-      expect(JSON.parse(run.stdout), loaderRule).toEqual(["julian", "liam"]);
+      expect(JSON.parse(run.stdout), loaderRule).toEqual(["nora", "liam"]);
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }

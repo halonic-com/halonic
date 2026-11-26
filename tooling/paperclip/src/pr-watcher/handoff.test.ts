@@ -38,6 +38,39 @@ verifies("paperclip.pr-watcher-handoff", () => {
     expect(watcher.handoffs.map(({ to }) => to)).toEqual([agents.liam]);
   });
 
+  test("hands a routine pull request to Nora (HAL-19283)", async () => {
+    const watcher = setup({
+      tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
+      pulls: [open(5701, mateoBranch)],
+      byPaths: "nora",
+    });
+    await watcher.run();
+    expect(watcher.handoffs.map(({ to }) => to)).toEqual([agents.nora]);
+  });
+
+  test("hands it on when Nora's approval on the head is outside the routine scope", async () => {
+    const approved = open(5701, mateoBranch, {
+      approvals: [{ by: "Nora", head: head.slice(0, 7) }],
+    });
+    const outside = setup({
+      tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
+      pulls: [approved],
+      routineRefusal: "touches packages/core/app/src/a.ts",
+    });
+    await outside.run();
+    expect(outside.handoffs.map(({ to, key }) => [to, key])).toEqual([
+      [agents.julian, `${repo}#5701 5701aaa outside julian`],
+    ]);
+    const inside = setup({
+      tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
+      pulls: [approved],
+      byPaths: "nora",
+      routineRefusal: null,
+    });
+    await inside.run();
+    expect(inside.handoffs).toEqual([]);
+  });
+
   test("sends Liam's own pull request to Julian and Julian's to Liam, whatever the paths say", async () => {
     const liams = setup({
       tasks: [task(5701, agents.liam, { branch: "liam/HAL-5701-work" })],

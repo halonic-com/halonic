@@ -49,6 +49,8 @@ export interface Setup {
   readonly rebaseOnly?: RebaseOnly;
   /** Whether a reviewer is limited (HAL-19203); none when unset. */
   readonly limits?: ReviewerLimits;
+  /** Why Nora's approval can't count (HAL-19283); unread when unset. */
+  readonly routineRefusal?: string | null;
 }
 
 /** A fake Paperclip and a `run` that does one watcher pass with a fixed reviewer route. */
@@ -60,6 +62,7 @@ export function setup({
   files = [],
   rebaseOnly,
   limits,
+  routineRefusal,
 }: Setup) {
   const paperclip = fakePaperclip(tasks, comments);
   const routed: number[] = [];
@@ -85,6 +88,7 @@ export function setup({
           reviewer: byPaths,
           security: files.some(isSecurityPath),
           rebaseRefusal: julianRebaseRefusal({ files, branch: pull.branch }),
+          ...(routineRefusal === undefined ? {} : { routineRefusal }),
         };
       },
       ...(rebaseOnly === undefined ? {} : { rebaseOnly }),

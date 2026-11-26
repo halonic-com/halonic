@@ -1,4 +1,8 @@
-import { type ChangedFile, readManifests } from "../pr-tools/manifests.ts";
+import {
+  type ChangedFile,
+  previousPathsOf as namedPreviousPaths,
+  readManifests,
+} from "../pr-tools/manifests.ts";
 import type { GitHubGet } from "../pr-watcher/github.ts";
 import { ciOkOf } from "./checks.ts";
 import { type BoundedCache, cached } from "./facts-cache.ts";
@@ -8,7 +12,7 @@ import type { CiOkRun, FailedJob, GatePull, GroupRun, MainRun, RunFact } from ".
  * The facts read from the GitHub Actions REST API, GET only: merge-group
  * runs, queued pull request runs, `main`'s CI runs, a failed run's jobs
  * (with a merge group's failure annotations), a red fast-track head's
- * `ci-ok` run, and changed package manifests.
+ * `ci-ok` run, changed package manifests and renamed files' old paths.
  */
 
 /** A workflow run as the REST API lists it. */
@@ -274,4 +278,34 @@ export async function manifestsOf(
       head: pull.head,
     });
   });
+}
+
+/**
+ * The old paths of the renamed files GraphQL left unnamed (HAL-19283), from
+ * one compare read. A renamed file the compare doesn't list (it lists at most
+ * 300) keeps null, so only the code reviewer may approve the pull request.
+ */
+export async function previousPathsOf(
+  get: GitHubGet,
+  repo: string,
+  pull: GatePull,
+  cache: BoundedCache<GatePull["previousPaths"]>,
+): Promise<GatePull["previousPaths"]> {
+  const unknown = pull.previousPaths;
+  if (unknown === undefined) {
+    return undefined;
+  }
+  const base = pull.base.split("/").map(encodeURIComponent).join("/");
+  try {
+    return await cached(cache, `${pull.base}:${pull.head}`, async () => {
+      const compare = (await get(`/repos/${repo}/compare/${base}...${pull.head}`)) as {
+        files?: ChangedFile[];
+      };
+      const named = namedPreviousPaths(compare.files ?? []);
+      return Object.fromEntries(Object.keys(unknown).map((path) => [path, named[path] ?? null]));
+    });
+  } catch {
+    // Unread, the old paths stay unknown: only the code reviewer's approval counts.
+    return unknown;
+  }
 }

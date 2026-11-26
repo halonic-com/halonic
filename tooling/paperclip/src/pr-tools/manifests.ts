@@ -25,6 +25,19 @@ export function linesByFile(files: readonly ChangedFile[]): Record<string, numbe
   );
 }
 
+/**
+ * The old path of each renamed file, by its new path; null when GitHub
+ * didn't name it, which routes the pull request to the code reviewer
+ * (`RoutedPull.previousPaths`, HAL-19283).
+ */
+export function previousPathsOf(files: readonly ChangedFile[]): Record<string, string | null> {
+  return Object.fromEntries(
+    files.flatMap((file) =>
+      file.status === "renamed" ? [[file.filename, file.previous_filename ?? null]] : [],
+    ),
+  );
+}
+
 /** The refs to compare: undefined `base` when the merge base isn't known. */
 export interface ManifestRefs {
   readonly base: string | undefined;

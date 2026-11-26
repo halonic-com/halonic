@@ -6,6 +6,7 @@
  */
 import type { Routing } from "@halonicjs/format";
 import { manifestFileOf } from "./reviewer-paths-manifest.ts";
+import { isRoutineExcluded, publicInterfaceIn } from "./reviewer-paths-routine.ts";
 import { personFor } from "./routing.ts";
 
 /** Exact files only Liam reviews. The root `package.json` counts too. */
@@ -284,6 +285,25 @@ export interface RoutedPull {
    * count, the line limits use the whole pull request's `changedLines`.
    */
   readonly fileLines?: Readonly<Record<string, number>>;
+  /**
+   * The old path of each renamed file, by its new path; null when the old
+   * path isn't known, which only the code reviewer may approve (HAL-19283).
+   */
+  readonly previousPaths?: Readonly<Record<string, string | null>>;
+}
+
+/** The changed files and renamed files' known old paths: a rename out of a path counts as touching it. */
+type PathsOf = Pick<RoutedPull, "files" | "previousPaths">;
+
+/** Every path a pull request touches: each file's path and, for a renamed file, its known old path. */
+export function routedPaths(pull: PathsOf): string[] {
+  const old = Object.values(pull.previousPaths ?? {}).filter((path) => path !== null);
+  return [...new Set([...pull.files, ...old])];
+}
+
+/** The first renamed file whose old path isn't known, or undefined. */
+export function unknownRename(pull: PathsOf): string | undefined {
+  return Object.entries(pull.previousPaths ?? {}).find(([, old]) => old === null)?.[0];
 }
 
 /**
@@ -293,7 +313,11 @@ export interface RoutedPull {
  * to Liam more often, never less.
  */
 function codeLines(pull: RoutedPull, inScope: (path: string) => boolean): number {
-  const picked = pull.files.filter((path) => inScope(path) && !isWordsOnly(path));
+  const old = (path: string) => pull.previousPaths?.[path] ?? undefined;
+  const picked = pull.files.filter((path) => {
+    const before = old(path);
+    return (inScope(path) || (before !== undefined && inScope(before))) && !isWordsOnly(path);
+  });
   if (picked.length === 0) {
     return 0;
   }
@@ -344,32 +368,30 @@ function isLiamPackageChange(pull: RoutedPull): boolean {
 function needsCodeReviewer(pull: RoutedPull): boolean {
   return (
     pull.sensitive ||
+    unknownRename(pull) !== undefined ||
     overLineLimit(pull) !== undefined ||
-    pull.files.some(isLiamPath) ||
+    routedPaths(pull).some(isLiamPath) ||
     isLiamPackageChange(pull)
   );
 }
 
-/**
- * Folders the routine reviewer doesn't approve alone, on top of the code
- * reviewer's paths (the board's decision on HAL-18424, 26 Nov): the core
- * building blocks, the host and the spec helper the guard runs on.
- */
-export const routineExcludedFolders: readonly string[] = [
-  "packages/core/",
-  "packages/host/",
-  "packages/testing/spec/",
-];
-
-/** A package's public interface: what its `src/index.ts` exports. */
-function isPublicInterface(path: string): boolean {
-  return /(^|\/)src\/index\.[cm]?tsx?$/.test(path);
+/** The first changed `package.json` whose `exports` change, or undefined (HAL-19283). */
+function exportsChange(pull: RoutedPull): string | undefined {
+  return Object.entries(pull.manifests ?? {}).find(([, change]) => {
+    const before = parseManifest(change.before);
+    const after = parseManifest(change.after);
+    return (
+      before === undefined || after === undefined || !sameValue(before["exports"], after["exports"])
+    );
+  })?.[0];
 }
 
 /**
  * Why the routine reviewer (Nora, HAL-19246) can't approve this pull request
- * alone, or null when it can: it fits the second reviewer's limits and
- * touches none of `routineExcludedFolders`, no public interface and no plugin
+ * alone, or null when it can: it fits the second reviewer's limits, touches
+ * none of the routine exclusions (`reviewer-paths-routine.ts`), by a file's
+ * path or a renamed file's old one, changes no public interface (an entry
+ * point a package exports, or a package's `exports`, HAL-19283) and no plugin
  * manifest (`manifestFileOf`, which Julian approves, HAL-19440). A new
  * package already needs the code reviewer (its `package.json` has no base).
  * The PR watcher, the Agent tools plugin and the Merger's gate all call
@@ -379,13 +401,12 @@ export function routineRefusal(pull: RoutedPull): string | null {
   if (needsCodeReviewer(pull)) {
     return "outside the second reviewer's limits";
   }
-  const excluded = pull.files.find((path) =>
-    routineExcludedFolders.some((folder) => path.startsWith(folder)),
-  );
+  const paths = routedPaths(pull);
+  const excluded = paths.find(isRoutineExcluded);
   if (excluded !== undefined) {
     return `touches ${excluded}`;
   }
-  const publicInterface = pull.files.find(isPublicInterface);
+  const publicInterface = publicInterfaceIn(paths) ?? exportsChange(pull);
   if (publicInterface !== undefined) {
     return `changes a public interface (${publicInterface})`;
   }
@@ -416,12 +437,11 @@ export function reviewerRoleFor(pull: RoutedPull): ReviewRole {
 /**
  * The agent who reviews a pull request: its role (`reviewerRoleFor`),
  * covered by the person the routing names. Without a routing that is
- * `julian` or `liam`, as before (the routine reviewer's role stays with
- * Julian until Nora runs); a refused routing is no routing. A plugin
- * manifest change goes to Julian at least, and needs his approval even
- * when it goes to Liam (`manifestFileOf`, HAL-19440).
+ * `nora`, `julian` or `liam` (`defaultRoles`); a refused routing is no routing.
+ * A plugin manifest change goes to Julian at least, and needs his approval
+ * even when it goes to Liam (`manifestFileOf`, HAL-19440).
  */
-export function reviewerFor(pull: RoutedPull): "julian" | "liam";
+export function reviewerFor(pull: RoutedPull): "nora" | "julian" | "liam";
 export function reviewerFor(pull: RoutedPull, routing: Routing | undefined): string;
 export function reviewerFor(pull: RoutedPull, routing?: Routing): string {
   return personFor(reviewerRoleFor(pull), routing);

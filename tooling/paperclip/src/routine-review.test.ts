@@ -1,6 +1,16 @@
+import { globSync, readFileSync } from "node:fs";
+import { dirname, join, posix } from "node:path";
+import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
-import { type RoutedPull, reviewerFor, reviewerRoleFor, routineRefusal } from "./reviewer-paths.ts";
+import {
+  isLiamPath,
+  type RoutedPull,
+  reviewerFor,
+  reviewerRoleFor,
+  routineRefusal,
+} from "./reviewer-paths.ts";
+import { isPublicInterface, isRoutineExcluded } from "./reviewer-paths-routine.ts";
 
 /** A pull request with these files and this many changed lines, none of them sensitive. */
 function pullOf(files: readonly string[], changedLines = 40): RoutedPull {
@@ -62,7 +72,92 @@ verifies("paperclip.routine-review", () => {
     expect(routineRefusal(pullOf(["apps/cli/src/a.ts"], 1500))).toBeNull();
   });
 
-  test("until Nora runs, Julian covers routine reviews", () => {
-    expect(reviewerFor(pullOf(["apps/cli/src/commands/run.ts"]))).toBe("julian");
+  test("Nora covers routine reviews", () => {
+    expect(reviewerFor(pullOf(["apps/cli/src/commands/run.ts"]))).toBe("nora");
+  });
+});
+
+verifies("paperclip.routine-review", () => {
+  test.each([
+    [
+      "packages/studio/features/inbox/src/api.ts",
+      "changes a public interface (packages/studio/features/inbox/src/api.ts)",
+    ],
+    [
+      "packages/adapters/harness-codex/src/web.ts",
+      "changes a public interface (packages/adapters/harness-codex/src/web.ts)",
+    ],
+    ["tooling/config/biome.jsonc", "touches tooling/config/biome.jsonc"],
+    [".gitattributes", "touches .gitattributes"],
+    ["AGENTS.md", "touches AGENTS.md"],
+    ["CLAUDE.md", "touches CLAUDE.md"],
+    ["CONTRIBUTING.md", "touches CONTRIBUTING.md"],
+    ["LICENSE", "touches LICENSE"],
+    ["NOTICE", "touches NOTICE"],
+    [
+      "packages/studio/kit/src/fonts/LICENSE.txt",
+      "touches packages/studio/kit/src/fonts/LICENSE.txt",
+    ],
+  ])("%s refuses the routine role: %s", (file, reason) => {
+    expect(routineRefusal(pullOf([file]))).toBe(reason);
+    expect(reviewerRoleFor(pullOf([file]))).toBe("second-reviewer");
+  });
+
+  test("a package's own AGENTS.md stays routine", () => {
+    expect(routineRefusal(pullOf(["apps/cli/AGENTS.md"]))).toBeNull();
+  });
+
+  test("a change to a package's exports refuses the routine role", () => {
+    const path = "packages/studio/features/inbox/package.json";
+    const before = JSON.stringify({ name: "@halonicjs/acme", exports: { ".": "./src/index.ts" } });
+    const after = before.replace("}}", ',"./web":"./src/web.ts"}}');
+    const pull = { ...pullOf([path]), manifests: { [path]: { before, after } } };
+    expect(routineRefusal(pull)).toBe(`changes a public interface (${path})`);
+  });
+
+  test("a renamed file counts by its old path too", () => {
+    const moved = "tooling/paperclip/src/routing/reviewer-paths.ts";
+    const out = (old: string | null) => ({
+      ...pullOf([moved]),
+      previousPaths: { [moved]: old },
+    });
+    expect(reviewerRoleFor(out("tooling/paperclip/src/reviewer-paths.ts"))).toBe("code-reviewer");
+    expect(reviewerRoleFor(out(null))).toBe("code-reviewer");
+    const fromCore = {
+      ...pullOf(["apps/cli/src/a.ts"]),
+      previousPaths: { "apps/cli/src/a.ts": "packages/core/app/src/a.ts" },
+    };
+    expect(routineRefusal(fromCore)).toBe("touches packages/core/app/src/a.ts");
+    const inside = {
+      ...pullOf(["apps/cli/src/b.ts"]),
+      previousPaths: { "apps/cli/src/b.ts": "apps/cli/src/a.ts" },
+    };
+    expect(reviewerRoleFor(inside)).toBe("routine-reviewer");
+  });
+
+  test("every entry point a package exports is a public interface, excluded or the code reviewer's", () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
+    const manifests = globSync(["package.json", "{apps,packages,tooling}/**/package.json"], {
+      cwd: root,
+      exclude: (path) => path.includes("node_modules"),
+    });
+    const entries = manifests.flatMap((manifest) => {
+      const exports: unknown = JSON.parse(readFileSync(join(root, manifest), "utf8")).exports;
+      const targets: string[] = [];
+      const walk = (value: unknown) => {
+        if (typeof value === "string") {
+          targets.push(posix.join(posix.dirname(manifest), value));
+        } else if (typeof value === "object" && value !== null) {
+          Object.values(value).forEach(walk);
+        }
+      };
+      walk(exports);
+      return targets;
+    });
+    expect(entries.length).toBeGreaterThan(100);
+    const uncovered = entries.filter(
+      (path) => !isPublicInterface(path) && !isRoutineExcluded(path) && !isLiamPath(path),
+    );
+    expect(uncovered, "add these to exportedEntryPoints in reviewer-paths-routine.ts").toEqual([]);
   });
 });
