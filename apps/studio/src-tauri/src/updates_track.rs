@@ -4,6 +4,7 @@
 use halonic_update_state::{UpdateState, UpdateStatus, UpdateTrack, install_track};
 use tauri::{AppHandle, Runtime};
 
+use super::pending::{pending_folder, prune};
 use super::{Inner, lock};
 
 impl Inner {
@@ -13,11 +14,15 @@ impl Inner {
     }
 
     /// Forgets what the other track found: a download in progress stops, and
-    /// an update found or downloaded but not installed is dropped, since it
-    /// is signed with the other track's key and couldn't install.
+    /// an update found or downloaded but not installed is dropped, from the
+    /// pending folder too, since it is signed with the other track's key and
+    /// couldn't install.
     fn forget_found(&mut self) {
         if let Some(task) = self.download.take() {
             task.abort();
+        }
+        if let Some(folder) = pending_folder(self.file.as_deref()) {
+            prune(&folder, None);
         }
         self.ready = None;
         self.found = None;

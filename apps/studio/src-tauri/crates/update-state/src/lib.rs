@@ -7,6 +7,7 @@
 
 mod managed;
 mod notes;
+mod pending;
 mod record;
 mod settings;
 mod setup_version;
@@ -18,6 +19,10 @@ use std::time::Duration;
 
 pub use managed::{Managed, ManagedBy, bucket_version, detect as detect_managed};
 pub use notes::{MAX_NOTES_CHARS, MAX_NOTES_VERSIONS, OfferedNotes, VersionNotes, offered_notes};
+pub use pending::{
+    PENDING_FOLDER, PendingRecord, complete_pairs, is_installer, pending_installer_name,
+    pending_record_name, pending_record_text, pending_to_remove, read_pending_record,
+};
 pub use record::{
     BadSignature, CheckResult, FORMAT, InstallRecord, MAX_BAD_SIGNATURES, RecordRead, StartOutcome,
     UpdaterRecord, read_record, record_text,
