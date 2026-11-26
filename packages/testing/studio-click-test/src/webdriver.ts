@@ -12,6 +12,12 @@ export const keys = {
   control: "\uE009",
 } as const;
 
+/** A window's outer size, in CSS pixels. */
+export interface WindowSize {
+  readonly width: number;
+  readonly height: number;
+}
+
 /** One open WebDriver session on the installed Studio. */
 export interface Driver {
   /** Clicks the first element the XPath finds; throws when none is shown. */
@@ -38,6 +44,10 @@ export interface Driver {
   switchToWindow(handle: string): Promise<void>;
   /** Closes the current window; the session goes on in the others. */
   closeWindow(): Promise<void>;
+  /** The current window's outer size. */
+  windowSize(): Promise<WindowSize>;
+  /** Sizes the current window and resolves to the size it got, which a small screen may cap. */
+  setWindowSize(size: WindowSize): Promise<WindowSize>;
   /** Ends the session, which closes the app. */
   close(): Promise<void>;
 }
@@ -131,6 +141,9 @@ export async function openSession(serverUrl: string, debuggerAddress: string): P
     closeWindow: async () => {
       await call("DELETE", "/window");
     },
+    windowSize: async () => readSize(await call("GET", "/window/rect")),
+    setWindowSize: async ({ width, height }) =>
+      readSize(await call("POST", "/window/rect", { width, height })),
     close: async () => {
       await call("DELETE", "");
     },
@@ -181,6 +194,15 @@ function readString(value: unknown, key: string): string {
   if (typeof field !== "string")
     throw new WebDriverError("unknown error", `the answer has no ${key}`);
   return field;
+}
+
+function readSize(value: unknown): WindowSize {
+  const width = isRecord(value) ? value["width"] : undefined;
+  const height = isRecord(value) ? value["height"] : undefined;
+  if (typeof width !== "number" || typeof height !== "number") {
+    throw new WebDriverError("unknown error", "the window rect has no width and height");
+  }
+  return { width, height };
 }
 
 // msedgedriver attached through debuggerAddress may answer with the older
