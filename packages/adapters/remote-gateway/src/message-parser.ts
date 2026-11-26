@@ -161,9 +161,12 @@ function isOneOf(allowed: readonly string[]): FieldCheck {
   return (value) => typeof value === "string" && allowed.includes(value);
 }
 
-/** A page cursor the host made; the phone only hands it back, so an id's rule is enough. */
+/**
+ * A page cursor the phone hands back. `fitPage` passes a provider's own cursor
+ * on as `more`, so it follows the messaging id rule, `:` included.
+ */
 function isCursor(value: unknown): boolean {
-  return isId(value);
+  return isMessagingId(value);
 }
 
 function isTrue(value: unknown): boolean {

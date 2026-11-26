@@ -12,6 +12,7 @@ import {
   gatewayClosingErrorCodes,
   gatewayMaxIdLength,
   gatewayMaxMessageBytes,
+  gatewayMessagingIdPattern,
   gatewayMessagingLists,
   gatewayProtocolVersion,
   gatewayRefusalCodes,
@@ -116,7 +117,9 @@ const isEventBody: Check = (value) => {
   return check?.(value) === true;
 };
 
-const isMessagingId: Check = (value) => typeof value === "string" && value !== "";
+/** A provider's id, held to the same rule the host reads the phone by. */
+const isMessagingId: Check = (value) =>
+  typeof value === "string" && gatewayMessagingIdPattern.test(value);
 
 /** The refusals a port's `AnswerResult` or `SendResult` may carry. */
 const isMessagingRefusal = oneOf(
