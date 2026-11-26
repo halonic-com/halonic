@@ -48,6 +48,26 @@ verifies("quick-ask.box", () => {
         "You can close this. The answer comes to your chat with Chief.",
       );
     });
+
+    it("clears the first question's working line once a second question goes out", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page } = await openBox(messenger);
+      await ask(page, "Where are we?");
+      workingChief(messenger);
+      await act(async () => messenger.change("acme"));
+      messenger.sentAt = "2026-11-25T13:42:00.000Z";
+      await ask(page, "And the release?");
+      const [first, second] = [...page.querySelectorAll("[data-question]")].map((question) =>
+        question.closest("li"),
+      );
+
+      // Only the newest question's answer is watched, so the first one's line would never end.
+      expect(first?.querySelector("[data-working]")).toBeNull();
+      expect(first?.textContent).toContain(
+        "You can close this. The answer comes to your chat with Chief.",
+      );
+      expect(second?.querySelector("[data-working]")?.textContent).toBe("Chief is working");
+    });
   });
 
   describe("the answer", () => {

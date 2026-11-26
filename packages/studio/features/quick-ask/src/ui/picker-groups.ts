@@ -14,6 +14,7 @@ export const RECENT_AGENTS = 3;
  * The picker's groups (design HAL-18594, section 4): **Recent** first, then each workspace and
  * team by its name, with each agent once. Typing narrows every group to the agents whose name
  * holds the text, and then **Recent** is left out, so each match shows under its own workspace.
+ * Agents whose workspace or team is gone share one group, **No longer connected**.
  *
  * @example
  * pickerGroups(agents, "");
@@ -30,7 +31,7 @@ export function pickerGroups(agents: readonly AskAgent[], query: string): readon
     recent.length > 0 ? [{ label: quickAskWords.recent, agents: recent }] : [];
   const bySource = new Map<string, AskAgent[]>();
   for (const each of matching.slice(recent.length)) {
-    const label = each.row.source?.label ?? "";
+    const label = each.row.source?.label ?? quickAskWords.noSource;
     bySource.set(label, [...(bySource.get(label) ?? []), each]);
   }
   for (const [label, inSource] of bySource) groups.push({ label, agents: inSource });

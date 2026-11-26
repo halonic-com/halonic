@@ -47,16 +47,20 @@ export function useAskBox(session: AskSession): AskBoxModel {
   const watch = useOpening(session, setState);
   const nextId = useRef(0);
 
-  const update = (exchange: Exchange) =>
+  const change = (id: number, changed: (exchange: Exchange) => Exchange) =>
     setState((now) =>
       now.kind === "ready"
         ? {
             ...now,
-            exchanges: now.exchanges.map((each) => (each.id === exchange.id ? exchange : each)),
+            exchanges: now.exchanges.map((each) => (each.id === id ? changed(each) : each)),
           }
         : now,
     );
-  const deliver = (exchange: Exchange) => void deliverQuestion(session, exchange, update, watch);
+  const update = (exchange: Exchange) => change(exchange.id, () => exchange);
+  // A newer question's watch replaced this one's, so nothing updates its working line any more.
+  const unwatched = (exchange: Exchange) => change(exchange.id, stillWorkingToWaiting);
+  const deliver = (exchange: Exchange) =>
+    void deliverQuestion(session, exchange, { update, unwatched }, watch);
 
   return {
     state,
@@ -79,7 +83,9 @@ export function useAskBox(session: AskSession): AskBoxModel {
         answer: undefined,
       };
       // The box clears and keeps the focus; the question waits once, in its bubble (motion 4).
-      setState({ ...state, text: "", exchanges: [...state.exchanges, exchange] });
+      setState((now) =>
+        now.kind === "ready" ? { ...now, text: "", exchanges: [...now.exchanges, exchange] } : now,
+      );
       deliver(exchange);
     },
     retry(exchange) {
@@ -88,6 +94,24 @@ export function useAskBox(session: AskSession): AskBoxModel {
       deliver(sending);
     },
   };
+}
+
+/**
+ * An exchange whose answer is no longer watched: a working line would stay on for good, so it
+ * goes back to waiting, which says the answer comes to the chat. Any other answer stays.
+ */
+function stillWorkingToWaiting(exchange: Exchange): Exchange {
+  return exchange.answer?.kind === "working"
+    ? { ...exchange, answer: { kind: "waiting" } }
+    : exchange;
+}
+
+/** What {@link deliverQuestion} tells the box about one exchange. */
+interface ExchangeChanges {
+  /** The exchange as it is now. */
+  update(exchange: Exchange): void;
+  /** The exchange's answer is no longer watched: a newer question's watch replaced it, or the box closed. */
+  unwatched(exchange: Exchange): void;
 }
 
 /** The one answer the box watches: a new watch replaces the last, and none starts once it closed. */
@@ -136,15 +160,17 @@ function useOpening(session: AskSession, setState: (state: BoxState) => void): A
 }
 
 /**
- * Sends `exchange`'s question and tells `update` how it went: not sent, or sent and then each
- * new state of its answer. A send that throws counts as not sent, and is logged.
+ * Sends `exchange`'s question and tells `changes` how it went: not sent, or sent and then each
+ * new state of its answer, until a newer question's watch replaces this one. A send that throws
+ * counts as not sent, and is logged.
  */
 async function deliverQuestion(
   session: AskSession,
   exchange: Exchange,
-  update: (exchange: Exchange) => void,
+  changes: ExchangeChanges,
   watch: AnswerWatch,
 ): Promise<void> {
+  const { update } = changes;
   try {
     const outcome = await session.ask(exchange.agent, exchange.question);
     if (outcome.kind === "not-sent") {
@@ -153,9 +179,15 @@ async function deliverQuestion(
     }
     const sent: Exchange = { ...exchange, status: "sent" };
     update(sent);
-    watch.replace(() =>
-      session.watch(exchange.agent, outcome.question, (answer) => update({ ...sent, answer })),
-    );
+    watch.replace(() => {
+      const stop = session.watch(exchange.agent, outcome.question, (answer) =>
+        update({ ...sent, answer }),
+      );
+      return () => {
+        stop();
+        changes.unwatched(sent);
+      };
+    });
   } catch (error: unknown) {
     console.error("Quick ask couldn't send the question:", error);
     update({ ...exchange, status: "not-sent" });
