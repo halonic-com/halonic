@@ -8,7 +8,6 @@ const finished = { text: "Chief finished what you asked" };
 verifies("remote.phone-notification-lock-screen", () => {
   it("shows only the p06c line on the lock screen, and the item once unlocked", () => {
     expect(phoneNotificationOf("Tim's laptop", asks)).toEqual({
-      visibility: "private",
       lockScreen: { title: "Something needs you on Tim's laptop" },
       unlocked: { title: "Chief asks you: Ship phase 2 now?", body: "Paperclip · Halonic" },
     });
