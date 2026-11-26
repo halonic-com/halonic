@@ -1,7 +1,7 @@
 # Decision: the seat mover follows the board's audit rules
 
 - Task: HAL-19354
-- Approval: the board's audit rules for the plugin mover, posted on HAL-19354 on 26 Nov (https://paperclip.halonic.com/HAL/issues/HAL-19354#comment-671fec72-2d83-4255-a283-efec38fd3ccc), which the board's shadow session audits every move against. Liam approves the change in review on HAL-19354.
+- Approval: the board's audit rules for the plugin mover, posted on HAL-19354 on 26 Nov (https://paperclip.halonic.com/HAL/issues/HAL-19354#comment-671fec72-2d83-4255-a283-efec38fd3ccc), which the board's shadow session audits every move against, and the board supervisor's follow-ups (https://paperclip.halonic.com/HAL/issues/HAL-19354#comment-f8f991b1-a0c8-43b0-80ae-d0132a8368f0, https://paperclip.halonic.com/HAL/issues/HAL-19354#comment-4805ea20-74cf-41f3-a095-c85759d31761). Liam approves the change in review on HAL-19354.
 - Kind: internal
 
 ## What changes
@@ -25,8 +25,28 @@ The seat mover gains the board's audit rules that it didn't have yet:
   hours (`seatMover.moveCooldownMinutes`) that agent moves again only when it is parked or its
   seat is full or unusable, not for who it sits with.
 
+After the first `act` hour the board and its supervisor asked for four more (HAL-19354, 26 Nov,
+12:12 UTC and 11:54 UTC), which this change adds too:
+
+- **Reviewers may share with light agents (item b).** "Alone" now means no other reviewer, no
+  running heavy agent and no never-move agent (the quiet seat). A reviewer still takes an empty
+  seat first; only when no empty seat may take it does it join light agents, and those stay.
+  Light agents still never join a reviewer's seat. Nora was parked 17 minutes on a seat at 100%
+  because every seat with room had someone on it.
+- **A `provider_quota` failure counts for 30 minutes (rule 2).** Before, a newer reading
+  cleared it. Readings come only at :17 and :47 and lag: the Leo seat read 76% while it was
+  full. Now a failure in the last 30 minutes (`seatMover.quotaFullMinutes`) marks the seat
+  full whatever its reading, until the 5-hour reset the reading reports.
+- **Parked runs naming no seat count (rule 1).** They mark the agent parked and are released
+  after its move, so they no longer move it every pass. While the two-hour cooldown runs they
+  don't count.
+- **Room kept on the target (churn).** A seat takes a moved agent only while its 5-hour reading
+  plus 10% (`seatMover.targetHeadroomPercent`) for that agent and for each agent the pass
+  already sends there stays below the stop. A seat at 75% no longer takes an agent that the
+  next reading moves off again.
+
 The requirements `paperclip.seat-mover-checklist` and `paperclip.seat-mover-job` change to
-match, with two new examples. The settings form gains the two new settings. Tests cover each
+match, with four new examples. The settings form gains four new settings. Tests cover each
 rule; the tests that encoded the old rules (anyone leaves at 88%, paused agents move for
 seating) now check the new ones. No test was skipped.
 
@@ -43,6 +63,9 @@ The first pass in `act` mode (26 Nov, 11:55 UTC, logged on HAL-16116) moved five
 off the quiet Nina seat, which was at 89% of its week, because the old item a allowed nobody on
 a seat at 88% or more. The board's rules allow slow agents on such a reserve seat, so the move
 broke rules 3 and 4. The other rules were missing in the same way.
+
+The board's later comments also reported a paused agent (Seat Probe) moved again. That was the
+build without this change; rule 5 above covers it.
 
 ## Covers
 

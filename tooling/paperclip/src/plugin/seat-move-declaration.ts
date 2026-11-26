@@ -105,6 +105,19 @@ export const seatMoverConfigProperties = {
         "The same for a reviewer, who moves earlier (HAL-19202).",
         d.reviewerSessionMovePercent,
       ),
+      targetHeadroomPercent: percent(
+        "Room kept per moved agent",
+        "A seat takes a moved agent only while its 5-hour reading plus this much for that agent, and for each agent already sent there this pass, stays below the stop. Keeps the next reading from moving them off again.",
+        d.targetHeadroomPercent,
+      ),
+      quotaFullMinutes: {
+        type: "integer",
+        minimum: 1,
+        title: "Full after a quota failure (minutes)",
+        description:
+          "A seat a run failed on with provider_quota this recently is full, whatever its reading says, until the 5-hour reset its reading reports.",
+        default: d.quotaFullMinutes,
+      },
       weekMovePercent: percent(
         "Weekly stop",
         "A seat at this much of its week is a reserve seat: only agents that aren't fast burners sit there, unless its weekly reset is less than the hours below away. Reset-fill seats take anyone.",

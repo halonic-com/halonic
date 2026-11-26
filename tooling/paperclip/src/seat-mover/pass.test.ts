@@ -208,15 +208,16 @@ verifies("paperclip.seat-mover-job", () => {
       // Liam (reviewer, past its 70% stop) leaves Two for Empty, which frees Two for Kim.
       const agents = [row("liam", "Two"), row("kim", "Full")];
       const usage: Usage = { Two: [72, 10], Full: [85, 10], Empty: [10, 10] };
+      const settings = { mode: "act", targetHeadroomPercent: 5 } as const;
       const working = world(usage, agents);
-      await seatMoverPass(deps(working, agents, { settings: { mode: "act" } }).deps);
+      await seatMoverPass(deps(working, agents, { settings }).deps);
       expect(working.writes).toEqual(["move a-liam c-Empty", "move a-kim c-Two"]);
 
       const fake = world(usage, agents);
       const send = fake.api.setRuntimeConfig;
       fake.api.setRuntimeConfig = (agentId, config) =>
         agentId === "a-liam" ? Promise.reject(new Error("refused")) : send(agentId, config);
-      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" } }).deps);
+      await seatMoverPass(deps(fake, agents, { settings }).deps);
       // Liam stayed, so Kim would join a reviewer's seat: not sent.
       expect(fake.writes).toEqual([]);
     });
@@ -248,7 +249,7 @@ verifies("paperclip.seat-mover-job", () => {
       expect(run.comments).toEqual([expect.stringContaining("Released 2 parked runs")]);
     });
 
-    test("a parked run that names no seat moves nobody, so the agent doesn't move every pass", async () => {
+    test("a parked run that names no seat moves the agent once and is released, so it doesn't move every pass", async () => {
       const agents = [row("kim", "A")];
       const fake = world({ A: [30, 10], B: [20, 10] }, agents);
       const parked: ParkedRun[] = [
@@ -256,9 +257,11 @@ verifies("paperclip.seat-mover-job", () => {
       ];
       const run = deps(fake, agents, { settings: { mode: "act" }, parked });
       await seatMoverPass(run.deps);
+      expect(fake.writes).toEqual(["move a-kim c-B", "cancel r", "resolve i hold-r todo"]);
+      expect(run.wakes).toEqual(["i"]);
+      // The next pass still reads the run (and the agent on A): the move is two hours old only later.
       await seatMoverPass(run.deps);
-      expect(fake.writes).toEqual([]);
-      expect(run.comments).toEqual([]);
+      expect(fake.writes).toHaveLength(3);
     });
 
     test("tells the board once when an agent must move and no seat may take it, and moves nobody", async () => {
@@ -312,6 +315,16 @@ verifies("paperclip.seat-mover-job", () => {
       await seatMoverPass(deps(old, heavy, { settings: { mode: "act" }, memory: oldMemory }).deps);
       expect(old.writes).toEqual(["move a-priya c-B"]);
       expect(oldMemory.value.movedAt).toEqual({ "a-priya": now.toISOString() });
+    });
+
+    test("the 5-hour reading of a seat a run failed on in the last 30 minutes doesn't count: its agents leave", async () => {
+      // The Leo seat's 09:47 reading lags at 76%; a run had failed on its quota at 09:40.
+      const agents = [row("elena", "Leo"), row("tomas", "Leo"), row("kim", "B")];
+      const fake = world({ Leo: [76, 38], B: [10, 10], C: [20, 10] }, agents);
+      const quota: QuotaFailure[] = [{ connectionId: "c-Leo", at: "2026-11-26T09:40:00.000Z" }];
+      const run = deps(fake, agents, { settings: { mode: "act" }, quota });
+      await seatMoverPass(run.deps);
+      expect(fake.writes).toEqual(["move a-elena c-B", "move a-tomas c-C"]);
     });
 
     test("a paused agent is never moved, even off a full seat", async () => {

@@ -101,7 +101,7 @@ verifies("paperclip.seat-mover-checklist", () => {
       agent("kim", "Admin"),
       agent("nina", "Api"),
       agent("liam", "R"),
-      agent("mara", "R"),
+      agent("julian", "R"),
       agent("elena", "H"),
       agent("priya", "H"),
       agent("tomas", "H"),

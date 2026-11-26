@@ -31,6 +31,14 @@ export interface SeatMoverSettings {
   /** The same for a reviewer, who moves earlier (HAL-19202). */
   readonly reviewerSessionMovePercent: number;
   /**
+   * How much of the 5-hour window each agent moved onto a seat is counted as
+   * using: a seat takes an agent only while its reading plus this, for that
+   * agent and each one already sent there this pass, stays below the stop.
+   */
+  readonly targetHeadroomPercent: number;
+  /** A seat a run failed on with `provider_quota` this many minutes ago is full, whatever its reading. */
+  readonly quotaFullMinutes: number;
+  /**
    * A seat at this much of its week is a reserve seat: only agents that aren't
    * fast burners sit there, unless its weekly reset is less than
    * `resetSoonHours` away.
@@ -61,6 +69,8 @@ export const defaultSeatMoverSettings: SeatMoverSettings = {
   readingsPlugin: undefined,
   sessionMovePercent: 80,
   reviewerSessionMovePercent: 70,
+  targetHeadroomPercent: 10,
+  quotaFullMinutes: 30,
   weekMovePercent: 88,
   resetSoonHours: 24,
   weekHardStopPercent: 95,
@@ -113,6 +123,8 @@ export function readSeatMoverSettings(
       section["reviewerSessionMovePercent"],
       d.reviewerSessionMovePercent,
     ),
+    targetHeadroomPercent: percent(section["targetHeadroomPercent"], d.targetHeadroomPercent),
+    quotaFullMinutes: positive(section["quotaFullMinutes"], d.quotaFullMinutes),
     weekMovePercent: percent(section["weekMovePercent"], d.weekMovePercent),
     resetSoonHours: positive(section["resetSoonHours"], d.resetSoonHours),
     weekHardStopPercent: percent(section["weekHardStopPercent"], d.weekHardStopPercent),

@@ -58,7 +58,8 @@ export const releaseIfRetryBeyondMs = 15 * 60_000;
 
 /**
  * The parked runs to release: never started, pinned to a seat the agent no
- * longer sits on, with their retry more than 15 minutes away. (Paperclip
+ * longer sits on (or naming no seat, when the agent moved this pass), with
+ * their retry more than 15 minutes away. (Paperclip
  * itself releases pool waits when `aiConnection` changes, server#74; this
  * catches what that leaves.)
  */
@@ -66,10 +67,15 @@ export function runsToRelease(
   parked: readonly ParkedRun[],
   seatOf: ReadonlyMap<string, string>,
   now: Date,
+  movedNow: ReadonlySet<string> = new Set(),
 ): ParkedRun[] {
   return parked.filter((run) => {
     const current = seatOf.get(run.agentId);
-    if (run.connectionId === undefined || current === undefined || run.connectionId === current) {
+    const left =
+      run.connectionId === undefined
+        ? movedNow.has(run.agentId)
+        : current !== undefined && run.connectionId !== current;
+    if (!left) {
       return false;
     }
     const retryAt = run.retryAt === undefined ? Number.POSITIVE_INFINITY : Date.parse(run.retryAt);

@@ -3,6 +3,7 @@ import {
   type Break,
   breaks,
   breaksQuietSeat,
+  crowdsReviewer,
   isExcluded,
   isFastBurner,
   isHeavy,
@@ -103,7 +104,9 @@ function moveReason(
     return "not-connected";
   }
   const others = connectionId === undefined ? [] : seatedOn(connectionId, placement, agents);
-  if (!isReviewer(agent, settings) && others.some((other) => isReviewer(other, settings))) {
+  // A light agent beside a reviewer stays: the reviewer chose that seat.
+  const crowds = !isReviewer(agent, settings) && crowdsReviewer(agent, settings);
+  if (crowds && others.some((other) => isReviewer(other, settings))) {
     return "b-reviewer-seat";
   }
   return (
@@ -149,10 +152,12 @@ function heavyReason(
 }
 
 /**
- * The seat with the fewest agents already sent to it this pass first, then the
- * most 5-hour room, the soonest weekly reset, the emptiest, and the name.
- * Readings don't change within a pass, so without the first rule every agent
- * leaving a full seat would pick the same seat (HAL-19394).
+ * For a reviewer, an empty seat first (it takes light company only when no
+ * empty seat may take it). Then the seat with the fewest agents already sent
+ * to it this pass, the most 5-hour room, the soonest weekly reset, the
+ * emptiest, and the name. Readings don't change within a pass, so without the
+ * arrivals rule every agent leaving a full seat would pick the same seat
+ * (HAL-19394).
  */
 function compareTargets(
   a: Seat,
@@ -160,7 +165,14 @@ function compareTargets(
   placement: Placement,
   agents: readonly AgentPlace[],
   arrivals: (seat: Seat) => number,
+  preferEmpty: boolean,
 ): number {
+  const occupied = (seat: Seat) =>
+    preferEmpty && seatedOn(seat.connectionId, placement, agents).length > 0 ? 1 : 0;
+  const empty = occupied(a) - occupied(b);
+  if (empty !== 0) {
+    return empty;
+  }
   const sent = arrivals(a) - arrivals(b);
   if (sent !== 0) {
     return sent;
@@ -213,9 +225,9 @@ export function planMoves(
   for (const agent of ordered) {
     batch.moveIfNeeded(agent, batch.reasonFor(agent));
   }
-  // A reviewer whose company couldn't move off moves itself, if an empty seat may take it.
+  // A reviewer whose company couldn't move off moves itself, if a seat may take it.
   for (const reviewer of reviewers) {
-    if (batch.hasCompany(reviewer) && !batch.hasMoved(reviewer)) {
+    if (batch.isCrowded(reviewer) && !batch.hasMoved(reviewer)) {
       batch.moveIfNeeded(reviewer, "b-reviewer-not-alone");
     }
   }
@@ -265,21 +277,22 @@ class Batch {
       return;
     }
     const from = this.placement.get(agent.id);
+    const arrivals = (seat: Seat) => this.arrivals(seat);
+    const preferEmpty = isReviewer(agent, this.settings);
     const to = [...this.seats.values()]
-      .filter(
-        (seat) =>
-          targetRefusal(seat, agent, this.placement, this.agents, this.settings, this.now) ===
-          undefined,
-      )
-      .sort((a, b) =>
-        compareTargets(a, b, this.placement, this.agents, (seat) => this.arrivals(seat)),
-      )[0];
+      .filter((seat) => this.refusal(seat, agent) === undefined)
+      .sort((a, b) => compareTargets(a, b, this.placement, this.agents, arrivals, preferEmpty))[0];
     if (to === undefined) {
       this.stuck.push({ agent, from, reason });
       return;
     }
     this.placement.set(agent.id, to.connectionId);
     this.moves.push({ agent, from, to, reason });
+  }
+
+  refusal(seat: Seat, agent: AgentPlace) {
+    const { placement, agents, settings, now } = this;
+    return targetRefusal(seat, agent, placement, agents, settings, now, this.arrivals(seat));
   }
 
   /** How many agents this batch has sent to the seat so far. */
@@ -289,10 +302,14 @@ class Batch {
     ).length;
   }
 
-  hasCompany(agent: AgentPlace): boolean {
-    const connectionId = this.placement.get(agent.id);
+  /** A reviewer shares its seat with someone it may not sit with (item b). */
+  isCrowded(reviewer: AgentPlace): boolean {
+    const connectionId = this.placement.get(reviewer.id);
     return (
-      connectionId !== undefined && seatedOn(connectionId, this.placement, this.agents).length > 1
+      connectionId !== undefined &&
+      seatedOn(connectionId, this.placement, this.agents).some(
+        (other) => other.id !== reviewer.id && crowdsReviewer(other, this.settings),
+      )
     );
   }
 

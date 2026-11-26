@@ -105,9 +105,10 @@ export function recentlyMovedIds(
 
 /**
  * Where each agent sits, whether it has runs parked on that seat, and whether
- * the mover moved it lately. Only a run pinned to the seat counts: a run that
- * names no seat is never released after a move, so it would move the agent
- * again every pass.
+ * the mover moved it lately. A run pinned to the agent's seat counts, and so
+ * does one that names no seat (the board's audit rule 1), unless the mover
+ * moved the agent lately: such a run is released after the move, and until
+ * then it would move the agent again every pass.
  */
 export function agentPlaces(
   agents: readonly AgentRow[],
@@ -130,7 +131,8 @@ export function agentPlaces(
           (run) =>
             run.agentId === agent.id &&
             connectionId !== undefined &&
-            run.connectionId === connectionId,
+            (run.connectionId === connectionId ||
+              (run.connectionId === undefined && !recentlyMoved.has(agent.id))),
         ),
         recentlyMoved: recentlyMoved.has(agent.id),
       };
@@ -154,7 +156,16 @@ export async function seatMoverPass(deps: SeatMoverDeps): Promise<SeatPlan | und
   const quotaAt = new Map(quota.map((failure) => [failure.connectionId, failure.at]));
   const maxAge = settings.readingMaxAgeMinutes;
   const waitingOn = seatsWaitedOn(parked, now);
-  const seatList = buildSeats(connections, readings, quotaAt, now, maxAge, resets, waitingOn);
+  const seatList = buildSeats(
+    connections,
+    readings,
+    quotaAt,
+    now,
+    maxAge,
+    resets,
+    waitingOn,
+    settings.quotaFullMinutes,
+  );
   const seats = new Map(seatList.map((seat) => [seat.connectionId, seat]));
   const recentlyMoved = recentlyMovedIds(await deps.memory.get(), settings, now);
   const agents = agentPlaces(agentRows, parked, now, recentlyMoved);
@@ -214,7 +225,9 @@ async function applyMoves(
     }
   }
   for (const move of plan.moves) {
-    const refusal = targetRefusal(move.to, move.agent, actual, agents, deps.settings, deps.now);
+    const arriving = [...moved.values()].filter((seat) => seat === move.to.connectionId).length;
+    const { settings, now } = deps;
+    const refusal = targetRefusal(move.to, move.agent, actual, agents, settings, now, arriving);
     if (refusal !== undefined) {
       deps.logError(`Seat mover: ${move.agent.name} not moved, the target now fails ${refusal}.`, {
         move: moveLine(move, seats),
@@ -271,7 +284,8 @@ async function releaseParked(
       seatOf.set(agent.id, seat);
     }
   }
-  const runs = runsToRelease(parked, seatOf, deps.now).slice(0, releasesPerPass);
+  const movedIds = new Set(moved.keys());
+  const runs = runsToRelease(parked, seatOf, deps.now, movedIds).slice(0, releasesPerPass);
   const woken = new Set<string>();
   let released = 0;
   for (const run of runs) {
