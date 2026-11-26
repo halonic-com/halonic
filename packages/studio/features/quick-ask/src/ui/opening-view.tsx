@@ -31,7 +31,7 @@ export function OpeningView() {
             <span data-avatar-box="" className="shrink-0 p-0.5">
               <SkeletonBar kind="avatar" />
             </span>
-            <span className="flex min-h-control-md min-w-0 flex-1 items-center">
+            <span className={`flex min-w-0 flex-1 items-center ${TEXTAREA_HEIGHT}`}>
               <SkeletonBar kind="title" width="1/2" />
             </span>
           </>
@@ -46,6 +46,12 @@ export function OpeningView() {
     </>
   );
 }
+
+/**
+ * The question row's textarea is one `text-heading` line plus its `py-1.5` (26 + 12 = 38px), so
+ * the text column takes that height and the bar sits on the text line's middle.
+ */
+const TEXTAREA_HEIGHT = "min-h-[calc(var(--text-heading--line-height)+--spacing(3))]";
 
 /** Nothing to open while the box reads: the footer shows only the keys. */
 function noChat(): void {}

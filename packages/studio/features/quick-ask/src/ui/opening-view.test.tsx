@@ -70,6 +70,10 @@ verifies("quick-ask.opening", () => {
       expect(avatarBox?.querySelector('span[aria-hidden="true"]')?.className).toContain(
         "rounded-full",
       );
+      // The text column is as tall as the textarea: one heading line plus py-1.5.
+      expect(avatarBox?.nextElementSibling?.className).toContain(
+        "min-h-[calc(var(--text-heading--line-height)+--spacing(3))]",
+      );
     });
 
     it("gives way to the text box once the agents arrive", async () => {
