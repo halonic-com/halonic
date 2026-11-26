@@ -32,5 +32,26 @@ verifies("contracts.agent-messaging-ids", () => {
       expect(off).toHaveLength(7);
       expect(off.every((id) => id.startsWith("acme item-"))).toBe(true);
     });
+
+    it("names the references the phone checks: a message's to, its agent author and who answered", async () => {
+      const fake = new FakeAgentMessaging();
+      const source = fake.addSource({ label: "Acme", provider: "paperclip" });
+      const chat = fake.addConversation(fake.addAgent(source.id, { name: "Chief" }).id);
+      const offAgent = { kind: "agent", agent: "acme agent", name: "Bo" } as const;
+      fake.addMessage(chat.id, { body: "Hi", author: offAgent, to: ["acme to"] });
+      const item = fake.addInboxItem(source.id, { question: "Ship it?" });
+      fake.answerElsewhere(
+        item.id,
+        { ...offAgent, agent: "acme answerer" },
+        {
+          kind: "option",
+          option: "yes",
+        },
+      );
+
+      const off = await offPatternMessagingIds(fake);
+
+      expect([...off].sort()).toEqual(["acme agent", "acme answerer", "acme to"]);
+    });
   });
 });
