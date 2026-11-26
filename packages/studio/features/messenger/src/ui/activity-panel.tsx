@@ -1,69 +1,149 @@
-import { CloseIcon, decidedAt, EmptyState } from "@halonicjs/studio-kit";
+import { CloseIcon, decidedAt, EmptyState, leave } from "@halonicjs/studio-kit";
 import { type EngineWords, focusedPanelClass } from "@halonicjs/studio-shell";
-import { useRef } from "react";
+import { type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useRef } from "react";
 import { type ActivityView, minutesBetween } from "../activity.ts";
 import { endedJustNow } from "../activity-today.ts";
 import { activityWords } from "../activity-words.ts";
 import { chatAgent } from "../chat-name.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { EarlierRuns, NextTasks } from "./activity-lists.tsx";
+import { arriveFromEnd } from "./activity-motion.ts";
 import { ActivitySkeleton, PullRequests, Section, Status, TaskCard } from "./activity-parts.tsx";
-import { useFadeIn } from "./load-states.tsx";
+import { reportMotion, useFadeIn } from "./load-states.tsx";
 import type { ActivityRead } from "./use-activity.ts";
 
 /** The panel's ID, for the chat header button's `aria-controls`. */
 export const activityPanelId = "messenger-activity";
 
 /**
+ * Where the panel shows (HAL-18558 section 3): `beside` the chat on a wide window, a `sheet` over
+ * the chat's right side on a medium one, or a `place` of its own instead of the chat on a narrow
+ * one.
+ */
+export type PanelPlace = "beside" | "sheet" | "place";
+
+const placeClass: Record<PanelPlace, string> = {
+  beside: "w-80 shrink-0",
+  sheet: "absolute inset-y-0 end-0 z-10 w-80 shadow-lg",
+  place: "min-w-0 flex-1",
+};
+
+/**
  * The activity panel (`messenger.activity-panel`, HAL-18558 revision 3): "Chief's activity", the
  * agent's status, the task it works on (or "This chat · Answering you") and its pull requests, or
  * its last run once it ended. Read-only: its only actions are the pull requests' links. Its status
- * dot is still; only the chat's working line moves. It fades in when it opens, as an opened chat
- * does (motion 1).
+ * dot is still; only the chat's working line moves. Beside the chat it fades in, as an opened chat
+ * does (motion 1); a sheet comes in from the end and fades out as it closes, and **Esc** closes it;
+ * a place has **‹ Chief** to go back (`messenger.activity-widths`). A sheet or a place takes the
+ * focus as it opens, since it covers the button that opened it.
  */
 export function ActivityPanel({
   row,
   activity,
   now,
   words,
+  place = "beside",
   onClose,
 }: {
   readonly row: ConversationRow;
   readonly activity: ActivityRead;
   readonly now: Date;
   readonly words: EngineWords;
+  readonly place?: PanelPlace;
   readonly onClose: () => void;
 }) {
   const name = chatAgent(row)?.name ?? row.conversation.title;
   const aside = useRef<HTMLElement>(null);
-  useFadeIn(aside, true);
+  const close = usePanelMotion(aside, place, onClose);
   // When a run starts or ends, the body cross-fades to the new view.
   const body = useRef<HTMLDivElement>(null);
   useFadeIn(body, activity.view?.kind);
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (place !== "sheet" || event.key !== "Escape") return;
+    event.preventDefault();
+    close();
+  };
   return (
     <aside
       ref={aside}
       id={activityPanelId}
       aria-labelledby={`${activityPanelId}-title`}
-      className={`flex w-80 shrink-0 flex-col ${focusedPanelClass}`}
+      onKeyDown={onKeyDown}
+      className={`flex flex-col ${placeClass[place]} ${focusedPanelClass}`}
     >
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <h2 id={`${activityPanelId}-title`} className="flex-1 truncate text-body-strong">
-          <bdi>{activityWords.title(name)}</bdi>
-        </h2>
+      <PanelHeader name={name} place={place} onClose={close} />
+      <div ref={body} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
+        <ActivityBody name={name} activity={activity} now={now} words={words} />
+      </div>
+    </aside>
+  );
+}
+
+/**
+ * How the panel comes and goes: beside the chat it fades in; a sheet comes in from the end and
+ * fades out as it closes; a sheet or a place takes the focus as it opens. Gives the panel's close.
+ */
+function usePanelMotion(
+  aside: RefObject<HTMLElement | null>,
+  place: PanelPlace,
+  onClose: () => void,
+): () => void {
+  useFadeIn(aside, place === "beside");
+  useLayoutEffect(() => {
+    if (place === "sheet" && aside.current !== null) arriveFromEnd(aside.current);
+  }, [aside, place]);
+  useEffect(() => {
+    if (place !== "beside") aside.current?.querySelector<HTMLElement>("[data-closes]")?.focus();
+  }, [aside, place]);
+  return () => {
+    const sheet = aside.current;
+    if (place !== "sheet" || sheet === null) return onClose();
+    leave(sheet).then(onClose, (error: unknown) => {
+      reportMotion(error);
+      onClose();
+    });
+  };
+}
+
+/** "Chief's activity", with **×** to close it, or on a narrow window **‹ Chief** to go back. */
+function PanelHeader({
+  name,
+  place,
+  onClose,
+}: {
+  readonly name: string;
+  readonly place: PanelPlace;
+  readonly onClose: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+      {place === "place" ? (
         <button
           type="button"
+          data-closes
+          aria-label={activityWords.backTo(name)}
+          onClick={onClose}
+          className="rounded-sm px-1 text-small text-fg-muted hover:text-fg"
+        >
+          <span aria-hidden="true">‹ </span>
+          <bdi>{name}</bdi>
+        </button>
+      ) : null}
+      <h2 id={`${activityPanelId}-title`} className="flex-1 truncate text-body-strong">
+        <bdi>{activityWords.title(name)}</bdi>
+      </h2>
+      {place === "place" ? null : (
+        <button
+          type="button"
+          data-closes
           aria-label={activityWords.close}
           onClick={onClose}
           className="rounded-sm px-1 text-fg-muted hover:text-fg"
         >
           <CloseIcon />
         </button>
-      </div>
-      <div ref={body} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
-        <ActivityBody name={name} activity={activity} now={now} words={words} />
-      </div>
-    </aside>
+      )}
+    </div>
   );
 }
 
