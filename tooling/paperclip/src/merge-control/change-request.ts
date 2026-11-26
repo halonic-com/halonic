@@ -60,16 +60,22 @@ function cleared(
   return own || (held && (approval?.at ?? "") > request.at);
 }
 
-/** The newest change request in words (rule 6) by a named reviewer. */
-function requestInWords(texts: readonly PullText[]): PullText | undefined {
-  return texts
-    .filter(
-      (text) =>
-        reviewerName.test(text.body.slice(0, 160)) &&
-        !approves(text.body) &&
-        blockWords.test(text.body.slice(0, 600).replace(fixedWords, "")),
-    )
-    .pop();
+/**
+ * Each reviewer's newest change request in words (rule 6). Kept per reviewer,
+ * so one reviewer's later request and approval never hide another's (HAL-19778).
+ */
+function requestsInWords(texts: readonly PullText[]): { text: PullText; who: Reviewer }[] {
+  const newest = new Map<Reviewer, PullText>();
+  for (const text of texts) {
+    const isRequest =
+      reviewerName.test(text.body.slice(0, 160)) &&
+      !approves(text.body) &&
+      blockWords.test(text.body.slice(0, 600).replace(fixedWords, ""));
+    if (isRequest) {
+      newest.set(whoOf(text), text);
+    }
+  }
+  return [...newest].map(([who, text]) => ({ text, who }));
 }
 
 /** The reviewer's newest signed line naming a head, when it rejects it. */
@@ -95,8 +101,7 @@ export function changeRequestOf(
   approval: ApprovalVerdict | null,
 ): ChangeRequest | null {
   const texts = teamTexts(pull, teamLogin).filter((text) => !ours(text));
-  const inWords = requestInWords(texts);
-  const named = inWords === undefined ? [] : [{ text: inWords, who: whoOf(inWords) }];
+  const named = requestsInWords(texts);
   const signed = reviewers.flatMap((who) => {
     const text = signedRejection(texts, who);
     return text === undefined ? [] : [{ text, who }];

@@ -253,6 +253,23 @@ verifies("paperclip.merge-control-change-request", () => {
     expect(reasonsOf({ ...routine, texts: julianAsked }).added).toEqual([]);
   });
 
+  test("another reviewer's own request and approval don't hide Liam's request in words (HAL-19778)", () => {
+    const routine = { files: ["apps/cli/src/commands/run.ts"], filesTotal: 1, fileNet: {} };
+    const h7 = head.slice(0, 7);
+    for (const other of ["Julian", "Nora"]) {
+      const texts = [
+        said(`Liam: approved on head \`${h7}\``, 40),
+        said("Liam: needs a fix in the gate before this goes in", 30),
+        said(`${other}: please fix the wording in the reason`, 20),
+        said(`${other}: approved on head \`${h7}\``, 10),
+      ];
+      expect(reasonsOf({ ...routine, texts }).added).toEqual([]);
+      const each = pull(1, { ...routine, texts });
+      const approval = approvalOf(each, "halonic-dev", {}).approval;
+      expect(changeRequestOf(each, "halonic-dev", approval)?.who).toBe("Liam");
+    }
+  });
+
   test("a queued pull request with a new change request comes out", () => {
     const texts = [
       said(`Liam: approved on head \`${head.slice(0, 7)}\``, 30),
