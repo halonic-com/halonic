@@ -95,7 +95,7 @@ async function readPicture(response: Response): Promise<AttachmentRead> {
 }
 
 /** The body's bytes, or `undefined` as soon as more than `max` came; the rest is never read. */
-async function readAtMost(response: Response, max: number): Promise<Uint8Array | undefined> {
+export async function readAtMost(response: Response, max: number): Promise<Uint8Array | undefined> {
   if (response.body === null) return new Uint8Array();
   const stream = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -119,7 +119,8 @@ async function readAtMost(response: Response, max: number): Promise<Uint8Array |
   return bytes;
 }
 
-function refusalFor(failure: PaperclipFailure): MessagingRefusal {
+/** The refusal for a failed read: offline and signed out as they are, anything else not found. */
+export function refusalFor(failure: PaperclipFailure): MessagingRefusal {
   return failure === "offline" || failure === "signed-out" ? failure : "not-found";
 }
 

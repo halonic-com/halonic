@@ -226,13 +226,13 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   /**
-   * Reads an agent's picture (`ports.agent-messaging-avatars`). This provider lists no files on
-   * messages or cards yet, so any other ID is refused with `not-found` before any request.
+   * Reads an agent's picture (`ports.agent-messaging-avatars`) or a picture the last Inbox list
+   * gave a card (`paperclip-client.card-files`); any other ID is refused before any request.
    */
   async readAttachment(attachment: MessagingId): Promise<AttachmentRead> {
     const [avatar] = this.#ids.read(attachment, "avatar") ?? [];
     return avatar === undefined
-      ? { outcome: "refused", reason: "not-found" }
+      ? this.#inbox.files.read(this.#ids, attachment)
       : readAvatar(this.#reader, avatar);
   }
 
