@@ -1,3 +1,4 @@
+import type { AccessToken } from "@halonicjs/host-server";
 import { type Schema, s } from "@halonicjs/schema-kit";
 import { type HostRoute, sendError, sendErrorAndHangUp, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
@@ -11,14 +12,22 @@ export const serverEnginePathPrefix = "/v1/messaging/server-engine/";
 const workspace = s.string().min(1).max(4096);
 const workspaceBody = s.object({ workspace }).strict();
 // The server's own patterns (`server.device-pairing`), so nothing it would refuse is sent.
+// An Access value goes in a header: printable characters only (`server.messaging-client`).
+const accessValue = s.string().regex(/^[\x21-\x7e]{1,512}$/);
+const accessFields = {
+  accessClientId: accessValue.optional(),
+  accessClientSecret: accessValue.optional(),
+};
 const pairBody = s
   .object({
     workspace,
     address: s.string().min(1).max(2048),
     code: s.string().regex(/^[\w -]{1,32}$/),
     deviceName: s.string().regex(/^[^\p{Cc}\p{Cf}]{1,80}$/u),
+    ...accessFields,
   })
   .strict();
+const accessBody = s.object({ workspace, ...accessFields }).strict();
 const pairingBody = s.object({ pairingId: s.string().regex(/^[0-9a-f]{32}$/) }).strict();
 
 /** What the pairing routes reach. */
@@ -31,6 +40,28 @@ export interface ServerPairingRouteDeps {
 }
 
 type Answer = { status: number; body: unknown };
+
+/** The Access service token a body names; `"partial"` when it gives only the ID or only the secret. */
+function accessOf(body: {
+  accessClientId?: string | undefined;
+  accessClientSecret?: string | undefined;
+}): AccessToken | undefined | "partial" {
+  const { accessClientId: clientId, accessClientSecret: clientSecret } = body;
+  if (clientId === undefined && clientSecret === undefined) return undefined;
+  return clientId === undefined || clientSecret === undefined
+    ? "partial"
+    : { clientId, clientSecret };
+}
+
+const partialAccess: Answer = {
+  status: 400,
+  body: {
+    error: {
+      kind: "bad_access",
+      message: "Give both the Access client ID and secret, or neither.",
+    },
+  },
+};
 
 /**
  * The routes Studio pairs a workspace's messaging with a Halonic server
@@ -48,12 +79,18 @@ type Answer = { status: number; body: unknown };
  *   `{ state: "waiting", pairingId, checkCode, expiresAt }`, or the reason it
  *   didn't start: `address_not_allowed`, `unreachable`, `not_halonic`,
  *   `code_refused`, `too_many` (with `minutes` when the server said).
+ *   and, with the Access service token the server's access check wants,
+ *   `accessClientId` and `accessClientSecret` (both or neither; else 400 `bad_access`), which
+ *   adds the reason `access_refused`.
  * - `POST …/pair-status` with `{ pairingId }` answers `waiting` with
  *   `expiresAt`; `paired` with `sessionEndsAt` once the keychain has the
  *   token, the setting is "Server" and the hub switched; `key_not_saved`
  *   with `signedOut` when it couldn't keep it; or `expired`, `refused`,
  *   `cancelled`, `taken-over`, `lost`, `unreachable`, `too_many`.
  * - `POST …/pair-cancel` with `{ pairingId }` answers `{ cancelled }`.
+ * - `POST …/access` with `{ workspace, accessClientId, accessClientSecret }`, or neither to
+ *   clear them, answers `{ state: "saved", server }` with the server's answer just now
+ *   (`access-refused` when its access check still refuses), `not_paired` or `key_not_saved`.
  * - `POST …/use-this-computer` with `{ workspace }` answers `{ stillValid }`,
  *   and `keychainEntryKept: true` when the keychain kept the entry.
  *
@@ -75,11 +112,18 @@ export function serverPairingRoutes(deps: ServerPairingRouteDeps): HostRoute[] {
     route("state", workspaceBody, (pairing, body) =>
       named(body.workspace, (folder) => pairing.state(folder)),
     ),
-    route("pair", pairBody, (pairing, body) =>
-      named(body.workspace, (folder) =>
-        pairing.pair(folder, body.address, body.code, body.deviceName),
-      ),
-    ),
+    route("pair", pairBody, async (pairing, body) => {
+      const access = accessOf(body);
+      if (access === "partial") return partialAccess;
+      return named(body.workspace, (folder) =>
+        pairing.pair(folder, body.address, body.code, body.deviceName, access),
+      );
+    }),
+    route("access", accessBody, async (pairing, body) => {
+      const access = accessOf(body);
+      if (access === "partial") return partialAccess;
+      return named(body.workspace, (folder) => pairing.setAccess(folder, access));
+    }),
     route("pair-status", pairingBody, async (pairing, body) => ({
       status: 200,
       body: await pairing.status(body.pairingId),

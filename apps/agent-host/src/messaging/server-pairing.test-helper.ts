@@ -24,6 +24,8 @@ export interface SeenPairingCall {
  */
 export class FakePairingServer {
   readonly seen: SeenPairingCall[] = [];
+  /** The Access headers each request carried, with the full address it went to. */
+  readonly access: { url: string; id: string | null; secret: string | null }[] = [];
   unreachable = false;
   hello = () => json({ product: "halonic", version: "0.2.0", minAppVersion: "0.1.0" });
   pair = () => json({ pendingId, checkCode: "4F72KQ", expiresAt });
@@ -50,6 +52,11 @@ export class FakePairingServer {
     const path = new URL(request.url).pathname;
     const body = await request.text();
     this.seen.push({ path, body, authorization: request.headers.get("authorization") });
+    this.access.push({
+      url: request.url,
+      id: request.headers.get("cf-access-client-id"),
+      secret: request.headers.get("cf-access-client-secret"),
+    });
     if (this.unreachable) throw new TypeError(`fetch failed for ${request.url}`);
     const answers: Record<string, () => Response> = {
       "/api/hello": this.hello,

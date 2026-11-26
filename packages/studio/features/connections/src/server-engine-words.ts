@@ -56,6 +56,26 @@ export const tooManyCodes = (minutes: number | undefined): string =>
   `Too many wrong codes. Try again in ${minutes === undefined ? "a few minutes" : `${minutes} ${minutes === 1 ? "minute" : "minutes"}`}.`;
 export const PAIR_START_FAILED = "Halonic couldn't start the pairing. Try again.";
 
+/** Cloudflare Access service token fields (HAL-19107), in the pairing dialog and the row's update dialog. */
+export const ACCESS_ID_LABEL = "Access client ID";
+export const ACCESS_SECRET_LABEL = "Access client secret";
+export const ACCESS_HINT =
+  "Only if the server sits behind Cloudflare Access. Leave both empty otherwise.";
+export const ACCESS_BOTH = "Fill in both, or leave both empty.";
+/** The access check refused this computer, in the dialog's alert or the row's callout. */
+export const ACCESS_REFUSED =
+  "The server's access check refused this computer. Check the Access client ID and secret.";
+export const UPDATE_ACCESS = "Update access";
+export const UPDATE_ACCESS_TITLE = "Update the Access client ID and secret";
+export const UPDATE_ACCESS_LEAD =
+  "Paste the new values after rotating the service token at Cloudflare. Leave both empty to stop sending them. They are kept in this computer's keychain.";
+export const SAVE = "Save";
+export const SAVING = "Saving…";
+export const ACCESS_SAVED = "Saved the Access client ID and secret.";
+export const ACCESS_CLEARED = "Halonic no longer sends an Access client ID and secret.";
+export const ACCESS_NOT_SAVED =
+  "Halonic couldn't save them: this computer's keychain didn't take them. Try again.";
+
 /** The dialog: P2. */
 export const CHECK_LEAD =
   "On the server, allow this computer only if it shows the same check code:";

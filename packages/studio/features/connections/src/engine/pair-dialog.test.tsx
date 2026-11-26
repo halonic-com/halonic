@@ -86,6 +86,41 @@ async function endWith(status: FakeServerEngineAnswers["status"]) {
 }
 
 verifies("connections.server-pair-dialog", () => {
+  describe("the Access fields", () => {
+    const refusedWords =
+      "The server's access check refused this computer. Check the Access client ID and secret.";
+
+    it("send nothing when both are empty, and the typed values when both are filled", async () => {
+      const empty = await openDialog();
+      await enter();
+      expect(empty.engine.pairs[0]?.access).toBeUndefined();
+      unmountAll();
+      const { engine } = await openDialog();
+      expect(inputs()[4]?.type).toBe("password");
+      typeInto(inputs()[3] ?? null, " abc.access ");
+      typeInto(inputs()[4] ?? null, "s3cret");
+      await enter();
+      expect(engine.pairs[0]?.access).toEqual({ clientId: "abc.access", clientSecret: "s3cret" });
+    });
+
+    it("ask for both when only one is filled, and start nothing", async () => {
+      const { engine } = await openDialog();
+      typeInto(inputs()[3] ?? null, "abc.access");
+      await enter();
+      expect(text()).toContain("Fill in both, or leave both empty.");
+      expect(engine.pairs).toEqual([]);
+    });
+
+    it("show the access refusal in the dialog, not a generic failure", async () => {
+      const { engine } = await openDialog({ pair: { state: "access_refused" } });
+      await enter();
+      await nextFrame();
+      expect(engine.pairs).toHaveLength(1);
+      expect(text()).toContain(refusedWords);
+      expect(text()).not.toContain("couldn't start the pairing");
+    });
+  });
+
   describe("P1", () => {
     it("sends the address, the plain code and this computer's name", async () => {
       const { engine } = await openDialog();
@@ -246,7 +281,7 @@ verifies("connections.server-pair-dialog", () => {
     it("starts again with the address and the name kept and the code empty", async () => {
       await endWith([{ state: "refused" }]);
       await press(button("Start again", dialog() ?? document));
-      expect(inputs().map((input) => input.value)).toEqual([address, "", "Acme laptop"]);
+      expect(inputs().map((input) => input.value)).toEqual([address, "", "Acme laptop", "", ""]);
     });
   });
 });

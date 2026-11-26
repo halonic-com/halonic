@@ -1,6 +1,8 @@
 import {
   AgentHostError,
   type AgentHostServerEngine,
+  type ServerAccessInput,
+  type ServerAccessSaved,
   type ServerEngineLeft,
   type ServerEngineState,
   type ServerPairStart,
@@ -8,7 +10,10 @@ import {
 } from "@halonicjs/adapter-agent-host-client";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
-export type { ServerEngineLeft, ServerPairStart, ServerPairState };
+export type { ServerAccessSaved, ServerEngineLeft, ServerPairStart, ServerPairState };
+
+/** The Cloudflare Access service token a server's access check wants, as typed. */
+export type ServerAccess = ServerAccessInput;
 
 /**
  * Where the workspace's messaging runs, as Settings › Connections shows it: the host's answer, or
@@ -24,8 +29,18 @@ export type ServerEngineView = ServerEngineState | { readonly engine: "keychain-
 export interface ServerEngine {
   /** The workspace's engine, read again on each call. */
   state(): Promise<ServerEngineView>;
-  /** Asks the server at `address` to pair with the code its owner gave, as `deviceName`. */
-  pair(address: string, code: string, deviceName: string): Promise<ServerPairStart>;
+  /**
+   * Asks the server at `address` to pair with the code its owner gave, as `deviceName`, with the
+   * Access service token its access check wants when there is one.
+   */
+  pair(
+    address: string,
+    code: string,
+    deviceName: string,
+    access?: ServerAccess,
+  ): Promise<ServerPairStart>;
+  /** Sets, or with `undefined` clears, the Access service token kept for the pairing. */
+  setAccess(access: ServerAccess | undefined): Promise<ServerAccessSaved>;
   /** Asks once where the pairing stands. */
   status(pairingId: string): Promise<ServerPairState>;
   /** Asks the server to drop the request: whether it did. */
@@ -47,7 +62,8 @@ export function hostServerEngine(engine: AgentHostServerEngine): ServerEngine {
         }
         throw error;
       }),
-    pair: (address, code, deviceName) => engine.pair(address, code, deviceName),
+    pair: (address, code, deviceName, access) => engine.pair(address, code, deviceName, access),
+    setAccess: (access) => engine.setAccess(access),
     status: (pairingId) => engine.status(pairingId),
     cancel: (pairingId) => engine.cancel(pairingId),
     useThisComputer: () => engine.useThisComputer(),

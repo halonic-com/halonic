@@ -14,6 +14,8 @@ When Studio asks where a pairing stands, the host shall ask the server once and 
 
 When Studio switches a workspace back to "This computer", the host shall end the session on the server when it can, delete the keychain entry and the workspace's messaging cache, remove the setting and join "This computer", and answer `stillValid`: `true` when the server couldn't be reached or the token couldn't be read. If the keychain can't read or delete the entry, then the host shall still remove the setting, and answer `keychainEntryKept: true` when the entry stayed.
 
+Where the server sits behind Cloudflare Access (HAL-19107), the pairing route shall also take an `accessClientId` and `accessClientSecret`, both or neither (400 `bad_access` for one, and for a value a header can't carry), and the host shall send them as `CF-Access-Client-Id` and `CF-Access-Client-Secret` on every call to the paired address and to no other. When Allow comes, the host shall keep them in the same keychain entry as the device token, and on `POST …/access` replace or clear them without pairing again, read the entry back, ask the server once and answer `saved` with what the server answered, or `not_paired` or `key_not_saved`. If the server redirects a call or its access check answers 403, then the host shall answer `access_refused` (and `access-refused` for the state's check), and the state shall say `accessSet: true` while values are kept. Neither value shall appear in an answer, a log line, the profile or the workspace's files.
+
 ## Examples
 
 - Given a server whose owner allows the request,
@@ -28,6 +30,12 @@ When Studio switches a workspace back to "This computer", the host shall end the
 - Given a workspace paired as "Work laptop" whose server stopped answering,
   when the host has started again and Studio asks for the state,
   then the answer holds `computerName: "Work laptop"`, the pairing's `sessionEndsAt` and `server: { state: "offline", checkedAt }`, and no token.
+- Given a server behind Cloudflare Access that redirects every call to its login,
+  when Studio pairs with an Access client ID and secret,
+  then the answer is `{ state: "access_refused" }`, the redirect is not followed and no other address is called.
+- Given a paired workspace and a rotated service token,
+  when Studio sends the new client ID and secret,
+  then the keychain entry holds them with the device token, the next call carries them, and the answer is `{ state: "saved", server: "online" }`.
 - Given a page of another site,
   when it asks to pair,
   then the host answers 403 and calls no server.

@@ -6,6 +6,8 @@
 
 When the desktop's messaging engine is a server, `ServerAgentMessaging` shall carry every call of the `AgentMessaging` port (`ports.agent-messaging`) to that server's `/api/messaging/*` routes (`server.messaging-routes`). The client shall send the device's token only in the `Authorization: Bearer` header. The client shall refuse, before it sends anything, an address that isn't `https` or plain `http` to this computer (`localhost`, `127.0.0.1`, `::1`), or that holds a user name, a password, a path, a query or a fragment. If the server answers with a redirect, the client shall follow it to no address, same host included, and shall throw. If the server answers 401, the client shall list the server's sources as `signed-out` and refuse a write as `signed-out`. If the server can't be reached, the client shall list its sources as `offline` and refuse a write as `offline`. No error the client throws shall hold the token, a header or the body of an answer.
 
+Where the server sits behind Cloudflare Access (HAL-19107), the client may be given an Access service token. Where it is, the client shall send it as `CF-Access-Client-Id` and `CF-Access-Client-Secret` on every request to the paired origin, the long-lived `changes` request included, and on no other origin, and shall send neither header when it has none. If the server answers 403 with anything but its own JSON, the client shall throw `access-refused` without the answer's text; a redirect, including to the Access login, is never followed.
+
 Rationale: the device token signs the desktop in to the board's server, so it may cross a network only encrypted, and only to the address the person paired with.
 
 ## Examples
@@ -22,6 +24,10 @@ Rationale: the device token signs the desktop in to the board's server, so it ma
 - Given a token the server doesn't know,
   when the client lists sources and sends a message,
   then the sources read `signed-out` and the send is refused as `signed-out`.
+
+- Given an Access service token and a server that answers 403 with an HTML page,
+  when the client lists sources,
+  then it throws `access-refused` and the error holds neither value.
 
 ## What it doesn't cover
 

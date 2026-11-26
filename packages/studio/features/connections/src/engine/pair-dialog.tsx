@@ -5,6 +5,7 @@ import { isAllowedAddress } from "../connect/connect-dialog.tsx";
 import { EndingStep, plainText, useLeftMs, withCode } from "../connect/connect-steps.tsx";
 import * as connectWords from "../connections-words.ts";
 import * as words from "../server-engine-words.ts";
+import { AccessFields } from "./access-fields.tsx";
 import {
   type EnterProblem,
   type PairEnding,
@@ -67,6 +68,7 @@ export function PairDialog(props: PairDialogProps) {
   // Kept here, so Start again shows the address and the name the last pairing used.
   const [address, setAddress] = useState(again?.address ?? "");
   const [name, setName] = useState(props.computerName);
+  const [access, setAccess] = useState({ clientId: "", clientSecret: "" });
   const view = pairing.view;
   const leftMs = useLeftMs(view.stage === "waiting" ? view : undefined, props.now);
 
@@ -104,6 +106,8 @@ export function PairDialog(props: PairDialogProps) {
         onAddressChange={setAddress}
         name={name}
         onNameChange={setName}
+        access={access}
+        onAccessChange={setAccess}
         problem={view.stage === "enter" ? view.problem : undefined}
         busy={view.stage === "starting"}
         onClose={close}
@@ -173,6 +177,8 @@ function EnterStep(props: {
   readonly onAddressChange: (address: string) => void;
   readonly name: string;
   readonly onNameChange: (name: string) => void;
+  readonly access: { readonly clientId: string; readonly clientSecret: string };
+  readonly onAccessChange: (access: { clientId: string; clientSecret: string }) => void;
   readonly problem: EnterProblem | undefined;
   readonly busy: boolean;
   readonly onClose: () => void;
@@ -181,6 +187,7 @@ function EnterStep(props: {
   const { busy, problem } = props;
   const [code, setCode] = useState("");
   const [checked, setChecked] = useState<EnterProblem | undefined>();
+  const [bothNeeded, setBothNeeded] = useState(false);
   const addressInput = useRef<HTMLInputElement>(null);
   const codeInput = useRef<HTMLInputElement>(null);
   const shown = checked ?? problem;
@@ -211,8 +218,18 @@ function EnterStep(props: {
       codeInput.current?.focus();
       return;
     }
+    const clientId = props.access.clientId.trim();
+    const clientSecret = props.access.clientSecret.trim();
+    const filled = clientId !== "" || clientSecret !== "";
+    setBothNeeded(filled && (clientId === "" || clientSecret === ""));
+    if (filled && (clientId === "" || clientSecret === "")) return;
     setChecked(undefined);
-    props.pairing.start(address, plain, deviceNameOf(props.name));
+    props.pairing.start(
+      address,
+      plain,
+      deviceNameOf(props.name),
+      filled ? { clientId, clientSecret } : undefined,
+    );
   };
 
   return (
@@ -230,7 +247,11 @@ function EnterStep(props: {
       onConfirm={start}
       onCancel={props.onClose}
       initialFocus={() => (props.again ? codeInput.current : addressInput.current)}
-      {...(shown?.field === "dialog" ? { error: words.PAIR_START_FAILED } : {})}
+      {...(shown?.field === "dialog"
+        ? {
+            error: shown.kind === "access-refused" ? words.ACCESS_REFUSED : words.PAIR_START_FAILED,
+          }
+        : {})}
     >
       <div className="flex flex-col gap-4">
         <p className="m-0 text-body text-fg">{withCode(words.PAIR_LEAD)}</p>
@@ -269,6 +290,12 @@ function EnterStep(props: {
             onChange={(event) => props.onNameChange(event.target.value)}
           />
         </Field>
+        <AccessFields
+          value={props.access}
+          onChange={props.onAccessChange}
+          readOnly={busy}
+          error={bothNeeded ? words.ACCESS_BOTH : null}
+        />
       </div>
     </Dialog>
   );

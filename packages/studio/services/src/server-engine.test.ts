@@ -49,6 +49,24 @@ verifies("services.server-engine", () => {
     });
   });
 
+  it("passes the Access service token to the host, for a pairing and for an update", async () => {
+    const sent: unknown[] = [];
+    const host = {
+      request: async (_route: string, body: unknown) => {
+        sent.push(body);
+        return { status: 200, body: { state: "saved", server: "online" } };
+      },
+    } as unknown as AgentHostTransport;
+    const engine = hostServerEngine(new AgentHostServerEngine(host, "/w"));
+    const access = { clientId: "id", clientSecret: "secret" };
+    expect(await engine.setAccess(access)).toEqual({ state: "saved", server: "online" });
+    expect(await engine.setAccess(undefined)).toEqual({ state: "saved", server: "online" });
+    expect(sent).toEqual([
+      { workspace: "/w", accessClientId: "id", accessClientSecret: "secret" },
+      { workspace: "/w" },
+    ]);
+  });
+
   it("rejects with any other refusal", async () => {
     const host = hostAnswering(refusal(404, "unknown_workspace"));
     const engine = hostServerEngine(new AgentHostServerEngine(host, "/work/acme"));

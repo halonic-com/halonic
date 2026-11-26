@@ -1,5 +1,10 @@
 import { pairingAlphabet } from "@halonicjs/ports";
-import type { ServerEngine, ServerPairStart, ServerPairState } from "@halonicjs/studio-services";
+import type {
+  ServerAccess,
+  ServerEngine,
+  ServerPairStart,
+  ServerPairState,
+} from "@halonicjs/studio-services";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /** How often a waiting pairing asks the host where it stands. */
@@ -16,7 +21,7 @@ export type EnterProblem =
       readonly minutes: number | undefined;
       readonly until: number;
     }
-  | { readonly field: "dialog"; readonly kind: "failed" };
+  | { readonly field: "dialog"; readonly kind: "failed" | "access-refused" };
 
 /** How a pairing ended without pairing: E1–E5 of Sofia's flow (HAL-18622). */
 export type PairEnding =
@@ -46,7 +51,7 @@ export type PairView =
 export interface Pairing {
   readonly view: PairView;
   /** Starts a pairing; the view says how starting went. */
-  readonly start: (address: string, code: string, name: string) => void;
+  readonly start: (address: string, code: string, name: string, access?: ServerAccess) => void;
   /** Back to P1 after an ending. */
   readonly again: () => void;
   /** Cancels a waiting pairing: `false`, or a rejection, when the server wasn't told. */
@@ -88,6 +93,8 @@ function startProblem(answer: StartRefused, now: number): EnterProblem {
       const until = now + (answer.minutes ?? 1) * 60_000;
       return { field: "code", kind: "too-many", minutes: answer.minutes, until };
     }
+    case "access_refused":
+      return { field: "dialog", kind: "access-refused" };
     case "lost":
       return { field: "dialog", kind: "failed" };
   }
@@ -113,6 +120,7 @@ function stepOf(
     case "cancelled":
     case "lost":
     case "not_halonic":
+    case "access_refused":
     case "code_refused":
       return "lost";
   }
@@ -179,10 +187,10 @@ export function usePairing(engine: ServerEngine, now: () => number = Date.now): 
   useEffect(() => () => void cancel().catch(() => undefined), [cancel]);
 
   const start = useCallback(
-    (address: string, code: string, name: string) => {
+    (address: string, code: string, name: string, access?: ServerAccess) => {
       const mine = ++generation.current;
       setView({ stage: "starting" });
-      engine.pair(address, code, name).then(
+      engine.pair(address, code, name, access).then(
         (answer) => {
           if (mine !== generation.current) {
             if (answer.state === "waiting") void engine.cancel(answer.pairingId).catch(() => false);

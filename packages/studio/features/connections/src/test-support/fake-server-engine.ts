@@ -1,4 +1,6 @@
 import type {
+  ServerAccess,
+  ServerAccessSaved,
   ServerEngine,
   ServerEngineLeft,
   ServerEngineView,
@@ -17,6 +19,7 @@ export interface FakeServerEngineAnswers {
   status?: readonly Answer<ServerPairState>[];
   cancel?: Answer<boolean>;
   left?: Answer<ServerEngineLeft>;
+  access?: Answer<ServerAccessSaved>;
 }
 
 const waiting = {
@@ -37,7 +40,13 @@ function settle<Value>(answer: Answer<Value>): Promise<Value> {
 export class FakeServerEngine implements ServerEngine {
   readonly answers: FakeServerEngineAnswers;
   readonly calls: string[] = [];
-  readonly pairs: { address: string; code: string; deviceName: string }[] = [];
+  readonly pairs: {
+    address: string;
+    code: string;
+    deviceName: string;
+    access: ServerAccess | undefined;
+  }[] = [];
+  readonly accesses: (ServerAccess | undefined)[] = [];
   #statusAt = 0;
 
   constructor(answers: FakeServerEngineAnswers = {}) {
@@ -49,9 +58,14 @@ export class FakeServerEngine implements ServerEngine {
     return settle(this.answers.state ?? { engine: "this-computer" });
   }
 
-  pair(address: string, code: string, deviceName: string): Promise<ServerPairStart> {
+  pair(
+    address: string,
+    code: string,
+    deviceName: string,
+    access?: ServerAccess,
+  ): Promise<ServerPairStart> {
     this.calls.push("pair");
-    this.pairs.push({ address, code, deviceName });
+    this.pairs.push({ address, code, deviceName, access });
     return settle(this.answers.pair ?? waiting);
   }
 
@@ -66,6 +80,12 @@ export class FakeServerEngine implements ServerEngine {
   cancel(pairingId: string): Promise<boolean> {
     this.calls.push(`cancel ${pairingId}`);
     return settle(this.answers.cancel ?? true);
+  }
+
+  setAccess(access: ServerAccess | undefined): Promise<ServerAccessSaved> {
+    this.calls.push("setAccess");
+    this.accesses.push(access);
+    return settle(this.answers.access ?? { state: "saved", server: "online" });
   }
 
   useThisComputer(): Promise<ServerEngineLeft> {

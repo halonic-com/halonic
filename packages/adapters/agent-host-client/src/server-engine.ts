@@ -12,11 +12,12 @@ const stateAnswer = s.discriminatedUnion("engine", [
       sessionEndsAt: s.string().optional(),
       server: s
         .object({
-          state: s.enum(["online", "offline", "signed-out"]),
+          state: s.enum(["online", "offline", "signed-out", "access-refused"]),
           checkedAt: s.string(),
         })
         .strict()
         .optional(),
+      accessSet: s.literal(true).optional(),
     })
     .strict(),
 ]);
@@ -37,7 +38,14 @@ const pairAnswer = s.discriminatedUnion("state", [
   tooMany,
   s
     .object({
-      state: s.enum(["address_not_allowed", "unreachable", "not_halonic", "code_refused", "lost"]),
+      state: s.enum([
+        "address_not_allowed",
+        "unreachable",
+        "not_halonic",
+        "access_refused",
+        "code_refused",
+        "lost",
+      ]),
     })
     .strict(),
 ]);
@@ -57,11 +65,34 @@ const statusAnswer = s.discriminatedUnion("state", [
         "lost",
         "unreachable",
         "not_halonic",
+        "access_refused",
         "code_refused",
       ]),
     })
     .strict(),
 ]);
+
+const accessAnswer = s.discriminatedUnion("state", [
+  s
+    .object({
+      state: s.literal("saved"),
+      server: s.enum(["online", "offline", "signed-out", "access-refused"]),
+    })
+    .strict(),
+  s.object({ state: s.enum(["not_paired", "key_not_saved"]) }).strict(),
+]);
+
+/** A Cloudflare Access service token as typed: sent to the host once, never read back. */
+export interface ServerAccessInput {
+  readonly clientId: string;
+  readonly clientSecret: string;
+}
+
+function accessFields(access: ServerAccessInput | undefined) {
+  return access === undefined
+    ? {}
+    : { accessClientId: access.clientId, accessClientSecret: access.clientSecret };
+}
 
 const cancelAnswer = s.object({ cancelled: s.boolean() }).strict();
 
@@ -80,6 +111,9 @@ export type ServerPairStart = Infer<typeof pairAnswer>;
 
 /** Where a pairing stands; only `paired` switched the workspace to the server. */
 export type ServerPairState = Infer<typeof statusAnswer>;
+
+/** What changing the Access service token did, with the server's answer to it when saved. */
+export type ServerAccessSaved = Infer<typeof accessAnswer>;
 
 /** What switching back did: the setting is "This computer" either way. */
 export type ServerEngineLeft = Infer<typeof thisComputerAnswer>;
@@ -107,11 +141,26 @@ export class AgentHostServerEngine {
     return readAnswer(route, answer, stateAnswer);
   }
 
-  /** Asks the server at `address` to pair with the code its owner gave, as `deviceName`. */
-  async pair(address: string, code: string, deviceName: string): Promise<ServerPairStart> {
+  /**
+   * Asks the server at `address` to pair with the code its owner gave, as `deviceName`, with the
+   * Cloudflare Access service token its access check wants when there is one.
+   */
+  async pair(
+    address: string,
+    code: string,
+    deviceName: string,
+    access?: ServerAccessInput,
+  ): Promise<ServerPairStart> {
     const route = "POST /v1/messaging/server-engine/pair";
-    const body = { workspace: this.#workspace, address, code, deviceName };
+    const body = { workspace: this.#workspace, address, code, deviceName, ...accessFields(access) };
     return readAnswer(route, await this.#transport.request(route, body), pairAnswer);
+  }
+
+  /** Sets the Access service token the host keeps for the pairing, or clears it with `undefined`. */
+  async setAccess(access: ServerAccessInput | undefined): Promise<ServerAccessSaved> {
+    const route = "POST /v1/messaging/server-engine/access";
+    const body = { workspace: this.#workspace, ...accessFields(access) };
+    return readAnswer(route, await this.#transport.request(route, body), accessAnswer);
   }
 
   /** Asks once where the pairing stands. */

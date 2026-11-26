@@ -6,6 +6,8 @@
 
 Where the host serves the server engine, Settings › Connections shall start with a "Messaging engine" row offering This computer and Server, with the workspace's engine picked. Picking Server shall open Pair with a server and keep This computer picked until the host paired. Picking This computer while on Server shall ask first and then end the pairing, and say whether the pairing ended on the server too or is still valid there. Under Server, the row shall show the server's host and what the host's state says, also after Studio starts again: Connected with the check time and the pairing's end ("Checked 14:02 · pairing ends 23 Feb 2027") while the server answers; Offline with "Offline, as of 14:02" and the server's offline callout while it doesn't; Signed out with Pair again while the keychain holds no pairing or the server ended it; and the keychain callout with Pair again when the keychain couldn't be read. Pair with a server shall fill in this computer's name as the host gives it, and the texts that tell the person to remove this computer on the server shall name it as it paired, "Halonic Studio" only when the host knows neither. Where the host has no keychain, Server shall be listed but unavailable, with its reason. No answer the row shows holds the device token.
 
+Under Server, the row shall offer "Update access", which opens a dialog with the two Access fields, empty (the host never gives the values back), and saves them without pairing again, or clears them when both are empty (HAL-19107). When the server's check answers `access-refused`, the row shall show a danger callout "The server's access check refused this computer. Check the Access client ID and secret." with "Update access".
+
 ## Examples
 
 - Given a workspace whose engine is Server and whose keychain can't be read,
@@ -23,3 +25,7 @@ Where the host serves the server engine, Settings › Connections shall start wi
 - Given a workspace on Server whose server doesn't answer,
   when Settings › Connections opens after Studio started again,
   then the row shows Offline, "Offline, as of 14:02" and "The server isn't answering."
+- Given a paired server whose access check refuses,
+  when the row is shown,
+  then it shows the refusal callout with Update access, and saving new values announces "Saved the Access client ID and secret." without a new pairing.
+

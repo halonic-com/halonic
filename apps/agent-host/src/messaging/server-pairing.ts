@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { hostname } from "node:os";
+import type { AccessToken } from "@halonicjs/host-server";
 import { type SecretStore, serverPairingSecretName } from "@halonicjs/ports";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
 import {
@@ -7,6 +8,7 @@ import {
   type MessagingEngineSetting,
   type Paired,
 } from "./messaging-engine-setting.ts";
+import { type KeptPairing, keptPairing, keptValue } from "./server-access.ts";
 import { ServerPairingClient, type ServerReach } from "./server-pairing-client.ts";
 
 /**
@@ -22,13 +24,23 @@ export type EngineState =
       address: string;
       pairing: "kept" | "missing" | "unreadable";
       server?: { state: ServerReach; checkedAt: string };
+      /** Whether an Access service token is kept; its values never leave the host. */
+      accessSet?: true;
     } & Paired);
 
 /** What starting a pairing gave the page. */
 export type PairAnswer =
   | { state: "waiting"; pairingId: string; checkCode: string; expiresAt: string }
   | { state: "too_many"; minutes?: number }
-  | { state: "address_not_allowed" | "unreachable" | "not_halonic" | "code_refused" | "lost" };
+  | {
+      state:
+        | "address_not_allowed"
+        | "unreachable"
+        | "not_halonic"
+        | "access_refused"
+        | "code_refused"
+        | "lost";
+    };
 
 /** Where a pairing stands for the page. Only `paired` changed the setting. */
 export type PairStatusAnswer =
@@ -45,8 +57,14 @@ export type PairStatusAnswer =
         | "lost"
         | "unreachable"
         | "not_halonic"
+        | "access_refused"
         | "code_refused";
     };
+
+/** What changing the Access service token did. */
+export type AccessAnswer =
+  | { state: "saved"; server: ServerReach }
+  | { state: "not_paired" | "key_not_saved" };
 
 /** What switching back to "This computer" did; the setting is gone either way. */
 export interface ThisComputerAnswer {
@@ -80,6 +98,8 @@ interface Pending {
   /** The server's pending ID: whoever holds it collects the token, so the page never sees it. */
   pendingId: string;
   expiresAt: string;
+  /** The Access service token typed with the address, kept in memory until Allow. */
+  access: AccessToken | undefined;
 }
 
 /** At most this many pairings wait at once; a new one drops the oldest. */
@@ -113,19 +133,24 @@ export class ServerEnginePairing {
       return { engine: "this-computer", ...(name === undefined ? {} : { computerName: name }) };
     }
     const { kind, address, ...paired } = engine;
-    let token: string | null = null;
+    let kept: KeptPairing | undefined;
     let pairing: "kept" | "missing" | "unreadable";
     try {
-      token = await this.#options.keychain.get(serverPairingSecretName(key));
-      pairing = token === null ? "missing" : "kept";
+      const value = await this.#options.keychain.get(serverPairingSecretName(key));
+      if (value !== null) kept = keptPairing(value);
+      pairing = kept === undefined ? "missing" : "kept";
     } catch (error) {
       this.#failed("couldn't read the pairing from the keychain", error);
       pairing = "unreadable";
     }
     const state: EngineState = { engine: "server", address, pairing, ...paired };
-    if (token === null) return state;
-    const reach = await this.#client(address).check(token);
-    return { ...state, server: { state: reach, checkedAt: this.#now().toISOString() } };
+    if (kept === undefined) return state;
+    const reach = await this.#client(address, kept.access).check(kept.token);
+    return {
+      ...state,
+      ...(kept.access === undefined ? {} : { accessSet: true as const }),
+      server: { state: reach, checkedAt: this.#now().toISOString() },
+    };
   }
 
   /** Checks the address is a Halonic server (`GET /api/hello`), then asks it to pair. */
@@ -134,10 +159,11 @@ export class ServerEnginePairing {
     address: string,
     code: string,
     deviceName: string,
+    access?: AccessToken,
   ): Promise<PairAnswer> {
     let client: ServerPairingClient;
     try {
-      client = this.#client(address);
+      client = this.#client(address, access);
     } catch {
       return { state: "address_not_allowed" };
     }
@@ -155,6 +181,7 @@ export class ServerEnginePairing {
       deviceName,
       pendingId: started.pendingId,
       expiresAt: started.expiresAt,
+      access,
     });
     const { checkCode, expiresAt } = started;
     return { state: "waiting", pairingId, checkCode, expiresAt };
@@ -168,7 +195,7 @@ export class ServerEnginePairing {
   async status(pairingId: string): Promise<PairStatusAnswer> {
     const pending = this.#pending.get(pairingId);
     if (pending === undefined) return { state: "lost" };
-    const client = this.#client(pending.address);
+    const client = this.#client(pending.address, pending.access);
     const poll = await client.status(pending.pendingId);
     switch (poll.kind) {
       case "waiting":
@@ -193,7 +220,8 @@ export class ServerEnginePairing {
     const pending = this.#pending.get(pairingId);
     if (pending === undefined) return { cancelled: true };
     this.#pending.delete(pairingId);
-    return { cancelled: await this.#client(pending.address).cancel(pending.pendingId) };
+    const client = this.#client(pending.address, pending.access);
+    return { cancelled: await client.cancel(pending.pendingId) };
   }
 
   /**
@@ -208,8 +236,11 @@ export class ServerEnginePairing {
     let stillValid = false;
     if (engine.kind === "server") {
       try {
-        const token = await keychain.get(name);
-        if (token !== null) stillValid = !(await this.#client(engine.address).signOut(token));
+        const value = await keychain.get(name);
+        if (value !== null) {
+          const { token, access } = keptPairing(value);
+          stillValid = !(await this.#client(engine.address, access).signOut(token));
+        }
       } catch (error) {
         this.#failed("couldn't read the pairing from the keychain to end it", error);
         stillValid = true;
@@ -227,6 +258,34 @@ export class ServerEnginePairing {
     return keychainEntryKept ? { stillValid, keychainEntryKept } : { stillValid };
   }
 
+  /**
+   * Sets, or with `undefined` clears, the Access service token kept with the
+   * workspace's device token, then asks the server once with it and answers
+   * what the Access check said. Only a paired workspace has one to change.
+   */
+  async setAccess(workspace: string, access: AccessToken | undefined): Promise<AccessAnswer> {
+    const { setting, keychain, messaging } = this.#options;
+    const { key, engine } = await setting.read(workspace);
+    if (engine.kind !== "server") return { state: "not_paired" };
+    const name = serverPairingSecretName(key);
+    try {
+      const value = await keychain.get(name);
+      if (value === null) return { state: "not_paired" };
+      const next = keptValue({
+        token: keptPairing(value).token,
+        ...(access === undefined ? {} : { access }),
+      });
+      await keychain.set(name, next);
+      if ((await keychain.get(name)) !== next) throw new PairingNotKept();
+      const reach = await this.#client(engine.address, access).check(keptPairing(next).token);
+      await messaging.switchEngine(workspace);
+      return { state: "saved", server: reach };
+    } catch (error) {
+      this.#failed("couldn't change the Access service token in the keychain", error);
+      return { state: "key_not_saved" };
+    }
+  }
+
   async #keep(
     pending: Pending,
     client: ServerPairingClient,
@@ -237,8 +296,12 @@ export class ServerEnginePairing {
     let name: string | undefined;
     try {
       name = serverPairingSecretName(await setting.keyOf(pending.workspace));
-      await keychain.set(name, token);
-      if ((await keychain.get(name)) !== token) throw new PairingNotKept();
+      const value = keptValue({
+        token,
+        ...(pending.access === undefined ? {} : { access: pending.access }),
+      });
+      await keychain.set(name, value);
+      if ((await keychain.get(name)) !== value) throw new PairingNotKept();
       await setting.useServer(pending.workspace, pending.address, {
         computerName: pending.deviceName,
         sessionEndsAt,
@@ -267,8 +330,8 @@ export class ServerEnginePairing {
     this.#pending.set(pairingId, pending);
   }
 
-  #client(address: string): ServerPairingClient {
-    return new ServerPairingClient(address, this.#options.fetch);
+  #client(address: string, access?: AccessToken): ServerPairingClient {
+    return new ServerPairingClient(address, this.#options.fetch, access);
   }
 
   /** Logs the error's name only: a keychain's or the platform's message may hold the token. */

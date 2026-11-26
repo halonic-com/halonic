@@ -98,6 +98,8 @@ export {
 } from "./sandbox-setup.ts";
 export {
   AgentHostServerEngine,
+  type ServerAccessInput,
+  type ServerAccessSaved,
   type ServerEngineLeft,
   type ServerEngineState,
   type ServerPairStart,

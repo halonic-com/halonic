@@ -1,19 +1,26 @@
-import { checkedServerOrigin } from "@halonicjs/host-server";
+import {
+  type AccessToken,
+  accessHeaders,
+  checkedServerOrigin,
+  isAccessRefusal,
+} from "@halonicjs/host-server";
 import { parse, type Schema, s } from "@halonicjs/schema-kit";
 
 /** Why a pairing call to the server got no usable answer. */
 export type PairingTrouble =
   /** No answer at all, a 5xx, or an answer it can't read: the server may answer later. */
   | "unreachable"
-  /** `GET /api/hello` didn't answer like a Halonic server, or a call was redirected. */
+  /** `GET /api/hello` didn't answer like a Halonic server. */
   | "not_halonic"
+  /** The server's access check (Cloudflare Access) redirected a call to its login, or answered 403. */
+  | "access_refused"
   /** 404: the server doesn't know this pending ID (used, guessed, or its answer was lost). */
   | "lost"
   /** 401 to `POST /api/pair`: the code is wrong, used or older than 10 minutes. */
   | "code_refused";
 
 /** Whether the server answers this device: as a messaging source's state names it. */
-export type ServerReach = "online" | "offline" | "signed-out";
+export type ServerReach = "online" | "offline" | "signed-out" | "access-refused";
 
 /** How long the state route waits for the server's answer before it calls it offline. */
 export const checkTimeoutMs = 5000;
@@ -44,18 +51,24 @@ const endedAnswer = s.discriminatedUnion("state", [
 /**
  * The calls this computer makes to a Halonic server to pair with it
  * (`server.device-pairing`): no session for the pairing ones, the device's
- * own token for its sign-out. It follows no redirect, reads an answer's body
+ * own token for its sign-out. With an Access service token, every call carries
+ * its two headers: they go to the paired origin only, because it follows no redirect, reads an answer's body
  * only when the status says it holds what was asked, and never puts what the
  * server or the platform said into what it gives back.
  */
 export class ServerPairingClient {
   readonly #origin: string;
   readonly #fetch: typeof fetch;
+  readonly #access: Record<string, string>;
 
-  /** @throws ServerClientError when `address` isn't `https`, nor plain `http` to this computer */
-  constructor(address: string, send: typeof fetch = fetch) {
+  /**
+   * @throws ServerClientError when `address` isn't `https`, nor plain `http` to this computer, or
+   * an Access value can't go in a header
+   */
+  constructor(address: string, send: typeof fetch = fetch, access?: AccessToken) {
     this.#origin = checkedServerOrigin(address);
     this.#fetch = send;
+    this.#access = accessHeaders(access);
   }
 
   /** The origin every call goes to. */
@@ -64,9 +77,10 @@ export class ServerPairingClient {
   }
 
   /** Whether `GET /api/hello` answers as a Halonic server. */
-  async hello(): Promise<"halonic" | "not_halonic" | "unreachable"> {
+  async hello(): Promise<"halonic" | "not_halonic" | "unreachable" | "access_refused"> {
     const response = await this.#send("GET", "/api/hello");
     if (response === undefined) return "unreachable";
+    if (response.status === accessRefused) return "access_refused";
     if (response.status !== 200) return response.status >= 500 ? "unreachable" : "not_halonic";
     return (await read(response, helloAnswer)) === undefined ? "not_halonic" : "halonic";
   }
@@ -128,11 +142,12 @@ export class ServerPairingClient {
     const response = await this.#send("GET", "/api/messaging/sources", undefined, token, signal);
     await response?.body?.cancel().catch(() => undefined);
     if (response === undefined) return "offline";
+    if (response.status === accessRefused) return "access-refused";
     if (response.status === 401) return "signed-out";
     return response.ok ? "online" : "offline";
   }
 
-  /** One request; `undefined` when nothing answered or the answer was a redirect. */
+  /** One request; `undefined` when nothing answered. A redirect or the access check's 403 is `accessRefused`. */
   async #send(
     method: "GET" | "POST",
     path: string,
@@ -140,7 +155,7 @@ export class ServerPairingClient {
     token?: string,
     signal?: AbortSignal,
   ): Promise<Response | undefined> {
-    const headers: Record<string, string> = { accept: "application/json" };
+    const headers: Record<string, string> = { accept: "application/json", ...this.#access };
     if (body !== undefined) headers["content-type"] = "application/json";
     if (token !== undefined) headers["authorization"] = `Bearer ${token}`;
     try {
@@ -153,7 +168,11 @@ export class ServerPairingClient {
       });
       if (response.status >= 300 && response.status < 400) {
         await response.body?.cancel();
-        return new Response(null, { status: 421 });
+        return new Response(null, { status: accessRefused });
+      }
+      if (isAccessRefusal(response)) {
+        await response.body?.cancel();
+        return new Response(null, { status: accessRefused });
       }
       return response;
     } catch {
@@ -163,10 +182,17 @@ export class ServerPairingClient {
   }
 }
 
-/** A 404, 429 or 5xx as what it means for a pairing; `undefined` for anything else. */
+/** The status {@link ServerPairingClient} stands a redirect or the access check's refusal in with. */
+const accessRefused = 421;
+
+/** A refusal by the access check, a 404, 429 or 5xx as what it means for a pairing; `undefined` for anything else. */
 function troubleOf(
   response: Response,
-): { kind: "lost" | "unreachable" } | { kind: "too_many"; minutes?: number } | undefined {
+):
+  | { kind: "lost" | "unreachable" | "access_refused" }
+  | { kind: "too_many"; minutes?: number }
+  | undefined {
+  if (response.status === accessRefused) return { kind: "access_refused" };
   if (response.status === 404) return { kind: "lost" };
   if (response.status === 429) {
     const seconds = Number(response.headers.get("retry-after"));
