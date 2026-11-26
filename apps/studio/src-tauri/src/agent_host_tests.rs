@@ -251,7 +251,7 @@ fn request(
     route: &str,
     body: Option<Value>,
 ) -> Result<HostAnswer, HostRefusal> {
-    tauri::async_runtime::block_on(agent_host_request(app.clone(), route.to_owned(), body))
+    tauri::async_runtime::block_on(agent_host_request(page(app), route.to_owned(), body))
 }
 
 /// Opens the page's stream `stream`; its messages arrive on the receiver.
@@ -488,3 +488,6 @@ fn a_host_in_the_distro_is_reached_through_the_relay() {
     let again = tauri::async_runtime::block_on(running_host(app.handle())).expect("it is running");
     assert_eq!(again.url(), handshake.url(), "the running host is reused");
 }
+
+#[path = "agent_host_window_routes_tests.rs"]
+mod window_routes;

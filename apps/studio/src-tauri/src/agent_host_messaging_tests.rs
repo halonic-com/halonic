@@ -18,8 +18,9 @@ use std::sync::mpsc::{Receiver, channel};
 use std::time::Duration;
 
 use serde_json::json;
-use tauri::Manager;
 use tauri::test::{MockRuntime, mock_app};
+use tauri::webview::WebviewWindowBuilder;
+use tauri::{Manager, Webview, WebviewUrl};
 
 use super::super::{AgentHostState, agent_host_request};
 use super::{MESSAGING_PREFIXES, is_messaging_path, running_messaging_host};
@@ -129,8 +130,18 @@ fn counter() -> Arc<AtomicUsize> {
 
 fn request(app: &tauri::AppHandle<MockRuntime>, route: &str) {
     let body = route.starts_with("POST").then(|| json!({}));
-    tauri::async_runtime::block_on(agent_host_request(app.clone(), route.to_owned(), body))
+    tauri::async_runtime::block_on(agent_host_request(page(app), route.to_owned(), body))
         .expect("the host answers");
+}
+
+/// Studio's window, opened on the first call.
+fn page(app: &tauri::AppHandle<MockRuntime>) -> Webview<MockRuntime> {
+    let window = app.get_webview_window("main").unwrap_or_else(|| {
+        WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
+            .build()
+            .expect("the main window opens")
+    });
+    window.as_ref().clone()
 }
 
 #[test]

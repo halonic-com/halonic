@@ -64,6 +64,10 @@ mod refusal;
 pub use refusal::HostRefusal;
 use refusal::{poisoned, unavailable};
 
+#[path = "agent_host_window_routes.rs"]
+mod window_routes;
+use window_routes::window_may_call;
+
 #[path = "agent_host_progress.rs"]
 pub mod progress;
 use progress::StartProgress;
@@ -214,13 +218,16 @@ pub enum StreamMessage {
 }
 
 /// Calls a JSON route of the host with `body` (`{}` for a POST when there
-/// is none, or it is `null`; a GET takes none).
+/// is none, or it is `null`; a GET takes none). Quick ask's box may call
+/// only the routes its page calls (`window_routes`).
 #[tauri::command]
 pub async fn agent_host_request<R: Runtime>(
-    app: AppHandle<R>,
+    webview: Webview<R>,
     route: String,
     body: Option<Value>,
 ) -> Result<HostAnswer, HostRefusal> {
+    let app = webview.app_handle().clone();
+    window_may_call(webview.label(), &route)?;
     let route = named_route(&route, Answer::Json)?;
     unfenced_allow::ask_before_allow(&app, route).await?;
     remote_asks::ask_before_remote_save(&app, route, body.as_ref()).await?;
