@@ -357,15 +357,14 @@ export class Messenger {
 
   /**
    * Asks the page to show the chat `id` again, as its window reopens, only while it is still
-   * listed. Resolves whether it asked; a chat that is gone leaves the chats list showing. Once
-   * `signal` aborts, it asks for nothing.
+   * listed and the page hasn't opened another chat itself. Resolves whether it asked; a chat that
+   * is gone leaves the chats list showing. Once `signal` aborts, it asks for nothing.
    */
   async reopen(id: MessagingId, signal?: AbortSignal): Promise<boolean> {
     const rows = await this.rows();
     if (signal?.aborted) return false;
     const listed = rows.some((row) => row.conversation.id === id);
-    if (listed) this.shown.ask(id);
-    return listed;
+    return listed && this.shown.ask(id);
   }
 
   /** An attachment's bytes, read through the engine only when the person asks to see it. */

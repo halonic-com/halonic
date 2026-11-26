@@ -71,6 +71,7 @@ export function MessengerPage({
   const onePaneState = useOnePane(selected, setSelected);
   const { onePane, list, chat } = onePaneState;
   const select = (conversation: MessagingId) => {
+    messenger.shown.choose();
     setNeedsYou(false);
     onePaneState.select(conversation);
   };
@@ -79,13 +80,16 @@ export function MessengerPage({
     onePaneState.back();
   };
   const openNeedsYou = () => {
+    messenger.shown.choose();
     setSelected(undefined);
     setNeedsYou(true);
   };
   useFadeIn(chat, needsYou ? "needs-you" : open?.conversation.id);
+  // A chat handed over or picked here wins over the chat the window kept (`messenger.window-chat`).
   useChatOpens(
     opens,
     (conversation) => {
+      messenger.shown.choose();
       setNeedsYou(false);
       setSelected(conversation);
     },

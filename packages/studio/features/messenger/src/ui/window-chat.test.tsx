@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import type { MessagingId } from "@halonicjs/ports";
 import { NarrowProvider } from "@halonicjs/studio-kit";
+import type { ChatOpens } from "@halonicjs/studio-services";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, StrictMode } from "react";
@@ -22,11 +24,16 @@ function acmeChats() {
   return { messenger: new Messenger(messaging), chiefChat, liamChat };
 }
 
-async function openPage(messenger: Messenger) {
+/** The shell's hand-overs, where a chat quick ask's box handed `waiting` over as the window opened. */
+function handedOver(waiting: MessagingId): ChatOpens {
+  return { takePending: async () => waiting, subscribe: () => () => undefined };
+}
+
+async function openPage(messenger: Messenger, opens?: ChatOpens) {
   const page = render(
     <StrictMode>
       <NarrowProvider narrow={false}>
-        <MessengerPage messenger={messenger} />
+        <MessengerPage messenger={messenger} opens={opens} />
       </NarrowProvider>
     </StrictMode>,
   );
@@ -71,6 +78,34 @@ verifies("messenger.window-chat", () => {
 
       expect(openChatName(page)).toBeUndefined();
       expect(messenger.shown.id).toBeUndefined();
+    });
+
+    it("leaves a chat handed over open, with the focus in its box", async () => {
+      const { messenger, chiefChat, liamChat } = acmeChats();
+      const page = await openPage(messenger, handedOver(liamChat.id));
+
+      let asked: boolean | undefined;
+      await act(async () => {
+        asked = await messenger.reopen(chiefChat.id);
+      });
+      await settle();
+
+      expect(asked).toBe(false);
+      expect(openChatName(page)).toBe("Liam");
+      expect(document.activeElement).toBe(page.querySelector("main textarea"));
+    });
+
+    it("leaves a chat the person picked open", async () => {
+      const { messenger, chiefChat } = acmeChats();
+      const page = await openPage(messenger);
+      await openChat(page, "Liam");
+
+      await act(async () => {
+        await messenger.reopen(chiefChat.id);
+      });
+      await settle();
+
+      expect(openChatName(page)).toBe("Liam");
     });
 
     it("asks for nothing once its window stops", async () => {
