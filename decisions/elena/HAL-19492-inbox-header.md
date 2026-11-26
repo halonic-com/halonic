@@ -1,0 +1,22 @@
+# Decision: the Inbox's 40px picture moves from the agent's card to the header over the open item
+
+- Approval: https://paperclip.ing/HAL/issues/HAL-19492
+- Kind: user-visible
+
+`inbox.header-avatar` said the Inbox shows the asker's 40px picture inside an agent's card, before
+the line that says who asks and the title. The Inbox and Messenger layout the board approved on
+HAL-19192 (Sofia's sketch J) puts the Messenger's content header over every open item instead:
+its row's picture at 40px (the agent's, or the item's own mark: the stamp, the pause, the gear or
+the question mark), the item's title over its row's line, and its place among what waits. So the
+requirement now says that, and the card keeps who asks over its title without a second picture.
+The requirement is still unreleased. The plan was approved by Liam on HAL-19492.
+
+Sofia's design check (HAL-19913) added two lines to it. With one pane, **Back to Inbox** becomes
+sketch E's back arrow, an icon button whose name and tooltip stay "Back to Inbox", so a phone's
+title keeps about 75px more; the requirements that name **Back to Inbox** still hold, since that is
+the button's name. Once an agent's item is answered, the header's line ends at who asks, without
+the wait, as its place already goes.
+
+## Covers
+
+- inbox.header-avatar

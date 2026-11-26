@@ -16,6 +16,7 @@ import {
 } from "../agent/agent-bundles.ts";
 import { AgentInbox, type AgentInboxState } from "../agent/agent-inbox.ts";
 import {
+  agentItemAsker,
   agentItemKey,
   agentItemMeta,
   agentItemTitle,
@@ -25,6 +26,7 @@ import {
 import { agentItemShows, type ProjectFilter } from "../agent/project-filter.ts";
 import { ActionItemCard } from "./action-item-card.tsx";
 import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
+import type { ItemHeading } from "./item-header.tsx";
 import { agentMark } from "./row-marks.tsx";
 
 /** What the Inbox page shows of the agents' items, next to its own. */
@@ -47,6 +49,11 @@ export interface AgentItems {
   readonly lines: (now: Date) => ReactNode;
   /** The open row's key, while one is open. */
   readonly openKey: string | undefined;
+  /**
+   * The header over the open row's cards: its row's title and line, with the first card's asker at
+   * 40px (`inbox.header-avatar`); `undefined` while none is open.
+   */
+  readonly heading: (now: Date) => ItemHeading | undefined;
   /** Opens the item or bundle of that row key; `false` when the key isn't an agent row's. */
   readonly open: (key: string) => boolean;
   readonly close: () => void;
@@ -146,6 +153,20 @@ export function useAgentItems(
       openItems.length === 0 || opened === undefined
         ? undefined
         : (rowKeyHolding(opened, bundles) ?? opened.key),
+    heading: (now) => {
+      const [first] = openItems;
+      if (first === undefined) return undefined;
+      const picture = agentMark(first, "header").avatar;
+      const bundle = bundles.find((each) => each.items.some((item) => item.id === first.id));
+      if (bundle === undefined) {
+        // An answered card stays open after its row has gone, so it heads itself, and its line
+        // ends at who asks: it no longer waits (HAL-19913).
+        const line = agentItemAsker(first, sourceOf(first));
+        return { picture, title: agentItemTitle(first), line };
+      }
+      const row = bundleRow(bundle, state, now);
+      return { picture, title: row.title, line: row.meta };
+    },
     open: (key) => {
       const found = bundles.find((bundle) => bundle.key === key);
       setOpened(found === undefined ? undefined : { key, ids: found.items.map((item) => item.id) });

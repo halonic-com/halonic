@@ -121,9 +121,13 @@ const doneCells = (root: HTMLElement) => [
   ...root.querySelectorAll<HTMLElement>('details [role="grid"] [role="gridcell"]'),
 ];
 
-/** The bar over the open item: Back to Inbox and its place. */
-const itemBar = (root: HTMLElement) =>
-  buttons(root, "Back to Inbox")[0]?.parentElement?.textContent;
+/** The header over the open item: Back to Inbox, then, at its end, the item's place. */
+const itemBar = (root: HTMLElement) => {
+  const header = root
+    .querySelector<HTMLButtonElement>('button[aria-label="Back to Inbox"]')
+    ?.closest("header");
+  return `Back to Inbox${header?.querySelector(":scope > p")?.textContent ?? ""}`;
+};
 
 verifies("inbox.proposal-phone", () => {
   describe("a proposal on a phone", () => {

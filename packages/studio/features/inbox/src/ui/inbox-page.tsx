@@ -41,7 +41,6 @@ import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
-  ItemPageBar,
   itemPaneClass,
   ListHeader,
   listPaneClass,
@@ -50,6 +49,7 @@ import {
   placeOf,
 } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
+import { ItemHeader, openHeading } from "./item-header.tsx";
 import { type InboxMotion, kitMotion, useGlidingState } from "./list-motion.ts";
 import { failureReason, isSignedOut, loadFailed, openItemWords, StaleLine } from "./load-lines.tsx";
 import { needsYouListed } from "./needs-you-listed.ts";
@@ -290,6 +290,7 @@ export function InboxView({
     sheetOpen: requestSheetOpen,
     announce,
   });
+  const heading = openHeading(open, agent.heading, now(), runFacts);
   const request = useRequestPane({
     inbox,
     requests,
@@ -391,14 +392,15 @@ export function InboxView({
       </div>
       {request.sheet}
       <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen)}>
-        <div className="flex w-full max-w-190 flex-col">
-          {anyOpen ? (
-            <ItemPageBar
-              back={onePane}
-              place={placeOf(open?.key ?? agent.openKey, waitingOrder)}
-              close={close}
-            />
-          ) : null}
+        {heading === undefined ? null : (
+          <ItemHeader
+            heading={heading}
+            back={onePane}
+            place={placeOf(open?.key ?? agent.openKey, waitingOrder)}
+            close={close}
+          />
+        )}
+        <div className="mx-auto flex w-full max-w-190 flex-col">
           {open === null ? (
             agent.card(
               now,

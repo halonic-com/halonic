@@ -75,7 +75,7 @@ const hidden = (root: HTMLElement, name: "list" | "item") =>
 const rowCell = (root: HTMLElement, index: number) =>
   root.querySelectorAll<HTMLElement>('[role="grid"] tr [role="gridcell"]')[index] as HTMLElement;
 const backToInbox = (root: HTMLElement) =>
-  [...root.querySelectorAll("button")].find((button) => button.textContent === "Back to Inbox");
+  root.querySelector<HTMLButtonElement>('button[aria-label="Back to Inbox"]') ?? undefined;
 
 async function click(target: HTMLElement) {
   await act(async () => {

@@ -62,7 +62,7 @@ async function openAction(messaging: FakeAgentMessaging, policy?: RequesterPolic
 
 /** The open card: the section its heading names. */
 function card(root: HTMLElement, title: string): HTMLElement {
-  const heading = [...root.querySelectorAll("h2")].find((h) => h.textContent === title);
+  const heading = [...root.querySelectorAll("section h2")].find((h) => h.textContent === title);
   const found = heading?.closest("section");
   if (found === null || found === undefined) throw new Error(`no card "${title}"`);
   return found;

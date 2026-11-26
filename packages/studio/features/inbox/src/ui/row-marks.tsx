@@ -1,5 +1,12 @@
 import type { InboxItem as AgentItem } from "@halonicjs/ports";
-import { Avatar, agentTint, HelpIcon, type ListRow, SettingsIcon } from "@halonicjs/studio-kit";
+import {
+  Avatar,
+  type AvatarSize,
+  agentTint,
+  HelpIcon,
+  type ListRow,
+  SettingsIcon,
+} from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 
@@ -8,35 +15,44 @@ import type { InboxItem } from "../inbox-items.ts";
  * card read apart at a glance (design review HAL-18481, 5; `inbox.row-marks`). Each mark sits on
  * the agent Avatar's round tile, 60px in the sidebar (HAL-19735), so every row's title starts at the
  * same place (HAL-18617).
- * The marks are decoration: the row's title and meta line say what it is.
+ * The marks are decoration: the row's title and meta line say what it is. The open item's header
+ * shows the same mark at 40px (`inbox.header-avatar`).
  */
 
 /** The mark of a row's own item: a stamp for an approval, a pause for a person step, a gear for setup. */
-export function itemMark(item: InboxItem): Pick<ListRow, "avatar"> {
-  if (item.kind === "approval") return { avatar: <MarkTile glyph={<StampIcon />} /> };
-  if (item.kind === "wait") return { avatar: <MarkTile glyph={<PauseIcon />} /> };
-  return { avatar: <MarkTile glyph={<SettingsIcon />} /> };
+export function itemMark(item: InboxItem, size: AvatarSize = "sidebar"): Pick<ListRow, "avatar"> {
+  if (item.kind === "approval") return { avatar: <MarkTile glyph={<StampIcon />} size={size} /> };
+  if (item.kind === "wait") return { avatar: <MarkTile glyph={<PauseIcon />} size={size} /> };
+  return { avatar: <MarkTile glyph={<SettingsIcon />} size={size} /> };
 }
 
 /**
  * The mark of an agent's row: the agent's picture (its initials for now) on the agent's own tint,
  * keyed on its ID as in the Messenger (`kit.agent-tint`), else a question mark.
  */
-export function agentMark(item: AgentItem | undefined): Pick<ListRow, "avatar"> {
+export function agentMark(
+  item: AgentItem | undefined,
+  size: AvatarSize = "sidebar",
+): Pick<ListRow, "avatar"> {
   if (item?.from.kind === "agent") {
-    return {
-      avatar: <Avatar name={item.from.name} size="sidebar" tint={agentTint(item.from.agent)} />,
-    };
+    return { avatar: <Avatar name={item.from.name} size={size} tint={agentTint(item.from.agent)} /> };
   }
-  return { avatar: <MarkTile glyph={<HelpIcon />} /> };
+  return { avatar: <MarkTile glyph={<HelpIcon />} size={size} /> };
 }
 
-/** A glyph centred on the sidebar Avatar's 60px round tile, in its colours. */
-function MarkTile({ glyph }: { readonly glyph: ReactNode }) {
+/** The mark tile's size and its glyph's, as the Avatar's: 60px in the sidebar, 40px in a header. */
+const markTileSize: Record<AvatarSize, string> = {
+  row: "size-7 [&>svg]:size-4",
+  header: "size-10 [&>svg]:size-5",
+  sidebar: "size-15 [&>svg]:size-8",
+};
+
+/** A glyph centred on the Avatar's round tile, in its colours. */
+function MarkTile({ glyph, size }: { readonly glyph: ReactNode; readonly size: AvatarSize }) {
   return (
     <span
       aria-hidden="true"
-      className="flex size-15 shrink-0 items-center justify-center rounded-full bg-surface-muted text-fg-muted [&>svg]:size-8"
+      className={`flex ${markTileSize[size]} shrink-0 items-center justify-center rounded-full bg-surface-muted text-fg-muted`}
     >
       {glyph}
     </span>

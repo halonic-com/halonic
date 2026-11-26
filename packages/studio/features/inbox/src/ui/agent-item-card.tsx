@@ -11,8 +11,6 @@ import type {
   WorkItem,
 } from "@halonicjs/ports";
 import {
-  Avatar,
-  agentTint,
   Button,
   Callout,
   ExternalLink,
@@ -260,9 +258,8 @@ function AgentBody({ text }: { readonly text: string }) {
 }
 
 /**
- * The item's header: who asks, over the title, with their 40px picture before both, as the
- * Messenger's chat header has it (HAL-19192, `inbox.header-avatar`). An item you wrote yourself
- * has the title alone.
+ * Who asks, over the title. Their 40px picture is in the header over the card, as the Messenger's
+ * chat header has it (HAL-19192, `inbox.header-avatar`). An item you wrote yourself has the title alone.
  */
 function Asker({
   from,
@@ -275,16 +272,9 @@ function Asker({
 }) {
   if (from.kind === "me") return <>{children}</>;
   return (
-    <div className="flex items-start gap-3">
-      <Avatar
-        name={from.name}
-        size="header"
-        tint={from.kind === "agent" ? agentTint(from.agent) : undefined}
-      />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="text-small text-fg-muted">{askerLine(from, agents)}</p>
-        {children}
-      </div>
+    <div className="flex min-w-0 flex-col gap-1">
+      <p className="text-small text-fg-muted">{askerLine(from, agents)}</p>
+      {children}
     </div>
   );
 }

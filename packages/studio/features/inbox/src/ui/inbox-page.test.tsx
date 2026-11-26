@@ -372,7 +372,7 @@ verifies("inbox.page", () => {
       await click(rowCell(root, 1));
       expect(root.querySelector("section h2")?.textContent).toBe("Approve this reply?");
       expect(hidden(root, "list")).toBe(true);
-      await click(button(root, "Back to Inbox"));
+      await click(root.querySelector('[aria-label="Back to Inbox"]') as HTMLElement);
       expect(root.querySelector("section h2")).toBeNull();
       expect(hidden(root, "list")).toBe(false);
       expect(document.activeElement).toBe(rowCell(root, 1));
@@ -390,7 +390,7 @@ verifies("inbox.page", () => {
       );
       await settled();
       expect(root.querySelector("section h2")?.textContent).toBe("Approve this reply?");
-      expect(button(root, "Back to Inbox")).toBeDefined();
+      expect(root.querySelector('[aria-label="Back to Inbox"]')).not.toBeNull();
     });
 
     it("shows the full empty state, with its description, when nothing waits", async () => {
@@ -450,7 +450,7 @@ verifies("inbox.page", () => {
     it("has no Back link on the desktop", async () => {
       const { root } = await openPage(fakeRuns([notes, review]).runs);
       await click(rowCell(root, 1));
-      expect(root.textContent).not.toContain("Back to Inbox");
+      expect(root.querySelector('[aria-label="Back to Inbox"]')).toBeNull();
     });
   });
 });
