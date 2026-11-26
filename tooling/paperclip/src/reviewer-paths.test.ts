@@ -53,6 +53,7 @@ verifies("paperclip.reviewer-paths", () => {
     "tooling/paperclip/src/merge-control/approval.ts",
     "tooling/paperclip/src/merge-control/signed.ts",
     "tooling/paperclip/src/pr-tools/approvals.ts",
+    "tooling/paperclip/src/pr-watcher/rebase-only.ts",
     "packages/adapters/connector-stdio-sandbox/src/sandbox-connector.ts",
     "packages/studio/features/workspace/src/trust/trust-check-dialog.tsx",
     "docs/security/threat-model.md",
@@ -63,6 +64,13 @@ verifies("paperclip.reviewer-paths", () => {
     expect(isLiamPath(path)).toBe(true);
     expect(reviewerFor({ files: [path], changedLines: 10, sensitive: false, ours: true })).toBe(
       "liam",
+    );
+  });
+
+  test("a change to only the change id the Merger carries approvals by isn't routine", () => {
+    const files = ["tooling/paperclip/src/pr-watcher/rebase-only.ts"];
+    expect(reviewerRoleFor({ files, changedLines: 2, sensitive: false, ours: true })).not.toBe(
+      "routine-reviewer",
     );
   });
 
