@@ -1,7 +1,8 @@
 /**
  * The words of Settings › Startup, as the board approved them on HAL-14213 (the "Setting"
  * render). macOS says "in the menu bar" where the others say "in the tray". The refusal lines
- * aren't on the card: they were decided with Sofia on HAL-18087 (HAL-2282).
+ * aren't on the card: they were decided with Sofia on HAL-18087 (HAL-2282). The board named
+ * **Reopen windows on start** on HAL-19534; its failed lines follow Settings › Notifications'.
  */
 import type { LoginItemHost, LoginItemRefusal } from "./login-item-host.ts";
 
@@ -21,6 +22,12 @@ export function description(iconIn: LoginItemHost["iconIn"]): string {
 export const LOADING = "Loading the startup setting";
 
 export const START_WHEN_I_LOG_IN = "Start Halonic when I log in";
+
+/** The second switch, in the board's words on HAL-19534. */
+export const REOPEN_WINDOWS = "Reopen windows on start";
+
+/** The second switch's place while the host settings can't be read, as Notifications says it. */
+export const NOT_LOADED = "Couldn't load the startup settings";
 
 /** The switch's hint, under its name. */
 export function hint(iconIn: LoginItemHost["iconIn"]): string {

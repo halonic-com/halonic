@@ -25,7 +25,7 @@ use crate::focused_apps::{STUDIO_WINDOW, window_labels};
 pub const FILE_NAME: &str = "open-windows.json";
 
 /// The host setting for Settings › Startup's "Reopen windows on start".
-pub const SETTING: &str = "windows.reopenOnStart";
+pub const SETTING: &str = "windows.reopen-on-start";
 
 /// The most a window's content may be, in bytes. A page keeps ids and
 /// paths there, which it checks again when it reads them back.
@@ -122,13 +122,15 @@ pub fn kept(windows: Vec<OpenWindow>) -> Vec<OpenWindow> {
 /// What the shell knows of the open windows while Halonic runs: the windows
 /// open at the last quit, until they are opened again, the list last
 /// written, each window's content, whether the recorded windows were opened
-/// again, and whether Halonic is quitting.
+/// again, whether a window was noted in this run, and whether Halonic is
+/// quitting.
 #[derive(Debug, Default)]
 pub struct OpenSet {
     recorded: Vec<OpenWindow>,
     last: Vec<OpenWindow>,
     contents: Vec<(String, String)>,
     reopened: bool,
+    noted: bool,
     quitting: bool,
 }
 
@@ -169,6 +171,7 @@ impl OpenSet {
         if self.quitting {
             return None;
         }
+        self.noted = true;
         let mut windows = kept(
             showing
                 .iter()
@@ -226,6 +229,30 @@ impl OpenSet {
             self.contents.push((label.to_owned(), content));
         }
         Ok(())
+    }
+
+    /// The list to write now that a window's content changed: the windows
+    /// last noted, each with its content as kept now, so a content change
+    /// never reads the windows again. `None` when nothing changed, before a
+    /// window was noted in this run (the list is still the last quit's), or
+    /// once Halonic is quitting.
+    pub fn contents_changed(&mut self) -> Option<Vec<OpenWindow>> {
+        if self.quitting || !self.noted {
+            return None;
+        }
+        let windows: Vec<OpenWindow> = self
+            .last
+            .iter()
+            .map(|window| OpenWindow {
+                content: self.content(&window.label),
+                ..window.clone()
+            })
+            .collect();
+        if windows == self.last {
+            return None;
+        }
+        self.last = windows.clone();
+        Some(windows)
     }
 
     /// The content kept for the window labelled `label`.

@@ -262,10 +262,12 @@ pub async fn window_content_set<R: Runtime>(
     window: WebviewWindow<R>,
     content: Option<String>,
 ) -> Result<(), &'static str> {
-    lock(window.app_handle())
-        .set
-        .set_content(window.label(), content)?;
-    noted(window.app_handle(), None);
+    // One lock for the change and the write, and the windows aren't read
+    // again: two windows' changes can't write each other's list.
+    let mut tracked = lock(window.app_handle());
+    tracked.set.set_content(window.label(), content)?;
+    let list = tracked.set.contents_changed();
+    write(&tracked, list);
     Ok(())
 }
 

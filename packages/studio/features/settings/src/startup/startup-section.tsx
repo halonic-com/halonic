@@ -1,18 +1,29 @@
 import { SkeletonBar, Switch } from "@halonicjs/studio-kit";
 import type { SettingsSectionProps } from "@halonicjs/studio-shell";
 import { useEffect, useState } from "react";
-import { LoginItemService } from "../api.ts";
+import { HostSettingsService, LoginItemService } from "../api.ts";
 import type { LoginItemAnswer, LoginItemHost, LoginItemRefusal } from "./login-item-host.ts";
+import { ReopenWindowsSwitch } from "./reopen-windows-switch.tsx";
 import * as text from "./startup-text.ts";
 
 /**
- * Settings › Startup as the settings container shows it. The section is listed only where the
- * app gives a login item (`available` in `feature.ts`), so without one it draws nothing.
+ * Settings › Startup as the settings container shows it: the login item's switch, then **Reopen
+ * windows on start**. The section is listed only where the app gives a login item (`available` in
+ * `feature.ts`), so without one it draws nothing.
  */
-export function StartupSection({ context }: SettingsSectionProps) {
+export function StartupSection({ context, surface }: SettingsSectionProps) {
   const host = context.services.find(LoginItemService);
   if (host === undefined) return null;
-  return <StartupView host={host} />;
+  return (
+    <div className="flex max-w-120 flex-col gap-4">
+      <StartupView host={host} />
+      <ReopenWindowsSwitch
+        settings={context.services.get(HostSettingsService)}
+        announce={(line) => context.announcer.announce(line)}
+        surface={surface}
+      />
+    </div>
+  );
 }
 
 /** What the switch shows: `null` until the shell first answers. */
