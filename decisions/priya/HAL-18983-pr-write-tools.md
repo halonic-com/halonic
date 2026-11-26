@@ -9,8 +9,11 @@ Agent tools plugin, declared in the manifest right after `rebase_pr`. The
 now lists `write_pr` too. Nothing else it checks changes. The manifest's
 capabilities stay as they were; the one new thing the install needs is the
 PR write credential the board approved on 26 Nov (`pull_requests: write` on
-halonic-com/halonic only), set in the new `prWriteToken` setting.
+halonic-com/halonic only), set in the new `prWriteToken` setting. The
+`paperclip.pr-watcher-plugin` test lists every secret setting, so it now
+lists `prWriteToken` too.
 
 ## Covers
 
 - tooling/paperclip/src/plugin/tools.test.ts
+- tooling/paperclip/src/plugin/worker.test.ts

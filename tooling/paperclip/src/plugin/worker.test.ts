@@ -33,6 +33,7 @@ verifies("paperclip.pr-watcher-plugin", () => {
       "githubToken",
       "mergeQueueToken",
       "branchUpdateToken",
+      "prWriteToken",
       "paperclipApiKey",
       "taggerAnthropicKey",
       "trialResultsTokenRef",
