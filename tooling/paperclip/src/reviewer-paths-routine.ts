@@ -28,11 +28,12 @@ export const routineExcludedFolders: readonly string[] = [
 /**
  * File names excluded in any folder (HAL-19283): `.gitattributes`, licence
  * and notice files, plugin manifests, which declare what a plugin may do, and
- * the agents' own config, `.mcp.json` and anything in a `.claude/` folder
- * (Julian's item 7, HAL-19247).
+ * the agents' own config: `.mcp.json`, a `.claude` entry (a folder, a file or
+ * a link) and anything in it, line breaks in the name included (Julian's
+ * item 7, HAL-19247).
  */
 const routineExcludedNames =
-  /(^|\/)(\.gitattributes|\.mcp\.json|\.claude\/.*|(LICENSE|LICENCE|NOTICE|COPYING)(\.[a-z]+)?|plugin\/manifest\.[cm]?[jt]sx?|[^/]*plugin\.json)$/i;
+  /(^|\/)(\.gitattributes|\.mcp\.json|\.claude(\/[\s\S]*)?|(LICENSE|LICENCE|NOTICE|COPYING)(\.[a-z]+)?|plugin\/manifest\.[cm]?[jt]sx?|[^/]*plugin\.json)$/i;
 
 /**
  * Words that make a code path Liam's; tests, Markdown and wording files don't
