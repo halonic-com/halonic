@@ -14,6 +14,7 @@ import {
   julianRebaseRefusal,
   type RoutedPull,
   reviewerFor,
+  reviewerRoleFor,
 } from "../reviewer-paths.ts";
 import type { Routing } from "../routing.ts";
 import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
@@ -192,6 +193,7 @@ export async function prStatus(
     head,
     author,
     reviewer: reviewerFor(routed),
+    role: reviewerRoleFor(routed),
     rebaseRefusal,
   });
   const { approvals: found, copyError } =

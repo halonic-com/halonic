@@ -6,7 +6,7 @@
  */
 
 /** A reviewer whose signed line the gate reads. */
-export type Reviewer = "Liam" | "Julian";
+export type Reviewer = "Liam" | "Julian" | "Nora";
 
 /** A change request in words (board, 20 Nov 21:25). */
 export const blockWords =
@@ -78,7 +78,9 @@ export function signedApproval(body: string, reviewer: Reviewer): SignedApproval
   };
 }
 
-/** The approval Liam or Julian gives in this comment, the first that counts. */
+/** The approval Liam, Julian or Nora gives in this comment, the first that counts. */
 export function anySignedApproval(body: string): SignedApproval | null {
-  return signedApproval(body, "Liam") ?? signedApproval(body, "Julian");
+  return (
+    signedApproval(body, "Liam") ?? signedApproval(body, "Julian") ?? signedApproval(body, "Nora")
+  );
 }

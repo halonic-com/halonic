@@ -49,7 +49,7 @@ export function cancelledReruns(context: PassContext, rows: readonly GateRow[]):
     );
   };
   const liam = (row: GateRow) =>
-    row.approval?.ok === true && row.approval.julian !== true ? 1 : 0;
+    row.approval?.ok === true && row.approval.julian !== true && row.approval.nora !== true ? 1 : 0;
   const candidates = rows
     .filter(
       (row) =>

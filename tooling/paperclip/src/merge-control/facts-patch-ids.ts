@@ -2,7 +2,7 @@ import { branchPath } from "../pr-tools/pr-status.ts";
 import type { GitHubGet } from "../pr-watcher/github.ts";
 import { type CompareFile, changeIdOf } from "../pr-watcher/rebase-only.ts";
 import type { BoundedCache } from "./facts-cache.ts";
-import { signedApproval } from "./signed.ts";
+import { type Reviewer, signedApproval } from "./signed.ts";
 import type { GatePull } from "./snapshot.ts";
 
 /**
@@ -19,12 +19,14 @@ function differentHead(head: string, sha: string): boolean {
   return !head.startsWith(sha.slice(0, 7));
 }
 
-/** The heads Liam's or Julian's signed approvals name other than the current one. */
+const reviewers: readonly Reviewer[] = ["Liam", "Julian", "Nora"];
+
+/** The heads Liam's, Julian's or Nora's signed approvals name other than the current one. */
 function approvedOtherHeads(pull: GatePull): string[] {
   const shas = pull.texts.flatMap((text) =>
-    [signedApproval(text.body, "Liam"), signedApproval(text.body, "Julian")].flatMap((each) =>
-      each === null ? [] : [each.sha],
-    ),
+    reviewers
+      .map((reviewer) => signedApproval(text.body, reviewer))
+      .flatMap((each) => (each === null ? [] : [each.sha])),
   );
   return [...new Set(shas.filter((sha) => differentHead(pull.head, sha)))];
 }

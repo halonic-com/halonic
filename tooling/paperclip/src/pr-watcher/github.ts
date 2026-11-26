@@ -184,7 +184,8 @@ export async function latestReview(
  */
 export function findingBy(body: string | null | undefined): { by?: string } {
   const opening = (body ?? "").slice(0, 160);
-  const by = /^[ \t]*(Liam|Julian):/m.exec(opening)?.[1] ?? /\b(Liam|Julian)\b/.exec(opening)?.[1];
+  const by =
+    /^[ \t]*(Liam|Julian|Nora):/m.exec(opening)?.[1] ?? /\b(Liam|Julian|Nora)\b/.exec(opening)?.[1];
   return by === undefined ? {} : { by };
 }
 
