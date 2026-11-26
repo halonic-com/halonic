@@ -16,6 +16,7 @@ import {
   ProposalDecisionsService,
   SandboxPassesService,
   SandboxRefusalsService,
+  ServedHomeHintService,
 } from "./api.ts";
 import { Inbox } from "./inbox.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
@@ -56,6 +57,8 @@ export const inboxFeature = defineFeature({
     actionStepsKey,
     // The customer's account page, for **See usage** on a run at a plan limit (inbox.plan-limit-card).
     AccountMenuHostService,
+    // The served Studio's next step under an empty Needs you (inbox.home-next-step).
+    ServedHomeHintService,
   ],
   provides: [InboxService],
   register(studio) {
