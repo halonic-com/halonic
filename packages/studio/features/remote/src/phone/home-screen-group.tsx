@@ -15,22 +15,14 @@ const pinnable: readonly ShortcutTab[] = ["inbox", "messenger"];
 
 /**
  * The Home screen group (HAL-18991, on Paired computers per HAL-19149): one row per screen, each
- * with Add, which opens Android's own dialog. Nothing shows until the launcher says it pins, and
- * nothing at all when it can't, so no Add ever does nothing.
+ * with Add, which opens Android's own dialog. Paired computers shows it only once `useCanPin` says
+ * the launcher pins, so no Add ever does nothing. It is the screen's last block: the list's 24px
+ * above it, and `pb-safe` below to clear the home bar (HAL-20219).
  */
-export function HomeScreenGroup({
-  pinning,
-  report,
-}: {
-  readonly pinning: PhonePinning | undefined;
-  /** Where a `canPin` that failed goes, for the log. */
-  readonly report?: ((problem: string) => void) | undefined;
-}) {
-  const canPin = useCanPin(pinning, report);
+export function HomeScreenGroup({ pinning }: { readonly pinning: PhonePinning }) {
   const heading = useId();
-  if (pinning === undefined || !canPin) return null;
   return (
-    <section aria-labelledby={heading} className="flex flex-col gap-2 px-6 pb-safe">
+    <section aria-labelledby={heading} className="flex flex-col gap-2 px-6 pt-6 pb-safe">
       <h2 id={heading} className="text-body-strong text-fg">
         {shortcutWords.homeScreen}
       </h2>
@@ -57,7 +49,7 @@ export function HomeScreenGroup({
  * The launcher's answer to whether it pins; false until it answers, without the shell, and when
  * the question fails, which goes to `report` (Liam, #6689).
  */
-function useCanPin(
+export function useCanPin(
   pinning: PhonePinning | undefined,
   report: ((problem: string) => void) | undefined,
 ): boolean {

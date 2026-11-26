@@ -29,6 +29,22 @@ verifies("studio.src-tauri.app-shortcuts-commands", () => {
       }
     });
 
+    // The taskbar logos at 256 px (HAL-19183): the glyph spans its share of the ring's 168 px hole,
+    // against a ring whose 100 units are 256 px (HAL-20219).
+    it.each([
+      ["inbox", (168 * 0.58) / 34 / 2.56],
+      ["messenger", (168 * 0.5) / 28 / 2.56],
+    ] as const)("draw %s's glyph at the logo's size against the ring", (app, onRing) => {
+      const foreground = text(`drawable/ic_shortcut_${app}_foreground.xml`);
+      const scales = [...foreground.matchAll(/<group[^>]*android:scaleX="([\d.]+)"/g)].map(
+        (match) => Number(match[1]),
+      );
+      expect(scales).toHaveLength(2);
+      const [ring = 0, glyph = 0] = scales;
+      expect(ring).toBe(0.6);
+      expect(glyph).toBeCloseTo(onRing, 3);
+    });
+
     it.each(shortcutApps)("make %s an adaptive icon over the slate tile", (app) => {
       const adaptive = text(`drawable-anydpi-v26/ic_shortcut_${app}.xml`);
       expect(adaptive).toContain(

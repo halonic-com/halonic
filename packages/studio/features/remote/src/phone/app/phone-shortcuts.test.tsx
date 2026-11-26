@@ -243,6 +243,16 @@ verifies("remote.phone-shortcuts", () => {
     expect(shortcuts.pin.mock.calls).toEqual([["messenger"]]);
   });
 
+  it("spaces Home screen from Pair with a computer, and only the group clears the home bar", async () => {
+    const { tunnel, hosts } = await mount(fakeShortcuts([]));
+    await pairAndConnect(tunnel, hosts);
+    await press("Connected to Tim's laptop. Details");
+    await press("Paired computers");
+    const group = document.querySelector("section h2")?.parentElement;
+    expect(group?.classList).toContain("pt-6");
+    expect([...document.querySelectorAll(".pb-safe")]).toEqual([group]);
+  });
+
   it("shows no Home screen group when the launcher can't pin", async () => {
     const { tunnel, hosts } = await mount(fakeShortcuts([], () => Promise.resolve(false)));
     await pairAndConnect(tunnel, hosts);
@@ -250,6 +260,8 @@ verifies("remote.phone-shortcuts", () => {
     await press("Paired computers");
     expect(document.body.textContent).not.toContain("Home screen");
     expect(buttonNamed("Add Inbox")).toBeUndefined();
+    // Pair with a computer is the screen's last block, so it clears the home bar (HAL-20219).
+    expect(buttonNamed("Pair with a computer")?.parentElement?.classList).toContain("pb-safe");
   });
 
   it("shows no Home screen group, and logs why, when asking whether the launcher pins fails", async () => {

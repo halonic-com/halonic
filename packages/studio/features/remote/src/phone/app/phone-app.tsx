@@ -9,7 +9,7 @@ import {
 } from "react";
 import { computersWords } from "../computers-words.ts";
 import { forgottenWords } from "../forget-dialog.tsx";
-import { HomeScreenGroup, type PhonePinning } from "../home-screen-group.tsx";
+import { HomeScreenGroup, type PhonePinning, useCanPin } from "../home-screen-group.tsx";
 import type { NearbyComputers } from "../nearby-computers.ts";
 import { pairWords } from "../pair-words.ts";
 import { PairedComputers } from "../paired-computers.tsx";
@@ -59,6 +59,34 @@ export function PhoneApp(props: PhoneAppProps) {
   );
 }
 
+/**
+ * Paired computers, then the Home screen group once the launcher says it pins (HAL-19149). The
+ * screen's last block clears the home bar: the group when it shows, else Pair with a computer.
+ */
+function ComputersScreen({
+  router,
+  view,
+  pinning,
+  report,
+  onBack,
+}: PhoneAppProps & { readonly view: PhoneAppView; readonly onBack: (() => void) | undefined }) {
+  const canPin = useCanPin(pinning, report);
+  const group = canPin ? pinning : undefined;
+  return (
+    <TopBar title={computersWords.title} onBack={onBack} focusOnOpen>
+      <PairedComputers
+        computers={view.computers ?? []}
+        statuses={view.statuses}
+        onForget={(computer) => router.forget(computer)}
+        onPair={() => router.pair()}
+        onRetry={() => void router.refresh()}
+        atFoot={group === undefined}
+      />
+      {group === undefined ? null : <HomeScreenGroup pinning={group} />}
+    </TopBar>
+  );
+}
+
 function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
   const { router, view } = props;
   const back = view.canGoBack ? () => router.back() : undefined;
@@ -78,18 +106,7 @@ function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
         />
       );
     case "computers":
-      return (
-        <TopBar title={computersWords.title} onBack={back} focusOnOpen>
-          <PairedComputers
-            computers={view.computers ?? []}
-            statuses={view.statuses}
-            onForget={(computer) => router.forget(computer)}
-            onPair={() => router.pair()}
-            onRetry={() => void router.refresh()}
-          />
-          <HomeScreenGroup pinning={props.pinning} report={props.report} />
-        </TopBar>
-      );
+      return <ComputersScreen {...props} view={view} onBack={back} />;
     case "computer": {
       const computers = Array.isArray(view.computers) ? view.computers : [];
       const computer = computers.find((listed) => listed.id === screen.computer);
