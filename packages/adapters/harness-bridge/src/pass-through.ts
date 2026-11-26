@@ -308,8 +308,31 @@ function stoppedReading(limits: UpstreamLimits): KindedError {
   );
 }
 
-/** Calls the provider and waits for its reply to start. */
+/**
+ * Calls the provider and waits for its reply to start.
+ *
+ * A status outside 200–599 is taken as the provider being busy (requirement
+ * `harness-bridge.odd-status`), so the call moves on to the next host pin or
+ * the program gets the usual 503. It isn't passed on: `new Response()`
+ * can't hold it, and the program's own HTTP client can't be counted on to
+ * read it.
+ */
 async function callProvider(
+  upstream: UpstreamRequest,
+  fetch: Fetch,
+  signal: AbortSignal,
+): Promise<Response> {
+  const reply = await sendToProvider(upstream, fetch, signal);
+  if (reply.status <= 599) return reply;
+  await reply.body?.cancel();
+  throw new KindedError(
+    "unavailable",
+    `${upstream.provider} answered ${reply.status}, which isn't a status Halonic can pass on.`,
+  );
+}
+
+/** Sends the request to the provider. */
+async function sendToProvider(
   upstream: UpstreamRequest,
   fetch: Fetch,
   signal: AbortSignal,

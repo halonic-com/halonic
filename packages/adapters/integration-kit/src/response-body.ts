@@ -48,13 +48,13 @@ export function guardBody(
   const finalUrl = removeSecrets(url.href, guard.secrets);
   if (response.body === null) {
     guard.done();
-    return withUrl(new Response(null, { ...status, headers }), finalUrl);
+    return rebuilt(new Response(null, { ...status, headers }), response.status, finalUrl);
   }
   // Removing a secret changes the length. The body is filtered as the
   // transport hands it over: `fetch` has already undone the content coding.
   if (guard.secrets.longest > 0) headers.delete("content-length");
   const guarded = guardedStream(response.body, guard, tooLarge);
-  return withUrl(new Response(guarded, { ...status, headers }), finalUrl);
+  return rebuilt(new Response(guarded, { ...status, headers }), response.status, finalUrl);
 }
 
 /** Refuses a response whose declared length is over the limit, before any of it is read. */
@@ -147,10 +147,24 @@ async function pump(
   }
 }
 
-/** The status, with the secrets removed from the reason phrase, which the server writes. */
+/**
+ * The status, with the secrets removed from the reason phrase, which the
+ * server writes. `new Response()` throws for a status outside 200–599 and
+ * for a reason phrase with a control character, though the global `fetch`
+ * passes both on. Such a status is built as a 500, which isn't `ok` either,
+ * and {@link rebuilt} puts the real one back. Such a phrase is left out:
+ * nothing acts on it.
+ */
 function statusOf(response: Response, secrets: SecretForms): ResponseInit {
-  return { status: response.status, statusText: removeSecrets(response.statusText, secrets) };
+  const statusText = removeSecrets(response.statusText, secrets);
+  return {
+    status: response.status <= 599 ? response.status : 500,
+    statusText: reasonPhrase.test(statusText) ? statusText : "",
+  };
 }
+
+/** A reason phrase as the Fetch standard takes it: tabs, spaces, visible ASCII and the bytes from 0x80. */
+const reasonPhrase = /^[\t\x20-\x7e\x80-\xff]*$/;
 
 /** Settles like the promise, or rejects as soon as the signal aborts, whatever the transport does. */
 export function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
@@ -166,8 +180,9 @@ export function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promi
   });
 }
 
-/** Gives the response the URL of the hop that answered, as `fetch` does. */
-function withUrl(target: Response, href: string): Response {
+/** Gives the response the status the server sent and the URL of the hop that answered, as `fetch` does. */
+function rebuilt(target: Response, status: number, href: string): Response {
+  if (target.status !== status) Object.defineProperty(target, "status", { value: status });
   Object.defineProperty(target, "url", { value: href });
   return target;
 }
