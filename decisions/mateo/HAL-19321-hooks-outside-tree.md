@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this fix (HAL-19321); Liam reviews it and signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KpWRvHvwy0faPxiuJ2glDeihUJY5HRDAAJZl+VuQHkukBY7F5LpcQfcgcgcUisG0ZlNhOmlhUqp3jdrsSUDHBQ==
 
 ## What changes
 
