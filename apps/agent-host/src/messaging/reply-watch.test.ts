@@ -71,6 +71,25 @@ verifies("agent-host.paperclip-polling", () => {
     expect(await replies.waiting()).toBe(false);
   });
 
+  it("reads the conversation list once per check, and never a conversation's messages", async () => {
+    const { replies, messaging, chat, sendAsMe } = watching();
+    const other = messaging.addConversation(messaging.addAgent(chat.source, { name: "Ada" }).id);
+    sendAsMe("Can you check the release?");
+    messaging.addMessage(other.id, { body: "Ship it?", author: { kind: "me" } });
+    replies.watch(messaging, chat.id);
+    replies.watch(messaging, other.id);
+    const reads: string[] = [];
+    const listConversations = messaging.listConversations.bind(messaging);
+    messaging.listConversations = () => {
+      reads.push("conversations");
+      return listConversations();
+    };
+    messaging.listMessages = () => Promise.reject(new Error("a check never reads messages"));
+
+    expect(await replies.waiting()).toBe(true);
+    expect(reads).toEqual(["conversations"]);
+  });
+
   it("reports a read that fails and stops watching that conversation", async () => {
     const { replies, messaging, chat, sendAsMe, reported } = watching();
     sendAsMe("Can you check the release?");
