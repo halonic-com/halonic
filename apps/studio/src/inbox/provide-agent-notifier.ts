@@ -1,12 +1,6 @@
 import type { Disposable, ServiceRegistry } from "@halonicjs/app";
 import { AgentNotifierService } from "@halonicjs/studio-feature-inbox/api";
 import { AgentMessagingService, type Notifier } from "@halonicjs/studio-services";
-import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-
-/** The folder's agent notifier, which the folder's registry disposes when it closes. */
-export const agentNotifierDisposeKey: ServiceKey<Disposable> = serviceKey<Disposable>(
-  "studio.agent-notifier-dispose",
-);
 
 /**
  * Gives the Inbox the folder's desktop notifications for the agents' items
@@ -19,6 +13,6 @@ export function provideAgentNotifier(
   notifier: Notifier & Disposable,
 ): void {
   if (!services.has(AgentMessagingService)) return;
+  // The registry disposes what it holds, so closing the folder disposes the notifier.
   services.provide(AgentNotifierService, notifier);
-  services.provide(agentNotifierDisposeKey, { dispose: () => notifier.dispose() });
 }

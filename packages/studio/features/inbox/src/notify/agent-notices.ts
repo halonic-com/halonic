@@ -46,7 +46,10 @@ export function followAgentNotices(
   };
 }
 
-/** Opens an Inbox item; anything else, such as a conversation, has nowhere to open here yet. */
+/**
+ * Opens an Inbox item or a conversation through `openMessagingItem`, which shows nothing for a
+ * conversation until the Messenger window can take it. Work and summaries name no item to open.
+ */
 function openTarget(target: NoticeTarget, window: OpenItemWindow): void {
   if (target.kind !== "inbox-item" && target.kind !== "conversation") return;
   openMessagingItem({ id: target.id, kind: target.kind }, window);
