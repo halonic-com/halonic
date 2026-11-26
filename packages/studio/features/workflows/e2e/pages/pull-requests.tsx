@@ -1,4 +1,10 @@
-import type { MergeQueue, PullRequest, TeamStatus, TeamStatusParts } from "@halonicjs/ports";
+import type {
+  MergeQueue,
+  PullRequest,
+  PullRequestEvent,
+  TeamStatus,
+  TeamStatusParts,
+} from "@halonicjs/ports";
 import { loadPullRequestsScreen } from "@halonicjs/studio-feature-team/api";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -165,7 +171,16 @@ const team: TeamStatus = {
   seats: async () => [],
   pullRequests: async () =>
     state === "no-snapshot" ? [] : [{ source, repo: "acme", asOf, open, recent }],
-  pullRequest: async () => undefined,
+  // A PR's own page, with a short timeline, for the `detail` screenshot (HAL-19765).
+  pullRequest: async (id) => {
+    const found = open.find((each) => each.id === id);
+    if (found === undefined) return undefined;
+    const timeline: PullRequestEvent[] = [
+      { kind: "out-of-draft", text: "Out of draft", at: minutesAgo(150) },
+      { kind: "check-failed", text: "typecheck failed", at: minutesAgo(120) },
+    ];
+    return { asOf, pullRequest: { ...found, changedLines: 312 }, timeline };
+  },
   mergeQueue: async () => [queue],
   changes: async function* () {},
 };

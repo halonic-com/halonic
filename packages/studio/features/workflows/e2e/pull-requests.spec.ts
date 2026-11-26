@@ -18,6 +18,8 @@ const states = [
   { name: "all-open", query: "attention", tab: /All open/, shows: "Conflicting" },
   { name: "queue", query: "attention", tab: /Queue/, shows: "Waiting to enter" },
   { name: "merged", query: "attention", tab: /Merged today/, shows: "Merged 12:20" },
+  // One PR's page, headed by the kit's author line (HAL-19765).
+  { name: "detail", query: "attention", open: /^#5641/, shows: "Ravi" },
   { name: "runners-busy", query: "runners-busy", shows: "Runners busy" },
   { name: "queue-empty", query: "queue-empty", tab: /Queue/, shows: "The merge queue is empty." },
   { name: "old", query: "old", shows: "The PR watcher may have stopped." },
@@ -46,6 +48,7 @@ for (const size of sizes) {
         await page.goto(`/pull-requests.html?state=${state.query}`);
         await expect(page.getByRole("heading", { level: 1 })).toContainText("Pull requests");
         if ("tab" in state) await page.getByRole("tab", { name: state.tab }).click();
+        if ("open" in state) await page.getByRole("button", { name: state.open }).first().click();
         await expect(page.getByText(state.shows, { exact: false }).first()).toBeVisible();
         expect(await scrollsSideways(page), "nothing scrolls sideways").toBe(false);
         await page.screenshot({
