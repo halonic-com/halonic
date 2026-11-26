@@ -230,6 +230,8 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "owner_login",
         "owner_logout",
         "owner_status",
+        "window_content_get",
+        "window_content_set",
     ] {
         assert!(
             commands.iter().any(|command| command == expected),

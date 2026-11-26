@@ -1,0 +1,19 @@
+{
+  "identifier": "desktop-window-content",
+  "description": "On desktop, each app window (Studio, Halonic Inbox, Halonic Messenger) may keep a short string saying what it shows, at most 2 KB, through window_content_set, and read it back at start through window_content_get, so Halonic reopens each window with what it showed (HAL-19534). Both commands take the window from the call, never from an argument, so a page only reaches its own window's string; the shell never reads it. Not the feedback, brief or quick ask windows, and local only, so the Studio the computer serves gets nothing.",
+  "local": true,
+  "windows": [
+    "main",
+    "inbox",
+    "messenger"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-window-content-get",
+    "allow-window-content-set"
+  ]
+}

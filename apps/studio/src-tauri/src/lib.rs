@@ -26,7 +26,8 @@
 //! (capabilities/desktop-updates.json), in the main window only the
 //! `login_item_*` commands (capabilities/desktop-login-item.json) and `keep_awake_set`
 //! (capabilities/desktop-keep-awake.json), in the focused apps' windows only
-//! `show_main_window` (capabilities/desktop-show-main-window.json), in the main window only
+//! `show_main_window` (capabilities/desktop-show-main-window.json), in every app window
+//! `window_content_get` and `window_content_set` (capabilities/desktop-window-content.json), in the main window only
 //! `take_pending_notification_click` (capabilities/desktop-pending-notification-click.json), and the page's close request
 //! (capabilities/desktop-window.json), the title bar's `set_frame_colour` (capabilities/desktop-frame-colour.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
@@ -102,6 +103,10 @@ mod navigation;
 #[cfg(desktop)]
 mod notification_clicks;
 mod open_timings;
+#[cfg(desktop)]
+mod open_windows;
+#[cfg(desktop)]
+mod open_windows_track;
 #[cfg(target_os = "android")]
 mod owner_check;
 mod owner_check_page;
@@ -232,6 +237,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(updates::Updates::default())
         .manage(engines::EnginesState::default())
         .manage(tray::TrayShellState::default())
+        .manage(open_windows_track::OpenWindowsState::default())
         .manage(notification_clicks::pending_click::PendingClick::default())
         .manage(keep_awake::KeepAwakeState::default())
         // Registered only so the shell can use it from Rust: no capability
@@ -440,6 +446,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             owner_sign_in::owner_status,
             #[cfg(desktop)]
             focused_apps::show_main_window,
+            #[cfg(desktop)]
+            open_windows_track::window_content_get,
+            #[cfg(desktop)]
+            open_windows_track::window_content_set,
             #[cfg(desktop)]
             notification_clicks::pending_click::take_pending_notification_click,
             frame_colour::set_frame_colour,

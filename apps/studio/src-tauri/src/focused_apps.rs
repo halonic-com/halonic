@@ -163,7 +163,9 @@ pub fn started_again<R: Runtime>(handle: &AppHandle<R>, arguments: &[String]) {
     if crate::background_start::requested(arguments) {
         return;
     }
-    if let Err(error) = show(handle, requested(arguments)) {
+    // The first window after a start at login reopens the windows open at
+    // the last quit with it (`open_windows_track`).
+    if let Err(error) = crate::open_windows_track::open(handle, requested(arguments)) {
         halonic_shell_log::record("window", format!("a window didn't open: {error}"));
     }
 }

@@ -44,13 +44,20 @@ pub fn record(file: &Path, locations: &[String]) -> std::io::Result<()> {
     };
     let mut text = serde_json::to_string_pretty(&list)?;
     text.push('\n');
+    replace_file(file, &text)
+}
+
+/// Replaces `file` with `text`: a temporary file next to it, then a rename,
+/// so a crash leaves the old file or the new one. Readable by its owner
+/// only. The open windows (`open_windows.rs`) keep their list this way too.
+pub(crate) fn replace_file(file: &Path, text: &str) -> std::io::Result<()> {
     if let Some(parent) = file.parent() {
         fs::create_dir_all(parent)?;
     }
     let mut name = file.file_name().unwrap_or_default().to_owned();
     name.push(".tmp");
     let temporary = file.with_file_name(name);
-    let written = write_then_rename(&temporary, file, &text);
+    let written = write_then_rename(&temporary, file, text);
     if written.is_err() {
         // A half-written temporary file must not stay behind. If removing it
         // fails too, the write's own error is the one to report.
@@ -90,19 +97,9 @@ pub fn read(file: &Path) -> Vec<String> {
 }
 
 fn read_list(file: &Path) -> Result<Vec<String>, String> {
-    let opened = match File::open(file) {
-        Ok(opened) => opened,
-        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(Vec::new()),
-        Err(error) => return Err(error.to_string()),
+    let Some(text) = read_capped(file, MAX_FILE_BYTES)? else {
+        return Ok(Vec::new());
     };
-    let mut text = String::new();
-    opened
-        .take(MAX_FILE_BYTES + 1)
-        .read_to_string(&mut text)
-        .map_err(|error| error.to_string())?;
-    if text.len() as u64 > MAX_FILE_BYTES {
-        return Err(format!("it is over {MAX_FILE_BYTES} bytes"));
-    }
     let list: ListFile = serde_json::from_str(&text).map_err(|error| error.to_string())?;
     if list.version != FORMAT_VERSION {
         return Err(format!(
@@ -111,4 +108,23 @@ fn read_list(file: &Path) -> Result<Vec<String>, String> {
         ));
     }
     Ok(list.workspaces)
+}
+
+/// `file`'s text, or `None` when it is missing; refused when it is over
+/// `max_bytes`, so a huge file is never read whole.
+pub(crate) fn read_capped(file: &Path, max_bytes: u64) -> Result<Option<String>, String> {
+    let opened = match File::open(file) {
+        Ok(opened) => opened,
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(error.to_string()),
+    };
+    let mut text = String::new();
+    opened
+        .take(max_bytes + 1)
+        .read_to_string(&mut text)
+        .map_err(|error| error.to_string())?;
+    if text.len() as u64 > max_bytes {
+        return Err(format!("it is over {max_bytes} bytes"));
+    }
+    Ok(Some(text))
 }

@@ -161,6 +161,8 @@ fn quit<R: Runtime>(app: &AppHandle<R>) {
     {
         return;
     }
+    // Before any window closes, so the next start opens them all again.
+    crate::open_windows_track::quitting(app);
     let app = app.clone();
     // Off the main thread: redrawing the tray waits on it.
     thread::spawn(move || {
@@ -227,7 +229,10 @@ fn exit_requested<R: Runtime>(app: &AppHandle<R>, code: Option<i32>, api: &ExitR
     let quitting = state.quitting.load(Ordering::SeqCst);
     if stays_in_tray(code, windows_left, background, quitting) {
         api.prevent_exit();
+        return;
     }
+    // Halonic exits: the open windows are kept as they are now.
+    crate::open_windows_track::quitting(app);
 }
 
 fn scheme() -> IconScheme {
