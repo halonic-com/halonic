@@ -1,12 +1,12 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Avatar, PlainList, PlainRow, type PlainRowAction, TimeStamp } from "@halonicjs/studio-kit";
+import { PlainList, PlainRow, type PlainRowAction, TimeStamp } from "@halonicjs/studio-kit";
 import { useRef } from "react";
-import { chatTint } from "../agent-tint.ts";
 import { channelSize, isChannel, workingMembers } from "../channel.ts";
-import { chatAgent, chatName } from "../chat-name.ts";
+import { chatName } from "../chat-name.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
-import { type AgentPictures, pictureOf } from "./agent-pictures.ts";
+import type { AgentPictures } from "./agent-pictures.ts";
+import { ChatAvatar } from "./chat-avatar.tsx";
 import { Highlighted } from "./chat-search.tsx";
 import { ChatsSkeleton, useFadeIn } from "./load-states.tsx";
 
@@ -83,7 +83,7 @@ export function ConversationList({
             row={row}
             current={current}
             onSelect={onSelect}
-            picture={pictureOf(pictures, row)}
+            pictures={pictures}
             now={now}
             unread={count}
             action={current ? undefined : rowAction(row, count, marks)}
@@ -151,7 +151,7 @@ function Row({
   row,
   current,
   onSelect,
-  picture,
+  pictures,
   now,
   unread,
   action,
@@ -162,7 +162,7 @@ function Row({
   readonly row: ConversationRow;
   readonly current: boolean;
   readonly onSelect: (conversation: MessagingId) => void;
-  readonly picture: ImageBitmap | undefined;
+  readonly pictures: AgentPictures;
   readonly now: Date;
   /** How many messages the person hasn't seen; 0 shows no badge. */
   readonly unread: number;
@@ -178,14 +178,7 @@ function Row({
   return (
     <PlainRow
       id={row.conversation.id}
-      picture={
-        <Avatar
-          name={chatAgent(row)?.name ?? row.conversation.title}
-          picture={picture}
-          tint={chatTint(row)}
-          size="sidebar"
-        />
-      }
+      picture={<ChatAvatar row={row} pictures={pictures} size="sidebar" />}
       title={<Highlighted text={chatName(row)} term={highlight} />}
       afterTitle={afterName(row, named)}
       flag={waitsForPerson(row) ? messengerWords.needsYouDot : undefined}

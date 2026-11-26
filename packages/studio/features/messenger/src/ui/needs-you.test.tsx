@@ -125,7 +125,7 @@ verifies("messenger.needs-you", () => {
 });
 
 verifies("messenger.agent-avatar-tint", () => {
-  it("draws a channel question's asker on their own tint, the channel's avatar neutral", async () => {
+  it("draws a channel question's asker on their own tint, the channel's members on theirs", async () => {
     const { messaging, elena } = acmeWithElena();
     const page = await openMessenger(messaging);
     await press(entry(page));
@@ -134,7 +134,10 @@ verifies("messenger.agent-avatar-tint", () => {
     const tile = card?.querySelector("span.rounded-full");
     expect(tile?.textContent).toBe("E");
     expect(tile?.className).toContain(agentTint(elena));
+    // The channel's picture is its members', each on their own tint (`messenger.channel-picture`).
     const channel = byText(page, "nav li button", "Engineering");
-    expect(channel?.querySelector("span.rounded-full")?.className).not.toMatch(/bg-agent-/);
+    const behind = channel?.querySelector('[data-member="behind"] span.rounded-full');
+    expect(behind?.textContent).toBe("E");
+    expect(behind?.className).toContain(agentTint(elena));
   });
 });

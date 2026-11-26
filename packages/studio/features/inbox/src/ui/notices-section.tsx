@@ -4,6 +4,7 @@ import { type EngineWords, errorMessageFor } from "@halonicjs/studio-shell";
 import { useId, useRef } from "react";
 import type { InboxNotice, InboxNotices } from "../notices/inbox-notices.ts";
 import { type NoticesState, useNotices } from "../notices/use-notices.ts";
+import { noticeMark } from "./row-marks.tsx";
 
 const loadFailed = "Couldn't load notices";
 
@@ -110,28 +111,32 @@ function NoticeRow({
         Change budget
       </Button>
     );
-  // The title asks for 10rem next to its buttons. In a narrower row (a phone, or 400 % zoom) the
-  // buttons go on a line under it, together and on the right, so the title keeps the whole width.
+  // The bell leads the row, as Needs you's marks do (`inbox.notice-bell`). Beside it, the title
+  // asks for 10rem next to its buttons. In a narrower row (a phone, or 400 % zoom) the buttons go
+  // on a line under it, together and on the right, so the title keeps the whole width.
   return (
-    <li className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-border px-4 py-2">
-      <p id={titleId} className="min-w-0 flex-1 basis-40 text-body">
-        {title}
-      </p>
-      <div className="ml-auto flex items-center gap-2">
-        {notice.kind === "sandbox-fixed" || failed?.fixed ? (
-          <span className="text-small text-success">Fixed</span>
-        ) : (
-          (link ?? changeBudget)
-        )}
-        {notice.kind === "budget-month" ? null : (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<CloseIcon />}
-            label={`Dismiss ${title}`}
-            onClick={dismiss}
-          />
-        )}
+    <li className="flex items-center gap-3 border-b border-border px-4 py-2">
+      {noticeMark()}
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+        <p id={titleId} className="min-w-0 flex-1 basis-40 text-body">
+          {title}
+        </p>
+        <div className="ml-auto flex items-center gap-2">
+          {notice.kind === "sandbox-fixed" || failed?.fixed ? (
+            <span className="text-small text-success">Fixed</span>
+          ) : (
+            (link ?? changeBudget)
+          )}
+          {notice.kind === "budget-month" ? null : (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<CloseIcon />}
+              label={`Dismiss ${title}`}
+              onClick={dismiss}
+            />
+          )}
+        </div>
       </div>
     </li>
   );

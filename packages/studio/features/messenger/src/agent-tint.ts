@@ -14,7 +14,8 @@ export function agentTint(author: Exclude<MessagingAuthor, { kind: "me" }>): Age
 
 /**
  * A chat's agent's tint, for its avatar in the list, the header and Needs you, the same as its
- * bubbles (`kit.avatar-tint`). A channel holds several agents, so its avatar stays neutral.
+ * bubbles (`kit.avatar-tint`). A channel has none of its own: its picture shows its members, each
+ * on their own tint (`messenger.channel-picture`).
  */
 export function chatTint(row: ConversationRow): AgentTint | undefined {
   return isChannel(row) ? undefined : tintOf(row.conversation.agent);

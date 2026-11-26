@@ -1,17 +1,18 @@
 import type { Message, MessagingId } from "@halonicjs/ports";
-import { Avatar, ContentHeader } from "@halonicjs/studio-kit";
+import { ContentHeader } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { chatTint } from "../agent-tint.ts";
 import { isChannel } from "../channel.ts";
 import type { PendingMessage } from "../chat-layout.ts";
-import { chatAgent, chatName } from "../chat-name.ts";
+import { chatName } from "../chat-name.ts";
 import { activityOf, type ConversationRow, type Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { ActivityButton } from "./activity-toggle.tsx";
+import { type AgentPictures, pictureOf } from "./agent-pictures.ts";
 import { CardsBar } from "./cards-bar.tsx";
 import { ChannelHeaderActions } from "./channel-header-actions.tsx";
 import { authorOf } from "./channel-message.tsx";
+import { ChatAvatar } from "./chat-avatar.tsx";
 import { ChatBox } from "./chat-box.tsx";
 import { useChatCards } from "./chat-cards.tsx";
 import { ChatMenu } from "./chat-menu.tsx";
@@ -20,6 +21,9 @@ import { MembersPanel } from "./members-panel.tsx";
 import { Transcript } from "./transcript.tsx";
 import { useReactions } from "./use-reactions.ts";
 import { WaitingBar } from "./waiting-bar.tsx";
+
+/** No picture read yet. */
+const noPictures: AgentPictures = new Map();
 
 /** The props of {@link ConversationView}. */
 export interface ConversationViewProps {
@@ -33,8 +37,11 @@ export interface ConversationViewProps {
   readonly onChanged?: () => void;
   /** **Mark as unread** in the header's ··· menu: the page marks the chat and closes it. */
   readonly onMarkUnread?: () => void;
-  /** The chat agent's picture for the header and its messages; without one, its initial shows. */
-  readonly picture?: ImageBitmap | undefined;
+  /**
+   * The agents' pictures read so far: the chat agent's for the header and its messages, a
+   * channel's two members' for its header; without one, the initial shows.
+   */
+  readonly pictures?: AgentPictures;
   /** How a failed read says the engine isn't answering. */
   readonly words: EngineWords;
 }
@@ -61,9 +68,10 @@ export function ConversationView({
   onLeft,
   onChanged,
   onMarkUnread,
-  picture,
+  pictures = noPictures,
   words,
 }: ConversationViewProps) {
+  const picture = pictureOf(pictures, row);
   // What the chat's status region reads out: a new message, or the option that answered a card.
   // Each gets its own key, so the same words twice are read twice (HAL-18316 MS8).
   const [said, setSaid] = useState({ text: "", count: 0 });
@@ -104,7 +112,7 @@ export function ConversationView({
     <section ref={section} aria-label={chatName(row)} className="flex min-h-0 flex-1 flex-col">
       <ConversationHeader
         row={row}
-        picture={picture}
+        pictures={pictures}
         find={<FindButton find={find} />}
         menu={
           onMarkUnread === undefined || !messenger.canMarkUnread(row) ? null : (
@@ -287,13 +295,13 @@ function newestFromAgent(
 /** The conversation's agent, its source and activity, and the find bar's icon. */
 function ConversationHeader({
   row,
-  picture,
+  pictures,
   find,
   menu,
   children,
 }: {
   readonly row: ConversationRow;
-  readonly picture: ImageBitmap | undefined;
+  readonly pictures: AgentPictures;
   /** The icon that opens the find bar (Ctrl+F). */
   readonly find: ReactNode;
   /** The ··· menu, last; none while the chat has nothing to mark unread. */
@@ -304,14 +312,7 @@ function ConversationHeader({
   const activity = messengerWords.activity[activityOf(row)];
   return (
     <ContentHeader
-      picture={
-        <Avatar
-          name={chatAgent(row)?.name ?? row.conversation.title}
-          picture={picture}
-          tint={chatTint(row)}
-          size="header"
-        />
-      }
+      picture={<ChatAvatar row={row} pictures={pictures} size="header" />}
       title={chatName(row)}
       line={[row.source?.label ?? "", activity].filter((part) => part !== "").join(" · ")}
       actions={
