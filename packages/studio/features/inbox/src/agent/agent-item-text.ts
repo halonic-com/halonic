@@ -50,12 +50,26 @@ export function askerLine(
 }
 
 /**
- * Whether the question is no more than its title, one line in one block, so the card shows it
- * once, as its title, and not again as its body.
+ * The question as the card's body, without the line its title came from, so a heading such as
+ * "New secret: GOOGLE_ADS_TOKEN" shows once (design check HAL-19016, 7). Empty when the question is
+ * no more than its title. A first block the title can't say in full, such as code or a link, stays.
  */
-export function questionIsTitle(item: AgentItem): boolean {
-  const blocks = readMarkdown(item.question);
-  return blocks.length <= 1 && !item.question.trim().includes("\n");
+export function agentItemBody(item: AgentItem): string {
+  const [first] = readMarkdown(item.question);
+  if (first === undefined) return "";
+  if (first.kind === "code") return item.question;
+  const inlines = first.kind === "list" ? (first.items[0] ?? []) : first.inlines;
+  if (!onlyWords(inlines)) return item.question;
+  const [, ...rest] = item.question.trim().split("\n");
+  return rest.join("\n").trim();
+}
+
+/** Whether the inlines are words alone, bold or italic at most, which the title says as they are. */
+function onlyWords(inlines: readonly MarkdownInline[]): boolean {
+  return inlines.every((inline) => {
+    if (inline.kind === "strong" || inline.kind === "em") return onlyWords(inline.children);
+    return inline.kind === "text";
+  });
 }
 
 function plainText(inlines: readonly MarkdownInline[]): string {

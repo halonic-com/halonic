@@ -21,11 +21,11 @@ import {
 } from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import {
+  agentItemBody,
   agentItemTitle,
   answeredLine,
   answerText,
   askerLine,
-  questionIsTitle,
   sourceDownLine,
   workLine,
 } from "../agent/agent-item-text.ts";
@@ -133,7 +133,7 @@ export function AgentItemCard({
           since={[label, since].filter((part) => part != null).join(" · ")}
         />
         {work === undefined ? null : <p className="text-small text-fg-muted">{workLine(work)}</p>}
-        {questionIsTitle(item) ? null : <AgentMarkdown text={item.question} />}
+        <AgentBody text={agentItemBody(item)} />
         <AgentAttachments attachments={item.attachments} read={readAttachment} />
       </div>
       <div className="flex flex-col gap-3 border-t border-border p-4">
@@ -222,6 +222,11 @@ function AnswerControls({
   return (
     <OptionButtons options={item.options} unavailable={unavailable} busy={busy} onAnswer={send} />
   );
+}
+
+/** The question under its title, as safe Markdown; nothing when the title says it all. */
+function AgentBody({ text }: { readonly text: string }) {
+  return text === "" ? null : <AgentMarkdown text={text} />;
 }
 
 /** Who asks, with their picture, over the title; nothing for an item you wrote yourself. */

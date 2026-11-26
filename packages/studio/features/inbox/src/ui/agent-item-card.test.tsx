@@ -118,6 +118,9 @@ verifies("inbox.agent-inbox-items", () => {
       />,
     );
     expect(root.querySelector("h2, h3")?.textContent).toBe("New secret: Acme deploy token");
+    // The title is its first line, so the body below it doesn't say it again (HAL-19016, 7).
+    expect(root.textContent?.split("New secret: Acme deploy token")).toHaveLength(2);
+    expect(root.textContent).toContain("Key: ACME_DEPLOY_TOKEN");
     expect(root.textContent).toContain("The website deploy needs it.");
     const buttons = [...root.querySelectorAll("button")].map((button) => button.textContent);
     expect(buttons).toEqual(["Approve", "Reject"]);

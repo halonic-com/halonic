@@ -153,6 +153,19 @@ verifies("feedback.overlay", () => {
     ]);
   });
 
+  it("keeps the size label on one line at the screen's edge, and lets the hint only fade with reduced motion", async () => {
+    await mount("overlay");
+    await vi.waitFor(() => expect(drawn).toHaveBeenCalled());
+    // The kit sets --motion-rise to 0 under reduced motion; a fixed translate would still move.
+    const hint = [...element.querySelectorAll("p")].find((line) =>
+      line.textContent?.startsWith("Drag to select an area"),
+    );
+    expect(hint?.className).toContain("starting:-translate-y-(--motion-rise)");
+    // Placed by its right edge, the label's width is only what is left of the screen: it must not wrap.
+    dragFrom([10, 10], [99, 49]);
+    expect(element.querySelector("[data-feedback-size]")?.className).toContain("whitespace-nowrap");
+  });
+
   it("does nothing on a box under 8 × 8, dragged or clicked, and stays open", async () => {
     const shell = await mount("overlay");
     await vi.waitFor(() => expect(drawn).toHaveBeenCalled());
