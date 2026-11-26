@@ -13,13 +13,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { stageCli } from "./stage-cli.ts";
+import { resolvedPackages, stageCli } from "./stage-cli.ts";
 
 // Packs the CLI the way the release does and installs the tarball into a
 // fresh folder outside the workspace. The sandbox runtime travels inside the
 // tarball, so the install needs no network.
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
+let stagedDirectory = "";
 const scratch = mkdtempSync(join(tmpdir(), "stage-cli-"));
 const consumer = join(scratch, "consumer");
 const version = "0.1.0-test.1";
@@ -44,6 +45,7 @@ beforeAll(async () => {
   const notices = join(scratch, "THIRD-PARTY-NOTICES.txt");
   writeFileSync(notices, "notices\n");
   const staged = await stageCli(root, version, notices, join(scratch, "cli"));
+  stagedDirectory = staged.directory;
   const tarballs = join(scratch, "tarballs");
   mkdirSync(tarballs);
   const tarball = runOk(
@@ -128,6 +130,25 @@ verifies("publish.staged-cli", () => {
     expect(readme).toContain("npm install -g halonic");
     expect(readme).toContain("https://docs.halonic.dev/getting-started");
     expect(readme).not.toContain("**Layer:**");
+  });
+
+  it("never resolves a workspace package when the bundle loads (HAL-19380)", () => {
+    const bundle = readFileSync(join(stagedDirectory, "dist/cli/main.js"), "utf8");
+    expect(bundle).not.toMatch(/import\.meta\.resolve\(\s*["']@halonicjs\//);
+  });
+
+  it("finds what a bundle resolves with import.meta.resolve, Node's own modules left out", () => {
+    const bundle = [
+      'import.meta.resolve("@halonicjs/target-paperclip-runtime/actions");',
+      "import.meta.resolve('node:fs');",
+      'import.meta.resolve( "acme-lib");',
+      "import.meta.resolve(name);",
+    ].join("\n");
+    expect(resolvedPackages(bundle)).toEqual([
+      "@halonicjs/target-paperclip-runtime/actions",
+      "acme-lib",
+      "<computed>",
+    ]);
   });
 
   it("refuses to stage when the notices file is missing", async () => {

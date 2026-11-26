@@ -12,12 +12,7 @@ import {
 import { pluginActions, runtimeCapabilities } from "@halonicjs/target-paperclip-runtime/actions";
 import { DetailedError } from "./command.ts";
 import { buildMessages } from "./messages/build.ts";
-
-/** Where the runtime package's build writes the worker every plugin gets. */
-export const runtimeWorkerUrl = new URL(
-  "../dist/worker.js",
-  import.meta.resolve("@halonicjs/target-paperclip-runtime/actions"),
-);
+import { runtimeWorkerUrl } from "./runtime-worker.ts";
 
 /**
  * The read token's setting. Paperclip keeps a secret reference in it, never
@@ -34,10 +29,21 @@ const githubTokenSetting = {
 /**
  * Reads the shipped runtime.
  *
- * @param workerUrl - where the built worker is; tests pass their own
- * @throws DetailedError `not_found` when the worker isn't built
+ * @param findWorker - where the built worker is, `undefined` when this copy of Halonic doesn't
+ * carry the runtime (the npm package); tests pass their own
+ * @throws DetailedError `not_found` when the worker isn't built or isn't shipped
  */
-export async function shippedPluginRuntime(workerUrl = runtimeWorkerUrl): Promise<PluginRuntime> {
+export async function shippedPluginRuntime(
+  findWorker: () => URL | undefined = runtimeWorkerUrl,
+): Promise<PluginRuntime> {
+  const workerUrl = findWorker();
+  if (workerUrl === undefined) {
+    throw new DetailedError(
+      "not_found",
+      buildMessages.noRuntime(),
+      buildMessages.noRuntimeInPackageFix(),
+    );
+  }
   const worker = await readFile(workerUrl).catch(() => {
     throw new DetailedError("not_found", buildMessages.noRuntime(), buildMessages.noRuntimeFix());
   });

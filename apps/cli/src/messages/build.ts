@@ -92,6 +92,8 @@ export const buildMessages = defineMessages("build", {
     phrase`Take the ${tools.length === 1 ? "file" : "files"} for ${listInWords(tools)} out of library/tools and commit, then build again.`,
   noRuntime: () => phrase`this copy of Halonic has no built plugin runtime.`,
   noRuntimeFix: () => phrase`Build it: pnpm --filter @halonicjs/target-paperclip-runtime build`,
+  noRuntimeInPackageFix: () =>
+    phrase`Build the plugin from a clone of https://github.com/halonic-com/halonic: the npm package doesn't include the runtime.`,
 
   noPrevious: (path: string) => phrase`there's no file at ${path}.`,
   previousNotHalonic: (path: string) => phrase`${path} isn't a release file Halonic wrote.`,
