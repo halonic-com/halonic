@@ -125,12 +125,16 @@ export function ComputerViews({
     if (messaging === undefined) {
       return view.olderComputer ? <OlderComputerPanel computer={computer} /> : null;
     }
+    const { screen } = router.view;
     return (
       <PhoneMessenger
         messaging={messaging}
         computer={computer}
         olderComputer={view.olderComputer}
         onOpenLink={onOpenLink}
+        landing={screen.screen === "computer" ? screen.chat : undefined}
+        onOpened={(conversation) => router.chatOpened(conversation)}
+        onLanded={() => router.chatLanded()}
       />
     );
   }

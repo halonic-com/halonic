@@ -19,6 +19,12 @@ export interface PhoneMessengerProps {
   readonly olderComputer: boolean;
   /** Opens a link `isAllowedWebLink` passed in the system browser. */
   readonly onOpenLink: (link: string) => void;
+  /** The id of the chat the last-chat shortcut opens, until `onLanded` (HAL-20160). */
+  readonly landing?: string | undefined;
+  /** A chat opened, tapped or landed on: the phone makes it the last-chat shortcut. */
+  readonly onOpened?: (conversation: Conversation) => void;
+  /** The landing chat opened, or the list shows because the chat is gone. */
+  readonly onLanded?: () => void;
 }
 
 /** Agents' names by id, for the `@` sheet, the To line and Members. */
@@ -40,9 +46,20 @@ export function PhoneMessenger(props: PhoneMessengerProps) {
   return <MessengerLists {...props} />;
 }
 
-function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps) {
+function MessengerLists({
+  messaging,
+  computer,
+  onOpenLink,
+  landing,
+  onOpened,
+  onLanded,
+}: PhoneMessengerProps) {
   const [waitingOnly, setWaitingOnly] = useState(false);
   const [open, setOpen] = useState<Conversation | undefined>(undefined);
+  const openChat = (conversation: Conversation) => {
+    setOpen(conversation);
+    onOpened?.(conversation);
+  };
   const listed = useListRead(messaging, "conversations", isConversation, open === undefined);
   const agents = useListRead(messaging, "agents", isAgent, open === undefined);
   const names: AgentNames = useMemo(
@@ -51,6 +68,16 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
   );
   const failure = listed.failure ?? agents.failure;
   const conversations = listed.items;
+  // The shortcut's chat opens once the list has answered; a chat that's gone leaves the list.
+  useEffect(() => {
+    if (landing === undefined || conversations === undefined) return;
+    const landed = conversations.find((conversation) => conversation.id === landing);
+    if (landed !== undefined) {
+      setOpen(landed);
+      onOpened?.(landed);
+    }
+    onLanded?.();
+  }, [landing, conversations, onOpened, onLanded]);
 
   if (open !== undefined) {
     return (
@@ -93,7 +120,7 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
       failedLine={failedLine}
       waitingOnly={waitingOnly}
       onWaitingOnly={setWaitingOnly}
-      onOpen={setOpen}
+      onOpen={openChat}
     />
   );
 }

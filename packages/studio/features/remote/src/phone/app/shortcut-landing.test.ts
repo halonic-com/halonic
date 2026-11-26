@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { FakePhoneRemote } from "../../test-support/fake-phone-remote.ts";
 import { FakePhoneTunnel } from "../../test-support/phone-tunnel.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
@@ -22,13 +22,15 @@ const laptop: PairedComputer = {
 function setUp(...computers: PairedComputer[]) {
   const tunnel = new FakePhoneTunnel();
   for (const computer of computers) tunnel.computers.set(computer.id, computer);
+  const lastChat = vi.fn();
   const router = new PhoneAppRouter({
     tunnel,
     scanner,
     report: () => undefined,
     hold: () => Object.assign(new FakePhoneRemote(), { dispose: () => undefined }),
+    lastChat,
   });
-  return { tunnel, router };
+  return { tunnel, router, lastChat };
 }
 
 verifies("remote.phone-shortcuts", () => {
@@ -85,5 +87,42 @@ verifies("remote.phone-shortcuts", () => {
     expect(router.view.screen).not.toHaveProperty("tab");
     router.selectTab("agents");
     expect(router.view.screen).toMatchObject({ tab: "agents" });
+  });
+
+  it("opens the last chat's computer on Messenger with the chat, until the tab takes it", async () => {
+    const { router, lastChat } = setUp(laptop);
+    await router.start({ computer: laptop.id, chat: "c-launch" });
+    expect(router.view.screen).toEqual({
+      screen: "computer",
+      computer: laptop.id,
+      sheet: "none",
+      tab: "messenger",
+      chat: "c-launch",
+    });
+    router.chatOpened({ id: "c-launch", title: "Launch review" });
+    router.chatLanded();
+    expect(router.view.screen).not.toHaveProperty("chat");
+    expect(router.view.screen).toMatchObject({ tab: "messenger" });
+    expect(lastChat.mock.calls).toEqual([
+      [{ computer: laptop.id, chat: "c-launch", name: "Launch review" }],
+    ]);
+  });
+
+  it("opens the Messenger list for a last chat on another computer", async () => {
+    const { router } = setUp(laptop);
+    await router.start();
+    router.openShortcut({ computer: "c-2" as ComputerId, chat: "c-launch" });
+    expect(router.view.screen).toEqual({
+      screen: "computer",
+      computer: laptop.id,
+      sheet: "none",
+      tab: "messenger",
+    });
+  });
+
+  it("says Messenger opens after pairing for the last chat's shortcut", async () => {
+    const { router } = setUp();
+    await router.start({ computer: laptop.id, chat: "c-launch" });
+    expect(router.view.landing).toBe("messenger");
   });
 });

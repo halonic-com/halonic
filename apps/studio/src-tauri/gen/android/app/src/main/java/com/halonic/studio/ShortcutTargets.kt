@@ -3,6 +3,9 @@ package com.halonic.studio
 /** A chat the last-chat shortcut opens: the computer it's on, and its id and name there. */
 data class LastChat(val computer: String, val chat: String, val name: String)
 
+/** A shortcut's id and the shortcut whose screen it opens. */
+data class Relabel(val id: String, val opens: String)
+
 /** The screen a shortcut opens, as the phone's own page reads it. */
 sealed interface OpenTarget {
   /** The Inbox of the computer the phone connected to last. */
@@ -54,6 +57,15 @@ object ShortcutTargets {
       addressOf(LAST_CHAT) -> lastChat?.let { OpenTarget.Chat(it) } ?: OpenTarget.Messenger
       else -> null
     }
+
+  /** Whether [chat] is on [computer]: Forget and Removed take only that computer's last chat. */
+  fun isOn(chat: LastChat?, computer: String): Boolean = chat != null && chat.computer == computer
+
+  /**
+   * A pinned last chat once its computer is forgotten or removed it: the same id, now opening the
+   * Messenger list as the Messenger shortcut does, under that shortcut's label (Sofia, HAL-20178).
+   */
+  fun forgottenLastChat(): Relabel = Relabel(LAST_CHAT, MESSENGER)
 
   /** [name] cut to [length] characters, never inside a pair that draws one character. */
   fun cut(name: String, length: Int): String {

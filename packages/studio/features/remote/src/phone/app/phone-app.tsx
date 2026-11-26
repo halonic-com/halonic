@@ -29,6 +29,8 @@ export interface PhoneAppProps extends PhoneOutside {
   readonly nearby?: NearbyComputers | undefined;
   /** Pinning a screen to the home screen; without it Paired computers has no Home screen group. */
   readonly pinning?: PhonePinning | undefined;
+  /** Where a call the shell refused goes, for the log. */
+  readonly report?: ((problem: string) => void) | undefined;
 }
 
 /**
@@ -85,7 +87,7 @@ function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
             onPair={() => router.pair()}
             onRetry={() => void router.refresh()}
           />
-          <HomeScreenGroup pinning={props.pinning} />
+          <HomeScreenGroup pinning={props.pinning} report={props.report} />
         </TopBar>
       );
     case "computer": {

@@ -13,6 +13,7 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicReference
 
 /** Where the last chat is kept: this phone only, as the manifest backs nothing up. */
 private const val STORE = "app-shortcuts"
@@ -22,16 +23,18 @@ private const val STORE = "app-shortcuts"
  * sets it from the intent that started or reached it; it lives as long as the app's process.
  */
 internal object PendingShortcut {
-  @Volatile
-  var address: String? = null
+  private val address = AtomicReference<String?>(null)
 
   /** Keeps [intent]'s address, unless Android replays it from the recent apps. */
   fun keep(intent: Intent?) {
     if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
       return
     }
-    address = intent.dataString
+    address.set(intent.dataString)
   }
+
+  /** The kept address, once: a second take, even at the same time, gets none (Liam, #6357). */
+  fun take(): String? = address.getAndSet(null)
 }
 
 /**
@@ -45,8 +48,7 @@ class AppShortcutsPlugin(private val host: Activity) : Plugin(host) {
   /** Answers `{target, computer?, chat?}` for the screen the last shortcut asked for, once. */
   @Command
   fun takeOpenTarget(invoke: Invoke) {
-    val address = PendingShortcut.address
-    PendingShortcut.address = null
+    val address = PendingShortcut.take()
     val answer = JSObject()
     when (val target = ShortcutTargets.targetOf(address, storedChat())) {
       OpenTarget.Inbox -> answer.put("target", "inbox")
@@ -71,6 +73,22 @@ class AppShortcutsPlugin(private val host: Activity) : Plugin(host) {
       keepChat(LastChat(computer, chat, name))
     }
     invoke.resolve(JSObject().put("done", true))
+  }
+
+  /**
+   * `{computer}`: the phone forgot it, or it removed the phone. The last chat goes when it's on that
+   * computer, and only then, and a copy pinned to the home screen becomes Messenger
+   * ([relabelPinned]). Answers `{forgot}`.
+   */
+  @Command
+  fun forgetComputer(invoke: Invoke) {
+    val computer = invoke.getArgs().getString("computer", null)
+    val forgot = computer != null && ShortcutTargets.isOn(storedChat(), computer)
+    if (forgot) {
+      forgetChat()
+      relabelPinned()
+    }
+    invoke.resolve(JSObject().put("forgot", forgot))
   }
 
   /** Answers `{pinnable}`: whether the launcher pins shortcuts. */
@@ -125,6 +143,23 @@ class AppShortcutsPlugin(private val host: Activity) : Plugin(host) {
   private fun forgetChat() {
     store().edit().clear().apply()
     ShortcutManagerCompat.removeDynamicShortcuts(host, listOf(ShortcutTargets.LAST_CHAT))
+  }
+
+  /**
+   * The pinned last chat no longer names a forgotten chat: it reads "Messenger" and opens the
+   * Messenger list, label and intent in one update (Sofia, HAL-20178). It isn't disabled, and the
+   * next chat opened takes it over again through [keepChat]. Android ignores this when none is pinned.
+   */
+  private fun relabelPinned() {
+    val forgotten = ShortcutTargets.forgottenLastChat()
+    val words = host.getString(R.string.shortcut_messenger)
+    val shortcut = ShortcutInfoCompat.Builder(host, forgotten.id)
+      .setShortLabel(words)
+      .setLongLabel(words)
+      .setIcon(IconCompat.createWithResource(host, R.drawable.ic_shortcut_messenger))
+      .setIntent(openIntent(forgotten.opens))
+      .build()
+    ShortcutManagerCompat.updateShortcuts(host, listOf(shortcut))
   }
 
   private fun storedChat(): LastChat? {

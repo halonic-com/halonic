@@ -14,7 +14,15 @@ import type { PhoneRemote } from "../remote-view.ts";
 import { type SavedDataStore, SavedMessaging } from "../saved-messaging.ts";
 import type { ComputerTab } from "./computer-tabs.tsx";
 import { type FirstReach, FirstReaches } from "./first-reaches.ts";
-import { landed, type ShortcutTab } from "./shortcut-landing.ts";
+import { latest } from "./latest-computer.ts";
+import {
+  landed,
+  landingOn,
+  type OpenedChat,
+  type ShortcutLanding,
+  type ShortcutTab,
+  tabOf,
+} from "./shortcut-landing.ts";
 
 /** The sheet over a computer's screen: the header label's status sheet, or Check this connection. */
 export type ComputerSheet = "none" | "status" | "check";
@@ -44,6 +52,8 @@ export type PhoneAppScreen =
       readonly run?: string;
       /** The picked tab; the Inbox when none is. */
       readonly tab?: ComputerTab;
+      /** The chat the last-chat shortcut opens in the Messenger tab, until the tab takes it. */
+      readonly chat?: string;
     }
   | { readonly screen: "computers" };
 
@@ -75,6 +85,8 @@ export interface PhoneAppRouterOptions {
   readonly report: (problem: string) => void;
   /** The phone's clock; a test sets its own. */
   readonly clock?: () => Date;
+  /** Makes a chat the phone opened the last-chat shortcut; none outside the Android app. */
+  readonly lastChat?: (chat: OpenedChat) => void;
 }
 
 /**
@@ -94,7 +106,7 @@ export class PhoneAppRouter {
   readonly #reaches: FirstReaches;
   readonly #listeners = new Set<() => void>();
   #forgotten: ListedComputer | undefined;
-  #landing: ShortcutTab | undefined;
+  #landing: ShortcutLanding | undefined;
   #view: PhoneAppView;
   #unwatch: (() => void) | undefined;
 
@@ -118,9 +130,9 @@ export class PhoneAppRouter {
 
   /**
    * Lists the computers and opens the one connected last, else Pair with a computer. A shortcut's
-   * `opening` tab is where that computer's screen opens, after pairing when none is paired.
+   * `opening` is where that computer's screen opens, after pairing when none is paired.
    */
-  async start(opening?: ShortcutTab): Promise<void> {
+  async start(opening?: ShortcutLanding): Promise<void> {
     if (opening !== undefined) this.#landing = opening;
     this.#unwatch = this.#options.tunnel.onStatus((computer, status) => {
       this.#statuses.set(computer, status);
@@ -193,10 +205,26 @@ export class PhoneAppRouter {
   }
 
   /** A shortcut tapped while the app runs: its tab now (`landed`), else once a computer opens. */
-  openShortcut(tab: ShortcutTab): void {
-    const stack = landed(this.#stack, tab);
-    this.#landing = stack === undefined ? tab : undefined;
+  openShortcut(landing: ShortcutLanding): void {
+    const stack = landed(this.#stack, landing);
+    this.#landing = stack === undefined ? landing : undefined;
     if (stack !== undefined) this.#stack = stack;
+    this.#changed();
+  }
+
+  /** A chat opened in the Messenger tab: it becomes the last-chat shortcut. */
+  chatOpened(chat: { readonly id: string; readonly title: string }): void {
+    const top = this.#top();
+    if (top.screen !== "computer") return;
+    this.#options.lastChat?.({ computer: top.computer, chat: chat.id, name: chat.title });
+  }
+
+  /** The Messenger tab took the shortcut's chat: opened it, or showed the list when it's gone. */
+  chatLanded(): void {
+    const top = this.#top();
+    if (top.screen !== "computer" || top.chat === undefined) return;
+    const { chat: _chat, ...landedScreen } = top;
+    this.#stack = [...this.#stack.slice(0, -1), landedScreen];
     this.#changed();
   }
 
@@ -330,13 +358,13 @@ export class PhoneAppRouter {
       this.#startReach(computer.id);
       this.#connect(computer.id);
     }
-    const tab = this.#landing;
+    const landing = this.#landing;
     this.#landing = undefined;
     return {
       screen: "computer",
       computer: computer.id,
       sheet: "none",
-      ...(tab === undefined ? {} : { tab }),
+      ...landingOn(computer.id, landing),
     };
   }
 
@@ -413,7 +441,7 @@ export class PhoneAppRouter {
       statuses: new Map(this.#statuses),
       canGoBack: this.#stack.length > 1 || this.#somewhereOnScreen(),
       ...(this.#forgotten === undefined ? {} : { forgotten: this.#forgotten }),
-      ...(this.#landing === undefined ? {} : { landing: this.#landing }),
+      ...(this.#landing === undefined ? {} : { landing: tabOf(this.#landing) }),
     };
   }
 
@@ -440,16 +468,4 @@ function withoutRun({ run: _run, ...screen }: ComputerScreen): ComputerScreen {
 /** The tunnel's last try met no network on the phone. */
 function phoneIsOffline(status: PhoneStatus | undefined): boolean {
   return status?.state === "reconnecting" && status.lastTry === "network-down";
-}
-
-/** The readable computer connected last, else paired last. */
-function latest(
-  computers: readonly ListedComputer[] | KeysUnavailable | undefined,
-): PairedComputer | undefined {
-  if (!Array.isArray(computers)) return undefined;
-  const readable = computers.filter(
-    (computer): computer is PairedComputer => computer.standing !== "unreadable",
-  );
-  const when = (computer: PairedComputer) => computer.lastConnectedAt ?? computer.pairedAt;
-  return readable.sort((a, b) => when(b).localeCompare(when(a)))[0];
 }
