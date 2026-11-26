@@ -3,7 +3,7 @@
 // does, with the chat's messages kept as they arrive, a scripted model and
 // a fake client that serves a page naming other.example.com.
 
-import { type ChatAnswer, ChatService, type ChatTool } from "@halonicjs/app";
+import { type ChatAnswer, ChatService, type ChatTool, type RequestLogLine } from "@halonicjs/app";
 import type { ChatMessage, HttpClient, ToolCall } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
@@ -43,6 +43,22 @@ const readDocs = (id: string, url: string): ToolCall => ({
   name: "read_docs",
   arguments: { url },
 });
+const readLog = (id: string): ToolCall => ({
+  id,
+  name: "read_request_log",
+  arguments: { integration: "notes" },
+});
+/** A line of the request log of `notes`. */
+const logged: RequestLogLine = {
+  type: "request",
+  at: "2026-11-25T11:00:00.000Z",
+  method: "GET",
+  host: "api.notes.example.com",
+  path: "/v1/notes",
+  status: 404,
+  durationMs: 30,
+  outcome: "ok",
+};
 const proposeSheet = (id: string, content: string): ToolCall => ({
   id,
   name: "propose_file",
@@ -51,9 +67,14 @@ const proposeSheet = (id: string, content: string): ToolCall => ({
 
 /**
  * A trusted Build chat where the person said `said` and allowed docs.example.com, with the
- * builder's tools plus {@link connectorTool}. `answer` plays one answer of scripted turns.
+ * builder's tools plus {@link connectorTool}, and `log` as the request log of `notes`. `answer`
+ * plays one answer of scripted turns.
  */
-function buildChat(said = request, reply: () => Response = namingOther) {
+function buildChat(
+  said = request,
+  reply: () => Response = namingOther,
+  log: readonly RequestLogLine[] = [],
+) {
   const kept: ChatMessage[] = [{ role: "user", content: said }];
   const fetched: string[] = [];
   const http: HttpClient = {
@@ -80,7 +101,7 @@ function buildChat(said = request, reply: () => Response = namingOther) {
     digest,
     personMessages: async () => kept.flatMap((m) => (m.role === "user" ? [m.content] : [])),
     docs,
-    requestLog: { integration: async () => "notes", lines: async () => [] },
+    requestLog: { integration: async () => "notes", lines: async () => log },
   });
   const answer = async (...turns: ToolCall[][]) => {
     const model = new ScriptedModel(turns);
@@ -135,6 +156,16 @@ verifies("assistant.build.loaded-page", () => {
       expect(chat.sites.asks).toEqual([]);
       expect(chat.fetched).toEqual([docsPage]);
       expect(chat.sites.entries.at(-1)).toMatchObject({ url: otherPage, outcome: "refused" });
+    });
+
+    it("doesn't ask for a host the person didn't name once a request log was read", async () => {
+      const chat = buildChat(request, namingOther, [logged]);
+      await chat.answer([readLog("l1")]);
+      const { results } = await chat.answer([readDocs("r2", otherPage)]);
+
+      expect(results.get("r2")).toBe(docsTexts.notNamed("other.example.com"));
+      expect(chat.sites.asks).toEqual([]);
+      expect(chat.fetched).toEqual([]);
     });
 
     it("still asks for a host the person named", async () => {

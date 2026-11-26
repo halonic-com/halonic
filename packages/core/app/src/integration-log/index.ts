@@ -1,5 +1,12 @@
 // Each integration's local request log, exported from `@halonicjs/app`.
-export { type CodeIndex, codeIndex, maskedPath, maskedSegment } from "./masked-path.ts";
+export {
+  type CodeIndex,
+  codeIndex,
+  maskedPath,
+  maskedSegment,
+  maxScansPerWrite,
+  PathMasking,
+} from "./masked-path.ts";
 export {
   type CodeReader,
   type FailedCall,

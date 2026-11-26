@@ -68,6 +68,7 @@ import { agentHostHarnessParts } from "../agents/agent-host-harness-parts.ts";
 import { agentHostPlacement } from "../agents/agent-host-placement.ts";
 import { WorkspaceAgentReview } from "../agents/workspace-agent-review.ts";
 import { WorkspaceAgents } from "../agents/workspace-agents.ts";
+import { engineRequestLogs } from "../assistant/chat-request-log.ts";
 import { provideAssistantHost } from "../assistant/provide-assistant-host.ts";
 import { provideChangesServices } from "../changes/provide-changes-services.ts";
 import { type WatchItemTryItChanges, watchTryItChanges } from "../changes/try-it-changes.ts";
@@ -296,6 +297,8 @@ export function provideFolderServices(
     askTrust,
     chatSessions,
     docsHttp: new ShellHttpClient(ipc, { publicOnly: true }),
+    // The engine keeps the logs in the profile; without the agent host there is none to read.
+    requestLogs: transport === undefined ? undefined : engineRequestLogs(transport, location),
   });
   // The assistant's changes to an agent, for its page's item bar and marks (AI changes 1.2).
   services.provide(

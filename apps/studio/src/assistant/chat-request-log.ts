@@ -3,6 +3,10 @@
 // connector of the `integration` transport names the integration's folder,
 // and the folder's permission sheet names its id, which names the log.
 
+import {
+  AgentHostRequestLogs,
+  type AgentHostTransport,
+} from "@halonicjs/adapter-agent-host-client";
 import { integrationsFolder, type RequestLogLine, readIntegrationSheets } from "@halonicjs/app";
 import type { RequestLogReading } from "@halonicjs/assistant";
 import type { DefinitionSource, SavedChatAbout } from "@halonicjs/ports";
@@ -10,6 +14,17 @@ import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspa
 
 /** Reads one local integration's request log, by the id its sheet names, oldest first. */
 export type RequestLogs = (integration: string) => Promise<readonly RequestLogLine[]>;
+
+/**
+ * The request logs of the window's workspace, which the CLI's engine keeps in the profile, read
+ * through the agent host (`agent-host.request-log-routes`). Every read names `location`, the
+ * window's own workspace, so the log of another workspace's integration with the same id, which
+ * may be local-only, is never read (Julian, HAL-19291).
+ */
+export function engineRequestLogs(transport: AgentHostTransport, location: string): RequestLogs {
+  const logs = new AgentHostRequestLogs(transport, location);
+  return (integration) => logs.lines(integration);
+}
 
 /**
  * What a chat's `read_request_log` reads: the log of the local integration the chat is about,

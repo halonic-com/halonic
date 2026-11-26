@@ -9,6 +9,7 @@ import { workspaceIntegrations } from "@halonicjs/adapter-doctor-node";
 import { FileRecordStore, FileSystemFolderReader } from "@halonicjs/adapter-fs-node";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import {
+  type LocalRequestLog,
   type RunnerBlock,
   RunnerStoppedError,
   type StartedRunner,
@@ -114,6 +115,8 @@ export async function setupOpener(
     studioYesReaches?: boolean;
     /** The folder the run starts the runner from, such as a copy of a commit; `root`, the trusted one, unless a test says otherwise. */
     startFrom?: string;
+    /** Where the integration's requests are kept; nowhere unless a test says otherwise. */
+    requestLog?: () => Promise<LocalRequestLog>;
   } = {},
 ) {
   const { check = passes, runnerBuilt = true, beforeTrustCheck, trustedSettings } = options;
@@ -210,6 +213,7 @@ export async function setupOpener(
       timeLimitMs: 1000,
     }),
     runnerExists: () => runnerBuilt,
+    ...(options.requestLog === undefined ? {} : { requestLog: options.requestLog }),
     startRunner: async (start) => {
       seen.starts += 1;
       // Closing fails every call in flight and every later one, as the runner's bridge does.

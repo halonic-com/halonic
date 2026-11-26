@@ -50,6 +50,7 @@ import {
 import { systemClock } from "@halonicjs/std";
 import { proxySetting, recordingSrtSandbox } from "@halonicjs/target-node-harness";
 import type { LoadedWorkspace } from "@halonicjs/workspace";
+import { workspaceRequestLog } from "./integration-request-logs.ts";
 import type { LocalIntegrationMachine } from "./open-local-integration.ts";
 import type { PluginBackendMachine } from "./open-plugin-backend.ts";
 import { openPluginService } from "./plugin-host.ts";
@@ -173,6 +174,8 @@ export function computerIntegrationMachine(
       runnerFile: runnerFile(),
     },
     transport: input.transport ?? integrationTransport(),
+    // Under the workspace's own key, even when the runner starts from a copy of a commit.
+    requestLog: () => workspaceRequestLog(profile, input.dir.root),
     // Read again at every start: what was checked when the command began is never reused.
     // The integrations in the folder the runner starts from, as the start hashes them, so
     // the two agree; one that differs from the trusted version fails closed.

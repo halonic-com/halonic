@@ -45,6 +45,7 @@ import {
   wslRemoverOf,
 } from "./host-parts.ts";
 import { stopHost } from "./host-stop.ts";
+import { requestLogRoutes } from "./integration-log/request-log-routes.ts";
 import { hostMessaging } from "./messaging/host-messaging.ts";
 import { messagingOnlyArgument, serveMessagingOnly } from "./messaging-only.ts";
 import { hostModelRoutes } from "./model/host-model-routes.ts";
@@ -425,6 +426,7 @@ async function hostServices(
     ),
     ...harnessRoutes({ harnesses, sessions, bridges, runs, unfenced }),
     ...folders.routes,
+    ...requestLogRoutes(profile, connectors.workspaceRoots),
     ...connectorRoutes(connectorDeps),
     ...(programCopies === undefined ? [] : programCopyRoutes(programCopies)),
     ...modelRoutes(

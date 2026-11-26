@@ -7,8 +7,10 @@
 // The integration chooses its paths, so the masking's cost is bounded
 // (Julian, HAL-19169): the code's words are looked up in sets built once per
 // code read, a path has at most `maxSegments` segments looked at, and the
-// scan for any other segment stops after `maxOccurrences` matches. Every
-// limit masks more, never less.
+// scan for any other segment stops after `maxOccurrences` matches. One write
+// masks many paths, so it also has `maxScansPerWrite` scans in all, and
+// remembers each segment's answer (Julian, HAL-19291). Every limit masks
+// more, never less.
 
 /** What a masked path segment is stored as. */
 export const maskedSegment = "{…}";
@@ -19,6 +21,8 @@ export const maxSegments = 64;
 const maxScannedLength = 200;
 /** How many matches of a segment that isn't a plain word are looked at before it is masked. */
 const maxOccurrences = 100;
+/** How many segments that aren't plain words one write scans the code for; past it, they are masked. */
+export const maxScansPerWrite = 64;
 
 /** The integration's code, read for masking: built once per code read by {@link codeIndex}. */
 export interface CodeIndex {
@@ -47,23 +51,55 @@ export function codeIndex(code: string): CodeIndex {
  * of digits only looks like an id, so it is kept only when the code holds it
  * right after a `/`, as a route does (`/api/3/`); `1001` in `limit = 1001`
  * doesn't count. Segments past the first {@link maxSegments} become one
- * {@link maskedSegment}.
+ * {@link maskedSegment}. One path gets a {@link PathMasking} of its own; a
+ * write of many paths shares one, so its scans stay bounded.
  *
  * @example
  * maskedPath("/v2/orders/1001", codeIndex("get(`/v2/orders/${id}`)")); // "/v2/orders/{…}"
  */
 export function maskedPath(path: string, code: CodeIndex): string {
-  const segments = path.split("/");
-  const kept = segments
-    .slice(0, maxSegments)
-    .map((segment) => (segment === "" || inCode(segment, code) ? segment : maskedSegment));
-  return [...kept, ...(segments.length > maxSegments ? [maskedSegment] : [])].join("/");
+  return new PathMasking(code).path(path);
 }
 
-function inCode(segment: string, code: CodeIndex): boolean {
-  if (/^[0-9]+$/.test(segment)) return code.routeDigits.has(segment);
-  if (/^[A-Za-z0-9_]+$/.test(segment)) return code.words.has(segment);
-  return segment.length <= maxScannedLength && scanned(segment, code.code);
+/**
+ * The masking of every path one write keeps, against one code read. A segment
+ * that isn't a plain word needs a scan of the code; the write makes at most
+ * `scans` of them and masks each such segment after that. Each segment's
+ * answer is remembered, so a flood of the same path costs one scan.
+ */
+export class PathMasking {
+  readonly #code: CodeIndex;
+  readonly #scanned = new Map<string, boolean>();
+  #scansLeft: number;
+
+  /** @param scans - how many segments the write may scan the code for; {@link maxScansPerWrite} by default */
+  constructor(code: CodeIndex, scans = maxScansPerWrite) {
+    this.#code = code;
+    this.#scansLeft = scans;
+  }
+
+  /** The path with every segment the code doesn't hold masked, as {@link maskedPath} says. */
+  path(path: string): string {
+    const segments = path.split("/");
+    const kept = segments
+      .slice(0, maxSegments)
+      .map((segment) => (segment === "" || this.#inCode(segment) ? segment : maskedSegment));
+    return [...kept, ...(segments.length > maxSegments ? [maskedSegment] : [])].join("/");
+  }
+
+  #inCode(segment: string): boolean {
+    const code = this.#code;
+    if (/^[0-9]+$/.test(segment)) return code.routeDigits.has(segment);
+    if (/^[A-Za-z0-9_]+$/.test(segment)) return code.words.has(segment);
+    if (segment.length > maxScannedLength) return false;
+    const known = this.#scanned.get(segment);
+    if (known !== undefined) return known;
+    if (this.#scansLeft === 0) return false;
+    this.#scansLeft -= 1;
+    const found = scanned(segment, code.code);
+    this.#scanned.set(segment, found);
+    return found;
+  }
 }
 
 /** Whether `code` holds `segment` outside a longer word, within its first matches. */

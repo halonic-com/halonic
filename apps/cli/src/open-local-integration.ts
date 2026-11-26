@@ -22,6 +22,7 @@ import { join } from "node:path";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-http-kit";
 import {
   integrationConnectorClient,
+  type LocalRequestLog,
   type LocalRunnerBridge,
   loadLocalIntegration,
   type RunnerConnection,
@@ -112,6 +113,11 @@ export interface LocalIntegrationMachine {
   runnerExists?(file: string): boolean;
   /** Starts a runner in the sandbox the gate picked; `startRunner` unless a test says otherwise. */
   startRunner?: typeof startRunner;
+  /**
+   * Where the integration's requests and failed calls are kept for the Build chat's
+   * `read_request_log`: the profile's store, under the workspace's key. Left out, they aren't kept.
+   */
+  requestLog?(): Promise<LocalRequestLog>;
 }
 
 /**
@@ -154,6 +160,7 @@ class LocalIntegrationOpening {
       pauses: this.#machine.pauses,
     });
     const { sheet, code } = await this.#read(startsFrom);
+    const requestLog = await this.#machine.requestLog?.();
     const loaded = await loadLocalIntegration({
       sheet,
       approvedSheet: sheet,
@@ -165,6 +172,7 @@ class LocalIntegrationOpening {
       // The trust check reads the same settings from the connector file
       // (`trustContentInputOf`), so the start compares the addresses it showed.
       choices: { settings, secretNames },
+      ...(requestLog === undefined ? {} : { requestLog }),
     });
     if (!loaded.ok) {
       throw new Error(loaded.error.map((problem) => problem.message).join("; "));
