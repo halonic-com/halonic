@@ -10,7 +10,7 @@ import { type Fetched, fetchDocsPage } from "./docs-fetch.ts";
 import type { DocsLogEntry, DocsOptions } from "./docs-sites.ts";
 import { docsTexts } from "./docs-texts.ts";
 import { checkDocsUrl, loggedUrl } from "./docs-url.ts";
-import { sitesRead } from "./loaded-page.ts";
+import { untrustedTextLoaded } from "./loaded-page.ts";
 import { pageText } from "./page-text.ts";
 
 /** `read_docs`: reads one public docs page as text, once the person allows its site. */
@@ -72,12 +72,13 @@ export function readDocsTool(chat: BuildChat, docs: DocsOptions): ChatTool {
 }
 
 /**
- * Whether the person may be asked about `host`: always until a page is loaded in the chat, then
+ * Whether the person may be asked about `host`: always until untrusted text, a page or a request
+ * log, is loaded in the chat, then
  * only when they named it in their own messages (`assistant.build.loaded-page`), so a page can't
  * make the assistant ask for a site of its choosing.
  */
 async function mayAsk(chat: BuildChat, docs: DocsOptions, host: string): Promise<boolean> {
-  if (sitesRead(await docs.messages()).length === 0) return true;
+  if (!untrustedTextLoaded(await docs.messages())) return true;
   const named = namedIn(await chat.options.personMessages());
   return isNamed(named, { name: host, port: undefined, scheme: "https" });
 }

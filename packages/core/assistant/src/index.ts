@@ -21,8 +21,14 @@ export {
   pageSiteOf,
   sitesRead,
   sitesReadBefore,
-  toolsWhilePageLoaded,
+  toolsWhileUntrustedLoaded,
+  untrustedTextLoaded,
 } from "./build/docs/loaded-page.ts";
+export {
+  type RequestLogReading,
+  requestLogLinesShown,
+  requestLogTexts,
+} from "./build/request-log-tool.ts";
 export { sheetHostsNamedIn } from "./build/sheet-hosts-named.ts";
 export { toolTexts } from "./build/tool-texts.ts";
 export {

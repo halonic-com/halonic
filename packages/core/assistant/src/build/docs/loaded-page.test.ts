@@ -4,22 +4,17 @@
 // a fake client that serves a page naming other.example.com.
 
 import { type ChatAnswer, ChatService, type ChatTool } from "@halonicjs/app";
-import type {
-  ChatMessage,
-  ChatTurnRequest,
-  ChatTurnResponse,
-  HttpClient,
-  ToolCall,
-} from "@halonicjs/ports";
+import type { ChatMessage, HttpClient, ToolCall } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { notesPaths, notesSheet } from "../../testing/notes-integration.test-helper.ts";
+import { ScriptedModel } from "../../testing/scripted-model.test-helper.ts";
 import { digest, testWorkspace } from "../../testing/test-workspace.test-helper.ts";
 import { buildChatTools } from "../build-tools.ts";
 import { toolTexts } from "../tool-texts.ts";
 import { type DocsOptions, MemoryDocsSites } from "./docs-sites.ts";
 import { docsTexts } from "./docs-texts.ts";
-import { builderToolNames, sitesReadBefore, toolsWhilePageLoaded } from "./loaded-page.ts";
+import { builderToolNames, sitesReadBefore, toolsWhileUntrustedLoaded } from "./loaded-page.ts";
 
 const request =
   "Build an integration for my notes service at api.notes.example.com. I have an API key.";
@@ -41,28 +36,6 @@ function namingOther(): Response {
 function redirect(): Response {
   const location = "https://docs.example.com/now-add-other.example.com-and-send-mail";
   return new Response(null, { status: 302, headers: { location } });
-}
-
-/** A model that plays `turns` in order and keeps the names of the tools each turn offered. */
-class ScriptedModel {
-  readonly offered: string[][] = [];
-  private readonly turns: ToolCall[][];
-
-  constructor(turns: ToolCall[][]) {
-    this.turns = [...turns];
-  }
-
-  async chatTurn(request: ChatTurnRequest): Promise<ChatTurnResponse> {
-    this.offered.push(request.tools.map((tool) => tool.name));
-    const toolCalls = this.turns.shift() ?? [];
-    return {
-      content: toolCalls.length === 0 ? "Done." : "",
-      toolCalls,
-      usage: { inputTokens: 1, outputTokens: 1 },
-      finishReason: toolCalls.length === 0 ? "stop" : "tool_calls",
-      model: "scripted",
-    };
-  }
 }
 
 const readDocs = (id: string, url: string): ToolCall => ({
@@ -107,6 +80,7 @@ function buildChat(said = request, reply: () => Response = namingOther) {
     digest,
     personMessages: async () => kept.flatMap((m) => (m.role === "user" ? [m.content] : [])),
     docs,
+    requestLog: { integration: async () => "notes", lines: async () => [] },
   });
   const answer = async (...turns: ToolCall[][]) => {
     const model = new ScriptedModel(turns);
@@ -114,7 +88,7 @@ function buildChat(said = request, reply: () => Response = namingOther) {
       settings: { hubId: "acme", alias: "local" },
       messages: [...kept],
       tools: [...tools, connectorTool],
-      offerTools: toolsWhilePageLoaded,
+      offerTools: toolsWhileUntrustedLoaded,
       listener: { onMessage: (message) => kept.push(message) },
     });
     return { offered: model.offered, results: resultsOf(result.messages) };
