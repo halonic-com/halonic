@@ -55,7 +55,7 @@ const placeClass: Record<PanelPlace, string> = {
  * **‹ Channel** to go back to the channel's agents (`messenger.activity-channel`).
  */
 export function ActivityPanel({
-  name,
+  title,
   chat,
   shows,
   place = "beside",
@@ -63,8 +63,8 @@ export function ActivityPanel({
   onBack,
   children,
 }: {
-  /** Whose activity the panel shows: "Chief's activity". */
-  readonly name: string;
+  /** The panel's heading: "Chief's activity", or in a channel "Activity in Launch". */
+  readonly title: string;
   /** The chat's name, for a place's way back to it: "‹ Chief". */
   readonly chat: string;
   /** What the body shows; when it changes, the body cross-fades to it. */
@@ -93,7 +93,7 @@ export function ActivityPanel({
       onKeyDown={onKeyDown}
       className={`flex flex-col ${placeClass[place]} ${focusedPanelClass}`}
     >
-      <PanelHeader name={name} chat={chat} place={place} onClose={close} />
+      <PanelHeader title={title} chat={chat} place={place} onClose={close} />
       <div ref={body} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
         {onBack === undefined ? null : <BackToChannel onBack={onBack} />}
         {children}
@@ -130,12 +130,12 @@ function usePanelMotion(
 
 /** "Chief's activity", with **×** to close it, or on a narrow window **‹ Chief** to go back. */
 function PanelHeader({
-  name,
+  title,
   chat,
   place,
   onClose,
 }: {
-  readonly name: string;
+  readonly title: string;
   readonly chat: string;
   readonly place: PanelPlace;
   readonly onClose: () => void;
@@ -159,7 +159,7 @@ function PanelHeader({
         tabIndex={-1}
         className="flex-1 truncate rounded-sm text-body-strong focus-ring"
       >
-        <bdi>{activityWords.title(name)}</bdi>
+        <bdi>{title}</bdi>
       </h2>
       {place === "place" ? null : (
         <Button

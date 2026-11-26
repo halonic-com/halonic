@@ -41,19 +41,20 @@ export function useActivity(
   row: ConversationRow,
   open: boolean,
 ): ActivityRead {
-  const reads = useActivityReads(messenger, row.conversation.agent, open);
+  const reads = useActivityReads(messenger, [row.conversation.agent], open);
   return activityFor(reads, row, messenger.now());
 }
 
 /**
- * Reads the activity of `agent`, or of every agent when none is given (a channel's agents), as
- * `useActivity` says.
+ * Reads the activity of `agents`: one chat's agent, or a channel's agents, as `useActivity` says.
  */
 export function useActivityReads(
   messenger: Messenger,
-  agent: MessagingId | undefined,
+  agents: readonly MessagingId[],
   open: boolean,
 ): ActivityReads {
+  // The same agents in a new array mustn't start a new read.
+  const agentsKey = agents.join("\n");
   const activity = messenger.activity;
   const [read, setRead] = useState<ActivityReads["read"]>(undefined);
   const [work, setWork] = useState<readonly WorkItem[]>([]);
@@ -65,7 +66,7 @@ export function useActivityReads(
     reads.current += 1;
     const thisRead = reads.current;
     const since = startOfToday(messenger.now()).toISOString();
-    const runs = activity.runs(agent === undefined ? { since } : { agent, since });
+    const runs = readRuns(activity, agentsKey.split("\n"), since);
     Promise.all([runs, activity.pullRequests()]).then(
       ([runs, pulls]) => {
         if (thisRead !== reads.current) return;
@@ -86,7 +87,7 @@ export function useActivityReads(
         if (thisRead === reads.current) setWork([]);
       },
     );
-  }, [activity, messenger, agent]);
+  }, [activity, messenger, agentsKey]);
 
   useEffect(() => {
     readNow();
@@ -110,6 +111,25 @@ export function activityFor(reads: ActivityReads, row: ConversationRow, now: Dat
     failure,
     read: readNow,
   };
+}
+
+/**
+ * The runs of `agents` since `since`. One agent's are read on their own; several agents' are read
+ * in one call, the workspace's newest runs, unless a source says that call left some out: then
+ * each agent's are read on its own, so a busy day never shows a working agent as Idle (HAL-18567
+ * review).
+ */
+async function readRuns(
+  activity: NonNullable<Messenger["activity"]>,
+  agents: readonly MessagingId[],
+  since: string,
+): Promise<readonly TeamRuns[]> {
+  const [only, ...others] = agents;
+  if (only !== undefined && others.length === 0) return activity.runs({ agent: only, since });
+  const all = await activity.runs({ since });
+  if (all.every((each) => each.complete)) return all;
+  const each = await Promise.all(agents.map((agent) => activity.runs({ agent, since })));
+  return each.flat();
 }
 
 function startOfToday(now: Date): Date {
