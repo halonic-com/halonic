@@ -34,12 +34,17 @@ export const loosenDelayMs = 24 * 60 * 60 * 1000;
 /** One revision of the never-list document, as Paperclip's revision history gives it. */
 export interface NeverListRevision {
   readonly text: string;
+  /**
+   * Paperclip's revision number (a server fact): 1, 2, 3 and so on. It orders
+   * the revisions, so two written in the same millisecond still have an order.
+   */
+  readonly revisionNumber: number;
   /** When Paperclip stored this revision (a server fact). */
   readonly writtenAt: Date;
   /**
    * Whether someone with authority over the list (an owner) wrote it, as
-   * Paperclip records the author. Any other revision, such as an agent's edit
-   * while the list was unlocked, is ignored for content and for timing.
+   * Paperclip records the author. Any other older revision, such as an agent's
+   * edit while the list was unlocked, is ignored for content and for timing.
    */
   readonly ownerWritten: boolean;
 }
@@ -50,19 +55,32 @@ export interface EffectiveNeverList {
   readonly holds: readonly Hold[];
 }
 
+/** Why the revision history can't be used. Each one stops Studio. */
+export type RevisionHistoryReason =
+  | "never_list.missing"
+  /** Revision numbers that aren't exactly 1 to n, one each. */
+  | "never_list.bad_revision_number"
+  /** A time that isn't a date, or a later revision dated before an earlier one. */
+  | "never_list.bad_revision_time"
+  /** The newest revision wasn't written by an owner (A24). */
+  | "never_list.not_owner_latest";
+
 /** The never-list in force, or why Studio must stop. */
 export type EffectiveNeverListRead =
   | { readonly ok: true; readonly list: EffectiveNeverList }
-  | { readonly ok: false; readonly reason: NeverListReason | "never_list.missing" };
+  | { readonly ok: false; readonly reason: NeverListReason | RevisionHistoryReason };
 
 /**
- * The never-list in force at `clock.now()`, from owner-written revisions
- * only. The newest of them must read cleanly, or the whole list fails closed.
- * An older revision that doesn't read is left out entirely, for content and
- * for timing: each revision stays in force until 24 hours after the next
- * readable one, so a broken revision in between can't speed up a removal.
+ * The never-list in force at `clock.now()`. Studio stops on its own when the
+ * newest revision isn't an owner's (A24), and when the history itself is
+ * broken: revision numbers that aren't exactly 1 to n, or a time that isn't
+ * a date. Only owner-written revisions count after that, ordered by revision
+ * number. The newest must read cleanly, or the whole list fails closed. An older revision
+ * that doesn't read is left out entirely, for content and for timing: each
+ * revision stays in force until 24 hours after the next readable one, so a
+ * broken revision in between can't speed up a removal.
  *
- * @param revisions - the document's revisions, in any order
+ * @param revisions - the document's revisions, every author, in any order
  * @param workspaceId - the Paperclip company id Studio is connected to
  * @param clock - the time to judge the 24-hour delay by
  */
@@ -71,13 +89,15 @@ export function effectiveNeverList(
   workspaceId: string,
   clock: Clock,
 ): EffectiveNeverListRead {
-  const byTime = revisions.filter((revision) => revision.ownerWritten).sort(oldestFirst);
-  const newest = byTime.at(-1);
+  const history = checkHistory(revisions);
+  if (!history.ok) return history;
+  const byNumber = history.byNumber.filter((revision) => revision.ownerWritten);
+  const newest = byNumber.at(-1);
   if (newest === undefined) return { ok: false, reason: "never_list.missing" };
   const newestRead = readNeverList(newest.text, workspaceId);
   if (!newestRead.ok) return newestRead;
 
-  const readable = byTime.flatMap((revision) => {
+  const readable = byNumber.flatMap((revision) => {
     const read = revision === newest ? newestRead : readNeverList(revision.text, workspaceId);
     return read.ok ? [{ writtenAt: revision.writtenAt, list: read.list }] : [];
   });
@@ -91,14 +111,28 @@ export function effectiveNeverList(
 }
 
 /**
- * Oldest first. Revisions written in the same millisecond are ordered by
- * their text, so the result never depends on the order Paperclip lists them.
+ * Every revision ordered by number, once the history is sound: numbers
+ * exactly 1 to n, so a missing older revision can't let a removal apply early, times real dates that never go back as the numbers go up, and
+ * the newest written by an owner.
  */
-function oldestFirst(a: NeverListRevision, b: NeverListRevision): number {
-  const byTime = a.writtenAt.getTime() - b.writtenAt.getTime();
-  if (byTime !== 0) return byTime;
-  if (a.text === b.text) return 0;
-  return a.text < b.text ? -1 : 1;
+function checkHistory(
+  revisions: readonly NeverListRevision[],
+): { ok: true; byNumber: NeverListRevision[] } | { ok: false; reason: RevisionHistoryReason } {
+  const byNumber = [...revisions].sort((a, b) => a.revisionNumber - b.revisionNumber);
+  const numbers = byNumber.map((revision) => revision.revisionNumber);
+  if (!numbers.every((number, index) => number === index + 1)) {
+    return { ok: false, reason: "never_list.bad_revision_number" };
+  }
+  const times = byNumber.map((revision) => revision.writtenAt.getTime());
+  const backwards = times.some((time, index) => index > 0 && time < (times[index - 1] ?? time));
+  if (times.some(Number.isNaN) || backwards) {
+    return { ok: false, reason: "never_list.bad_revision_time" };
+  }
+  const newest = byNumber.at(-1);
+  if (newest !== undefined && !newest.ownerWritten) {
+    return { ok: false, reason: "never_list.not_owner_latest" };
+  }
+  return { ok: true, byNumber };
 }
 
 /**
@@ -106,11 +140,11 @@ function oldestFirst(a: NeverListRevision, b: NeverListRevision): number {
  * {@link loosenDelayMs} ago. A revision dated in the future also counts:
  * taking in more entries can only block more.
  *
- * @param byTime - readable revisions, oldest first
+ * @param byNumber - readable revisions, oldest first
  */
-function inForce<T extends { readonly writtenAt: Date }>(byTime: readonly T[], now: number): T[] {
-  return byTime.filter((_, index) => {
-    const replacedBy = byTime[index + 1];
+function inForce<T extends { readonly writtenAt: Date }>(byNumber: readonly T[], now: number): T[] {
+  return byNumber.filter((_, index) => {
+    const replacedBy = byNumber[index + 1];
     return replacedBy === undefined || now - replacedBy.writtenAt.getTime() < loosenDelayMs;
   });
 }

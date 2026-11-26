@@ -21,6 +21,7 @@ export {
   effectiveNeverList,
   loosenDelayMs,
   type NeverListRevision,
+  type RevisionHistoryReason,
   seedEntries,
 } from "./effective-list.ts";
 export { checkEligibility, type Eligibility, type NotEligibleReason } from "./eligibility.ts";
@@ -44,6 +45,16 @@ export {
   neverListVersion,
   readNeverList,
 } from "./never-list.ts";
+export {
+  checkPinnedDocuments,
+  type DocumentGate,
+  type DocumentGateReason,
+  type DocumentPins,
+  type DocumentRevision,
+  type PinnedDocument,
+  type PinnedNeverListReason,
+  type StopReason,
+} from "./pinned-documents.ts";
 export {
   type ApprovalSource,
   type ApprovalType,

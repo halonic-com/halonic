@@ -18,6 +18,7 @@ const withKeyword = neverList("entries:\n  - kind: keyword\n    value: payee\n")
 
 const removedAt = Date.UTC(2026, 10, 26, 12);
 const minute = 60 * 1000;
+const hour = 60 * minute;
 
 /** A clock that stays at one time, for judging the 24-hour delay. */
 function clockAt(time: number) {
@@ -130,15 +131,14 @@ verifies("auto-approvals.never-list", () => {
   });
 
   describe("effectiveNeverList", () => {
+    /** An owner's revision `number`, written at `time`. */
+    function revision(number: number, text: string, time: number, ownerWritten = true) {
+      return { text, revisionNumber: number, writtenAt: new Date(time), ownerWritten };
+    }
+
     it("keeps blocking a seed entry the document removed", () => {
       const read = effectiveNeverList(
-        [
-          {
-            text: emptyList,
-            writtenAt: new Date(removedAt - 30 * loosenDelayMs),
-            ownerWritten: true,
-          },
-        ],
+        [revision(1, emptyList, removedAt - 30 * loosenDelayMs)],
         workspaceId,
         clockAt(removedAt),
       );
@@ -151,12 +151,8 @@ verifies("auto-approvals.never-list", () => {
 
     it("applies a loosening edit only once 24 hours have passed", () => {
       const revisions = [
-        {
-          text: withDeployHold,
-          writtenAt: new Date(removedAt - loosenDelayMs),
-          ownerWritten: true,
-        },
-        { text: emptyList, writtenAt: new Date(removedAt), ownerWritten: true },
+        revision(1, withDeployHold, removedAt - loosenDelayMs),
+        revision(2, emptyList, removedAt),
       ];
       const at = (offset: number) =>
         effectiveNeverList(revisions, workspaceId, clockAt(removedAt + offset));
@@ -172,12 +168,8 @@ verifies("auto-approvals.never-list", () => {
     it("applies an added entry at once", () => {
       const read = effectiveNeverList(
         [
-          {
-            text: emptyList,
-            writtenAt: new Date(removedAt - loosenDelayMs * 3),
-            ownerWritten: true,
-          },
-          { text: withKeyword, writtenAt: new Date(removedAt), ownerWritten: true },
+          revision(1, emptyList, removedAt - loosenDelayMs * 3),
+          revision(2, withKeyword, removedAt),
         ],
         workspaceId,
         clockAt(removedAt),
@@ -189,9 +181,9 @@ verifies("auto-approvals.never-list", () => {
       // R1 has the keyword, R2 doesn't read, R3 drops the keyword 23 hours after R2.
       const r3At = removedAt + 23 * 60 * minute;
       const revisions = [
-        { text: withKeyword, writtenAt: new Date(removedAt - minute), ownerWritten: true },
-        { text: "entries: [", writtenAt: new Date(removedAt), ownerWritten: true },
-        { text: emptyList, writtenAt: new Date(r3At), ownerWritten: true },
+        revision(1, withKeyword, removedAt - minute),
+        revision(2, "entries: [", removedAt),
+        revision(3, emptyList, r3At),
       ];
       const at = (time: number) => effectiveNeverList(revisions, workspaceId, clockAt(time));
       const keyword = { kind: "keyword", value: "payee" };
@@ -202,30 +194,69 @@ verifies("auto-approvals.never-list", () => {
       expect(onTheDot.ok && onTheDot.list.entries).not.toContainEqual(keyword);
     });
 
-    it("reads revisions written at the same time the same way, in any order", () => {
-      const revisions = [
-        { text: withKeyword, writtenAt: new Date(removedAt), ownerWritten: true },
-        { text: emptyList, writtenAt: new Date(removedAt), ownerWritten: true },
-      ];
+    it("orders revisions written in the same millisecond by their number, in any order", () => {
+      // By text, the keyword revision sorts first, so ordering by time and text dropped it after 24 hours.
+      const revisions = [revision(1, emptyList, removedAt), revision(2, withKeyword, removedAt)];
       const later = clockAt(removedAt + 2 * loosenDelayMs);
-      expect(effectiveNeverList(revisions, workspaceId, later)).toEqual(
-        effectiveNeverList([...revisions].reverse(), workspaceId, later),
-      );
+      const keyword = { kind: "keyword", value: "payee" };
+      for (const listed of [revisions, [...revisions].reverse()]) {
+        const read = effectiveNeverList(listed, workspaceId, later);
+        expect(read.ok && read.list.entries).toContainEqual(keyword);
+      }
     });
 
-    it("ignores a revision no owner wrote, for content and for timing", () => {
+    it("ignores an older revision no owner wrote, for content and for timing", () => {
       const revisions = [
-        { text: withKeyword, writtenAt: new Date(removedAt - loosenDelayMs), ownerWritten: true },
-        { text: emptyList, writtenAt: new Date(removedAt - loosenDelayMs), ownerWritten: false },
+        revision(1, withKeyword, removedAt - loosenDelayMs - 2 * hour),
+        revision(2, emptyList, removedAt - loosenDelayMs - hour, false),
+        revision(3, emptyList, removedAt - hour),
       ];
+      // Counting the agent's revision 2 would end revision 1 more than
+      // 24 hours ago and drop the keyword; only revision 3 replaces it.
       const read = effectiveNeverList(revisions, workspaceId, clockAt(removedAt));
       expect(read.ok && read.list.entries).toContainEqual({ kind: "keyword", value: "payee" });
     });
 
+    it("stops on its own when the newest revision isn't an owner's (A24)", () => {
+      const revisions = [
+        revision(1, withKeyword, removedAt - loosenDelayMs),
+        revision(2, withKeyword, removedAt, false),
+      ];
+      expect(effectiveNeverList(revisions, workspaceId, clockAt(removedAt))).toEqual({
+        ok: false,
+        reason: "never_list.not_owner_latest",
+      });
+    });
+
+    it.each([
+      ["a time that isn't a date", [revision(1, withKeyword, Number.NaN)], "time"],
+      [
+        "a later revision dated before an earlier one",
+        [revision(1, withKeyword, removedAt), revision(2, emptyList, removedAt - loosenDelayMs)],
+        "time",
+      ],
+      [
+        "a revision number used twice",
+        [revision(1, withKeyword, removedAt), revision(1, emptyList, removedAt)],
+        "number",
+      ],
+      ["a revision number of 0", [revision(0, withKeyword, removedAt)], "number"],
+      [
+        "a missing older revision",
+        [revision(1, withKeyword, removedAt), revision(3, emptyList, removedAt)],
+        "number",
+      ],
+    ])("fails closed on %s", (_, revisions, broken) => {
+      expect(effectiveNeverList(revisions, workspaceId, clockAt(removedAt))).toEqual({
+        ok: false,
+        reason: `never_list.bad_revision_${broken}`,
+      });
+    });
+
     it("fails closed when the newest revision doesn't read, or there is none", () => {
       const revisions = [
-        { text: withHireAgent, writtenAt: new Date(removedAt - minute), ownerWritten: true },
-        { text: neverList("entries: 1\n"), writtenAt: new Date(removedAt), ownerWritten: true },
+        revision(1, withHireAgent, removedAt - minute),
+        revision(2, neverList("entries: 1\n"), removedAt),
       ];
       expect(effectiveNeverList(revisions, workspaceId, clockAt(removedAt))).toEqual({
         ok: false,

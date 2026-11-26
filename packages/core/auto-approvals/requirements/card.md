@@ -18,3 +18,7 @@ When Studio reads a pending board approval in shadow mode, the auto approvals pa
   then the card stays not eligible for its own reason.
 - Given a linked issue whose description holds "ｓｅｃｒｅｔ",
   then the card is not eligible with `never_list.keyword`.
+
+## Path classes and unknown values
+
+The package shall find a card not eligible with `card.path_class` when any of its path classes is other than `ordinary`, before it reads the never-list. The package shall find a card not eligible with `card.unknown_type` or `card.unknown_source` when its approval type or `payload.source` is one it doesn't know, and shall make no card when the `approval.created` entry's actor type is neither `agent` nor `user`.

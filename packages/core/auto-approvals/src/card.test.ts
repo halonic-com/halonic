@@ -239,7 +239,7 @@ verifies("auto-approvals.card", () => {
     it("blocks the kinds a hold covers", async () => {
       const text = `version: 2\nworkspaceId: ${workspaceId}\nconnectorUserId: v\nentries: []\nholds:\n  - name: FREEZE\n    covers: [request_board_approval]\n`;
       const list = effectiveNeverList(
-        [{ text, writtenAt: new Date(createdAt), ownerWritten: true }],
+        [{ text, revisionNumber: 1, writtenAt: new Date(createdAt), ownerWritten: true }],
         workspaceId,
         fixedClock(),
       );

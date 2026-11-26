@@ -182,6 +182,13 @@ verifies("agent-host.paperclip-key", () => {
         "listIssueRuns",
         // Live events (HAL-19338), pinned in live-events-security.test.ts.
         "liveEvents",
+        // Auto approvals in shadow mode (HAL-19796), GETs only, pinned in security.test.ts.
+        "listApprovalComments",
+        "listCompanyActivity",
+        "readNeverList",
+        "listNeverListRevisions",
+        "readStopDocument",
+        "listStopDocumentRevisions",
       ]);
     });
   });
