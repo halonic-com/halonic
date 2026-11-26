@@ -208,5 +208,74 @@ verifies("studio.workspace-assistant", () => {
       expect((await chats.list()).map((kept) => kept.id)).toEqual([chat.id]);
       expect(gone).toEqual([]);
     });
+
+    it("lets go of a chat read back from the store when Try it pruned it", async () => {
+      const store = newStore();
+      const first = new KeptChats({ store, now: ticking() });
+      const chat = await first.newChat("build", { kind: "alias", name: "default" });
+      first.add(chat.id, { role: "user", content: "Hi" });
+      await first.saved();
+      // A new window reads it back, as after a relaunch.
+      const gone: string[] = [];
+      const next = new KeptChats({ store, now: ticking(), onGone: (chatId) => gone.push(chatId) });
+      expect((await next.list()).map((kept) => kept.id)).toEqual([chat.id]);
+
+      await store.sessions.delete(store.location, chat.id);
+
+      expect(await next.list()).toEqual([]);
+      expect(gone).toEqual([chat.id]);
+    });
+
+    it("keeps a chat answering here when Try it pruned it", async () => {
+      const store = newStore();
+      const gone: string[] = [];
+      const chats = new KeptChats({ store, now: ticking(), onGone: (chatId) => gone.push(chatId) });
+      const chat = await chats.newChat("build", { kind: "alias", name: "default" });
+      chats.add(chat.id, { role: "user", content: "Hi" });
+      chats.answering(chat.id, true);
+      await chats.saved();
+
+      await store.sessions.delete(store.location, chat.id);
+
+      expect((await chats.list()).map((kept) => kept.id)).toEqual([chat.id]);
+      expect(gone).toEqual([]);
+    });
+
+    it("keeps a chat a read missed while a new save of it was under way", async () => {
+      const store = newStore();
+      let held: Promise<void> | undefined;
+      // A store whose saves wait while `held` does.
+      const sessions: ChatSessions = {
+        list: (location) => store.sessions.list(location),
+        load: (location, id) => store.sessions.load(location, id),
+        save: async (location, chat) => {
+          await held;
+          await store.sessions.save(location, chat);
+        },
+        delete: (location, id) => store.sessions.delete(location, id),
+      };
+      const gone: string[] = [];
+      const chats = new KeptChats({
+        store: { sessions, location: store.location },
+        now: ticking(),
+        onGone: (chatId) => gone.push(chatId),
+      });
+      const chat = await chats.newChat("build", { kind: "alias", name: "default" });
+      chats.add(chat.id, { role: "user", content: "Hi" });
+      await chats.saved();
+      await store.sessions.delete(store.location, chat.id);
+
+      const hold = Promise.withResolvers<void>();
+      held = hold.promise;
+      const listing = chats.list();
+      // A save starts after the read did and lands after it.
+      chats.add(chat.id, { role: "user", content: "More" });
+      expect((await listing).map((kept) => kept.id)).toEqual([chat.id]);
+      expect(gone).toEqual([]);
+
+      hold.resolve();
+      await chats.saved();
+      expect((await store.sessions.list(store.location)).map(({ id }) => id)).toEqual([chat.id]);
+    });
   });
 });
