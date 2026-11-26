@@ -65,7 +65,7 @@ verifies("runs.app-sources", () => {
         title: "Ada · CTO",
         line: "ACME-7 Fix the login",
         where: "Paperclip · Acme",
-        by: { kind: "agent", name: "Ada" },
+        by: { kind: "agent", name: "Ada", id: "paperclip:acme:agent:ada" },
         chip: { word: "Running", tone: "running" },
         label: "Running, Ada · CTO, ACME-7 Fix the login, Paperclip · Acme.",
         notice: { startedByMe: false, task: "ACME-7" },

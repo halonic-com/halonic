@@ -123,6 +123,8 @@ export const inboxFeature = defineFeature({
       view: "NeedsYouCard",
       load: () => import("./ui/needs-you-card.tsx"),
       signal: (context) => context.services.get(InboxService).signal(),
+      // The count in the Needs you violet, as the Runs group and the Messenger draw it (HAL-19141, 8).
+      signalTone: "warning",
       subscribeSignal: (context, listener) =>
         context.services.get(InboxService).subscribe(listener),
     });

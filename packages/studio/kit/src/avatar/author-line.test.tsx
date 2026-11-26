@@ -26,3 +26,16 @@ verifies("kit.author-line", () => {
     expect(line.querySelector("[data-author-name]")?.getAttribute("aria-hidden")).toBe("true");
   });
 });
+
+verifies("kit.author-line-header", () => {
+  it("draws the avatar at the header's 40px", () => {
+    const line = render(<AuthorLine name="Ravi" time="09:00" size="header" />).container
+      .firstElementChild as HTMLElement;
+    expect(line.firstElementChild?.className).toContain("size-10");
+  });
+
+  it("shows the name alone, with no dot, when there is no time", () => {
+    const line = render(<AuthorLine name="Ravi" />).container.firstElementChild as HTMLElement;
+    expect(line.textContent).toBe("RRavi");
+  });
+});

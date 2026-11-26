@@ -1,4 +1,10 @@
-import { Button, List, type ListHeadingTone, type ListRow } from "@halonicjs/studio-kit";
+import {
+  Button,
+  List,
+  type ListHeadingTone,
+  type ListRow,
+  useFormatLocale,
+} from "@halonicjs/studio-kit";
 import { type GroupedRun, type RunGroup, runGroups, todaySummary } from "../list/run-groups.ts";
 import { type AppRun, appListWords, rowCostParts, rowTimeWords, summaryWords } from "./app-run.ts";
 import { RunTile } from "./run-tile.tsx";
@@ -40,6 +46,7 @@ export function RunsAppList({
 }: RunsAppListProps) {
   const summary = todaySummary(runs, { now, timeZone });
   const groups = runGroups(runs, { opened, now, timeZone });
+  const locale = useFormatLocale();
   return (
     <section aria-labelledby="runs-app-title" className="flex min-w-0 flex-col gap-3">
       <header className="flex flex-col gap-1 px-4 pt-4">
@@ -61,7 +68,9 @@ export function RunsAppList({
         groups={groups.map((group) => ({
           id: group.kind === "day" ? `day-${group.heading}` : group.kind,
           heading: { name: group.heading, ...headingTone(group.kind) },
-          rows: group.runs.map((run) => appRow(run, now, timeZone)),
+          rows: group.runs.map((run) =>
+            appRow(run, group.kind === "day", { now, timeZone, locale }),
+          ),
         }))}
         groupHeadingLevel={2}
         onOpen={onOpen}
@@ -82,11 +91,15 @@ function headingTone(kind: RunGroup<AppRun>["kind"]): { tone?: ListHeadingTone }
  * A run as a List row: its tile, what ran with the time, its line, and where it runs with its
  * cost. The state is the tile's corner dot for the eye and the label's word for a screen reader.
  */
-function appRow(run: AppRun, now: Date, timeZone: string): ListRow {
+function appRow(
+  run: AppRun,
+  underDay: boolean,
+  clock: { now: Date; timeZone: string; locale: string | undefined },
+): ListRow {
   return {
     id: run.id,
     title: run.title,
-    titleEnd: rowTimeWords(run, now, timeZone),
+    titleEnd: rowTimeWords(run, clock.now, clock.timeZone, clock.locale, underDay),
     meta: run.line,
     under: <WhereLine run={run} />,
     avatar: <RunTile by={run.by} phase={run.phase} />,

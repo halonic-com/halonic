@@ -3,14 +3,19 @@
 // revision 3, section 1). The words here are the design's.
 
 import { moneyAmount } from "@halonicjs/app";
-import type { StatusChipTone } from "@halonicjs/studio-kit";
+import { type StatusChipTone, shortTime } from "@halonicjs/studio-kit";
 import { fromMinorUnits, type MoneyTotal, type RunCost } from "../costs/cost-totals.ts";
 import type { GroupedRun, TodaySummary } from "../list/run-groups.ts";
 import { lineSeparator } from "../run-words.ts";
 
 /** Who or what ran, for the row's tile: an agent by its name, or a workflow. */
 export type RunBy =
-  | { readonly kind: "agent"; readonly name: string }
+  | {
+      readonly kind: "agent";
+      readonly name: string;
+      /** The agent's ID, for its own colour (`kit.agent-tint`); none when the team doesn't know it. */
+      readonly id?: string;
+    }
   | { readonly kind: "workflow" };
 
 /** One row of the Runs app's list. */
@@ -86,9 +91,17 @@ export function rowCostParts(cost: RunCost, running: boolean): RowCostParts | un
 
 /**
  * The time at the end of a row's title line: how long it has run while it's going ("7 min",
- * "2 h"), else the time it started on the user's clock ("09:00"). The day is the group's heading.
+ * "2 h"), else when it started on the user's clock, as the kit writes it in `locale`'s format
+ * (`runs.app-list-time`). Under a day's heading that is the time alone ("09:00", "9:00 AM");
+ * elsewhere, such as in Failed, an earlier day's run says its day ("Yesterday", "Mon").
  */
-export function rowTimeWords(run: GroupedRun, now: Date, timeZone: string): string {
+export function rowTimeWords(
+  run: GroupedRun,
+  now: Date,
+  timeZone: string,
+  locale?: string,
+  underDay = true,
+): string {
   const started = new Date(run.startedAt);
   if (run.phase === "running" || run.phase === "needs-you") {
     const minutes = Math.max(1, Math.floor((now.getTime() - started.getTime()) / 60_000));
@@ -96,12 +109,8 @@ export function rowTimeWords(run: GroupedRun, now: Date, timeZone: string): stri
       ? appListWords.minutes(minutes)
       : appListWords.hours(Math.floor(minutes / 60));
   }
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone,
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(started);
+  // Read against its own moment, the short time is the time of day, for a group that says the day.
+  return shortTime(started, underDay ? started : now, locale, timeZone);
 }
 
 /**

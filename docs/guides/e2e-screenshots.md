@@ -85,10 +85,11 @@ nothing scrolls sideways on the 390 px phone. The page loads the screen through
 
 ## Pull requests
 
-`pull-requests-<attention|all-open|old|loading|failed|no-snapshot|no-access>-<1440|390>-<light|dark|high-contrast>.png`
+`pull-requests-<attention|all-open|detail|old|loading|failed|no-snapshot|no-access>-<1440|390>-<light|dark|high-contrast>.png`
 is the Team feature's Pull requests screen from a made-up repo, for the design check against
 HAL-17515's P1–P10 (HAL-18328): stuck PRs and those coming up, All open by state, an old snapshot,
-loading, a failed first read, no snapshot and no access. The spec also checks that nothing scrolls
+loading, a failed first read, no snapshot and no access. `detail` is one PR's own page, headed by
+its author line (HAL-19765). The spec also checks that nothing scrolls
 sideways on the 390 px phone. The page loads the screen through `loadPullRequestsScreen` in the
 team feature's `api.ts`.
 

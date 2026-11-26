@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { PullRequest, WorkItem } from "@halonicjs/ports";
+import { agentTint, FormatLocaleProvider } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging, FakeTeamStatus } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -30,8 +31,11 @@ function acme() {
   return { team, messaging, source, add, task, holder };
 }
 
-/** Renders the screen and lets every read land; `opened` collects the links opened. */
-async function open(fake: ReturnType<typeof acme>, opened: string[] = []) {
+/**
+ * Renders the screen and lets every read land; `opened` collects the links opened, and `locale` is
+ * the window's time format.
+ */
+async function open(fake: ReturnType<typeof acme>, opened: string[] = [], locale?: string) {
   const pullRequests = new PullRequests(fake.team, fake.messaging, {
     now: () => new Date(now),
     timeZone: "UTC",
@@ -40,7 +44,11 @@ async function open(fake: ReturnType<typeof acme>, opened: string[] = []) {
     connectionOrigin: "https://paperclip.acme.test",
     open: (link: string) => opened.push(link),
   };
-  const page = render(<PullRequestsPage pullRequests={pullRequests} opener={opener} />);
+  const page = render(
+    <FormatLocaleProvider locale={locale}>
+      <PullRequestsPage pullRequests={pullRequests} opener={opener} />
+    </FormatLocaleProvider>,
+  );
   await settle();
   return page;
 }
@@ -273,5 +281,48 @@ verifies("team.merge-queue", () => {
       "Numbers are real positions. A time to merge shows only when GitHub gives one; it is never guessed.",
     );
     expect(text(page)).not.toMatch(/ETA|merges (in|at|around)/);
+  });
+});
+
+verifies("team.pull-request-author-line", () => {
+  it("heads a PR with the kit's author line: the agent's own colour on a 40px avatar", async () => {
+    const fake = acme();
+    const failing = { state: "failing", reason: "typecheck", since: minutesAgo(120) } as const;
+    fake.add("#5641", { ...failing, author: agent("Ravi"), changedLines: 312 });
+    const page = await open(fake);
+    await press(page, "#5641");
+    const name = shownMain(page)?.querySelector("[data-author-name]");
+    expect(name?.textContent).toBe("Ravi");
+    expect(name?.className).toBe("font-semibold text-fg");
+    const avatar = name?.closest("p")?.firstElementChild;
+    expect(avatar?.className).toContain(agentTint("acme-Ravi"));
+    expect(avatar?.className).toContain("size-10");
+    expect(name?.closest("p")?.textContent).toBe("RRavi · 312 lines");
+  });
+
+  it("keeps a person's avatar neutral, with the name alone when nothing else is known", async () => {
+    const fake = acme();
+    fake.add("#7", {
+      state: "failing",
+      since: minutesAgo(120),
+      author: { kind: "person", name: "outside contributor" },
+    });
+    const page = await open(fake);
+    await press(page, "#7");
+    const line = shownMain(page)?.querySelector("[data-author-name]")?.closest("p");
+    expect(line?.firstElementChild?.className).toContain("bg-surface-muted");
+    expect(line?.textContent).toBe("OCoutside contributor");
+  });
+});
+
+verifies("team.short-times", () => {
+  it("writes a merge time as the kit's short time, in the window's format", async () => {
+    const fake = acme();
+    fake.add("#9", { state: "merged", since: "2026-11-24T12:40:00.000Z" });
+    fake.add("#10", { state: "merged", since: "2026-11-23T18:05:00.000Z" });
+    const page = await open(fake, [], "en-US");
+    await press(page, "Merged today");
+    expect(text(page)).toContain("Merged 12:40 PM");
+    expect(text(page)).toContain("Merged yesterday");
   });
 });

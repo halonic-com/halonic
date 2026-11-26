@@ -50,6 +50,11 @@ export interface HomeCardContribution extends ViewRef {
    */
   signal?(context: WorkspaceContext): PlaceSignal | undefined;
   /**
+   * The colour of that count: `warning` draws it in the Needs you violet, as the Runs group and the
+   * Messenger do (`shell.home-signal-tone`); without it, the heading's own muted colour.
+   */
+  readonly signalTone?: "warning";
+  /**
    * Calls `listener` whenever the signal may have changed, so the heading reads `signal` again.
    * Returns a function that stops the calls.
    */

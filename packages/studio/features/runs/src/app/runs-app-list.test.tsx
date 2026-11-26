@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { agentTint, FormatLocaleProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -50,7 +51,8 @@ const runs = [
   }),
 ];
 
-function show(overrides: Partial<Parameters<typeof RunsAppList>[0]> = {}) {
+/** Shows the list in the window's `locale` format, en-GB unless a test says otherwise. */
+function show(overrides: Partial<Parameters<typeof RunsAppList>[0]> = {}, locale = "en-GB") {
   const props = {
     runs,
     opened: new Set<string>(),
@@ -61,7 +63,12 @@ function show(overrides: Partial<Parameters<typeof RunsAppList>[0]> = {}) {
     onCosts: vi.fn(),
     ...overrides,
   };
-  return { root: render(<RunsAppList {...props} />), props };
+  const list = (
+    <FormatLocaleProvider locale={locale}>
+      <RunsAppList {...props} />
+    </FormatLocaleProvider>
+  );
+  return { root: render(list), props };
 }
 
 const text = (element: Element | null | undefined) => element?.textContent?.trim() ?? "";
@@ -151,5 +158,36 @@ verifies("runs.app-list", () => {
       act(() => row?.click());
       expect(props.onOpen).toHaveBeenCalledWith("failed");
     });
+  });
+});
+
+verifies("runs.app-list-time", () => {
+  it("writes a finished run's start time as the kit does, in the window's format and the user's zone", () => {
+    const { root } = show({ runs: [run("done")] }, "en-US");
+    // 08:00 UTC is 09:00 in Madrid.
+    expect(root.textContent).toContain("9:00 AM");
+  });
+
+  it("says an earlier day's failure's day under Failed, where no heading says it", () => {
+    const failed = run("failed", {
+      phase: "failed",
+      startedAt: "2026-11-24T08:00:00Z",
+      chip: { word: "Failed", tone: "danger" },
+    });
+    const { root } = show({ runs: [failed] });
+    expect(root.textContent).toContain("Nightly reportYesterday");
+  });
+});
+
+verifies("runs.agent-tint", () => {
+  it("draws an agent's tile in its own colour, and an unknown agent's neutral", () => {
+    const known = run("known", {
+      by: { kind: "agent", name: "Ada", id: "paperclip:acme:agent:ada" },
+    });
+    const unknown = run("unknown", { by: { kind: "agent", name: "An agent" } });
+    const { root } = show({ runs: [known, unknown] });
+    const tiles = [...root.querySelectorAll('[data-part="run-tile"]')];
+    expect(tiles[0]?.firstElementChild?.className).toContain(agentTint("paperclip:acme:agent:ada"));
+    expect(tiles[1]?.firstElementChild?.className).toContain("bg-surface-muted");
   });
 });

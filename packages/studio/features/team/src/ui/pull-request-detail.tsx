@@ -1,5 +1,11 @@
-import type { MessagingId, PullRequestEvent } from "@halonicjs/ports";
-import { Avatar, ListHeading, StatusChip } from "@halonicjs/studio-kit";
+import type { MessagingAuthor, MessagingId, PullRequestEvent } from "@halonicjs/ports";
+import {
+  type AgentTint,
+  AuthorLine,
+  agentTint,
+  ListHeading,
+  StatusChip,
+} from "@halonicjs/studio-kit";
 import { useId } from "react";
 import { reviewFact, pullRequestDetailWords as words } from "../pull-request-detail-words.ts";
 import { formatAge, pullRequestWords } from "../pull-request-words.ts";
@@ -59,10 +65,12 @@ function PullRequestBody(props: {
   const { pullRequest } = page.row;
   return (
     <>
-      <p className="flex items-center gap-2 text-small text-fg-muted">
-        <Avatar name={authorName(pullRequest.author)} size="header" />
-        <span className="min-w-0 wrap-anywhere">{headerLine(page.row)}</span>
-      </p>
+      <AuthorLine
+        name={authorName(pullRequest.author)}
+        time={headerLine(page.row)}
+        tint={authorTint(pullRequest.author)}
+        size="header"
+      />
       <StateRow row={page.row} clock={clock} />
       <Timeline events={page.timeline} clock={clock} />
       <Facts page={page} clock={clock} />
@@ -135,13 +143,21 @@ function stuckLine(row: PullRequestRow, clock: TeamClock): string {
   return waitsForFastTrack ? `${since} · ${words.fastTrackDue}` : since;
 }
 
-/** "Ravi · task HAL-17451 · 312 lines": who opened it, its task and its size, as far as known. */
+/** "task HAL-17451 · 312 lines" after the author's name: its task and its size, as far as known. */
 function headerLine(row: PullRequestRow): string {
   const { pullRequest, task } = row;
-  const parts = [authorName(pullRequest.author)];
+  const parts: string[] = [];
   if (task !== undefined) parts.push(words.task(task.label));
   if (pullRequest.changedLines !== undefined) parts.push(words.lines(pullRequest.changedLines));
   return parts.join(" · ");
+}
+
+/**
+ * An agent's own colour, the one its Messenger bubbles have (`kit.agent-tint`); the board and an
+ * outside contributor are people, whose avatar stays neutral.
+ */
+function authorTint(author: MessagingAuthor): AgentTint | undefined {
+  return author.kind === "agent" ? agentTint(author.agent) : undefined;
 }
 
 /** The Review, Queue and Task facts (P12–P17) in one box, a row each: the muted term, its words. */

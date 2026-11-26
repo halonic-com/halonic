@@ -140,3 +140,16 @@ verifies("kit.time-stamp", () => {
     expect(formatTag(undefined)).toBeUndefined();
   });
 });
+
+verifies("kit.time-stamp-zone", () => {
+  const evening = new Date("2026-11-25T23:30:00.000Z");
+  const morning = new Date("2026-11-26T09:00:00.000Z");
+
+  it("picks the day and writes the time in the given zone", () => {
+    expect(shortTime(evening, morning, "en-GB", "Asia/Tokyo")).toBe("08:30");
+    expect(shortTime(evening, morning, "en-GB", "UTC")).toBe("Yesterday");
+    expect(shortTime(new Date("2025-11-20T12:00:00.000Z"), morning, "en-GB", "UTC")).toBe(
+      "20/11/2025",
+    );
+  });
+});
