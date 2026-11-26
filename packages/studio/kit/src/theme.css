@@ -252,7 +252,8 @@
   --radius-full: 9999px; /* avatars, toggles, counters */
 
   /* ---------------------------------------------------------------- Elevation (shadow-1/2/3) */
-  /* 1: a card lifted on hover. 2: menus, popovers, toasts. 3: dialogs. */
+  /* 1: a card lifted from its surface (approval cards at rest, others on hover). 2: menus, popovers,
+     toasts. 3: dialogs. */
   --shadow-1: 0 1px 2px var(--shade-soft);
   --shadow-2:
     0 0 0 1px var(--shade-edge), 0 4px 12px -2px var(--shade-mid), 0 2px 4px -2px var(--shade-soft);
