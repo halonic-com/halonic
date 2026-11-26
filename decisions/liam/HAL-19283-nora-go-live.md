@@ -2,6 +2,7 @@
 
 - Approval: the board's decision of 26 Nov (no shadow trial, Nora live once she runs, scope set on HAL-18424); Julian's findings on #6385 and his scope list on HAL-18424. Julian signs, since Liam wrote the pull request
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:ZMSnrnqUCDM4pOYBHTm2qLmI0LbMNWgLI3m2ZBVrluNwa2pCWvfAlhWKk56KDk7fUgUdmNrNsj1i9B3+2miKAg==
 
 Nora now covers the `routine-reviewer` role without a routing (`defaultRoles`), so
 `reviewerFor` names `nora` for a routine pull request, such as one to
