@@ -3,6 +3,7 @@
 - Task: HAL-19653
 - Approval: HAL-19653, the follow-up of the board's decision of 26 Nov on HAL-18422 (one source for who reviews a pull request, HAL-19639)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:zyfTvMzrDruodU85HFnWxklSGIr9nIHlBXnEKmP+e4A9Rb+NLvln4UUWQqlcxIAH6Gw411L4VgHwrGGn8v4LCw==
 
 ## What changes
 
