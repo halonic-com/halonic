@@ -1,7 +1,7 @@
 # Decision: a request log read counts as untrusted text, like a docs page
 
 - Approval: HAL-19170, the plan is HAL-18391 rev 2 section 2.3 (Liam's OK, 26 Nov); Liam approves this note in review
-- Kind: security
+- Kind: internal
 - Task: HAL-19170
 
 ## What changes
