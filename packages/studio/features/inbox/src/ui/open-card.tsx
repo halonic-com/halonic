@@ -166,13 +166,13 @@ export function OpenCard({
         onOpenRun={openThisRun}
         startedBy={facts?.startedBy}
         onSeeUsage={seeUsage}
+        announce={announce}
         next={next}
         now={now}
         answering={answering}
         signedOut={signedOut}
         words={words}
         waiting={items.some((waiting) => waiting.key === item.key)}
-        announce={announce}
       />
     );
   }

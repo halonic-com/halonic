@@ -4,7 +4,7 @@ import { Button, type CalloutHandle, StatusChip, waitingSince } from "@halonicjs
 import { useEffect, useId, useRef, useState } from "react";
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
-import { planLimitWords, unitMessage } from "../plain/plan-limit-words.ts";
+import { planLimitWords, stillAtLimitLine, unitMessage } from "../plain/plan-limit-words.ts";
 import {
   CardHeader,
   cardBodyClasses,
@@ -31,14 +31,14 @@ export interface PlanLimitCardProps extends EngineState {
   readonly startedBy?: string | undefined;
   /** Opens the customer's usage, the account page's plan; without it there's no **See usage**. */
   readonly onSeeUsage?: (() => void) | undefined;
+  /** Says a line where a screen reader hears it: "This run is still at your plan's limit…" after a Continue that changed nothing. */
+  readonly announce?: ((line: string) => void) | undefined;
   /** The next item, or `null` when nothing else is waiting. */
   readonly next: NextItem | null;
   /** The clock, so a test can set it. */
   readonly now?: () => Date;
   /** `false` once the run no longer waits here, such as continued from another window. */
   readonly waiting?: boolean;
-  /** Says a line politely, such as when Continue leaves the run at its limit and nothing changes on screen. */
-  readonly announce?: ((line: string) => void) | undefined;
 }
 
 type CardState =
@@ -46,6 +46,8 @@ type CardState =
       readonly kind: "open";
       /** **Continue the run** failed: the failure's own sentence, or `null` for none. */
       readonly failed: { readonly detail: string | null; readonly elsewhere: boolean } | null;
+      /** **Continue the run** left the run waiting at its limit: the line that says so, or `null`. */
+      readonly atLimitLine: string | null;
     }
   | { readonly kind: "continuing" }
   | { readonly kind: "continued"; readonly after: AfterAnswer };
@@ -54,8 +56,7 @@ type CardState =
  * The card for a run waiting at a plan limit (`inbox.plan-limit-card`, flow C3 as board 10 draws
  * it): the chip "Waiting: plan limit reached", C3's title and line, **Continue the run** and
  * **See usage**. Continue is always there: when there's still no room the run waits again at the
- * same stop, and the card stays as it was, with no new error; `announce` says so, as nothing
- * changes on screen.
+ * same stop, and the card stays as it was, with no new error, and says so in a quiet line.
  */
 export function PlanLimitCard(props: PlanLimitCardProps) {
   const { item } = props;
@@ -64,7 +65,7 @@ export function PlanLimitCard(props: PlanLimitCardProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   const continued = useRef<CalloutHandle>(null);
   const section = useRef<HTMLElement>(null);
-  const [state, setState] = useState<CardState>({ kind: "open", failed: null });
+  const [state, setState] = useState<CardState>({ kind: "open", failed: null, atLimitLine: null });
   const message = unitMessage(item.limit);
   useEveryMinute();
   useEffect(() => heading.current?.focus({ preventScroll: true }), []);
@@ -83,15 +84,17 @@ export function PlanLimitCard(props: PlanLimitCardProps) {
       run = await props.decisions.answer(item, "continue");
     } catch (error) {
       const failed = { detail: failureDetailOf(error), elsewhere: wasDecidedElsewhere(error) };
-      setState({ kind: "open", failed });
+      setState({ kind: "open", failed, atLimitLine: null });
       return;
     }
-    if (stillAtLimit(run)) {
-      setState({ kind: "open", failed: null });
-      props.announce?.(planLimitWords.stillWaiting);
+    if (!stillAtLimit(run)) {
+      setState({ kind: "continued", after: afterAnswer(run) });
       return;
     }
-    setState({ kind: "continued", after: afterAnswer(run) });
+    // The press needs an answer, or the button reads as broken (Noah, HAL-19110).
+    const line = stillAtLimitLine(planRunOf(run)?.stop ?? item.limit);
+    setState({ kind: "open", failed: null, atLimitLine: line });
+    props.announce?.(line);
   }
 
   return (
@@ -158,9 +161,11 @@ function ContinueBar({ state, engine, onContinue, onSeeUsage, onOpenRun }: Conti
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
   const failed = state.kind === "open" ? state.failed : null;
+  const atLimitLine = state.kind === "open" ? state.atLimitLine : null;
   return (
     <div className="flex flex-col gap-2 border-t border-border p-4">
       <NotAnsweringLine id={reasonId} {...engine} />
+      {atLimitLine === null ? null : <p className="text-small text-fg-muted">{atLimitLine}</p>}
       <FailedLine
         onRetry={failed === null || failed.elsewhere ? null : onContinue}
         detail={failed?.detail ?? null}

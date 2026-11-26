@@ -5,15 +5,7 @@
 // Cloud sends the seller's name and support contact, line 2 leaves out the contact sentence.
 
 import type { PlanRun, PlanStop, PlanUnitStop } from "@halonicjs/app/run-failure";
-
-/** What a customer reads for each unit (flows, section 0): the cost unit as "usage", never money. */
-const unitWords: Readonly<Record<string, string>> = {
-  runs: "runs",
-  steps: "steps",
-  tokens: "tokens",
-  cost: "usage",
-  harnessMinutes: "agent time",
-};
+import { unitName } from "@halonicjs/studio-feature-account-menu/api";
 
 /** The words for a run at a plan limit, in one place. */
 export const planLimitWords = {
@@ -31,14 +23,14 @@ export const planLimitWords = {
   finished: "The run finished.",
   /** After **Continue the run** when the run ended another way, such as an account no longer active. */
   ended: "The run ended without finishing.",
-  /** Said, not shown, when Continue leaves the run at its limit, so a press is never silent (Sofia, HAL-19119). */
-  stillWaiting: "The run is still waiting at your plan's limit.",
   usedUp: (unit: string) => `This run stopped: you've used this month's ${unit}`,
   reserveTitle: (unit: string) => `This step can't start: not enough ${unit} left this month`,
   /** Under 1% left reads "less than 1%", as "0% left" reads like a limit used up (Sofia, HAL-19057). */
   reserveLine: (unit: string, neededPercent: number, leftPercent: number) =>
     `It needs up to ${neededPercent}% of your monthly ${unit} and you have ${leftPercent === 0 ? "less than 1%" : `${leftPercent}%`} left.`,
   resets: (date: string) => `It resets on ${date}.`,
+  /** After **Continue the run** when the run still waits at its limit (Noah, HAL-19110; Sofia, HAL-19150). */
+  stillAtLimit: "This run is still at your plan's limit.",
   stoppedForGood: "This run stopped for good",
   waitedTooLong: "It waited 7 days at your plan's limit. Its results so far are kept.",
   tooMany: (running: number) =>
@@ -82,7 +74,7 @@ export function planLimitMessage(run: PlanRun): PlanLimitMessage | undefined {
 /** A unit's stop: its limit used up, or not enough left for the next step. */
 export function unitMessage(stop: PlanUnitStop): Pick<PlanLimitMessage, "title" | "line"> {
   // A unit this Studio doesn't know yet reads as the general word, never as its code.
-  const unit = unitWords[stop.unit] ?? "usage";
+  const unit = unitName(stop.unit) ?? "usage";
   const day = stop.resetsAt === undefined ? undefined : dayOf(stop.resetsAt);
   const resets = day === undefined ? [] : [planLimitWords.resets(day)];
   if (stop.reserve === undefined) {
@@ -93,6 +85,22 @@ export function unitMessage(stop: PlanUnitStop): Pick<PlanLimitMessage, "title" 
     title: planLimitWords.reserveTitle(unit),
     line: [planLimitWords.reserveLine(unit, neededPercent, leftPercent), ...resets].join(" "),
   };
+}
+
+/**
+ * The line after **Continue the run** when the run still waits at a unit's limit, with the day the
+ * limit resets when the stop says it.
+ *
+ * @example
+ * stillAtLimitLine(stop); // "This run is still at your plan's limit. It resets on 2 December."
+ */
+export function stillAtLimitLine(stop: PlanStop): string {
+  const day =
+    stop.kind === "unit" && stop.resetsAt !== undefined ? dayOf(stop.resetsAt) : undefined;
+  return [
+    planLimitWords.stillAtLimit,
+    ...(day === undefined ? [] : [planLimitWords.resets(day)]),
+  ].join(" ");
 }
 
 /** A run that failed at a stop without waiting. */

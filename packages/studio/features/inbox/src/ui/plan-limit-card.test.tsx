@@ -100,23 +100,20 @@ verifies("inbox.plan-limit-card", () => {
       expect(root.textContent).toContain("The run continues.");
     });
 
-    it("stays as it was, with no error, when there's still no room", async () => {
-      const { root, sent } = openCard(async () => runAtLimit());
-      const before = root.querySelector("section")?.textContent;
+    it("stays as it was, with no error, and says and announces it's still at the plan's limit", async () => {
+      const announced: string[] = [];
+      const { root, sent } = openCard(async () => runAtLimit(), {
+        announce: (line) => announced.push(line),
+      });
+      const title = root.querySelector("h2")?.textContent;
       await press(button(root, "Continue the run"));
+      const line = "This run is still at your plan's limit. It resets on 2 December.";
       expect(sent).toEqual(["continue"]);
-      expect(root.querySelector("section")?.textContent).toBe(before);
+      expect(root.querySelector("h2")?.textContent).toBe(title);
       expect(root.querySelector('[role="alert"]')?.textContent).toBe("");
-    });
-
-    it("says the run is still waiting, with the card unchanged, when there's still no room", async () => {
-      const said: string[] = [];
-      const { root } = openCard(async () => runAtLimit(), { announce: (line) => said.push(line) });
-      await press(button(root, "Continue the run"));
-      expect(said).toEqual(["The run is still waiting at your plan's limit."]);
-      expect(root.querySelector("h2")?.textContent).toBe(
-        "This run stopped: you've used this month's usage",
-      );
+      expect(root.textContent).toContain(line);
+      expect(announced).toEqual([line]);
+      expect(button(root, "Continue the run").textContent).toContain("Continue the run");
     });
 
     it("says nothing extra once the run goes on", async () => {
