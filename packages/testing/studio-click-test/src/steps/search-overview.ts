@@ -21,6 +21,11 @@ export const searchTask: Step = {
     if (!workspace.passed) return workspace;
     await closeDialogs(context);
     const hooked = await context.driver.runAsync(hookScript).catch((error: unknown) => String(error));
+    // The Inbox's stale line has a Try again: press it with the hook in, so its failing call shows.
+    const retried = await context.driver
+      .click("//button[normalize-space(.)='Try again']")
+      .then(() => "inbox retried", (error: unknown) => `no inbox retry: ${String(error).slice(0, 80)}`);
+    await context.sleep(5_000);
     await context.driver.pressKeys([keys.control, "k"]);
     const box = `//input[@aria-label='${screenText.search.text}']`;
     const typed = await context.driver.type(box, seedNames.task).then(
@@ -28,13 +33,14 @@ export const searchTask: Step = {
       () => false,
     );
     if (!typed) return { passed: false, code: "NO_SEARCH_BOX", note: `No box ${box}.` };
-    if (await clickRow(context, seedNames.task, 30_000)) return { passed: true };
+    const found = await clickRow(context, seedNames.task, 30_000);
     const { text } = await waitForText(context, 0, () => undefined);
     const seen = await context.driver
       .runAsync(readScript(seedNames.task))
       .catch((error: unknown) => String(error));
     const shell = await context.shellLog().catch((error: unknown) => String(error));
-    const diagnostics = `${String(hooked)} | ${String(seen)} | shell log: ${shell}`;
+    const diagnostics = `${String(hooked)} | ${retried} | ${String(seen)} | shell log: ${shell}`;
+    if (found) return { passed: true, note: `DIAGNOSTICS: ${diagnostics}` };
     return { passed: false, code: "NOT_FOUND", note: `${lastWords(text)} DIAGNOSTICS: ${diagnostics}` };
   },
 };
