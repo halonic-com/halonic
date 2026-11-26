@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import { agents, task } from "./fakes.test-helper.ts";
 import { mateoBranch, open, setup } from "./handoff.test-helper.ts";
 import type { CommentRow } from "./paperclip.ts";
-import { queueRequestsOf } from "./unneeded-rebase.ts";
+import { queueRequestsOf, unneeded } from "./unneeded-rebase.ts";
 
 /** The note on a rebase nobody asked for after an approval (HAL-18722), on facts given directly. */
 
@@ -68,6 +68,19 @@ verifies("paperclip.pr-watcher-unneeded-rebase", () => {
     const changed = watcher(false);
     await changed.run();
     expect(notes(changed)).toEqual([]);
+  });
+
+  test("says nothing on a repository without a merge queue, where a branch behind main can't merge", () => {
+    const since = { by: "Liam", approvedHead: "4999bbb", rebaseOnly: true };
+    const memory = {
+      reported: new Set<string>(),
+      seenUntil: undefined,
+      heldAt: undefined,
+      lastCommentAt: undefined,
+    };
+    const pull = open(5701, mateoBranch);
+    expect(unneeded(pull, since, memory)).toBe(true);
+    expect(unneeded({ ...pull, repo: "halonic-com/cloud" }, since, memory)).toBe(false);
   });
 
   test("reads the pull request and head from the queue manager's wake lines", () => {
