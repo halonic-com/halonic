@@ -10,6 +10,7 @@
 //! and receives (D7a, HAL-15177), never a private key, a session key, the
 //! pairing code or its psk.
 
+mod answer_confirm;
 pub mod answers;
 mod connect;
 mod connections;
@@ -24,6 +25,8 @@ mod status;
 mod store;
 
 #[cfg(test)]
+mod answer_confirm_tests;
+#[cfg(test)]
 mod answers_tests;
 #[cfg(test)]
 mod connect_tests;
@@ -36,13 +39,14 @@ mod nearby_tests;
 #[cfg(test)]
 mod start_tests;
 
+pub use answer_confirm::ANSWER_WINDOW;
 pub use answers::{
     ComputerView, ComputersAnswer, ConnectOutcome, ForgetOutcome, PairingOutcome, PairingStep,
     Problem, StandingView,
 };
 pub use host::{
-    LocalNetwork, LocalNetworkAnswer, OwnerAnswer, PhoneAnswer, TunnelHost, confirm_with,
-    needs_local_network, phone_name,
+    AwayAnswer, LocalNetwork, LocalNetworkAnswer, OwnerAnswer, PhoneAnswer, TunnelHost,
+    confirm_with, needs_local_network, phone_name, times_away_with,
 };
 pub use messages::{GATEWAY_MAX_MESSAGE_BYTES, PHONE_MESSAGE_TYPES, SendAnswer, SendRefusal};
 pub use nearby::{Hit, MAX_NEARBY, NearbyComputers, NearbyView};

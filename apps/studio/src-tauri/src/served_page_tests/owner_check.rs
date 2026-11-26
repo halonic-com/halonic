@@ -26,6 +26,8 @@ fn no_page_may_call_the_owner_check() {
             "plugin:owner-check|confirmOwner",
             "plugin:owner-check|close_owner_check",
             "plugin:owner-check|closeOwnerCheck",
+            "plugin:owner-check|owner_check_away",
+            "plugin:owner-check|ownerCheckAway",
         ] {
             assert!(
                 invoke(
