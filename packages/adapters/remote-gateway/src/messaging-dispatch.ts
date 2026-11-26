@@ -2,6 +2,7 @@ import type {
   AnswerResult,
   GatewayMessagingClientMessage,
   gatewayRefusalCodes,
+  InboxItem,
   MessagingId,
   PhoneMessaging,
   SendResult,
@@ -142,7 +143,9 @@ async function search(context: Context, message: MessageOf<"msg-search">): Promi
  */
 async function answer(context: Context, message: MessageOf<"msg-answer">): Promise<void> {
   const { view } = context.messaging;
-  const item = (await view.listInboxItems()).find((candidate) => candidate.id === message.item);
+  const items = await inboxOrLineDown(view);
+  if (typeof items === "string") return context.replies.refuse(message.id, items);
+  const item = items.find((candidate) => candidate.id === message.item);
   if (item === undefined) return context.replies.refuse(message.id, "not-found");
   // Fails closed: any risk but `normal` (absent reads as `normal`) waits for the switch.
   const risky = item.risk !== undefined && item.risk !== "normal";
@@ -153,6 +156,25 @@ async function answer(context: Context, message: MessageOf<"msg-answer">): Promi
   if (source === undefined) return context.replies.refuse(message.id, "not-found");
   if (source.state.kind !== "online") return context.replies.refuse(message.id, source.state.kind);
   return sendResult(context, message.id, await view.answer(item.id, message.answer));
+}
+
+/**
+ * The Inbox, or why the line is down. A provider's read fails while it is
+ * offline, so a failed read is refused with the sources' state when none is
+ * online (HAL-19053); with one online, the failure stands.
+ */
+async function inboxOrLineDown(
+  view: PhoneMessaging,
+): Promise<readonly InboxItem[] | "offline" | "signed-out"> {
+  try {
+    return await view.listInboxItems();
+  } catch (error) {
+    const kinds = (await view.listSources()).map((source) => source.state.kind);
+    if (kinds.includes("online")) throw error;
+    if (kinds.includes("offline")) return "offline";
+    if (kinds.includes("signed-out")) return "signed-out";
+    throw error;
+  }
 }
 
 /**

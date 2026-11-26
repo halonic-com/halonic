@@ -106,6 +106,31 @@ verifies("remote-gateway.messaging-allow-list", () => {
       },
     );
 
+    it.each(["offline", "signed-out"] as const)(
+      "refuses with %s when the inbox read fails and no source is online (HAL-19053)",
+      async (kind) => {
+        const t = await connect();
+        t.fake.source = {
+          ...acmeSource,
+          state: kind === "offline" ? { kind, asOf: "2026-11-25T08:00:00Z" } : { kind },
+        };
+        t.fake.inboxFailure = new TypeError("fetch failed");
+        await t.say(everyAllowedMessage[7]);
+        expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "a1", code: kind });
+        expect(t.transport.closed).toBe(false);
+        expect(t.fake.calls).not.toContain("answer");
+      },
+    );
+
+    it("keeps a failed inbox read a failure while a source is online", async () => {
+      const t = await connect();
+      t.fake.inboxFailure = new Error("broken provider");
+      await t.say(everyAllowedMessage[7]);
+      await settle();
+      expect(t.transport.closed).toBe(true);
+      expect(t.fake.calls).not.toContain("answer");
+    });
+
     it("refuses a risky item with the switch off, reading the switch for each answer", async () => {
       const t = await connect();
       t.fake.item = inboxItem("risky");
