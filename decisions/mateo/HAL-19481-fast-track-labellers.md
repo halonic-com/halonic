@@ -3,6 +3,7 @@
 - Task: HAL-19481
 - Approval: the board's go on phase 2 of the plan on HAL-19228 (26 Nov), item 2.3 with Liam's change 7 from HAL-19325; Liam reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2/7O6Vfai2JjsSENV+ybZE3el3BRf8e11AJt3/wbfK3t5kJ1gokE8EUmxHTRyfANVbf9eS5dT+5XY7ZYTpQqAg==
 
 ## What changes
 
