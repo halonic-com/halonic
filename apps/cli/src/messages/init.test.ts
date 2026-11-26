@@ -90,7 +90,7 @@ describe("init's sentences", () => {
   it("has the errors' reasons and fixes", () => {
     expect(words(initMessages.notEmpty())).toBe("the folder isn't empty.");
     expect(words(initMessages.notEmptyFix())).toBe(
-      "Pick a new folder name, or run it in an empty folder.",
+      "Pick a new folder name, for example halonic init my-workspace, or run it in an empty folder.",
     );
     expect(words(initMessages.unknownExample("demo"))).toBe('There\'s no example called "demo".');
     expect(words(initMessages.unknownExampleNear("acem", "acme"))).toBe(

@@ -135,7 +135,7 @@ verifies("cli.commands.init.create-workspace", () => {
       expect(io.stdout).toEqual([]);
       expect(io.stderr.slice(0, 2)).toEqual([
         `✕ Couldn't create the workspace in .${sep}acme: the folder isn't empty.`,
-        "  Pick a new folder name, or run it in an empty folder.",
+        "  Pick a new folder name, for example halonic init my-workspace, or run it in an empty folder.",
       ]);
       expect(readdirSync(join(folder, "acme"))).toEqual(["notes.txt"]);
     });

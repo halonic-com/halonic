@@ -307,7 +307,7 @@ verifies("cli.commands.runs.show", () => {
       ]);
     });
 
-    it("ends with the wait step's title as the engine filled it in (HAL-7012)", async () => {
+    it("ends with the wait step's title as the engine filled it in, and its body (HAL-7012, HAL-19285)", async () => {
       await storeRuns({
         ...waiting,
         after: [
@@ -327,8 +327,11 @@ verifies("cli.commands.runs.show", () => {
 
       const { io } = await showIn(acme, "09d9a0");
 
-      expect(io.stdout.slice(-2)).toEqual([
+      expect(io.stdout.slice(-5)).toEqual([
         "! Waiting for you: Approve the reply to Ada",
+        "",
+        "  Hi Ada, thanks for writing.",
+        "",
         "  Answer with: halonic runs send 09d9a0 approve (or reject)",
       ]);
     });

@@ -146,19 +146,33 @@ interface ErrorReport {
   readonly terminal?: { readonly lines: readonly Phrase[]; readonly fix: Phrase };
 }
 
+/**
+ * A wrong command line: the problem, then its fix or the command's usage line,
+ * and in the terminal the line the error adds under the usage line, if any.
+ */
+function usageReport(error: UsageError, context: PrintErrorContext, scrub: Scrub): ErrorReport {
+  const fix = error.fixMessage ?? context.usage;
+  const problem = scrubPhrase(error.problem.phrase, scrub);
+  const shownFix = fix === undefined ? undefined : scrubPhrase(fix.phrase, scrub);
+  const after = error.afterUsage;
+  return {
+    kind: "usage",
+    reason: problem,
+    firstLine: problem,
+    fix: shownFix,
+    docs: undefined,
+    code: undefined,
+    // The line under the usage line, as the fix the terminal shows last.
+    ...(after === undefined || shownFix === undefined
+      ? {}
+      : { terminal: { lines: [shownFix], fix: scrubPhrase(after.phrase, scrub) } }),
+  };
+}
+
 function reportOf(error: unknown, context: PrintErrorContext): ErrorReport {
   const scrub = scrubFor(context);
   if (error instanceof UsageError) {
-    const fix = error.fixMessage ?? context.usage;
-    const problem = scrubPhrase(error.problem.phrase, scrub);
-    return {
-      kind: "usage",
-      reason: problem,
-      firstLine: problem,
-      fix: fix === undefined ? undefined : scrubPhrase(fix.phrase, scrub),
-      docs: undefined,
-      code: undefined,
-    };
+    return usageReport(error, context, scrub);
   }
   if (error instanceof NotTrustedError) {
     const reason = scrubPhrase(error.problem.phrase, scrub);

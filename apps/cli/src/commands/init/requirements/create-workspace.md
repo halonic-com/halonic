@@ -19,7 +19,7 @@ The `halonic init [folder]` command shall lay out a new workspace with `initWork
   then it prints "✓ Created the workspace acme in this folder." and no `cd` line.
 - Given a folder `acme` with a `notes.txt` in it,
   when `halonic init acme` runs,
-  then it prints "✕ Couldn't create the workspace in ./acme: the folder isn't empty." and "Pick a new folder name, or run it in an empty folder.", writes nothing and exits with 5.
+  then it prints "✕ Couldn't create the workspace in ./acme: the folder isn't empty." and "Pick a new folder name, for example halonic init my-workspace, or run it in an empty folder.", writes nothing and exits with 5.
 - Given the current folder with a `notes.txt` in it,
   when `halonic init` runs,
   then it prints "✕ Couldn't create the workspace in this folder: the folder isn't empty.", writes nothing and exits with 5.

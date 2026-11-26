@@ -377,9 +377,32 @@ verifies("cli.commands.serve.npm-package-page", () => {
     const address = addressOf(io.stdout[0]);
 
     expect(io.stdout[2]).toBe(
-      "The Studio page doesn't come with the npm package, so the address shows no page.",
+      "The Studio page for a browser doesn't come with the npm package. To open it from the Halonic app for Android, serve it with halonic serve --network, then run halonic serve pair.",
     );
     expect((await fetch(`${address}/`)).status).toBe(404);
     expect((await fetch(`${address}/api/hello`)).status).toBe(200);
+  });
+
+  it("answers a browser asking for / with a plain page that says the same (HAL-19285)", async () => {
+    await trustAcme();
+    const { io } = startServeWith(
+      { ...acmeRunsSetup(acmeRuns), studioFolder: null },
+      "--port",
+      "0",
+    );
+    await waitUntil("the server to print three lines", () => io.stdout.length >= 3, slowStart);
+    const address = addressOf(io.stdout[0]);
+    const html = { headers: { Accept: "text/html,application/xhtml+xml" } };
+
+    const page = await fetch(`${address}/`, html);
+    const elsewhere = await fetch(`${address}/api/nothing`, html);
+
+    expect(page.status).toBe(200);
+    expect(page.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
+    expect(await page.text()).toContain(
+      "<p>The Studio page for a browser doesn't come with the npm package. To open it from the Halonic app for Android, serve it with halonic serve --network, then run halonic serve pair.</p>",
+    );
+    expect(elsewhere.status).toBe(404);
+    expect(await elsewhere.json()).toMatchObject({ code: "not_found" });
   });
 });

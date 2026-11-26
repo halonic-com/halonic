@@ -12,7 +12,7 @@
 // `halonic trust`. Later versions are checked as `routines watch` checks them.
 // The routines on a clock run as `routines watch` runs them (`server.routines`).
 
-import { access, realpath } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
@@ -66,6 +66,11 @@ import { workspaceAgentNames } from "./agent-names.ts";
 import { openChoiceHistory } from "./choice-files.ts";
 import { workspaceGoogleRead } from "./google-read.ts";
 import { startsOnLiveVersion } from "./live-version-runs.ts";
+import {
+  answerBrowserWithoutStudio,
+  reachableFromPhone,
+  studioPageIsBuilt,
+} from "./no-studio-page.ts";
 import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
 import { openServePaperclip } from "./serve-paperclip.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
@@ -264,6 +269,7 @@ async function serveVersions(
         await printServing(context, setup, versions, deviceConsole, {
           name: printable(workspaceNameOf(workspace, dir)),
           address: listen.publicOrigin ?? `http://localhost:${server.port}`,
+          reachable: reachableFromPhone(listen),
         });
         await stopped(engine.signal);
       } finally {
@@ -285,12 +291,12 @@ async function printServing(
   setup: ServeSetup,
   versions: WatchedVersions,
   deviceConsole: ServeConsole,
-  served: { readonly name: string; readonly address: string },
+  served: { readonly name: string; readonly address: string; readonly reachable: boolean },
 ): Promise<void> {
   context.printAhead(serveMessages.serving(served.name, served.address).phrase);
   if (!(await passwordIsSet(context))) context.printAhead(serveMessages.noPassword().phrase);
   if (deviceConsole.warning !== null) context.warn(deviceConsole.warning);
-  const studioLine = await studioPageLine(setup);
+  const studioLine = await studioPageLine(setup, served.reachable);
   if (studioLine !== null) context.printAhead(studioLine);
   // Each webhook routine's address, so a routine that never starts says why (HAL-14299).
   const loaded = await versions.routines.listLoaded();
@@ -306,20 +312,12 @@ function studioFolderOf(setup: ServeSetup): string | null {
 }
 
 /** The line under the "Serving" line about the Studio page, or null when the page is there and current. */
-async function studioPageLine(setup: ServeSetup): Promise<Phrase | null> {
+async function studioPageLine(setup: ServeSetup, reachable: boolean): Promise<Phrase | null> {
   const studioFolder = studioFolderOf(setup);
-  if (studioFolder === null) return serveMessages.studioNotInPackage().phrase;
-  if (!(await isBuilt(studioFolder))) return serveMessages.studioNotBuilt().phrase;
+  if (studioFolder === null) return serveMessages.studioNotInPackage(reachable).phrase;
+  if (!(await studioPageIsBuilt(studioFolder))) return serveMessages.studioNotBuilt().phrase;
   if (await isOutdated(setup, studioFolder)) return serveMessages.studioOutdated().phrase;
   return null;
-}
-
-/** Whether the Studio page's entry is there to serve. */
-async function isBuilt(studioFolder: string): Promise<boolean> {
-  return access(join(studioFolder, "studio.html")).then(
-    () => true,
-    () => false,
-  );
 }
 
 /** Whether the built page is older than the app it is built from, such as after a `git pull`. */
@@ -425,17 +423,21 @@ async function listenOnComputer(
     createServer: (allowedHosts) =>
       // A refused webhook delivery gets a line, so the terminal says why it started nothing (HAL-15084).
       reportWebhookRefusals(
-        createServer({
-          config: {
-            deploymentId: "local",
-            version: halonicVersion,
-            minAppVersion: halonicVersion,
-            allowedHosts,
-            maxBodyBytes,
-            ...(listen.publicOrigin === undefined ? {} : { publicOrigin: listen.publicOrigin }),
-          },
-          ports,
-        }),
+        answerBrowserWithoutStudio(
+          createServer({
+            config: {
+              deploymentId: "local",
+              version: halonicVersion,
+              minAppVersion: halonicVersion,
+              allowedHosts,
+              maxBodyBytes,
+              ...(listen.publicOrigin === undefined ? {} : { publicOrigin: listen.publicOrigin }),
+            },
+            ports,
+          }),
+          studioFolder === null,
+          reachableFromPhone(listen),
+        ),
         {
           routineName: async (key) => (await findWebhookRoutine(key))?.routine.name ?? null,
           print: (line) => context.printAhead(line),

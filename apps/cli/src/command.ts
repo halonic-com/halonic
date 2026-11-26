@@ -324,11 +324,14 @@ export class UsageError extends Error {
   readonly problem: Message;
   /** The one next step; when it's missing the CLI shows the command's usage line. */
   readonly fixMessage: Message | undefined;
+  /** A line the terminal shows under the usage line, such as the workflows there are; `--json` leaves it out. */
+  readonly afterUsage: Message | undefined;
 
-  constructor(problem: Message, fix?: Message) {
+  constructor(problem: Message, fix?: Message, afterUsage?: Message) {
     super(plainText(problem.phrase));
     this.problem = problem;
     this.fixMessage = fix;
+    this.afterUsage = afterUsage;
   }
 }
 

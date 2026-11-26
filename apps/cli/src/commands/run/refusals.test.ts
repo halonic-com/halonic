@@ -1,5 +1,5 @@
 import { mkdtempSync } from "node:fs";
-import { chmod, cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -55,6 +55,9 @@ async function run(...args: string[]): Promise<{ code: number; io: CapturedIo }>
   return { code, io };
 }
 
+const runOptions =
+  "[--dir <folder>] [--input <file or JSON>] [--event <event>]... [--harness <harness>] [--follow]";
+
 const samsEmail = ["--input", "examples/refund-question.json"];
 
 describe("halonic run's refusals", () => {
@@ -66,6 +69,21 @@ describe("halonic run's refusals", () => {
     expect(none.io.stderr[0]).toBe("✕ halonic run needs a workflow.");
     expect(two.io.stderr[0]).toBe(
       "✕ halonic run takes one workflow, and you gave two: support-reply, weekly-report.",
+    );
+  });
+
+  it("lists the workflows under the usage line when none is given (HAL-19285)", async () => {
+    const { io } = await run();
+    await rm(join(acme, "hubs"), { recursive: true });
+    const empty = await run();
+
+    expect(io.stderr).toEqual([
+      "✕ halonic run needs a workflow.",
+      `  Usage: halonic run <workflow> ${runOptions}`,
+      "  Workflows in Acme: weekly-report, support-reply.",
+    ]);
+    expect(empty.io.stderr.at(-1)).toBe(
+      "  Acme has no workflows yet. Add one from a recipe: https://docs.halonic.dev/examples/approval-step",
     );
   });
 

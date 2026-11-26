@@ -70,6 +70,13 @@ verifies("cli.commands.runs.show-waiting-child", () => {
     const waiting = io.stdout.findLastIndex((line) => line.startsWith("! Waiting for you"));
     expect(io.stdout.slice(waiting)).toEqual([
       "! Waiting for you: Approve this reply?",
+      "",
+      "  Sorry your order arrived damaged, Sam. We are looking into a refund and will write again today.",
+      "",
+      "  Acme support",
+      "",
+      "  Approving finishes the run. Nothing is sent.",
+      "",
       expect.stringMatching(
         /^ {2}Answer with: halonic runs send \S{6}\.\S+ approve \(or reject\)$/,
       ),
