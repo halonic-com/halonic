@@ -29,7 +29,7 @@ export const feedbackWords = {
   textLabel: "What did you notice?",
   /** Under the text field: where the task goes and what it carries. */
   footnote: (project: string, assignee: string) =>
-    `Goes to ${project} as a task in Paperclip for ${assignee}, with the time and Studio version.`,
+    `Goes to ${project} as a task in Paperclip for ${assignee}, with the app, window, time and Studio version.`,
   /** After the Ctrl Enter (⌘ ↩) keys at the footnote's right. */
   sendKeyHint: "send",
   /** The toasts after Send, from the sketch's §3. */
@@ -46,6 +46,7 @@ export const feedbackWords = {
    * Sofia's changes on HAL-19391). In the crop box when the crop couldn't be loaded:
    */
   cropFailed: "Couldn't load the screenshot.",
+  /** In that box, and at the right of the line under the crop: a new selection, keeping the text. */
   selectAgain: "Select again",
   sendWithoutScreenshot: "Send without a screenshot",
   /** Above the footnote before Send, when Send would save the feedback to send later. */
