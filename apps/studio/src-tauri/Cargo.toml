@@ -116,6 +116,13 @@ tauri-plugin-notification = "=2.8.1"
 # Tauri's official plugin, pinned with tauri: 2.5.5 needs tauri ^2.12. Rust
 # only: it has no commands, so no page can call it.
 tauri-plugin-single-instance = "=2.5.5"
+# Each window comes back where it was (HAL-19204, board request): FancyZones
+# keeps one place per exe, and Studio, the Inbox and the Messenger are all
+# Halonic.exe. Tauri's official plugin keeps each window's position, size
+# and maximised state by its label. Pinned with tauri: 2.5.0 needs tauri
+# ^2.12. Registered from Rust only: no capability grants its commands, so
+# no page can call them (`window_place.rs`). Approved by Liam on HAL-19212.
+tauri-plugin-window-state = "=2.5.0"
 # "Start Halonic when I log in" (B1 step 6, HAL-14221): our own crate,
 # not tauri-plugin-autostart, so the entry is per-user only and its path is
 # quoted (crates/login-item/README.md). Desktop only.

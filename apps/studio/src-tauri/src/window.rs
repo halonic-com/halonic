@@ -3,7 +3,9 @@
 //! and the window switcher would keep showing "Halonic". The shell opens
 //! the window itself, from the same configuration (`create` is off in
 //! tauri.conf.json), and the native title follows the page's title. A
-//! focused app's window (`focused_apps`) is opened from it too.
+//! focused app's window (`focused_apps`) is opened from it too. On the
+//! desktop each opens hidden and shows once it is back in its kept place
+//! (`window_place`).
 
 use tauri::utils::config::WindowConfig;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
@@ -14,8 +16,22 @@ use crate::focused_apps::FocusedApp;
 
 /// Opens the window tauri.conf.json describes, with its native title
 /// following the page's title.
+#[cfg(mobile)]
 pub fn open<R: Runtime, M: Manager<R>>(manager: &M) -> tauri::Result<WebviewWindow<R>> {
     open_from(manager, app_window_config(manager))
+}
+
+/// Opens the window tauri.conf.json describes, with its native title
+/// following the page's title, in its kept place.
+#[cfg(desktop)]
+pub fn open<R: Runtime, M: Manager<R>>(manager: &M) -> tauri::Result<WebviewWindow<R>> {
+    let mut config = app_window_config(manager);
+    // Shown once it is in its kept place, so it never shows elsewhere first.
+    config.visible = false;
+    let window = open_from(manager, config)?;
+    crate::window_place::restore(&window);
+    window.show()?;
+    Ok(window)
 }
 
 #[cfg(desktop)]
@@ -50,6 +66,7 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
             halonic_shell_log::record("window", error);
         }
     }
+    crate::window_place::restore(&window);
     window.show()?;
     Ok(window)
 }
