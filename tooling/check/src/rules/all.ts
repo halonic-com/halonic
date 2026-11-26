@@ -10,6 +10,7 @@ import { checkConflictMarkers } from "./conflict-markers.ts";
 import { checkDco } from "./dco.ts";
 import { checkDeny } from "./deny.ts";
 import { checkDependencies } from "./dependencies.ts";
+import { checkDocsReaders } from "./docs-readers.ts";
 import { checkEnvironmentSecrets } from "./environment-secrets.ts";
 import { checkFeatures } from "./features.ts";
 import { checkFileSize } from "./file-size.ts";
@@ -53,6 +54,7 @@ export const rules: Readonly<Record<string, (context: CheckContext) => Report>> 
   "environment-secrets": checkEnvironmentSecrets,
   "markdown-tables": checkMarkdownTables,
   "tracker-links": checkTrackerLinks,
+  "docs-readers": checkDocsReaders,
   // On a pull request, GitHub sets GITHUB_HEAD_REF to its branch; the note
   // check is the gate for that branch's own note.
   "notes-signed": (context) => checkNotesSigned(context, process.env["GITHUB_HEAD_REF"]),
