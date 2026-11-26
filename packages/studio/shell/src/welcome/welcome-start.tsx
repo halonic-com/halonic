@@ -32,6 +32,29 @@ export interface WelcomeStartState {
    * answer is `undefined`.
    */
   afterStart<T>(task: () => Promise<T>): Promise<T | undefined>;
+  /**
+   * As {@link afterStart}, but runs `task` once the start's engine is ready, without waiting for
+   * the agent host: opening a workspace doesn't need it, and on Windows it starts through several
+   * `wsl.exe` steps (HAL-19599). Runs and the assistant still wait for the host and its check.
+   */
+  afterEngine<T>(task: () => Promise<T>): Promise<T | undefined>;
+  /** Whether the start's engine is ready, or the start has failed: a held press waits no more. */
+  readonly engineReady: boolean;
+}
+
+/** Where a held press stands: run it, keep it waiting, or drop it. */
+type Gate = "ready" | "waiting" | "failed";
+
+/** A press held until its gate opens or the start fails. */
+interface Held {
+  readonly forEngine: boolean;
+  readonly settle: (ready: boolean) => void;
+}
+
+/** Whether the start's engine is ready: from `engine_ready` on, though the host may still start. */
+function engineGate(view: StartView, report: StartReport | undefined): Gate {
+  if (view.kind !== "waiting") return view.kind;
+  return report === undefined || report.phase === "page_loaded" ? "waiting" : "ready";
 }
 
 const alwaysReady: StartView = { kind: "ready" };
@@ -57,31 +80,44 @@ export function useWelcomeStart(start: WelcomeStart | undefined): WelcomeStartSt
   );
   const report = useSyncExternalStore<StartReport | undefined>(subscribe, () => start?.report);
   const view = start === undefined ? alwaysReady : startView(report);
-  const waiters = useRef<((ready: boolean) => void)[]>([]);
+  const startGate: Gate = view.kind;
+  const engine: Gate = start === undefined ? "ready" : engineGate(view, report);
+  const waiters = useRef<Held[]>([]);
   useEffect(() => {
-    if (view.kind !== "waiting") {
-      for (const waiter of waiters.current.splice(0)) waiter(view.kind === "ready");
-    }
-  }, [view.kind]);
+    waiters.current = waiters.current.filter(({ forEngine, settle }) => {
+      const gate = forEngine ? engine : startGate;
+      if (gate !== "waiting") settle(gate === "ready");
+      return gate === "waiting";
+    });
+  }, [startGate, engine]);
   // A press held when Welcome goes away ends without running, so its promise doesn't hang.
   useEffect(
     () => () => {
-      for (const waiter of waiters.current.splice(0)) waiter(false);
+      for (const { settle } of waiters.current.splice(0)) settle(false);
     },
     [],
   );
-  const afterStart = useCallback(
-    async <T,>(task: () => Promise<T>): Promise<T | undefined> => {
+  const held = useCallback(
+    async <T,>(forEngine: boolean, task: () => Promise<T>): Promise<T | undefined> => {
+      const gate = forEngine ? engine : startGate;
       const ready =
-        view.kind === "waiting"
-          ? await new Promise<boolean>((resolve) => waiters.current.push(resolve))
-          : view.kind === "ready";
+        gate === "waiting"
+          ? await new Promise<boolean>((settle) => waiters.current.push({ forEngine, settle }))
+          : gate === "ready";
       return ready ? task() : undefined;
     },
-    [view.kind],
+    [startGate, engine],
   );
+  const afterStart = useCallback(<T,>(task: () => Promise<T>) => held(false, task), [held]);
+  const afterEngine = useCallback(<T,>(task: () => Promise<T>) => held(true, task), [held]);
   const offId = useId();
-  return { view, offId: startShows(view) ? offId : undefined, afterStart };
+  return {
+    view,
+    offId: startShows(view) ? offId : undefined,
+    afterStart,
+    afterEngine,
+    engineReady: engine !== "waiting",
+  };
 }
 
 /** Props for {@link WelcomeStartArea}. */

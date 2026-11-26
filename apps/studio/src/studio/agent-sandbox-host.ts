@@ -54,9 +54,13 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
   readonly available = true;
   /**
    * Whether the Studio's runs start an agent outside its sandbox, as the agent host says
-   * (`GET /v1/sandbox/this-computer`): the Harness page's answer too.
+   * (`GET /v1/sandbox/this-computer`): the Harness page's answer too. The cautious `false` until
+   * the host answers.
    */
-  readonly studioStartsUnfenced: boolean;
+  get studioStartsUnfenced(): boolean {
+    return this.#startsUnfenced;
+  }
+  #startsUnfenced = false;
   readonly #transport: AgentHostTransport;
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;
@@ -73,8 +77,8 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
    * `wslBackup` is given only where the shell offers the removal of the WSL setup (HAL-10974);
    * without it the section has no **Remove sandbox setup**. `elevate` is given only where the
    * shell starts the helper itself, from Studio's window (HAL-14841); without it the host runs the
-   * setup and the removal. `studioStartsUnfenced` is the host's answer, read before the section
-   * opens; false when left out. `wslSetup` is given only where the host runs in Halonic's WSL
+   * setup and the removal. `studioStartsUnfenced` is the host's answer, or its coming answer,
+   * which the section reads once it's in (HAL-19599); false when left out. `wslSetup` is given only where the host runs in Halonic's WSL
    * distro on Windows (HAL-16765): **Set up** then runs the WSL setup through the shell.
    */
   constructor(
@@ -84,10 +88,18 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     securityUpdates?: () => Promise<SecurityUpdatesFacts | null>,
     wslBackup?: WslBackupShell,
     elevate?: ElevateHelper,
-    studioStartsUnfenced = false,
+    studioStartsUnfenced: boolean | Promise<boolean> = false,
     wslSetup?: WslSetupHelper,
   ) {
-    this.studioStartsUnfenced = studioStartsUnfenced;
+    if (typeof studioStartsUnfenced === "boolean") this.#startsUnfenced = studioStartsUnfenced;
+    else
+      studioStartsUnfenced.then(
+        (answer) => {
+          this.#startsUnfenced = answer;
+        },
+        // It stays the cautious false.
+        (error: unknown) => console.error("Asking the agent host about sessions", error),
+      );
     if (securityUpdates !== undefined) this.securityUpdates = securityUpdates;
     if (wslBackup !== undefined) {
       this.removeWslSetup = (request, options) => this.#removeWsl(request, options);

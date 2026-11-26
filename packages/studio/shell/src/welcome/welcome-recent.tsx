@@ -1,5 +1,6 @@
 import { MiddleCut, Spinner, usePresentation } from "@halonicjs/studio-kit";
 import { type Ref, useId } from "react";
+import { type RecentOpenStep, welcomeOpenWords } from "./welcome-open-words.ts";
 
 /** A workspace remembered on this device, as a Recent row on the Welcome screen shows it. */
 export interface WelcomeRecentWorkspace {
@@ -27,8 +28,8 @@ export const WELCOME_RECENT_ROWS = 5;
 export interface WelcomeRecentProps {
   /** The remembered workspaces, most recent first; only the first five show. */
   readonly workspaces: readonly WelcomeRecentWorkspace[];
-  /** The row whose folder is opening, which is busy. */
-  readonly opening: string | undefined;
+  /** The row whose folder is opening, which is busy, and the step it waits on. */
+  readonly opening: { readonly location: string; readonly step: RecentOpenStep } | undefined;
   readonly onOpen: (location: string) => void;
   /** Takes each row's button, by location, so focus can move to a row. */
   readonly rowRef: (location: string) => Ref<HTMLButtonElement>;
@@ -40,7 +41,8 @@ export interface WelcomeRecentProps {
  * The Welcome screen's Recent list (states-flow-map W2): the heading **Recent** and up to five
  * rows, each a button with the workspace's name over its folder, read "*Acme Support*,
  * *~/Documents/Acme Support*" (microcopy 19.6). One press opens it. The row whose folder is
- * opening is busy: a spinner at its end, `aria-busy`, presses ignored, and a polite "Opening…" status for screen readers. Hidden while nothing is
+ * opening is busy: a spinner at its end, `aria-busy`, presses ignored, the step it waits on under
+ * its folder, such as "Starting the engine…", and a polite "Opening…" status for screen readers. Hidden while nothing is
  * remembered, with no "No recent workspaces" sentence. A sample's Demo tag sits at the row's
  * right on desktop, and on a phone right after its name, so the folder keeps the row's width.
  *
@@ -61,7 +63,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
       </h2>
       <ul className="flex flex-col">
         {shown.map((workspace) => {
-          const busy = workspace.location === opening;
+          const busy = workspace.location === opening?.location;
           const failedRow = workspace.location === failed?.location;
           return (
             <li key={workspace.location}>
@@ -87,6 +89,11 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
                     ) : null}
                   </span>
                   <MiddleCut text={workspace.location} />
+                  {busy && opening !== undefined ? (
+                    <span className="text-caption text-fg-muted">
+                      {welcomeOpenWords.steps[opening.step]}
+                    </span>
+                  ) : null}
                 </span>
                 {!phone && workspace.sample === true ? <SampleTag /> : null}
                 {busy ? (
@@ -100,7 +107,7 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
         })}
       </ul>
       <span role="status" aria-live="polite" className="sr-only">
-        {opening !== undefined && shown.some((workspace) => workspace.location === opening)
+        {opening !== undefined && shown.some((workspace) => workspace.location === opening.location)
           ? openingStatus
           : ""}
       </span>

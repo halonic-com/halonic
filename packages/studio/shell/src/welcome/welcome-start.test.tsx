@@ -32,6 +32,23 @@ function renderWelcome(onOpenFolder = vi.fn(async () => undefined)) {
   );
 }
 
+function renderWithRecent(onOpen: (location: string) => Promise<undefined>) {
+  const workspaces = [{ name: "Acme Support", location: "~/Documents/Acme Support" }];
+  return render(
+    <Welcome
+      onOpenFolder={async () => undefined}
+      recent={{ workspaces, onOpen, onRemove: () => undefined }}
+      start={start}
+    />,
+  );
+}
+
+function row(root: HTMLElement): HTMLButtonElement {
+  const found = root.querySelector<HTMLButtonElement>("li button");
+  if (found === null) throw new Error("No Recent row");
+  return found;
+}
+
 function button(root: HTMLElement, label: string): HTMLButtonElement {
   const found = [...root.querySelectorAll("button")].find((each) =>
     each.textContent?.includes(label),
@@ -172,6 +189,30 @@ verifies("shell.welcome-start", () => {
 
     await act(async () => start.answer({ state: "ready", seconds: 1 }));
     expect(onOpenFolder).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens a Recent row while the agent host is still starting", async () => {
+    const onOpen = vi.fn(async () => undefined);
+    const root = renderWithRecent(onOpen);
+    // The engine is ready; the host, on Windows started through several wsl.exe steps, isn't.
+    start.answer({ state: "starting", phase: "wsl_ready", seconds: 3 });
+
+    await act(async () => row(root).click());
+    expect(onOpen).toHaveBeenCalledWith("~/Documents/Acme Support");
+  });
+
+  it("holds a Recent row until the engine is ready, saying so on the row", async () => {
+    const onOpen = vi.fn(async () => undefined);
+    const root = renderWithRecent(onOpen);
+    start.answer({ state: "starting", phase: "page_loaded", seconds: 1 });
+
+    await act(async () => row(root).click());
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(row(root).getAttribute("aria-busy")).toBe("true");
+    expect(row(root).textContent).toContain("Starting the engine…");
+
+    await act(async () => start.answer({ state: "starting", phase: "engine_ready", seconds: 2 }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
   it("drops a held press when the start fails", async () => {
