@@ -1,4 +1,4 @@
-import { type PointerEvent, useEffect, useState } from "react";
+import { type PointerEvent, useEffect, useRef, useState } from "react";
 import { type Point, type Rect, type Screen, selectionBox } from "../crop.ts";
 import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import { feedbackWords } from "../feedback-words.ts";
@@ -13,6 +13,7 @@ import {
 } from "./drag.ts";
 import { boxEdge, dim, keyEdge, pill } from "./overlay-colours.ts";
 import { SizeLabel } from "./size-label.tsx";
+import { keepOpenOnCancel, useTopLayer } from "./top-layer.ts";
 
 /** Props for {@link FeedbackOverlay}. */
 export interface FeedbackOverlayProps {
@@ -34,9 +35,11 @@ export interface FeedbackOverlayProps {
  * the shell, which crops the still it took when the shortcut was pressed, and then says so
  * through `onSelected`. A smaller box does
  * nothing. Enter selects the whole window, so a keyboard alone can send feedback (WCAG 2.1.1),
- * and Esc ends the feedback.
+ * and Esc ends the feedback. It is a modal `<dialog>`, so it shows over a modal the app has open.
  */
 export function FeedbackOverlay({ ipc, still, onClose, onSelected }: FeedbackOverlayProps) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useTopLayer(dialog);
   const [drag, setDrag] = useState<Drag>();
   const [pointerHere, setPointerHere] = useState(true);
   const viewport = useViewport();
@@ -53,7 +56,7 @@ export function FeedbackOverlay({ ipc, still, onClose, onSelected }: FeedbackOve
       ? undefined
       : { screen, box: selectionBox(screen, drag.start, drag.current) };
 
-  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+  const onPointerDown = (event: PointerEvent<HTMLDialogElement>) => {
     if (event.button !== 0) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     const point = pointOf(event);
@@ -61,7 +64,7 @@ export function FeedbackOverlay({ ipc, still, onClose, onSelected }: FeedbackOve
     if (drag?.phase === "anchored") setDrag({ ...drag, current: point });
     else setDrag({ start: point, current: point, phase: "pressed" });
   };
-  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const onPointerMove = (event: PointerEvent<HTMLDialogElement>) => {
     if (drag !== undefined) setDrag({ ...drag, current: pointOf(event) });
   };
   const onPointerUp = () => {
@@ -76,9 +79,13 @@ export function FeedbackOverlay({ ipc, still, onClose, onSelected }: FeedbackOve
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[2147483647] cursor-crosshair select-none overflow-hidden"
+    <dialog
+      ref={dialog}
+      // A modal <dialog> without the browser's frame, margins, size limits or backdrop.
+      className="fixed inset-0 m-0 size-full max-h-none max-w-none cursor-crosshair select-none overflow-hidden border-0 bg-transparent p-0 backdrop:bg-transparent"
+      aria-label={feedbackWords.dragHint}
       data-feedback-overlay=""
+      onCancel={keepOpenOnCancel}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -91,7 +98,7 @@ export function FeedbackOverlay({ ipc, still, onClose, onSelected }: FeedbackOve
         <SelectionBox screen={selection.screen} box={selection.box} />
       )}
       {drag === undefined && pointerHere ? <Hint /> : null}
-    </div>
+    </dialog>
   );
 }
 
@@ -215,7 +222,7 @@ function selectArea(ipc: FeedbackIpc, area: SelectedArea, selected: () => void):
   });
 }
 
-function pointOf(event: PointerEvent<HTMLDivElement>): Point {
+function pointOf(event: PointerEvent<HTMLDialogElement>): Point {
   return { x: event.clientX, y: event.clientY };
 }
 
