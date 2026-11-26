@@ -10,6 +10,7 @@ import {
   frontBotHarness,
   type HarnessOptions,
 } from "./front-bot.test-helper.ts";
+import { gitHubPrStatus, onlyWatchedRepo } from "./front-bot-lookup.ts";
 import { isAutomaticNote } from "./front-bot-notes.ts";
 
 const lookupsOn = { ...botOn, frontBotLookups: true };
@@ -176,6 +177,20 @@ verifies("paperclip.front-bot-lookups", () => {
         "lookup_unreadable",
       ],
       [
+        "a run start time that isn't a date",
+        "Is HAL-123 running?",
+        {
+          tasks: [
+            {
+              identifier: "HAL-123",
+              status: "in_progress",
+              activeRun: { status: "running", agentId: chiefId, startedAt: "not a date" },
+            },
+          ],
+        },
+        "lookup_unreadable",
+      ],
+      [
         "a task of another company",
         "Is HAL-123 running?",
         { tasks: [{ identifier: "HAL-123", companyId: "globex", status: "done" }] },
@@ -214,6 +229,41 @@ verifies("paperclip.front-bot-lookups", () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  describe("must-fail: a bare PR number is read only when the company watches one repository", () => {
+    /** The PR status source on settings that watch `repos`, with a GitHub that records each request. */
+    function source(repos: readonly string[]) {
+      const fetch = vi.fn(async () => {
+        throw new Error("offline");
+      });
+      const ctx = {
+        config: {
+          get: async () => ({ githubToken: { type: "secret_ref", secretId: "token-ref" }, repos }),
+        },
+        secrets: { resolve: async () => "read-only-token" },
+        http: { fetch },
+      } as unknown as Parameters<typeof gitHubPrStatus>[0];
+      return { read: gitHubPrStatus(ctx), fetch };
+    }
+
+    test("two watched repositories: refused before any GitHub request", async () => {
+      const { read, fetch } = source(["halonic-com/halonic", "halonic-com/cloud"]);
+      await expect(read("acme", 45)).rejects.toThrow("one repository");
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    test("one watched repository: the request goes to that repository", async () => {
+      const { read, fetch } = source(["halonic-com/cloud"]);
+      await expect(read("acme", 45)).rejects.toThrow();
+      expect(String(fetch.mock.calls[0]?.[0])).toContain("/repos/halonic-com/cloud/pulls/45");
+    });
+
+    test("the rule itself", () => {
+      expect(onlyWatchedRepo(["halonic-com/halonic"])).toBe("halonic-com/halonic");
+      expect(onlyWatchedRepo(["halonic-com/halonic", "halonic-com/cloud"])).toBeUndefined();
+      expect(onlyWatchedRepo([])).toBeUndefined();
     });
   });
 

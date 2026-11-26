@@ -35,7 +35,7 @@ const lookupTimeoutMs = 8_000;
 export interface LookupDeps {
   readonly now: () => Date;
   /**
-   * The PR status lookup's source: one pull request on the company's first
+   * The PR status lookup's source: one pull request on the company's only
    * watched repository, read from GitHub with GET requests only and the
    * company's read-only token ({@link gitHubPrStatus}).
    */
@@ -68,17 +68,26 @@ export function prStatusResult(status: PrStatus): PrStatusResult {
 }
 
 /**
+ * The repository a bare PR number is on: the company's one watched
+ * repository. With more than one, "#45" could be either, and the answer
+ * doesn't say which, so there is none and the question goes to the agent.
+ */
+export function onlyWatchedRepo(repos: readonly string[]): string | undefined {
+  return repos.length === 1 ? repos[0] : undefined;
+}
+
+/**
  * The PR status source: the `pr_status` tool's own read, on the company's
- * first watched repository, with its read-only token and GET requests only.
+ * only watched repository, with its read-only token and GET requests only.
  */
 export function gitHubPrStatus(
   ctx: Pick<ToolsApi, "config" | "secrets" | "http">,
 ): LookupDeps["readPrStatus"] {
   return async (companyId, pr) => {
     const github = await companyGitHub(ctx, companyId);
-    const repo = github.repos[0];
+    const repo = onlyWatchedRepo(github.repos);
     if (repo === undefined) {
-      throw new Error("no repository is watched.");
+      throw new Error("a PR number names a pull request only when one repository is watched.");
     }
     return prStatusResult(await prStatus(github.get, repo, pr));
   };
@@ -95,6 +104,12 @@ async function readRunStatus(
     return "lookup_not_found";
   }
   const run = issue.activeRun ?? undefined;
+  const startedAt =
+    run === undefined || run.startedAt === null ? undefined : new Date(run.startedAt);
+  // A start time that isn't a date can't go in an answer.
+  if (startedAt !== undefined && Number.isNaN(startedAt.getTime())) {
+    return "lookup_unreadable";
+  }
   const agents = run === undefined ? [] : await readers.agents.list({ companyId, limit: 500 });
   return {
     kind: "run_status",
@@ -106,7 +121,7 @@ async function readRunStatus(
         : {
             status: run.status,
             agentName: agents.find((agent) => agent.id === run.agentId)?.name,
-            startedAt: run.startedAt === null ? undefined : new Date(run.startedAt),
+            startedAt,
           },
   };
 }
@@ -153,10 +168,11 @@ export async function answerLookup(
   const callType = `lookup_${question.kind}` as const;
   const started = deps.now().getTime();
   const latency = () => deps.now().getTime() - started;
+  // Wrapped, so the sources hold the two read functions and not the whole clients.
   const readers: LookupReaders = {
     readPrStatus: deps.readPrStatus,
-    issues: ctx.issues,
-    agents: ctx.agents,
+    issues: { get: (task, companyId) => ctx.issues.get(task, companyId) },
+    agents: { list: (query) => ctx.agents.list(query) },
   };
   const result = await readLookup(readers, scene.issue.companyId, question);
   if (typeof result === "string") {

@@ -129,6 +129,15 @@ verifies("paperclip.front-bot-lookups", () => {
         expect(matchLookup(message)).toEqual({ matched: false, reason: "not_a_lookup" });
       });
     }
+
+    test("a 300,000-character message is refused at once, even a long run of question marks", () => {
+      const long = `Is #6129 merged${"?".repeat(299_980)} done`;
+      expect(long.length).toBeGreaterThanOrEqual(300_000);
+      const started = performance.now();
+      expect(matchLookup(long)).toEqual({ matched: false, reason: "not_a_lookup" });
+      // Quadratic reading takes most of a minute here; linear reading a few milliseconds.
+      expect(performance.now() - started).toBeLessThan(2_000);
+    });
   });
 
   describe("answers say only what the result says", () => {
@@ -170,6 +179,30 @@ verifies("paperclip.front-bot-lookups", () => {
       expect(answerFor(askPr, draft)).toEqual({
         ok: true,
         body: `${lookupLabel("pr_status")}PR #6129: open as a draft; ci-ok green; conflicts with its base branch; not in the merge queue; not approved on its latest commit.`,
+      });
+    });
+
+    test("must-fail: an agent name with Markdown or other marks never reaches an answer", () => {
+      const names = [
+        "[Liam](https://example.com)",
+        "![x](https://example.com/x.png)",
+        "**Liam**",
+        "Liam; HAL-123 is done",
+        "Liam\nmerged",
+        "`Liam`",
+        "L".repeat(41),
+        "",
+      ];
+      for (const agentName of names) {
+        const result = { ...runningTask, run: { ...runningTask.run, agentName } };
+        expect(answerFor(askTask, result as RunStatusResult), agentName).toEqual({
+          ok: true,
+          body: `${lookupLabel("run_status")}HAL-123: in progress; an agent's run is under way, started 14:02 UTC.`,
+        });
+      }
+      const plain = { ...runningTask, run: { ...runningTask.run, agentName: "Zoë O'Neill-Day" } };
+      expect(answerFor(askTask, plain as RunStatusResult)).toMatchObject({
+        body: expect.stringContaining("Zoë O'Neill-Day's run is under way"),
       });
     });
 

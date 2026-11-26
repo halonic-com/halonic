@@ -84,15 +84,21 @@ const runQuestions = [
   `is there a run on ${task}`,
 ].map((pattern) => new RegExp(`^${pattern}$`));
 
-/** The message in lower case, one space between words, straight quotes, no closing `?`, `.` or `!`. */
-function normalised(message: string): string {
-  return message
-    .trim()
-    .toLowerCase()
-    .replaceAll("’", "'")
-    .replace(/\s+/g, " ")
-    .replace(/[?.!]+$/, "")
-    .trim();
+/**
+ * The message trimmed, in lower case, with one space between words and
+ * straight quotes. Every step is linear, so it is safe on a message of any
+ * length.
+ */
+function plainWords(message: string): string {
+  return message.trim().toLowerCase().replaceAll("’", "'").replace(/\s+/g, " ");
+}
+
+/**
+ * The words without a closing `?`, `.` or `!`. The pattern is slow on a long
+ * run of those marks, so it only ever sees a message of question length.
+ */
+function withoutClosingMarks(words: string): string {
+  return words.replace(/[?.!]+$/, "").trim();
 }
 
 /** The first group a pattern in `questions` captures from the whole of `text`, if one matches. */
@@ -112,13 +118,14 @@ function firstCapture(questions: readonly RegExp[], text: string): string | unde
  * anything to be done never does.
  */
 export function matchLookup(message: string): LookupMatch {
-  const text = normalised(message);
-  if (writeWords.test(text.replace(queuePhrase, ""))) {
+  const words = plainWords(message);
+  if (writeWords.test(words.replace(queuePhrase, ""))) {
     return { matched: false, reason: "write_request" };
   }
-  if (message.trim().includes("\n") || text.length > maxQuestionLength) {
+  if (message.trim().includes("\n") || words.length > maxQuestionLength) {
     return { matched: false, reason: "not_a_lookup" };
   }
+  const text = withoutClosingMarks(words);
   const number = firstCapture(prQuestions, text);
   if (number !== undefined) {
     return { matched: true, question: { kind: "pr_status", pr: Number(number) } };
@@ -219,14 +226,28 @@ function prText(result: PrStatusResult): string {
   ].join("; ");
 }
 
+/**
+ * What an agent's name may look like in an answer: letters, digits, spaces,
+ * `'` and `-`, starting with a letter, at most 40 characters. A name is the
+ * one value an answer takes from outside the fixed phrases, so one holding
+ * Markdown, a link or other marks never reaches an answer.
+ */
+const plainName = /^\p{L}[\p{L}\p{N} '-]{0,39}$/u;
+
+/** Whose run the answer names: the agent, when its name is plain, else just "an agent". */
+function runOwner(agentName: string | undefined): string {
+  return agentName !== undefined && plainName.test(agentName)
+    ? `${agentName}'s run`
+    : "an agent's run";
+}
+
 function runText(result: RunStatusResult): string | undefined {
   const status = words(taskStatusWords, result.status);
   if (status === undefined) return undefined;
   if (result.run === undefined) return `${result.task}: ${status}; no agent run right now.`;
   const runStatus = words(runStatusWords, result.run.status);
   if (runStatus === undefined) return undefined;
-  const whose =
-    result.run.agentName === undefined ? "an agent's run" : `${result.run.agentName}'s run`;
+  const whose = runOwner(result.run.agentName);
   // A queued run hasn't started, so its answer never carries a start time.
   const started =
     result.run.status !== "running" || result.run.startedAt === undefined
