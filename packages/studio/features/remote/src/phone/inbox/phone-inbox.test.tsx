@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { AnswerResult, InboxItem } from "@halonicjs/ports";
+import { SKELETON_AFTER_MS } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useSyncExternalStore } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -9,6 +10,7 @@ import { render, unmountAll } from "../../test-support/render.tsx";
 import type { OwnerCheckAvailable } from "../gateway-client.ts";
 import { timeOf } from "./inbox-words.ts";
 import { PhoneInbox } from "./phone-inbox.tsx";
+import { usePhoneInbox } from "./use-phone-inbox.ts";
 
 const scenes: GatewayScene[] = [];
 afterEach(() => {
@@ -57,8 +59,10 @@ async function mountInbox(
     const view = useSyncExternalStore(scene.client.subscribe.bind(scene.client), () =>
       scene.client.view(),
     );
+    const items = usePhoneInbox(scene.client.messaging, view.canAnswer);
     return (
       <PhoneInbox
+        items={items}
         view={view}
         messaging={scene.client.messaging}
         computer={SCENE_COMPUTER}
@@ -97,6 +101,26 @@ async function press(name: string): Promise<void> {
   await step(() => button(name).click());
 }
 
+/** The Inbox row of the card titled `title`: its title, who asks, any hint, then its wait. */
+function row(title: string): HTMLButtonElement {
+  const found = [...document.querySelectorAll<HTMLButtonElement>("li > button")].find((each) =>
+    each.textContent?.startsWith(title),
+  );
+  if (found === undefined) throw new Error(`No row ${title}`);
+  return found;
+}
+
+async function open(title: string): Promise<void> {
+  await step(() => row(title).click());
+}
+
+/** The list's heading as a screen reader hears it: "Needs you, 2 waiting". */
+const heading = () =>
+  [...(document.querySelector("section h2")?.childNodes ?? [])]
+    .map((node) => node.textContent)
+    .join("")
+    .replace("· ", "");
+
 const text = () => document.body.textContent ?? "";
 
 const noScreenLock = "Set a screen lock on this phone to answer from it. Reading still works.";
@@ -110,9 +134,9 @@ async function result(scene: GatewayScene, answer: AnswerResult): Promise<void> 
 verifies("remote.phone-inbox", () => {
   it("lists what waits, and answers a card once with what the person picked", async () => {
     const { scene } = await mountInbox([item(), hire]);
-    expect(text()).toContain("Needs you · 2 waiting");
-    await press("Chief" + "Ship phase 2 now?");
-    expect(document.activeElement?.textContent).toBe("Chief");
+    expect(heading()).toBe("Needs you, 2 waiting");
+    await open("Ship phase 2 now?");
+    expect(document.activeElement?.textContent).toBe("Ship phase 2 now?");
     await press("Today");
     expect(scene.tunnel.sentOf("msg-answer")).toEqual([
       expect.objectContaining({
@@ -129,7 +153,7 @@ verifies("remote.phone-inbox", () => {
 
   it("says who answered first when the card was answered elsewhere", async () => {
     const { scene } = await mountInbox([item()]);
-    await press("Chief" + "Ship phase 2 now?");
+    await open("Ship phase 2 now?");
     await press("Later");
     const by = { kind: "person", name: "Mara" } as const;
     await result(scene, { outcome: "already-answered", by, answeredAt });
@@ -138,11 +162,11 @@ verifies("remote.phone-inbox", () => {
 
   it("names the computer when the person already answered the card there", async () => {
     const { scene } = await mountInbox([item()]);
-    await press("Chief" + "Ship phase 2 now?");
+    await open("Ship phase 2 now?");
     await press("Today");
     await result(scene, { outcome: "already-answered", by: { kind: "me" }, answeredAt });
     expect(text()).toContain(`Answered on ${SCENE_COMPUTER} at ${timeOf(answeredAt)}`);
-    expect(() => button("Today")).toThrow();
+    expect(button("Today").getAttribute("aria-disabled")).toBe("true");
     await press("Next");
     expect(text()).toContain("Needs you");
   });
@@ -150,7 +174,8 @@ verifies("remote.phone-inbox", () => {
   it("keeps a risky card on the computer, buttons off, while phones may not answer risky ones", async () => {
     const { scene } = await mountInbox([hire]);
     expect(text()).toContain("Answer this on your computer");
-    await press("Chief" + "Hire a designer?" + "Answer this on your computer");
+    expect(row("Hire a designer?").textContent).toContain("Answer this on your computer");
+    await open("Hire a designer?");
     expect(text()).toContain("Answer this on your computer.");
     expect(button("Today").getAttribute("aria-disabled")).toBe("true");
     await press("Today");
@@ -160,7 +185,7 @@ verifies("remote.phone-inbox", () => {
   it("answers a risky card once the computer lets phones answer risky approvals", async () => {
     const { scene } = await mountInbox([hire]);
     await step(() => scene.push([], true));
-    await press("Chief" + "Hire a designer?");
+    await open("Hire a designer?");
     expect(text()).not.toContain("Answer this on your computer.");
     await press("Today");
     expect(scene.tunnel.sentOf("msg-answer")).toHaveLength(1);
@@ -168,7 +193,7 @@ verifies("remote.phone-inbox", () => {
 
   it("reads but answers nothing on a phone without a screen lock", async () => {
     const { scene, onOpenSettings } = await mountInbox([item()], { screenLock: false });
-    await press("Chief" + "Ship phase 2 now?");
+    await open("Ship phase 2 now?");
     expect(text()).toContain("Ship phase 2 now?");
     expect(text()).toContain(
       "Set a screen lock on this phone to answer from it. Reading still works.",
@@ -188,7 +213,7 @@ verifies("remote.phone-inbox", () => {
           answerCheck = resolve;
         });
       const { scene } = await mountInbox([item()], { ownerCheck });
-      await press("Chief" + "Ship phase 2 now?");
+      await open("Ship phase 2 now?");
       expect(text()).not.toContain(noScreenLock);
       expect(button("Today").getAttribute("aria-disabled")).toBe("true");
       await press("Today");
@@ -213,5 +238,104 @@ verifies("remote.phone-inbox", () => {
     ]);
     expect(text()).toContain("Nothing is waiting for you");
     expect(text()).toContain("Questions and approvals from your agents show up here.");
+  });
+});
+
+/** Whether `first` comes before `second` in the document. */
+const above = (first: Element, second: Element) =>
+  (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+/** The innermost element that says `words` and nothing else. */
+function holding(words: string): Element {
+  const found = [...document.querySelectorAll("p, div, span")]
+    .filter((each) => each.textContent === words)
+    .at(-1);
+  if (found === undefined) throw new Error(`Nothing says ${words}`);
+  return found;
+}
+
+const planned = item({
+  question: "Ship phase 2 now?\nThe tests are green.",
+  project: { id: "apps", name: "Halonic apps" },
+});
+
+verifies("remote.phone-inbox-parts", () => {
+  it("shows each card as a flat row: its title, who asks and its wait", async () => {
+    await mountInbox([planned, hire]);
+    const shown = row("Ship phase 2 now?");
+    expect(shown.textContent).toMatch(/^Ship phase 2 now\?Chief asks · Halonic appsWaiting \d/);
+    expect(shown.textContent).not.toContain("The tests are green.");
+    expect(shown.closest("li")?.className).toContain("border-b border-border");
+    expect(row("Hire a designer?").querySelectorAll("svg")).toHaveLength(2);
+  });
+
+  it("heads the card with Needs you and its wait, then its title and who asks, under a labelled Back", async () => {
+    await mountInbox([planned]);
+    await open("Ship phase 2 now?");
+    expect(button("Inbox").textContent?.trim()).toBe("Inbox");
+    expect(document.querySelector("h2")?.textContent).toBe("Ship phase 2 now?");
+    expect(above(holding("Needs you"), document.querySelector("h2") as Element)).toBe(true);
+    expect(holding("Chief asks · Halonic apps")).toBeDefined();
+    expect(holding("The tests are green.")).toBeDefined();
+  });
+
+  it("fills the first option and leaves the others secondary", async () => {
+    await mountInbox([item()]);
+    await open("Ship phase 2 now?");
+    expect(button("Today").className).toContain("bg-primary");
+    expect(button("Later").className).not.toContain("bg-primary");
+  });
+
+  it("says why the answers are off in a Callout above them, Open settings in it", async () => {
+    await mountInbox([item()], { screenLock: false });
+    await open("Ship phase 2 now?");
+    const callout = holding(noScreenLock);
+    expect(above(callout, button("Today"))).toBe(true);
+    // One box holds the line and Open settings, and none of the options.
+    const boxes = [...document.querySelectorAll("div")].filter(
+      (box) =>
+        box.contains(callout) &&
+        box.contains(button("Open settings")) &&
+        !box.contains(button("Today")),
+    );
+    expect(boxes.length).toBeGreaterThan(0);
+  });
+
+  it("keeps the options after an answer, turned off, under You chose", async () => {
+    const { scene } = await mountInbox([item()]);
+    await open("Ship phase 2 now?");
+    await press("Today");
+    await result(scene, { outcome: "answered", answeredAt });
+    const chose = document.querySelector('[role="status"]') as Element;
+    expect(chose.textContent).toBe(`You chose: Today · ${timeOf(answeredAt)}`);
+    for (const option of ["Today", "Later"]) {
+      expect(button(option).getAttribute("aria-disabled")).toBe("true");
+      expect(above(chose, button(option))).toBe(true);
+    }
+    expect(above(button("Later"), button("Next"))).toBe(true);
+  });
+
+  it("shows the skeleton only after a moment, and says it is loading", () => {
+    vi.useFakeTimers();
+    try {
+      const scene = new GatewayScene(() => Promise.resolve(true));
+      scenes.push(scene);
+      const inbox = (
+        <PhoneInbox
+          items={undefined}
+          view={scene.client.view()}
+          messaging={scene.client.messaging}
+          computer={SCENE_COMPUTER}
+          onOpenSettings={() => undefined}
+        />
+      );
+      render(inbox);
+      expect(text()).toBe("Loading the Inbox");
+      act(() => vi.advanceTimersByTime(SKELETON_AFTER_MS));
+      expect(text()).toBe("Loading the Inbox");
+      expect(document.querySelectorAll(".bg-surface-muted").length).toBeGreaterThan(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

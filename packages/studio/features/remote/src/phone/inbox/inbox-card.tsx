@@ -1,10 +1,22 @@
 import type { AnswerResult, GatewayInboxAnswer, InboxItem } from "@halonicjs/ports";
-import { BackIcon, Button, TextArea } from "@halonicjs/studio-kit";
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  BackIcon,
+  Button,
+  Callout,
+  type CalloutTone,
+  LaptopIcon,
+  LockIcon,
+  StatusChip,
+  TextArea,
+  TickIcon,
+  waitingFor,
+} from "@halonicjs/studio-kit";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { MessagingClient, MessagingOutcome } from "../messaging-client.ts";
 import { RECONNECT_TO_ANSWER, type RemoteView } from "../remote-view.ts";
 import { sendOutcomeLine } from "../send-words.ts";
 import { ANSWER_RISKY_ON_COMPUTER } from "../view-of.ts";
+import { askerLine, cardBody, cardTitle } from "./inbox-text.ts";
 import { inboxWords } from "./inbox-words.ts";
 
 /**
@@ -17,24 +29,42 @@ export function answersOnPhone(item: InboxItem, view: RemoteView): boolean {
   return item.risk !== "risky" || view.answersRisky;
 }
 
-/** The card's answers are off, with the line that says why, if any; `undefined` while they are on. */
-type Off = { readonly line: string | undefined } | undefined;
-
 /**
- * Why the card's answers are off, first reason first. Off with no line while the owner check
- * hasn't answered yet, so a phone that has a screen lock never flashes the line asking for one.
+ * Why the card's answers are off, as the Callout above them says it (p03e–p03g): its line, tone
+ * and icon, and Open settings while the phone has no screen lock. No line while the owner check
+ * hasn't answered yet, so a phone that has a screen lock never flashes the one asking for it.
  */
+interface OffReason {
+  readonly line: string;
+  readonly tone: CalloutTone;
+  readonly icon?: ReactNode;
+  readonly settings?: true;
+}
+
+/** The card's answers are off, with the reason if there is one; `undefined` while they are on. */
+type Off = { readonly reason: OffReason | undefined } | undefined;
+
+/** Why the card's answers are off, first reason first. */
 function offOf(item: InboxItem, view: RemoteView): Off {
-  if (!view.canAnswer) return { line: view.offReason ?? RECONNECT_TO_ANSWER };
-  if (!answersOnPhone(item, view)) return { line: ANSWER_RISKY_ON_COMPUTER };
-  if (view.ownerCheck === "unavailable") return { line: inboxWords.noScreenLock };
-  if (view.ownerCheck === "unknown") return { line: undefined };
+  if (!view.canAnswer) {
+    return { reason: { line: view.offReason ?? RECONNECT_TO_ANSWER, tone: "info" } };
+  }
+  if (!answersOnPhone(item, view)) {
+    return { reason: { line: ANSWER_RISKY_ON_COMPUTER, tone: "info", icon: <LockIcon /> } };
+  }
+  if (view.ownerCheck === "unavailable") {
+    return { reason: { line: inboxWords.noScreenLock, tone: "attention", settings: true } };
+  }
+  if (view.ownerCheck === "unknown") return { reason: undefined };
   return undefined;
 }
 
-/** What the card says after its answer: a settled line with Next, or a line under the buttons. */
+/**
+ * What the card says after its answer: a settled line, with the check mark for the person's own
+ * answer or the laptop for one given on the computer, and Next; or a line about the send.
+ */
 type Answered =
-  | { readonly settled: true; readonly line: string }
+  | { readonly settled: true; readonly line: string; readonly mark: "chose" | "computer" | "none" }
   | { readonly settled: false; readonly line: string | undefined };
 
 function answeredOf(
@@ -45,23 +75,28 @@ function answeredOf(
   if (outcome.kind !== "done") return { settled: false, line: sendOutcomeLine("answer", outcome) };
   const result = outcome.value;
   if (result.outcome === "answered") {
-    return { settled: true, line: inboxWords.youChose(answer, result.answeredAt) };
+    return { settled: true, line: inboxWords.youChose(answer, result.answeredAt), mark: "chose" };
   }
   if (result.outcome === "already-answered") {
-    const line =
-      result.by.kind === "me"
-        ? inboxWords.answeredOn(computer, result.answeredAt)
-        : inboxWords.answeredBy(result.by.name, result.answeredAt);
-    return { settled: true, line };
+    if (result.by.kind === "me") {
+      const line = inboxWords.answeredOn(computer, result.answeredAt);
+      return { settled: true, line, mark: "computer" };
+    }
+    const line = inboxWords.answeredBy(result.by.name, result.answeredAt);
+    return { settled: true, line, mark: "none" };
   }
-  if (result.reason === "not-found") return { settled: true, line: inboxWords.gone };
+  if (result.reason === "not-found") return { settled: true, line: inboxWords.gone, mark: "none" };
   return { settled: false, line: ANSWER_RISKY_ON_COMPUTER };
 }
 
+const marks = { chose: <TickIcon />, computer: <LaptopIcon />, none: null } as const;
+
 /**
- * `p03a`–`p03f`: one Inbox card, with its options, or a reply box when it offers none. Each answer
- * goes once; the shell asks the owner check before it lets one out. Off with the reason under the
- * buttons while the view is stale, the card is risky, or the phone has no screen lock.
+ * `p03a`–`p03g`: one Inbox card. Its header is the Needs you chip and the wait, the card's title
+ * and who asks; then the rest of the question and its options, the first one filled, or a reply box
+ * when it offers none. Each answer goes once; the shell asks the owner check before it lets one
+ * out. While the answers are off, a Callout above them says why. After an answer the options stay,
+ * turned off, under the line that says what became of it, with Next.
  */
 export function InboxCard({
   item,
@@ -79,13 +114,14 @@ export function InboxCard({
   readonly onOpenSettings: () => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
+  const lineId = useId();
   const [sending, setSending] = useState<string | undefined>(undefined);
   const [answered, setAnswered] = useState<Answered | undefined>(undefined);
   useEffect(() => heading.current?.focus(), []);
-  const off = offOf(item, view);
   const settled = answered?.settled === true;
+  const off = settled ? undefined : offOf(item, view);
   const send = (key: string, label: string, answer: GatewayInboxAnswer) => {
-    if (off !== undefined || sending !== undefined) return;
+    if (settled || off !== undefined || sending !== undefined) return;
     setSending(key);
     setAnswered(undefined);
     void messaging
@@ -96,33 +132,45 @@ export function InboxCard({
         setAnswered(answeredOf(outcome, label, computer));
       });
   };
+  const body = cardBody(item);
   return (
     <div className="flex flex-1 flex-col gap-4">
       <div>
-        <Button
-          variant="ghost"
-          size="touch"
-          icon={<BackIcon />}
-          label={inboxWords.back}
-          onClick={onBack}
-        />
+        <Button variant="ghost" size="touch" icon={<BackIcon />} onClick={onBack}>
+          {inboxWords.back}
+        </Button>
       </div>
-      <h2 ref={heading} tabIndex={-1} className="rounded-sm text-body-strong text-fg focus-ring">
-        {item.from.kind === "agent" ? item.from.name : inboxWords.needsYou}
-      </h2>
-      <p className="whitespace-pre-wrap text-body text-fg">{item.question}</p>
-      {settled ? null : (
-        <CardAnswers
-          item={item}
-          off={off}
-          sending={sending}
-          onSend={send}
-          onOpenSettings={onOpenSettings}
-        />
-      )}
-      <p role="status" className="text-small text-fg-muted">
+      <div className="flex flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusChip tone="warning" dot>
+            {inboxWords.needsYou}
+          </StatusChip>
+          <span className="text-small text-fg-muted">
+            {waitingFor(new Date(item.createdAt), new Date())}
+          </span>
+        </div>
+        <h2 ref={heading} tabIndex={-1} className="rounded-sm text-heading text-fg focus-ring">
+          {cardTitle(item)}
+        </h2>
+        <p className="text-small text-fg-muted">{askerLine(item)}</p>
+      </div>
+      {body === "" ? null : <p className="whitespace-pre-wrap text-body text-fg">{body}</p>}
+      <p id={lineId} role="status" className="flex items-center gap-1 text-small text-fg-muted">
+        {answered?.settled === true && answered.mark !== "none" ? (
+          <span aria-hidden="true" className="size-4 shrink-0 *:size-full">
+            {marks[answered.mark]}
+          </span>
+        ) : null}
         {answered?.line}
       </p>
+      <CardAnswers
+        item={item}
+        off={off}
+        offBy={settled ? lineId : undefined}
+        sending={sending}
+        onSend={send}
+        onOpenSettings={onOpenSettings}
+      />
       {settled ? (
         <Button variant="primary" size="touch" onClick={onBack}>
           {inboxWords.next}
@@ -133,18 +181,21 @@ export function InboxCard({
 }
 
 /**
- * The card's options, or its reply box and Reply, off with `off`'s line under them; Open settings
- * too while the phone has no screen lock.
+ * The card's options, the first one filled, or its reply box and Reply, under `off`'s Callout;
+ * the Callout carries Open settings while the phone has no screen lock. Once answered, `offBy`
+ * names the line that says so, and every answer stays, turned off.
  */
 function CardAnswers({
   item,
   off,
+  offBy,
   sending,
   onSend,
   onOpenSettings,
 }: {
   readonly item: InboxItem;
   readonly off: Off;
+  readonly offBy: string | undefined;
   /** The option, or `reply`, whose answer is on its way. */
   readonly sending: string | undefined;
   readonly onSend: (key: string, label: string, answer: GatewayInboxAnswer) => void;
@@ -152,14 +203,31 @@ function CardAnswers({
 }) {
   const reasonId = useId();
   const [text, setText] = useState("");
-  const unavailable = off === undefined ? undefined : { reason: reasonId };
+  const reason = off?.reason;
+  let unavailable: { readonly reason: string } | undefined;
+  if (offBy !== undefined) unavailable = { reason: offBy };
+  else if (off !== undefined) unavailable = { reason: reasonId };
   return (
     <div className="flex flex-col gap-2">
+      {reason === undefined ? null : (
+        <div id={reasonId}>
+          <Callout
+            tone={reason.tone}
+            icon={reason.icon}
+            {...(reason.settings === true
+              ? { action: { label: inboxWords.openSettings, onClick: onOpenSettings } }
+              : {})}
+          >
+            {reason.line}
+          </Callout>
+        </div>
+      )}
       {item.options.length === 0 ? (
         <>
           <TextArea
             aria-label={inboxWords.reply}
             value={text}
+            readOnly={offBy !== undefined}
             onChange={(event) => setText(event.target.value)}
           />
           <Button
@@ -173,10 +241,10 @@ function CardAnswers({
           </Button>
         </>
       ) : (
-        item.options.map((option) => (
+        item.options.map((option, index) => (
           <Button
             key={option.id}
-            variant="secondary"
+            variant={index === 0 ? "primary" : "secondary"}
             size="touch"
             unavailable={unavailable}
             busy={sending === option.id}
@@ -186,16 +254,6 @@ function CardAnswers({
           </Button>
         ))
       )}
-      {off?.line === undefined ? null : (
-        <p id={reasonId} className="text-small text-fg-muted">
-          {off.line}
-        </p>
-      )}
-      {off?.line === inboxWords.noScreenLock ? (
-        <Button variant="secondary" size="touch" onClick={onOpenSettings}>
-          {inboxWords.openSettings}
-        </Button>
-      ) : null}
     </div>
   );
 }

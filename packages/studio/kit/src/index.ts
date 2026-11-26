@@ -316,6 +316,7 @@ export {
 } from "./motion/motion.ts";
 export { NoteLines, type NoteLinesProps } from "./note-lines/note-lines.tsx";
 export { settleOnClose, settlePendingSaves } from "./pending-saves/pending-saves.ts";
+export { type PhoneTab, PhoneTabBar } from "./phone-tab-bar/phone-tab-bar.tsx";
 export {
   PICKER_SEARCH_FROM,
   type PickerOption,

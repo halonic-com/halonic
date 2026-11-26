@@ -97,10 +97,12 @@ async function press(name: string): Promise<void> {
   await settle();
 }
 
-/** Picks the computer's tab `name`; on a phone each tab also holds a hidden copy of its label. */
+/** Picks the computer's tab `name` in the tab bar at the foot of its screen. */
 async function openTab(name: string): Promise<void> {
-  const tab = document.querySelector(`[role="tab"][id$="${name.toLowerCase()}"]`);
-  expect(tab, name).not.toBeNull();
+  const tab = [...document.querySelectorAll("nav button")].find((each) =>
+    each.textContent?.startsWith(name),
+  );
+  expect(tab, name).toBeDefined();
   await act(async () => (tab as HTMLButtonElement | null)?.click());
   await settle();
 }
@@ -214,7 +216,8 @@ verifies("remote.phone-computer-agents", () => {
     // Back on the list, focus returns to Reporter's row (C48, RD1).
     expect(document.activeElement?.getAttribute("data-session")).toBe("s-reporter");
 
-    // Reconnect: hello and list again, each watch resumes after the last seq, and it's live.
+    // Reconnect: hello and list again, each watch resumes after the last seq, and it's live. The
+    // screen reads and watches the Inbox again too, so the tab bar's count is current on any tab.
     await step(() => {
       tunnel.push(computer, { state: "connected" });
       host.connectAndList([{ ...sorter, state: "running", lastSeq: 3 }, reporter]);
@@ -225,6 +228,8 @@ verifies("remote.phone-computer-agents", () => {
       "list-sessions",
       "watch",
       "watch",
+      "msg-read",
+      "msg-watch",
     ]);
     expect(host.tunnel.sentOf("watch").slice(-2)).toEqual([
       expect.objectContaining({ sessionId: "s-sorter", afterSeq: 3 }),
@@ -280,8 +285,12 @@ verifies("remote.phone-computer-agents", () => {
       "Update Halonic on Tim's laptop to use Inbox and Messenger from your phone.",
       "Agents still works.",
     ];
-    const panel = document.querySelector('[role="tabpanel"]');
+    const tabs = document.querySelector("nav button");
+    const panel = document.getElementById(tabs?.getAttribute("aria-controls") ?? "");
     expect(panel?.textContent).toBe(older.join(""));
+    // The tab bar is at the foot of the screen, after the view it shows (p02a).
+    const following = Node.DOCUMENT_POSITION_FOLLOWING;
+    expect((panel?.compareDocumentPosition(tabs as Node) ?? 0) & following).toBe(following);
     expect(host.tunnel.sentOf("msg-read")).toEqual([]);
     // The Agents tab lists the agents, with none of p05c's words.
     await openTab("Agents");
