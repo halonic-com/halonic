@@ -1,52 +1,57 @@
-import { type PointerEvent, useEffect, useRef, useState } from "react";
+import { type PointerEvent, useEffect, useState } from "react";
 import { type Point, type Rect, type Screen, selectionBox } from "../crop.ts";
 import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import { feedbackWords } from "../feedback-words.ts";
-import { useEscapeEnds } from "../use-escape-ends.ts";
 import {
   type Drag,
   overlayScreen,
   releasedArea,
   type SelectedArea,
+  type StillSize,
   wasClick,
   wholeStill,
 } from "./drag.ts";
-import { boxEdge, dim, keyEdge, overlayBackground, pill } from "./overlay-colours.ts";
+import { boxEdge, dim, keyEdge, pill } from "./overlay-colours.ts";
 import { SizeLabel } from "./size-label.tsx";
-import type { StillImage } from "./still.ts";
-import { useStill } from "./use-still.ts";
 
 /** Props for {@link FeedbackOverlay}. */
 export interface FeedbackOverlayProps {
-  /** The shell, for this overlay's still and the box the person drew. */
+  /** The shell, for the box the person drew and to end the feedback. */
   readonly ipc: FeedbackIpc;
+  /** The size of the still `plugin:feedback|start` took of this window, in device pixels. */
+  readonly still: StillSize;
+  /** Takes the overlay away: after a selection, on Esc, or when the selection fails. */
+  readonly onClose: () => void;
 }
 
 /**
- * One screen's selection overlay (`feedback.overlay`, sketch on HAL-18562 §1): the still of that
- * screen, dimmed, under a crosshair, with the hint at the top. Dragging, or a click, a move and a
- * second click, draws a box at full brightness with its size in device pixels; finishing a box of
- * 8 × 8 or more hands it to the shell, which closes the overlays. A smaller box does nothing.
- * Enter selects the whole screen, so a keyboard alone can send feedback (WCAG 2.1.1), and Esc
- * ends the feedback.
+ * The selection overlay inside Studio's own window (`feedback.overlay`, sketch on HAL-18562 §1):
+ * a light, see-through dim over the live app under a crosshair, with the hint at the top.
+ * Dragging, or a click, a move and a second click, draws a box at full brightness with its size
+ * in device pixels; finishing a box of 8 × 8 or more takes the overlay away and hands the box to
+ * the shell, which crops the still it took when the shortcut was pressed. A smaller box does
+ * nothing. Enter selects the whole window, so a keyboard alone can send feedback (WCAG 2.1.1),
+ * and Esc ends the feedback.
  */
-export function FeedbackOverlay({ ipc }: FeedbackOverlayProps) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const still = useStill(ipc, canvas);
+export function FeedbackOverlay({ ipc, still, onClose }: FeedbackOverlayProps) {
   const [drag, setDrag] = useState<Drag>();
   const [pointerHere, setPointerHere] = useState(true);
   const viewport = useViewport();
-  useEscapeEnds(ipc);
-  useEnterSelectsAll(ipc, drag === undefined ? still : undefined);
+  const select = (area: SelectedArea) => {
+    onClose();
+    selectArea(ipc, area);
+  };
+  useEscapeCloses(ipc, onClose);
+  useEnterSelectsAll(drag === undefined ? still : undefined, select);
 
-  const screen = still === undefined ? undefined : overlayScreen(still, viewport);
+  const screen = overlayScreen(still, viewport);
   const selection =
     screen === undefined || drag === undefined
       ? undefined
       : { screen, box: selectionBox(screen, drag.start, drag.current) };
 
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || screen === undefined) return;
+    if (event.button !== 0) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     const point = pointOf(event);
     // The second click of a two-click box keeps the corner the first one set.
@@ -64,13 +69,12 @@ export function FeedbackOverlay({ ipc }: FeedbackOverlayProps) {
       return;
     }
     setDrag(undefined);
-    if (area !== undefined) selectArea(ipc, area);
+    if (area !== undefined) select(area);
   };
 
   return (
     <div
-      className="fixed inset-0 cursor-crosshair select-none overflow-hidden"
-      style={overlayBackground}
+      className="fixed inset-0 z-[2147483647] cursor-crosshair select-none overflow-hidden"
       data-feedback-overlay=""
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -79,7 +83,6 @@ export function FeedbackOverlay({ ipc }: FeedbackOverlayProps) {
       onPointerEnter={() => setPointerHere(true)}
       onPointerLeave={() => setPointerHere(false)}
     >
-      <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
       <Dim box={selection?.box} />
       {selection === undefined ? null : (
         <SelectionBox screen={selection.screen} box={selection.box} />
@@ -135,8 +138,8 @@ function SelectionBox({ screen, box }: { readonly screen: Screen; readonly box: 
 }
 
 /**
- * "Drag to select an area · Enter for the whole screen · Esc to cancel", in a dark pill at the top
- * centre of the screen.
+ * "Drag to select an area · Enter for the whole window · Esc to cancel", in a dark pill at the top
+ * centre of the window.
  */
 function Hint() {
   return (
@@ -164,19 +167,40 @@ function Key({ name }: { readonly name: string }) {
   );
 }
 
-/** Selects the whole `still` on Enter; pass `undefined` while a box is being drawn or before the still. */
-function useEnterSelectsAll(ipc: FeedbackIpc, still: StillImage | undefined): void {
+/** Selects the whole `still` on Enter; pass `undefined` while a box is being drawn. */
+function useEnterSelectsAll(
+  still: StillSize | undefined,
+  select: (area: SelectedArea) => void,
+): void {
   useEffect(() => {
     if (still === undefined) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Enter" && !event.repeat) selectArea(ipc, wholeStill(still));
+      if (event.key !== "Enter" || event.repeat) return;
+      event.preventDefault();
+      event.stopPropagation();
+      select(wholeStill(still));
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [ipc, still]);
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [still, select]);
 }
 
-/** Hands `area` to the shell, which closes the overlays; if it can't, the feedback ends. */
+/** Ends the feedback and takes the overlay away on Esc, before the app under it hears the key. */
+function useEscapeCloses(ipc: FeedbackIpc, onClose: () => void): void {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      endFeedback(ipc);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [ipc, onClose]);
+}
+
+/** Hands `area` to the shell, which opens the Send feedback window; if it can't, the feedback ends. */
 function selectArea(ipc: FeedbackIpc, area: SelectedArea): void {
   ipc.invoke(feedbackCommands.select, { area }).catch((error: unknown) => {
     console.error("The box wasn't selected:", error);

@@ -156,9 +156,9 @@ pub fn run() {
     if raised_start::refused() {
         return;
     }
-    // Outside `shell`, so the tests' apps claim neither: one instance, and the feedback keys.
+    // Outside `shell`, so the tests' apps don't claim the one instance.
     #[cfg(desktop)]
-    let builder = feedback_capture::keys(focused_apps::single_instance(Builder::default()));
+    let builder = focused_apps::single_instance(Builder::default());
     #[cfg(mobile)]
     let builder = Builder::default();
     shell(builder)

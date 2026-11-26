@@ -1,7 +1,7 @@
 # @halonicjs/studio-feature-feedback
 
-Screenshot feedback: press the shortcut (Ctrl+Alt+F, ⌘ ⌥ F on macOS), select an area of the
-screen, write a line, and Studio sends it to Paperclip as a task.
+Screenshot feedback: press the shortcut in a Studio window (Ctrl+Shift+F, ⌘ ⇧ F on macOS),
+select an area of that window, write a line, and Studio sends it to Paperclip as a task.
 
 - **Layer:** studio
 - **Owner:** tomas
@@ -22,10 +22,13 @@ This package holds the feedback windows' pages and the parts with no screen or n
 The sender is `PaperclipFeedback` from `@halonicjs/adapter-paperclip-client`; Studio's services
 hand it in, with the key behind its guard.
 
+- `in-app/`: the shortcut, heard only by the focused Studio, Inbox or Messenger window; a press
+  asks the shell for a still of that window (`plugin:feedback|start`) and shows the overlay in it
+  (`feedback.in-app`). `overlay/` is that see-through selection overlay over the live app: a
+  light dim, the hint, the box and its size; letting go of a box calls `plugin:feedback|select`
+  and Esc `plugin:feedback|end` (`feedback.overlay`).
 - `feedback-windows.tsx`: the pages Studio mounts in the shell's feedback windows, with no
-  workspace. `overlay/` is one screen's selection overlay: its still from
-  `plugin:feedback|still`, dimmed, the hint, the box and its size; letting go of a box calls
-  `plugin:feedback|select` and Esc `plugin:feedback|end` (`feedback.overlay`). `unavailable/` is
+  workspace. `unavailable/` is
   the window a press opens where no still can be taken yet, macOS and Wayland
   (`feedback.unavailable`).
 
@@ -35,7 +38,7 @@ hand it in, with the key behind its guard.
   (`feedbackPrefs`, host settings) and how many feedbacks wait (`feedback.settings-section`). Both
   show only in Studio's own main window, where the app gives `FeedbackSettingsService`.
 
-The shortcut and the screen capture are the shell's (`apps/studio/src-tauri/src/feedback_*.rs`).
+The still and the shortcut's saved value are the shell's (`apps/studio/src-tauri/src/feedback_*.rs`).
 The Send feedback window comes in a later pull request.
 
 ## Example

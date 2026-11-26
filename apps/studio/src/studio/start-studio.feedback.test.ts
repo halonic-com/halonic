@@ -11,7 +11,7 @@ function webviewLabelled(label: string, called: string[]) {
     __TAURI_INTERNALS__: {
       invoke: async (command: string) => {
         called.push(command);
-        return command === "plugin:feedback|still" ? new ArrayBuffer(0) : null;
+        return null;
       },
       transformCallback: () => 1,
       unregisterCallback: () => {},
@@ -51,18 +51,6 @@ function start(label: string, called: string[]) {
 }
 
 verifies("studio.feedback-windows", () => {
-  it("shows only the overlay in a window labelled feedback-overlay-0, and opens no workspace", async () => {
-    const called: string[] = [];
-    // This still is empty, so the overlay ends the feedback and says why in the console.
-    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    start("feedback-overlay-0", called);
-    await vi.waitFor(() => expect(called).toContain("plugin:feedback|end"));
-    expect(element.querySelector("[data-feedback-overlay]")).not.toBeNull();
-    expect(called).toContain("plugin:feedback|still");
-    errors.mockRestore();
-    expect(called.filter((command) => !command.startsWith("plugin:feedback|"))).toEqual([]);
-  });
-
   it("shows only the not-available window in the window labelled feedback-unavailable", async () => {
     const called: string[] = [];
     start("feedback-unavailable", called);

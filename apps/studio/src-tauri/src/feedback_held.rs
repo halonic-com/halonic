@@ -1,5 +1,5 @@
 //! What the feedback shortcut holds between a press and the send
-//! (HAL-18778): the stills of one press, by screen number, until two
+//! (HAL-18778): the still of the main window from one press, until two
 //! minutes pass or a box is selected, and then only the crop of that box.
 //! Plain values and functions, so they test without windows or a screen.
 
@@ -12,21 +12,13 @@ use serde::Deserialize;
 use serde_json::Value;
 use tauri_plugin_global_shortcut::{Modifiers, Shortcut};
 
-/// Ctrl+Alt+F, or ⌘⌥F on macOS. Not Ctrl+Shift+F: that is "Find in files"
-/// in VS Code and JetBrains, and a global shortcut would take it from them.
-pub const DEFAULT_SHORTCUT: &str = "CommandOrControl+Alt+F";
-
-/// The overlay windows' labels: this and the screen's number.
-pub const OVERLAY_PREFIX: &str = "feedback-overlay-";
+/// Ctrl+Shift+F, or ⌘⇧F on macOS. Heard only in Studio's own focused
+/// window, so it takes nothing from other apps, and it works while typing.
+pub const DEFAULT_SHORTCUT: &str = "CommandOrControl+Shift+F";
 
 /// The label of the window that says screen capture isn't available on
 /// this system yet, such as macOS or Linux on Wayland.
 pub const UNAVAILABLE_WINDOW: &str = "feedback-unavailable";
-
-/// The most screens one press captures. No capability may name a window
-/// with a wildcard (`served_page_tests`), so the overlay's capability lists
-/// each of these labels by name.
-pub const MAX_SCREENS: usize = 8;
 
 /// How long the stills wait for a selection before they are dropped.
 pub const STILL_LIFETIME: Duration = Duration::from_secs(120);
@@ -39,8 +31,8 @@ pub struct Held {
     crop: Option<Still>,
     /// Counts the presses, so a timer set for one never drops a later one.
     press: u64,
-    /// A press's stills are being taken and its overlays opened: another
-    /// press now would start a second capture whose windows clash.
+    /// A press's still is being taken: another press now would start a
+    /// second capture.
     capturing: bool,
     /// The Send feedback window was asked to close and hasn't gone yet: a
     /// press now takes a new capture instead of bringing it forward.
@@ -50,7 +42,6 @@ pub struct Held {
 /// Which of the feedback's windows are open when the shortcut is pressed.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct OpenWindows {
-    pub overlays: bool,
     pub send_feedback: bool,
 }
 
@@ -59,11 +50,9 @@ pub struct OpenWindows {
 pub enum Press {
     /// Nothing: the last press is still taking its stills.
     Ignore,
-    /// Closes the overlays and keeps nothing, as Esc does.
-    End,
     /// Brings the Send feedback window forward, keeping what is typed in it.
     ShowSendFeedback,
-    /// Takes the stills and opens the overlays; `capture_done` follows.
+    /// Takes the main window's still; `capture_done` follows.
     Capture,
 }
 
@@ -95,9 +84,6 @@ impl Held {
         if self.capturing {
             return Press::Ignore;
         }
-        if open.overlays {
-            return Press::End;
-        }
         if open.send_feedback && !self.send_feedback_closing {
             return Press::ShowSendFeedback;
         }
@@ -105,7 +91,7 @@ impl Held {
         Press::Capture
     }
 
-    /// The press's capture ended, with its overlays open or not.
+    /// The press's capture ended, with a still held or not.
     pub fn capture_done(&mut self) {
         self.capturing = false;
     }
@@ -132,7 +118,7 @@ impl Held {
     }
 
     /// Drops the stills of press `press` and keeps the crop: one of its
-    /// overlays closed some other way, such as Alt+F4.
+    /// windows closed some other way, such as Alt+F4.
     pub fn drop_stills_of(&mut self, press: u64) {
         if self.press == press {
             self.stills.clear();
@@ -199,7 +185,7 @@ impl Drop for Capturing<'_> {
     }
 }
 
-/// The box an overlay's page selected, in its still's pixels. Negative or
+/// The box the main window's overlay selected, in its still's pixels. Negative or
 /// fractional numbers aren't a box: they are refused before the command.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq)]
 pub struct SelectedBox {
@@ -221,8 +207,7 @@ impl From<SelectedBox> for CropBox {
 }
 
 /// The shortcut `text` names, when it holds Ctrl, Alt or Super (⌘). Shift
-/// alone isn't enough: a global Shift+F would take every capital F typed
-/// in any app.
+/// alone isn't enough: Shift+F would take every capital F typed in Studio.
 pub fn shortcut_of(text: &str) -> Option<Shortcut> {
     let shortcut = Shortcut::from_str(text).ok()?;
     let holding = Modifiers::CONTROL | Modifiers::ALT | Modifiers::SUPER;
@@ -235,13 +220,7 @@ pub fn saved_shortcut(value: Option<&Value>) -> Shortcut {
     value
         .and_then(Value::as_str)
         .and_then(shortcut_of)
-        .unwrap_or_else(|| shortcut_of(DEFAULT_SHORTCUT).expect("the default holds Ctrl and Alt"))
-}
-
-/// The screen number of an overlay window's label, below `MAX_SCREENS`.
-pub fn overlay_index(label: &str) -> Option<usize> {
-    let index: usize = label.strip_prefix(OVERLAY_PREFIX)?.parse().ok()?;
-    (index < MAX_SCREENS).then_some(index)
+        .unwrap_or_else(|| shortcut_of(DEFAULT_SHORTCUT).expect("the default holds Ctrl"))
 }
 
 /// A still as the page reads it: width and height as two little-endian

@@ -20,6 +20,7 @@ import {
   type Shell,
   type StudioHost,
 } from "@halonicjs/studio-shell";
+import { startWindowFeedback } from "../feedback/start-window-feedback.ts";
 import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceOf } from "./desktop-new-workspace.ts";
 import { desktopOpenExternal } from "./desktop-open-external.ts";
@@ -98,7 +99,7 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
   const platform = keyboardPlatform(page.userAgent);
   const ipc = tauriIpc(page.window);
   if (ipc !== undefined) {
-    // The feedback shortcut's overlays, opened over every app, start nothing else.
+    // The feedback's own small windows start nothing else.
     const feedback = feedbackWindowOf(page.window);
     if (feedback !== undefined) {
       return startFeedbackWindow(page, { ipc, kind: feedback, display: displaySettingsOf(page) });
@@ -106,18 +107,18 @@ export function startStudio(page: StudioPage, desktop = desktopFeatures): Starte
     const shell = createShell({ ...desktop, host, platform });
     // Halonic Inbox and Halonic Messenger load this page too, in a window of their own.
     const app = focusedAppOf(page.window, shell);
-    if (app !== undefined) {
-      const display = displaySettingsOf(page);
-      return startFocusedApp(page, {
-        shell,
-        ipc,
-        platform,
-        app,
-        language: studioLanguage,
-        display,
-      });
-    }
-    return startDesktopApp(page, { shell, ipc, platform });
+    const started =
+      app === undefined
+        ? startDesktopApp(page, { shell, ipc, platform })
+        : startFocusedApp(page, {
+            shell,
+            ipc,
+            platform,
+            app,
+            language: studioLanguage,
+            display: displaySettingsOf(page),
+          });
+    return withWindowFeedback(started, startWindowFeedback(page, ipc, platform));
   }
   return startServedStudio(page, {
     host,
@@ -206,6 +207,17 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     await switcher.dispose();
   });
   return { host: "desktop-app", stop: stopped };
+}
+
+/** `started`, whose stop also stops the window's feedback shortcut. */
+function withWindowFeedback(started: StartedStudio, stopFeedback: () => void): StartedStudio {
+  return {
+    ...started,
+    stop: async () => {
+      stopFeedback();
+      await started.stop();
+    },
+  };
 }
 
 /** Runs `task` on the first call and gives every later call the same run. */
