@@ -44,7 +44,8 @@ verifies("studio-click-test.affected-steps", () => {
       expect(idsRun(["packages/studio/services/requirements/paperclip-connect.md"])).toEqual([
         ...shortCheck,
         "connect-paperclip",
-        // Disconnect's requirement lives in the same package as Connect Paperclip's.
+        // The restart's and Disconnect's requirements live in the same package as Connect Paperclip's.
+        "restart-keeps-sign-in",
         "disconnect",
       ]);
     });

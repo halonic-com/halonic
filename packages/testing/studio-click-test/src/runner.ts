@@ -47,6 +47,11 @@ export interface Step {
   readonly shortCheck?: boolean;
   /** The ids of earlier steps it can't do without; it is skipped when one didn't pass. */
   readonly needs?: readonly string[];
+  /**
+   * Starts on a fresh app: the runner closes every Halonic process and starts it again through
+   * the Start menu's shortcut first, as a person quitting and reopening it would (HAL-19839).
+   */
+  readonly restartsFirst?: boolean;
   /** Clicks through the step and says whether the right screen showed. */
   run(context: StepContext): Promise<StepOutcome>;
 }
@@ -73,7 +78,8 @@ export type RestartApp = () => Promise<StepContext>;
  * Runs every step in order, with a screenshot after each one that ran. After
  * a failing step it restarts the app and goes on, so one run lists every
  * failure (the board, HAL-18353). A step whose needed step didn't pass is
- * "skipped"; if the app won't restart, the rest are "not run".
+ * "skipped"; if the app won't restart, the rest are "not run". A step that
+ * restarts first fails as `NO_RESTART` when the app won't start again.
  */
 export async function runSteps(
   steps: readonly Step[],
@@ -87,28 +93,55 @@ export async function runSteps(
   for (const [index, step] of steps.entries()) {
     const number = index + 1;
     const row = { number, id: step.id, title: step.title, requirements: step.requirements };
-    const missing = results.find(
-      (result) => step.needs?.includes(result.id) && result.verdict !== "passed",
-    );
-    if (missing !== undefined) {
-      results.push({ ...row, verdict: "skipped", note: `needs step ${missing.number}` });
+    const unreached = notReached(step, row, results, broken);
+    if (unreached !== undefined) {
+      results.push(unreached);
       continue;
     }
-    if (broken !== undefined) {
-      results.push({ ...row, verdict: "not run", note: broken });
-      continue;
+    if (step.restartsFirst === true) {
+      const fresh = await restarted(restart);
+      if (typeof fresh === "string") {
+        broken = `the app didn't restart for step ${number}: ${fresh}`;
+        results.push({ ...row, verdict: "failed", code: "NO_RESTART", note: broken });
+        continue;
+      }
+      context = fresh;
     }
     const result = await runAndRecord(step, row, context, saveScreenshot);
     results.push(result);
     if (result.verdict === "failed" && index < steps.length - 1) {
-      try {
-        context = await restart();
-      } catch (error) {
-        broken = `the app didn't restart after step ${number}: ${messageOf(error)}`;
-      }
+      const fresh = await restarted(restart);
+      if (typeof fresh === "string")
+        broken = `the app didn't restart after step ${number}: ${fresh}`;
+      else context = fresh;
     }
   }
   return results;
+}
+
+/** The row of a step that doesn't run: one it needs didn't pass, or the app is gone. */
+function notReached(
+  step: Step,
+  row: Pick<StepResult, "number" | "id" | "title" | "requirements">,
+  results: readonly StepResult[],
+  broken: string | undefined,
+): StepResult | undefined {
+  const missing = results.find(
+    (result) => step.needs?.includes(result.id) && result.verdict !== "passed",
+  );
+  if (missing !== undefined)
+    return { ...row, verdict: "skipped", note: `needs step ${missing.number}` };
+  if (broken !== undefined) return { ...row, verdict: "not run", note: broken };
+  return undefined;
+}
+
+/** The restarted app's context, or why it didn't start again. */
+async function restarted(restart: RestartApp): Promise<StepContext | string> {
+  try {
+    return await restart();
+  } catch (error) {
+    return messageOf(error);
+  }
 }
 
 async function runAndRecord(

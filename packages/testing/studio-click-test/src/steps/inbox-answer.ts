@@ -46,7 +46,7 @@ async function backToList(
 }
 
 /**
- * Step 8: the Inbox shows the seeded board card, and Approve answers it. The
+ * Step 9: the Inbox shows the seeded board card, and Approve answers it. The
  * row shows the card's type; the card shows its title, from a fresh read: no
  * line says the Inbox shows what it read last, over the card or over the list after the answer
  * (HAL-19190). The click must reach

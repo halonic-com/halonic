@@ -11,7 +11,7 @@ import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 export const switcherXpath = `//button[starts-with(@aria-label, '${basicsText.switcher.text}')]`;
 
 /**
- * Step 14: the demo Open demo made is the shown workspace. The window title names the page, the
+ * Step 15: the demo Open demo made is the shown workspace. The window title names the page, the
  * workspace and Halonic; the switcher opens the workspace menu, whose Recent lists the demo's
  * folder with the Demo tag, then Open a folder….
  */

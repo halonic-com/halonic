@@ -84,7 +84,7 @@ export const connectionRow: Step = {
 };
 
 /**
- * Step 6: the Connect dialog refuses a plain http address that isn't on this
+ * Step 7: the Connect dialog refuses a plain http address that isn't on this
  * computer, on the field, and closes again with its close button.
  */
 export const httpsOnly: Step = {

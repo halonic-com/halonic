@@ -6,11 +6,11 @@ import { openAppWindow } from "./app-window.ts";
 import { closeDialogs, onWorkspace, openConnections, openDialog } from "./open-demo.ts";
 
 /**
- * Step 12: with Halonic running, the Start menu's Halonic Inbox and Halonic
+ * Step 13: with Halonic running, the Start menu's Halonic Inbox and Halonic
  * Messenger shortcuts each show their window. The single-instance plugin
  * hands the second start's arguments to the running app, so the windows show
  * up in this session. No step opened the Inbox window before, so it must be a
- * new one, showing Needs you empty after step 8's answer; Messenger's, open
+ * new one, showing Needs you empty after step 9's answer; Messenger's, open
  * since step 9, must show the seeded chat. The test never closes the app's
  * windows: WebDriver's close left a shortcut with no window (run 45730163649).
  */
@@ -38,7 +38,7 @@ export const startMenuShortcuts: Step = {
 };
 
 /**
- * Step 13: Settings › Connections › Disconnect, confirmed, says the key is
+ * Step 14: Settings › Connections › Disconnect, confirmed, says the key is
  * revoked, and the test Paperclip refuses the key Studio signed in with.
  */
 export const disconnect: Step = {
