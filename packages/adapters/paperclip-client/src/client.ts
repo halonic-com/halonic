@@ -12,6 +12,7 @@ import type {
   MessagingAgent,
   MessagingId,
   MessagingSource,
+  MessagingSync,
   OutgoingAttachment,
   SearchHit,
   SendResult,
@@ -38,6 +39,7 @@ import { isSafeSegment } from "./requests.ts";
 import { searchAll } from "./search.ts";
 import { type PaperclipUser, SignedInUser } from "./signed-in-user.ts";
 import { PaperclipSteppers } from "./steppers.ts";
+import { type PaperclipLists, paperclipSync } from "./sync-collections.ts";
 import { PaperclipClientError, PaperclipTransport, type TransportOptions } from "./transport.ts";
 import { PaperclipWebLinks } from "./web-links.ts";
 import { PaperclipWriter } from "./writer.ts";
@@ -91,6 +93,7 @@ export class PaperclipMessaging implements AgentMessaging {
   readonly #conversations: PaperclipConversations;
   readonly #refreshReads: RefreshReads;
   readonly #feed = new ChangeFeed<MessagingId>();
+  readonly #now: () => Date;
   #agentNames = new Map<string, string>();
   /** The Inbox as last read, which search matches without reading every task's cards again. */
   #lastInbox: readonly InboxItem[] = [];
@@ -98,6 +101,7 @@ export class PaperclipMessaging implements AgentMessaging {
 
   constructor(options: PaperclipMessagingOptions) {
     const now = options.now ?? (() => new Date());
+    this.#now = now;
     this.#ids = new PaperclipIds(options.connection);
     this.#company = options.company;
     this.#label = options.label;
@@ -358,6 +362,14 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   /**
+   * The connection's collections for the engine's local copy (`agent-host.paperclip-sync`): one
+   * read of the open tasks serves the Inbox, the conversations and the work list, as in `refresh`.
+   */
+  sync(): MessagingSync {
+    return paperclipSync(() => this.#readLists());
+  }
+
+  /**
    * Revokes the key in Paperclip (`POST /api/cli-auth/revoke-current`), as
    * Disconnect does. Answers whether Paperclip revoked it: offline, signed
    * out or refused, it didn't, and the key stays valid until its expiry.
@@ -410,6 +422,16 @@ export class PaperclipMessaging implements AgentMessaging {
     const result = await this.#channels.send(this.#context(), channel, body, to);
     this.#changedAfter(result.outcome === "sent");
     return result;
+  }
+
+  async #readLists(): Promise<PaperclipLists> {
+    const tasks = await this.#inbox.openTasks();
+    // Every sync reads the agents, so a renamed agent's name is right in the lists mapped next.
+    const agents = await this.#readAgents();
+    const inbox = await this.#inboxFrom(tasks);
+    const conversations = await this.#conversations.list(this.#context(), tasks);
+    const asOf = this.#inbox.tasksAsOf() ?? this.#now().toISOString();
+    return { agents, conversations, inbox, work: this.#workFrom(tasks), asOf };
   }
 
   async #inboxFrom(tasks: readonly JsonRecord[] | undefined): Promise<InboxItem[]> {

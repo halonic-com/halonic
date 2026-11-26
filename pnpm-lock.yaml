@@ -435,6 +435,9 @@ importers:
       '@halonicjs/host-integration-sign-in':
         specifier: workspace:*
         version: link:../../packages/host/integration-sign-in
+      '@halonicjs/host-paperclip-sync':
+        specifier: workspace:*
+        version: link:../../packages/host/paperclip-sync
       '@halonicjs/host-server':
         specifier: workspace:*
         version: link:../../packages/host/server

@@ -102,6 +102,11 @@ export class PaperclipInbox {
     return this.#tasks.read();
   }
 
+  /** Paperclip's time of the newest task change the list applied; `undefined` before the first read. */
+  tasksAsOf(): string | undefined {
+    return this.#tasks.watermark().updatedAt;
+  }
+
   /** The cards on task `task`, as Paperclip has them now. */
   async cardsOf(task: string): Promise<JsonRecord[]> {
     return asRecords(await this.#reader.read("listTaskCards", { path: { task } }));
