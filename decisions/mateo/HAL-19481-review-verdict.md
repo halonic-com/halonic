@@ -3,7 +3,7 @@
 - Task: HAL-19481
 - Approval: the board's go on phase 2 of the plan on HAL-19228 (26 Nov), with Liam's changes from HAL-19325; Liam reviews and signs this note, Julian does the security review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:NBxDAVZU53CzT6M99CXjmuve26LrXbOz9OB1pDPyy4W7DcLGPfUH8A2IEkbk2EC/Wk/j423I3WY1JH2bPsRiBA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CQeL3WZjssOZ2R6QUlHhDcg+E4gBcPMxcA4FPfaYgxXsnHFR5vA/WoRilp9LD3NwZDyThHOpmDeKxzVHKEg5AA==
 
 ## What changes
 
