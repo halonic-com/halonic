@@ -22,7 +22,7 @@ export function SizeLabel({ screen, box }: { readonly screen: Screen; readonly b
   const bottom = box.y + box.height;
   return (
     <span
-      className="absolute -translate-x-full rounded px-1.5 py-0.5 font-mono text-caption"
+      className="absolute -translate-x-full rounded px-1.5 py-0.5 font-mono text-caption whitespace-nowrap"
       data-feedback-size=""
       style={{
         ...pill,
