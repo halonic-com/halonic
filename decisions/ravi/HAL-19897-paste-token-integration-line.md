@@ -3,6 +3,7 @@
 - Task: HAL-19897
 - Approval: HAL-19897, from Julian's security sign-off on #6564 (HAL-19672); the line's words from Noah's copy check (HAL-19673); the reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:qtUB5KPjicvW/Mqu7+Njcjb3t0foZVDQWCZ1htk+xN3mfdRwvGNdOP3TjC1WmUqU4L3d5rlNxKm6oJIVB5eqAg==
 
 ## What changes
 
