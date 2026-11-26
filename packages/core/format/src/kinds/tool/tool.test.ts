@@ -158,6 +158,7 @@ verifies("format.tool-actions", () => {
       "paperclip.comment paperclip-api",
       "paperclip.next-step paperclip-api",
       "paperclip.finish-run paperclip-api",
+      "paperclip.propose-budget paperclip-api",
       "halonic.precheck ",
     ]);
     expect(toolActionNames().filter((name) => toolActionInfo(name).writes)).toEqual([
@@ -165,6 +166,16 @@ verifies("format.tool-actions", () => {
       "paperclip.next-step",
       "paperclip.finish-run",
     ]);
+  });
+
+  it("starts a budget proposal in dry run, with no budgets until the tool file gives some", () => {
+    const propose = toolFile()
+      .replace("github.open-pull-requests", "paperclip.propose-budget")
+      .replace("  with: { repositories: [acme/website] }\n", "");
+    expect(parsedValue("tool", propose).action).toEqual({
+      run: "paperclip.propose-budget",
+      with: { mode: "dry-run", agents: {}, projects: {} },
+    });
   });
 
   it("refuses an action the runtime doesn't have", () => {

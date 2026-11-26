@@ -152,6 +152,7 @@ async function serve(
     templates: active.snapshot.templates ?? [],
     ...(active.snapshot.routing === undefined ? {} : { routing: active.snapshot.routing }),
     caller: { agentId: runCtx.agentId, urlKey: agent.urlKey, name: agent.name },
+    workspaceCommit: active.snapshot.workspace.commit,
     companyId: runCtx.companyId,
     github,
     githubQuery,

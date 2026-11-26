@@ -325,6 +325,24 @@ export const TOOL_ACTIONS = {
     ],
     settings: writeSettings,
   },
+  "paperclip.propose-budget": {
+    about:
+      "Says which budget approvals it would ask the board for: each agent's and each project's monthly budget where the workspace and Paperclip differ, with the source file, its commit and the old and new amounts. Skips any with a budget approval already pending.",
+    // It writes nothing: Paperclip doesn't let a plugin file an approval yet (HAL-20033).
+    // It still takes `mode`, so turning on filing stays the tool file's step, taken by the
+    // board; until then `write` answers that it can't and files nothing.
+    writes: false,
+    keys: ["paperclip-api"],
+    parameters: none,
+    settings: s
+      .object({
+        mode: WriteMode.default("dry-run"),
+        agents: agentBudgets.default({}),
+        projects: projectBudgets.default({}),
+      })
+      .strict()
+      .prefault({}),
+  },
   "halonic.precheck": {
     about:
       "Checks a pushed branch merged into current main at Halonic's precheck service, or reads a check started earlier.",

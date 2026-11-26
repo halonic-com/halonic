@@ -32,6 +32,7 @@ const sampleCalls: Readonly<Record<ToolActionName, readonly Readonly<Record<stri
     "paperclip.failed-runs": [{ since: "2026-11-24T00:00:00Z" }],
     "paperclip.budgets": [{}],
     "paperclip.seat-rules": [{}],
+    "paperclip.propose-budget": [{}],
     "paperclip.template": [{ id: "card" }],
     "paperclip.comment": [{ task: "HAL-1", body: "Done." }],
     "paperclip.next-step": [
@@ -123,6 +124,7 @@ async function runRecording(
     params: recorded,
     templates: [{ id: "card", body: "## Question" }],
     caller: { agentId: "agent-mateo", urlKey: "mateo", name: "Mateo" },
+    workspaceCommit: "0123456789abcdef0123456789abcdef01234567",
     companyId: "acme",
     now: new Date("2026-11-25T00:00:00Z"),
     paperclip: paperclipAccess(refusingHost(requests), handler.capabilities, {

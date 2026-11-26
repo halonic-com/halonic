@@ -17,6 +17,7 @@ export interface PaperclipAccess {
   };
   readonly agents: Pick<RuntimeHost["agents"], "list">;
   readonly projects: RuntimeHost["projects"];
+  readonly approvals: RuntimeHost["approvals"];
   /** Reading the runtime's own plugin state, which every plugin holds (`plugin.state.read`). */
   readonly state: Pick<RuntimeHost["state"], "get">;
 }
@@ -39,7 +40,7 @@ function demand(declared: readonly Capability[], capability: Capability): void {
  * await access.issues.createComment(...); // throws: the action didn't declare issue.comments.create
  */
 export function paperclipAccess(
-  host: Pick<RuntimeHost, "issues" | "agents" | "projects"> & {
+  host: Pick<RuntimeHost, "issues" | "agents" | "projects" | "approvals"> & {
     readonly state: Pick<RuntimeHost["state"], "get">;
   },
   declared: readonly Capability[],
@@ -101,6 +102,13 @@ export function paperclipAccess(
       list: (input) => {
         allowed("projects.read");
         return host.projects.list({ ...input, companyId: call.companyId });
+      },
+    },
+    approvals: {
+      // Likewise only the call's company's approvals, and only the list: never `decide`.
+      list: (input) => {
+        allowed("approvals.read");
+        return host.approvals.list({ ...input, companyId: call.companyId });
       },
     },
     state: {

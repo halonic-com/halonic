@@ -156,6 +156,7 @@ export const ToolActionChoice = s.discriminatedUnion("run", [
   actionChoice("paperclip.comment"),
   actionChoice("paperclip.next-step"),
   actionChoice("paperclip.finish-run"),
+  actionChoice("paperclip.propose-budget"),
   actionChoice("halonic.precheck"),
 ]);
 

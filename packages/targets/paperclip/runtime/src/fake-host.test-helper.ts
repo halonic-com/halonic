@@ -173,6 +173,7 @@ export function fakeHost(config: Record<string, unknown>, answers: Record<string
       list: async () => [{ id: "agent-mateo", ...agent }],
     },
     projects: { list: async () => [] },
+    approvals: { list: async () => [] },
     config: { get: async () => config },
     secrets: { resolve: async () => "test-token" },
     http: {
