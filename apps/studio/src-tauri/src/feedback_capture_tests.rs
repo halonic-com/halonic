@@ -10,10 +10,8 @@ use tauri::webview::WebviewWindowBuilder;
 use tauri::{App, Manager, Webview, WebviewUrl};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
 
-use super::held::{
-    DEFAULT_SHORTCUT, Held, MAX_SCREENS, SelectedBox, overlay_index, saved_shortcut, still_bytes,
-};
-use super::{FeedbackCapture, crop, end, still as overlay_still};
+use super::held::{DEFAULT_SHORTCUT, Held, SelectedBox, saved_shortcut, still_bytes};
+use super::{FeedbackCapture, crop, end, select};
 
 /// A 4 × 2 still whose pixels count up from 0.
 fn still() -> Still {
@@ -34,13 +32,13 @@ fn whole_box(width: u32, height: u32) -> CropBox {
 }
 
 #[test]
-fn the_default_shortcut_is_ctrl_alt_f_or_command_option_f() {
+fn the_default_shortcut_is_ctrl_shift_f_or_command_shift_f() {
     let control = if cfg!(target_os = "macos") {
         Modifiers::SUPER
     } else {
         Modifiers::CONTROL
     };
-    let expected = Shortcut::new(Some(control | Modifiers::ALT), Code::KeyF);
+    let expected = Shortcut::new(Some(control | Modifiers::SHIFT), Code::KeyF);
     assert_eq!(Shortcut::from_str(DEFAULT_SHORTCUT).ok(), Some(expected));
     assert_eq!(saved_shortcut(None), expected);
 }
@@ -55,21 +53,6 @@ fn a_saved_shortcut_is_used_and_anything_else_falls_back_to_the_default() {
     let default = saved_shortcut(None);
     for value in [json!("not a shortcut"), json!(""), json!(42), Value::Null] {
         assert_eq!(saved_shortcut(Some(&value)), default, "{value}");
-    }
-}
-
-#[test]
-fn only_overlay_labels_have_a_screen_number() {
-    assert_eq!(overlay_index("feedback-overlay-0"), Some(0));
-    assert_eq!(overlay_index("feedback-overlay-7"), Some(7));
-    for label in [
-        "main",
-        "feedback",
-        "feedback-overlay-",
-        "feedback-overlay-x",
-        "feedback-overlay-8",
-    ] {
-        assert_eq!(overlay_index(label), None, "{label}");
     }
 }
 
@@ -167,7 +150,7 @@ fn after_a_selection_the_timer_keeps_the_crop() {
 }
 
 #[test]
-fn an_overlay_closed_another_way_drops_the_stills_and_the_end_drops_all() {
+fn a_window_closed_another_way_drops_the_stills_and_the_end_drops_all() {
     let now = Instant::now();
     let mut held = Held::default();
     let first = held.hold(vec![still()], now);
@@ -238,24 +221,29 @@ fn webview(app: &App<MockRuntime>, label: &str) -> Webview<MockRuntime> {
 }
 
 #[test]
-fn only_an_overlay_window_gets_a_still_and_only_while_one_is_held() {
-    let app = app_with(&["main", "feedback-overlay-0"]);
+fn only_a_studio_window_selects_and_only_while_a_still_is_held() {
+    let app = app_with(&["main", "other"]);
+    let area = SelectedBox {
+        left: 0,
+        top: 0,
+        width: 2,
+        height: 2,
+    };
+    let other = webview(&app, "other");
+    assert_eq!(
+        tauri::async_runtime::block_on(select(other, area)).err(),
+        Some("not_a_studio_window")
+    );
     let main = webview(&app, "main");
-    let overlay = webview(&app, "feedback-overlay-0");
-    assert_eq!(overlay_still(main).err(), Some("not_an_overlay"));
-    assert_eq!(overlay_still(overlay.clone()).err(), Some("gone"));
-    let state = app.state::<FeedbackCapture>();
-    state
-        .held
-        .lock()
-        .expect("not poisoned")
-        .hold(vec![still()], Instant::now());
-    assert!(overlay_still(overlay).is_ok());
+    assert_eq!(
+        tauri::async_runtime::block_on(select(main, area)).err(),
+        Some("gone")
+    );
 }
 
 #[test]
 fn ending_drops_the_stills_and_the_crop() {
-    let app = app_with(&["feedback-overlay-0"]);
+    let app = app_with(&["main"]);
     let state = app.state::<FeedbackCapture>();
     let now = Instant::now();
     {
@@ -277,17 +265,14 @@ fn capability(text: &str) -> Value {
 
 #[test]
 fn each_feedback_window_is_granted_only_its_own_commands_and_never_served() {
-    let overlay = capability(include_str!(
-        "../capabilities/desktop-feedback-overlay.json"
+    let capture = capability(include_str!(
+        "../capabilities/desktop-feedback-capture.json"
     ));
-    let labels: Vec<String> = (0..MAX_SCREENS)
-        .map(|index| format!("feedback-overlay-{index}"))
-        .collect();
-    assert_eq!(overlay["windows"], json!(labels));
+    assert_eq!(capture["windows"], json!(["main", "inbox", "messenger"]));
     assert_eq!(
-        overlay["permissions"],
+        capture["permissions"],
         json!([
-            "feedback:allow-still",
+            "feedback:allow-start",
             "feedback:allow-select",
             "feedback:allow-end"
         ])

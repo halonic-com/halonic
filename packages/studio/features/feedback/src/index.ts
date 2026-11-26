@@ -20,6 +20,7 @@ export {
   mountFeedbackWindow,
 } from "./feedback-windows.tsx";
 export { feedbackWords } from "./feedback-words.ts";
+export { type InAppFeedbackParts, startInAppFeedback } from "./in-app/in-app-feedback.tsx";
 export {
   FeedbackOutbox,
   type FeedbackSender,

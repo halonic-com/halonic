@@ -142,10 +142,10 @@ fn main() {
         "take_pending_notification_click",
         "set_frame_colour",
     ]);
-    // The feedback shortcut's windows' commands (HAL-18778), as the
-    // `feedback` plugin: `plugin:feedback|still` needs `feedback:allow-still`.
+    // The feedback capture's commands (HAL-18778), as the `feedback`
+    // plugin: `plugin:feedback|start` needs `feedback:allow-start`.
     let feedback = tauri_build::InlinedPlugin::new().commands(&[
-        "still",
+        "start",
         "select",
         "crop",
         "end",

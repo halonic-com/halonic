@@ -6,7 +6,7 @@ export const feedbackWords = {
   /** The overlay's hint, before the Enter key. */
   dragHint: "Drag to select an area",
   /** The overlay's hint, after the Enter key (Sofia, HAL-19017). */
-  enterHint: "for the whole screen",
+  enterHint: "for the whole window",
   /** The overlay's hint, after the Esc key. */
   escHint: "to cancel",
   /**

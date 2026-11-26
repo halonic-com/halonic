@@ -4,17 +4,14 @@ import type { TauriIpc } from "@halonicjs/studio-services";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
 import { windowLabelOf } from "./window-label.ts";
 
-/** The labels `feedback_capture.rs` gives an overlay: one per screen, numbered from 0. */
-const overlayLabel = /^feedback-overlay-\d+$/;
-
 /**
- * The feedback window a page's window is (`studio.feedback-windows`): a screen's selection overlay
- * or the window that says capture isn't available here, or `undefined` for any other window.
+ * The feedback window a page's window is (`studio.feedback-windows`): the window that says capture
+ * isn't available here, or `undefined` for any other window. The selection overlay has no window
+ * of its own: it shows inside the Studio window where the shortcut was pressed.
  */
 export function feedbackWindowOf(window: object): FeedbackWindowKind | undefined {
   const label = windowLabelOf(window);
   if (label === undefined) return undefined;
-  if (overlayLabel.test(label)) return "overlay";
   if (label === "feedback-unavailable") return "unavailable";
   return undefined;
 }

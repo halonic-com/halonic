@@ -269,8 +269,8 @@ async fn shortcut<R: Runtime>(app: AppHandle<R>) -> KeyStatus {
 
 /// Saves `shortcut` as quick ask's keys. Refused as `invalid` when it isn't
 /// a shortcut or holds none of Ctrl, Alt and Super (⌘), `wayland` where the desktop lets no app take a key,
-/// `unavailable` where Studio hears no keys, and `taken` when the system,
-/// another app or the feedback shortcut holds the keys.
+/// `unavailable` where Studio hears no keys, and `taken` when the system
+/// or another app holds the keys.
 #[tauri::command]
 async fn shortcut_set<R: Runtime>(app: AppHandle<R>, shortcut: String) -> Result<(), &'static str> {
     let new = shortcut_of(&shortcut).ok_or("invalid")?;

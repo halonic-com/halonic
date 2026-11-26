@@ -1,45 +1,48 @@
-//! The feedback shortcut's native side (HAL-18778, sketch on HAL-18562).
-//! Only a press of the shortcut takes a capture: one still of every
-//! screen, in memory, never in a file. One borderless overlay opens on each
-//! screen and gets only its own still (`plugin:feedback|still`); the Send
-//! feedback window gets only the crop of the box the person drew
-//! (`plugin:feedback|crop`). The shortcut is registered from Rust only: no
-//! capability grants the global-shortcut plugin's commands, so no page can
-//! register a key or hear one. Where no still can be taken yet, such as
-//! macOS or Linux on Wayland, a press opens a small window that says so.
+//! The feedback capture's native side (HAL-18778, sketch on HAL-18562).
+//! The shortcut is heard only by the focused one of Studio's own windows, never
+//! system-wide: the focused window's page asks `plugin:feedback|start`, which takes one
+//! still of that window's own area, in memory, never in a file. The page
+//! then draws its see-through selection overlay over the live app and
+//! hands the box to `plugin:feedback|select`; the Send feedback window
+//! gets only that crop (`plugin:feedback|crop`). Where no still can be
+//! taken yet, such as macOS or Linux on Wayland, `start` opens a small
+//! window that says so.
 
 use std::sync::{Mutex, MutexGuard, PoisonError};
 use std::time::Instant;
 
 use halonic_screen_still::{ScreenArea, StillError};
+use serde::Serialize;
 use tauri::async_runtime::Mutex as AsyncMutex;
 use tauri::ipc::Response;
 use tauri::plugin::TauriPlugin;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
-use tauri::{
-    AppHandle, LogicalSize, Manager, PhysicalPosition, PhysicalSize, Runtime, Webview, WindowEvent,
-};
-use tauri_plugin_global_shortcut::Shortcut;
+use tauri::{AppHandle, LogicalSize, Manager, Runtime, Webview, WindowEvent};
 
 #[path = "feedback_held.rs"]
 mod held;
 #[path = "feedback_shortcut.rs"]
 mod shortcut;
 use held::{
-    Capturing, Held, MAX_SCREENS, OVERLAY_PREFIX, OpenWindows, Press, STILL_LIFETIME, SelectedBox,
-    UNAVAILABLE_WINDOW, overlay_index, still_bytes,
+    Capturing, Held, OpenWindows, Press, STILL_LIFETIME, SelectedBox, UNAVAILABLE_WINDOW,
+    still_bytes,
 };
-pub use shortcut::owns;
 
 /// The Send feedback window's label.
 pub const FEEDBACK_WINDOW: &str = "feedback";
 
-/// What is held between the press and the send, and the shortcut.
+/// Whether `label` is one of Studio's own windows (Studio, Halonic Inbox,
+/// Halonic Messenger), the only windows that may start a capture of their
+/// own area and select from it.
+fn studio_window(label: &str) -> bool {
+    crate::focused_apps::window_labels().contains(&label)
+}
+
+/// What is held between the press and the send.
 #[derive(Default)]
 pub struct FeedbackCapture {
     held: Mutex<Held>,
-    shortcut: Mutex<Option<Shortcut>>,
-    /// Held by a shortcut change until it is saved or put back.
+    /// Held by a shortcut change until it is saved.
     changing: AsyncMutex<()>,
 }
 
@@ -48,7 +51,7 @@ pub struct FeedbackCapture {
 pub fn commands<R: Runtime>() -> TauriPlugin<R> {
     tauri::plugin::Builder::new("feedback")
         .invoke_handler(tauri::generate_handler![
-            still,
+            start,
             select,
             crop,
             end,
@@ -56,7 +59,6 @@ pub fn commands<R: Runtime>() -> TauriPlugin<R> {
         ])
         .setup(|app, _api| {
             app.manage(FeedbackCapture::default());
-            shortcut::register_saved(app);
             Ok(())
         })
         .build()
@@ -67,87 +69,96 @@ fn held<R: Runtime>(app: &AppHandle<R>) -> MutexGuard<'_, Held> {
     state.held.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// A press: closes the overlays when they are open, brings the Send
-/// feedback window forward when it is open, and otherwise takes the stills
-/// and opens the overlays. A press while the stills are still being taken
-/// does nothing.
-pub fn pressed<R: Runtime>(app: &AppHandle<R>) {
+/// The size of the still `start` took, in device pixels, so the page can
+/// turn its CSS pixels into the still's.
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+pub struct Started {
+    pub width: u32,
+    pub height: u32,
+}
+
+/// A press of the feedback shortcut in one of Studio's own windows. Brings the Send
+/// feedback window forward when it is open (`send_open`); otherwise takes
+/// one still of that window's own area and holds it. Refused as
+/// `busy` while a still is being taken, and as `unavailable` (after
+/// opening the window that says so) where no still can be taken. Async,
+/// because Windows can't open a window from a command on the main thread.
+#[tauri::command]
+pub async fn start<R: Runtime>(window: WebviewWindow<R>) -> Result<Started, &'static str> {
+    if !studio_window(window.label()) {
+        return Err("not_a_studio_window");
+    }
+    let app = window.app_handle().clone();
     let windows = app.webview_windows();
     let open = OpenWindows {
-        overlays: windows.keys().any(|label| overlay_index(label).is_some()),
         send_feedback: windows.contains_key(FEEDBACK_WINDOW),
     };
-    let press = held(app).on_press(open);
+    let press = held(&app).on_press(open);
     match press {
-        Press::Ignore => {}
-        Press::End => finish(app),
+        Press::Ignore => Err("busy"),
         Press::ShowSendFeedback => {
-            if let Some(window) = windows.get(FEEDBACK_WINDOW)
-                && let Err(error) = window.set_focus()
+            if let Some(send) = windows.get(FEEDBACK_WINDOW)
+                && let Err(error) = send.set_focus()
             {
                 log(format!(
                     "the Send feedback window didn't come forward: {error}"
                 ));
             }
+            Err("send_open")
         }
         Press::Capture => {
-            let app = app.clone();
-            tauri::async_runtime::spawn_blocking(move || {
-                let opened = {
-                    let state = app.state::<FeedbackCapture>();
-                    let _capturing = Capturing(&state.held);
-                    open_overlays(&app)
-                };
-                let Err(error) = opened else {
-                    return;
-                };
-                if let Some(StillError::Unavailable) = error.downcast_ref::<StillError>() {
-                    show_unavailable(&app);
-                } else {
-                    finish(&app);
-                    log(format!("no screenshot was taken: {error}"));
+            let taking = app.clone();
+            let taken = tauri::async_runtime::spawn_blocking(move || {
+                let state = taking.state::<FeedbackCapture>();
+                let _capturing = Capturing(&state.held);
+                take_window_still(&taking, &window)
+            })
+            .await
+            .map_err(|_| "failed")?;
+            match taken {
+                Ok(started) => Ok(started),
+                Err(error) => {
+                    if let Some(StillError::Unavailable) = error.downcast_ref::<StillError>() {
+                        show_unavailable(&app);
+                        Err("unavailable")
+                    } else {
+                        finish(&app);
+                        log(format!("no screenshot was taken: {error}"));
+                        Err("failed")
+                    }
                 }
-            });
+            }
         }
     }
 }
 
-/// Takes every screen's still before any overlay shows, then opens one
-/// overlay on each screen.
-fn open_overlays<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> {
-    let areas: Vec<ScreenArea> = app
-        .available_monitors()?
-        .iter()
-        .take(MAX_SCREENS)
-        .map(|monitor| ScreenArea {
-            left: monitor.position().x,
-            top: monitor.position().y,
-            width: monitor.size().width,
-            height: monitor.size().height,
-        })
-        .collect();
-    let stills = areas
-        .iter()
-        .map(halonic_screen_still::take)
-        .collect::<Result<Vec<_>, StillError>>()?;
-    let press = held(app).hold(stills, Instant::now());
+/// Takes the still of `window`'s own area, inside its frame, and holds it
+/// for STILL_LIFETIME.
+fn take_window_still<R: Runtime>(
+    app: &AppHandle<R>,
+    window: &WebviewWindow<R>,
+) -> Result<Started, Box<dyn std::error::Error>> {
+    let position = window.inner_position()?;
+    let size = window.inner_size()?;
+    let area = ScreenArea {
+        left: position.x,
+        top: position.y,
+        width: size.width,
+        height: size.height,
+    };
+    let still = halonic_screen_still::take(&area)?;
+    let started = Started {
+        width: still.width,
+        height: still.height,
+    };
+    let press = held(app).hold(vec![still], Instant::now());
     let timer = app.clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(STILL_LIFETIME).await;
-        if held(&timer).expire(press) {
-            close_windows(&timer, |label| overlay_index(label).is_some());
-        }
+        held(&timer).expire(press);
     });
-    for (index, area) in areas.iter().enumerate() {
-        let window = page_window(app, &format!("{OVERLAY_PREFIX}{index}"))?;
-        window.set_position(PhysicalPosition::new(area.left, area.top))?;
-        window.set_size(PhysicalSize::new(area.width, area.height))?;
-        window.show()?;
-        window.set_focus()?;
-    }
-    Ok(())
+    Ok(started)
 }
-
 /// The small window that says screen capture isn't available on this
 /// system yet, brought forward when it is already open.
 fn show_unavailable<R: Runtime>(app: &AppHandle<R>) {
@@ -175,19 +186,17 @@ fn page_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> tauri::Result<Web
     config.skip_taskbar = true;
     config.resizable = false;
     let window = WebviewWindowBuilder::from_config(app, &config)?.build()?;
-    // Closed any other way, such as Alt+F4 or a crashed page, an overlay
-    // drops every still and the Send feedback window the crop. Only its own
-    // press's: a window can close after the next press took its stills.
+    // Closed any other way, such as Alt+F4 or a crashed page, the Send
+    // feedback window drops the crop. Only its own press's: a window can
+    // close after the next press took its still.
     // While the Send feedback window closes, a press takes a new capture.
     let closed = app.clone();
-    let overlay = overlay_index(label).is_some();
     let send_feedback = label == FEEDBACK_WINDOW;
     let press = held(app).press();
     window.on_window_event(move |event| match event {
         WindowEvent::CloseRequested { .. } if send_feedback => {
             held(&closed).send_feedback_closing();
         }
-        WindowEvent::Destroyed if overlay => held(&closed).drop_stills_of(press),
         WindowEvent::Destroyed if send_feedback => {
             let mut held = held(&closed);
             held.clear_press(press);
@@ -198,12 +207,10 @@ fn page_window<R: Runtime>(app: &AppHandle<R>, label: &str) -> tauri::Result<Web
     Ok(window)
 }
 
-/// Drops the stills and the crop, and closes every feedback window.
+/// Drops the still and the crop, and closes every feedback window.
 fn finish<R: Runtime>(app: &AppHandle<R>) {
     held(app).clear();
-    close_windows(app, |label| {
-        overlay_index(label).is_some() || label == FEEDBACK_WINDOW || label == UNAVAILABLE_WINDOW
-    });
+    close_windows(app, |label| label == FEEDBACK_WINDOW || label == UNAVAILABLE_WINDOW);
 }
 
 /// Closes every window whose label `closes` picks.
@@ -221,30 +228,22 @@ fn log(message: String) {
     halonic_shell_log::record("feedback", message);
 }
 
-/// The calling overlay's still. Refused as `gone` once it was dropped.
-#[tauri::command]
-pub fn still<R: Runtime>(webview: Webview<R>) -> Result<Response, &'static str> {
-    let index = overlay_index(webview.label()).ok_or("not_an_overlay")?;
-    let mut held = held(webview.app_handle());
-    let still = held.still(index, Instant::now()).ok_or("gone")?;
-    Ok(Response::new(still_bytes(still)))
-}
-
-/// Keeps the crop of `area` of the calling overlay's still, drops every
-/// still, closes the overlays and opens the Send feedback window. Async,
-/// because Windows can't open a window from a command on the main thread.
+/// Keeps the crop of `area` of the window's still, drops the still
+/// and opens the Send feedback window. Async, because Windows can't open
+/// a window from a command on the main thread.
 #[tauri::command]
 pub async fn select<R: Runtime>(
     webview: Webview<R>,
     area: SelectedBox,
 ) -> Result<(), &'static str> {
-    let index = overlay_index(webview.label()).ok_or("not_an_overlay")?;
+    if !studio_window(webview.label()) {
+        return Err("not_a_studio_window");
+    }
     let app = webview.app_handle().clone();
-    if !held(&app).select(index, area.into(), Instant::now()) {
+    if !held(&app).select(0, area.into(), Instant::now()) {
         finish(&app);
         return Err("gone");
     }
-    close_windows(&app, |label| overlay_index(label).is_some());
     let window = page_window(&app, FEEDBACK_WINDOW).map_err(|_| "failed")?;
     window
         .center()
