@@ -12,7 +12,9 @@ import {
   chatNotesRouteKey,
   handleChatNotes,
   isAutomaticNote,
+  progressNotes,
   rememberNote,
+  rememberProgressNote,
 } from "./front-bot-notes.ts";
 import { paperclipHost } from "./host.ts";
 import { manifest } from "./manifest.ts";
@@ -166,5 +168,22 @@ verifies("paperclip.front-bot-own-comments", () => {
     const { state } = fakeState();
     const comments = await paperclipHost(host, "acme", state).comments("task-1");
     expect(comments.map((comment) => comment.body)).toEqual(["Pushed."]);
+  });
+});
+
+verifies("paperclip.front-bot-progress-notes", () => {
+  test("progress notes a day old are deleted from plugin state, not only hidden", async () => {
+    const { state, saved } = fakeState();
+    const at = new Date("2026-11-26T14:03:01.000Z");
+    await rememberProgressNote(state, "acme", taskId, "run-1", {
+      at: at.toISOString(),
+      text: "Reading a file now.",
+    });
+    const hourLater = new Date(at.getTime() + 60 * 60_000);
+    expect(await progressNotes(state, "acme", taskId, hourLater)).toMatchObject({ runId: "run-1" });
+    expect(saved.size).toBe(1);
+    const dayLater = new Date(at.getTime() + 24 * 60 * 60_000 + 1);
+    expect(await progressNotes(state, "acme", taskId, dayLater)).toBeUndefined();
+    expect(saved.size).toBe(0);
   });
 });

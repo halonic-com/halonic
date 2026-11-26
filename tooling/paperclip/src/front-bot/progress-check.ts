@@ -32,6 +32,7 @@ export type ProgressReason =
   | "bare_acknowledgement"
   | "list_or_heading"
   | "path_or_command"
+  | "markup"
   | "unhedged_answer"
   | "first_person"
   | "banned_word"
@@ -59,6 +60,13 @@ const listOrHeading = /^\s*(?:[-*+>#]|\d+[.)])\s|[\n`|]/;
  */
 const pathOrCommand =
   /(?:^|[\s("'])(?:~|\.{1,2})?\/[\w.-]|\b[\w-]+\.(?:ts|tsx|js|mjs|json|md|rs|sh|ya?ml|toml|lock|txt|env)\b|•••|\$\s|--[a-z]|\bhttps?:\/\//i;
+
+/**
+ * Markup or a link a reader's screen might act on: angle or square brackets,
+ * or a `javascript:`, `data:`, `vbscript:`, `file:` or `mailto:` link. Only the
+ * person's own message can steer a note towards these; step labels hold none.
+ */
+const markup = /[<>[\]]|\b(?:javascript|data|vbscript|file|mailto):/i;
 
 /** Words a note may start a sentence with, or use as terms, beyond the first reply's. */
 const noteWords = new Set(
@@ -112,6 +120,21 @@ function opening(note: string): string {
     .join(" ");
 }
 
+/** The checks on the note alone, cheapest and most serious first, each with its reason. */
+const noteShapeChecks: readonly (readonly [ProgressReason, (line: string) => boolean])[] = [
+  ["secret_shape", (line) => findCredentialShape(line) !== undefined],
+  ["credential_request", asksForCredential],
+  ["too_long", (line) => line.length > maxCharacters || words(line).length > maxWords],
+  ["bare_acknowledgement", isBareAcknowledgement],
+  ["list_or_heading", (line) => listOrHeading.test(line)],
+  ["path_or_command", (line) => pathOrCommand.test(line)],
+  ["markup", (line) => markup.test(line)],
+  ["unhedged_answer", (line) => unhedgedAnswer.test(line)],
+  ["first_person", (line) => firstPerson.test(line)],
+  ["banned_word", (line) => bannedWords.test(line)],
+  ["time_promise", (line) => timePromises.test(line)],
+];
+
 /**
  * Checks one note against what it was written from. Cheap checks on the note
  * alone come first; then every number and name must be in the exact text the
@@ -121,16 +144,8 @@ function opening(note: string): string {
 export function checkProgressNote(line: string, input: ProgressInput): ProgressCheck {
   const given = progressUserText(input);
   const reject = (reason: ProgressReason): ProgressCheck => ({ ok: false, reason });
-  if (findCredentialShape(line) !== undefined) return reject("secret_shape");
-  if (asksForCredential(line)) return reject("credential_request");
-  if (line.length > maxCharacters || words(line).length > maxWords) return reject("too_long");
-  if (isBareAcknowledgement(line)) return reject("bare_acknowledgement");
-  if (listOrHeading.test(line)) return reject("list_or_heading");
-  if (pathOrCommand.test(line)) return reject("path_or_command");
-  if (unhedgedAnswer.test(line)) return reject("unhedged_answer");
-  if (firstPerson.test(line)) return reject("first_person");
-  if (bannedWords.test(line)) return reject("banned_word");
-  if (timePromises.test(line)) return reject("time_promise");
+  const failedShape = noteShapeChecks.find(([, fails]) => fails(line));
+  if (failedShape !== undefined) return reject(failedShape[0]);
   if (!allNumbersKnown(line, given)) return reject("unknown_number");
   if (!resultWordsBacked(line, input)) return reject("result_word");
   if (!allNamesKnown(line, given, noteWords)) return reject("unknown_name");

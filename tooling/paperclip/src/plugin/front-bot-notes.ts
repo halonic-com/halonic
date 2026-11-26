@@ -37,6 +37,7 @@ const keptNotes = 200;
 
 type StateGet = Pick<PluginStateClient, "get">;
 type StateGetSet = Pick<PluginStateClient, "get" | "set">;
+type StateGetDelete = Pick<PluginStateClient, "get" | "delete">;
 
 function notesKey(taskId: string) {
   return {
@@ -92,9 +93,13 @@ function progressKey(taskId: string) {
   } as const;
 }
 
-/** The task's progress notes, for this company and less than a day old; otherwise undefined. */
+/**
+ * The task's progress notes, for this company and less than a day old;
+ * otherwise undefined. Notes a day old are deleted here, so they leave plugin
+ * state even when no later run writes a note.
+ */
 export async function progressNotes(
-  state: StateGet,
+  state: StateGetDelete,
   companyId: string,
   taskId: string,
   now: Date,
@@ -107,6 +112,7 @@ export async function progressNotes(
   }
   const newest = record.notes.at(-1);
   if (newest === undefined || now.getTime() - new Date(newest.at).getTime() > progressKeptMs) {
+    await state.delete(progressKey(taskId));
     return undefined;
   }
   return { runId: record.runId, notes: record.notes };
@@ -200,7 +206,7 @@ const taskIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
  */
 export async function handleChatNotes(
   input: PluginApiRequestInput,
-  ctx: { readonly state: StateGet },
+  ctx: { readonly state: StateGetDelete },
   now: Date = new Date(),
 ): Promise<PluginApiResponse> {
   const userId = input.actor.actorType === "user" ? input.actor.userId : undefined;

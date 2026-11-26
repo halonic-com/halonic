@@ -29,6 +29,11 @@ verifies("paperclip.front-bot-progress-notes", () => {
       ["pnpm test --filter x", "Ran pnpm test"],
       ["gh pr view 6129 --json state", "Ran gh pr"],
       ["curl -H 'x-api-key: abc' https://example.com", "Ran curl"],
+      ["git push origin x", "Ran git push"],
+      ["rg abcdefghij0123456789 src", "Ran rg"],
+      ["curl localhost:8080", "Ran curl"],
+      ["ls somefolder", "Ran ls"],
+      ["node scripts", "Ran node"],
     ])("%s", (command, label) => {
       expect(commandLabel(command)).toBe(label);
     });
@@ -76,6 +81,36 @@ verifies("paperclip.front-bot-progress-notes", () => {
     const steps = newSteps(readSteps(emptyStepLog, lines));
     expect(steps).toEqual([{ label: "Ran a command", status: "passed" }]);
     expect(JSON.stringify(steps)).not.toContain(plantedKey);
+  });
+
+  test("records on stderr give no step", () => {
+    const record = toolCall("t1", { name: "Terminal", status: "completed" });
+    const stderr = JSON.stringify({
+      ts: "2026-11-26T14:03:10Z",
+      stream: "stderr",
+      chunk: JSON.stringify(record),
+    });
+    expect(newSteps(readSteps(emptyStepLog, [stderr]))).toEqual([]);
+  });
+
+  test("a part that isn't an object is skipped and the others still count", () => {
+    const chunk = [
+      "null",
+      "[1]",
+      "7",
+      JSON.stringify(toolCall("t1", { name: "Read File", status: "pending" })),
+    ].join("\n");
+    const line = JSON.stringify({ ts: "2026-11-26T14:03:10Z", stream: "stdout", chunk });
+    expect(newSteps(readSteps(emptyStepLog, [line, "null"]))).toEqual([
+      { label: "Read a file", status: "running" },
+    ]);
+  });
+
+  test.each(["constructor", "__proto__", "toString"])("the tool kind %s is just a tool", (name) => {
+    const lines = [logLine(toolCall("t1", { name, status: "pending" }))];
+    expect(newSteps(readSteps(emptyStepLog, lines))).toEqual([
+      { label: "Used a tool", status: "running" },
+    ]);
   });
 
   test("after a note, only calls that start or change again are new", () => {
