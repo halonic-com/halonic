@@ -25,7 +25,7 @@ export type ResumePlan =
  *
  * @example
  * planResume(steps, new Map([[1, "succeeded"], [2, "failed"]]));
- * // => { kind: "run", steps: [1, 2, 3] } when step 1 is an `input` and step 2 is `guided`
+ * // => { kind: "run", steps: [1, 2] } when step 1 is an `input` and step 2 is `guided`
  */
 export function planResume(
   steps: readonly Step[],
@@ -34,13 +34,18 @@ export function planResume(
   const firstLeft = steps.findIndex((step, index) => !isDone(step, outcomes.get(index + 1)));
   if (firstLeft === -1) return { kind: "finished" };
 
-  const failed = steps[firstLeft];
-  if (failed?.kind === "script" && outcomes.get(firstLeft + 1) === "failed") {
+  // Any failed API step, not just the first step left: an earlier failed
+  // guided step must not carry a failed API step along into the run.
+  const failedApiIndex = steps.findIndex(
+    (step, index) => step.kind === "script" && outcomes.get(index + 1) === "failed",
+  );
+  const failedApi = steps[failedApiIndex];
+  if (failedApi?.kind === "script") {
     return {
       kind: "stop",
-      step: firstLeft + 1,
+      step: failedApiIndex + 1,
       reason: "may-have-happened",
-      manual: failed.manual,
+      manual: failedApi.manual,
     };
   }
 

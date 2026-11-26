@@ -49,6 +49,23 @@ verifies("action-steppers.stepper-resume", () => {
       expect(plan).toEqual({ kind: "run", steps: [3] });
     });
 
+    it("stops at a failed API step even after an earlier failed guided step", () => {
+      const plan = planResume(
+        [addVariable, setRuleset],
+        outcomes([
+          [1, "failed"],
+          [2, "failed"],
+        ]),
+      );
+
+      expect(plan).toEqual({
+        kind: "stop",
+        step: 2,
+        reason: "may-have-happened",
+        manual: setRuleset.manual,
+      });
+    });
+
     it("stops at a failed API step and links its page instead of repeating it", () => {
       const plan = planResume(
         [addVariable, setRuleset],
