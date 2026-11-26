@@ -32,9 +32,10 @@ New-Item -ItemType Directory -Force (Join-Path $profileFolder 'studio') | Out-Nu
 @{ version = 1; folders = @(@{ location = $location }) } | ConvertTo-Json -Depth 4 |
   Set-Content (Join-Path $profileFolder 'studio\picked-folders.json') -Encoding utf8NoBOM
 
-# WebView2's registry policy beats the shell's own browser arguments
-# (test-update.ps1); only the first start needs the port.
-$policyKey = 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
+# WebView2's registry policy beats the shell's own browser arguments; the
+# per-user key alone opened no port on the runner, so both, as test-update.ps1
+# does (the runner is an administrator). Only the first start needs the port.
+$policyKeys = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments', 'HKCU:\Software\Policies\Microsoft\Edge\WebView2\AdditionalBrowserArguments'
 $env:HALONIC_HOME = $profileFolder
 $exe = Join-Path $InstallFolder 'Halonic.exe'
 
@@ -44,16 +45,25 @@ function Stop-Halonic {
 }
 
 try {
-  New-Item -Path $policyKey -Force | Out-Null
-  New-ItemProperty -Path $policyKey -Name 'Halonic.exe' -Value "--remote-debugging-port=$devtools" -PropertyType String -Force | Out-Null
+  foreach ($key in $policyKeys) {
+    New-Item -Path $key -Force | Out-Null
+    New-ItemProperty -Path $key -Name 'Halonic.exe' -Value "--remote-debugging-port=$devtools" -PropertyType String -Force | Out-Null
+  }
   Start-Process $exe | Out-Null
   pnpm --dir $repo exec node $cli remember $devtools $location | Out-Host
-  if ($LASTEXITCODE -ne 0) { throw 'Could not put the workspace in Recent' }
+  if ($LASTEXITCODE -ne 0) {
+    # What ran and what listened, so a failure tells "no port" from "no page".
+    Get-Process Halonic, halonic-agent-host, msedgewebview2 -ErrorAction SilentlyContinue | Format-Table Name, Id, StartTime | Out-Host
+    Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalAddress -in '127.0.0.1', '::1', '0.0.0.0', '::' } | Sort-Object LocalPort | Format-Table LocalAddress, LocalPort, OwningProcess | Out-Host
+    Get-CimInstance Win32_Process -Filter "Name like 'msedgewebview2%'" -ErrorAction SilentlyContinue | Select-Object -First 2 -ExpandProperty CommandLine | Out-Host
+    Get-Content $log -ErrorAction SilentlyContinue | Select-Object -Last 40 | Out-Host
+    throw 'Could not put the workspace in Recent'
+  }
   # WebView2 writes localStorage to disk a few seconds after a change.
   Start-Sleep -Seconds 10
   Stop-Halonic
 } finally {
-  Remove-ItemProperty -Path $policyKey -Name 'Halonic.exe' -ErrorAction SilentlyContinue
+  foreach ($key in $policyKeys) { Remove-ItemProperty -Path $key -Name 'Halonic.exe' -ErrorAction SilentlyContinue }
 }
 
 # The measured start: a fresh log, then wait for a window's engine line.
