@@ -30,7 +30,7 @@ const prAnswer =
   "*Automatic answer · from PR status:* PR #6129: open; ci-ok green; no conflict; not in the merge queue; approved on its latest commit.";
 
 /** A first reply Haiku would give, so a test sees whether the message went on to it. */
-const firstReply = { reply: "About PR #6129. Depends on the merge queue." };
+const firstReply = { reply: "About PR #6129. Checking the merge queue." };
 
 /** Runs one board message through the bot with the lookups on, unless the options say otherwise. */
 async function ask(message: string, options: HarnessOptions = {}) {

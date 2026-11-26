@@ -23,7 +23,7 @@ import {
  * model name a model or an effort.
  */
 
-const reply = "About PR #6129. Depends on the merge queue.";
+const reply = "About PR #6129. Checking the merge queue.";
 const choiceOn = { ...botOn, frontBotRunChoice: true };
 
 /** Runs one message through the bot with the recorded answer, then asks the data key for it. */
