@@ -3,6 +3,7 @@
 - Task: HAL-18965, plan HAL-17960 PR 2
 - Approval: Liam approved the plan with conditions on HAL-18963; `approvals.read` (read-only, cut by `paperclipAccess`) asked on HAL-20034; the gap that a plugin can't file an approval goes to the board through Chief on HAL-20033. Liam signs this note in his review, Julian gives his OK on the new action
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:n+XIWYQvOu/g2udjWgoy9Z7eZia0VVlox5iEOSrD+w9QCwvWZtNJcapgUn1PVqSY4Ral31xUUapMygne/wBnBg==
 
 ## What changes
 
