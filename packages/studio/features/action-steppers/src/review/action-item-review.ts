@@ -16,6 +16,7 @@ import {
   stepperRequestFormat,
   validateStepperRequest,
 } from "@halonicjs/action-steppers";
+import type { ActionKeptValue } from "@halonicjs/events";
 import type {
   ActionCallRoute,
   ActionRoute,
@@ -44,6 +45,11 @@ export interface ActionReviewContext {
   /** The deciding policy from the user's profile, never from a workspace (HAL-17491 6.5). */
   readonly policy: RequesterPolicy;
   readonly now: Date;
+  /**
+   * What the request's `check` steps kept, from its record, once one has run: the previews set
+   * today's state next to the change, such as "Required reviews on `main` today: 1. After: 2."
+   */
+  readonly current?: Readonly<Record<string, ActionKeptValue>> | undefined;
 }
 
 /**
@@ -189,6 +195,8 @@ function stepViews(
         action.kind === "browser"
           ? { address: action.address, lines: action.instructions }
           : { lines: [] },
+      // A check that confirms a step done by hand; a definition's own `check` step is a step of its
+      // own that runs like any other. No definition has a by-hand check yet (HAL-17491 7.8).
       hasCheck: false,
       outcome: { kind: "pending" },
     };
@@ -259,7 +267,7 @@ export function reviewActionItem(
     reason: item.question,
     steps: stepViews(
       definition,
-      definition.preview(parsed.value),
+      definition.preview(parsed.value, context.current),
       action.parameters,
       context.catalog,
     ),

@@ -254,9 +254,28 @@ export function stageText(stage: StepperStage): string | null {
       return "Open it in the desktop app to run it.";
     case "blocked":
       return "Blocked by your settings. This requester may only ask for steps marked Routine.";
+    case "changed":
+      return stage.message;
     case "finished":
       return "Finished. Every step is done.";
     default:
       return null;
   }
+}
+
+/** The words around each value a stopped request shows (`action-steppers.expect-stop`). */
+export const changeWords = {
+  expected: "When asked:",
+  today: "Today:",
+  /** The check read nothing for that name: the service no longer has it, or it was done by hand. */
+  notRead: "not read",
+} as const;
+
+/**
+ * A value a stopped request shows, as data: a text in quotes, so `"1"` and `1` look as different
+ * as they are; `undefined` when the check read nothing for it.
+ */
+export function changedValueText(value: string | number | boolean | null | undefined) {
+  if (value === undefined) return undefined;
+  return typeof value === "string" ? JSON.stringify(value) : String(value);
 }

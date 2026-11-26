@@ -3,12 +3,15 @@ import { type ReactNode, useId } from "react";
 import {
   irreversibleStepsAhead,
   type StepAction,
+  type StepperChange,
   type StepperView,
   type StepRisk,
   type StepView,
 } from "../stepper-view.ts";
 import {
   actionLine,
+  changedValueText,
+  changeWords,
   expiresText,
   factLabels,
   hideRequest,
@@ -83,6 +86,39 @@ export function IrreversibleWarnings({ view }: { readonly view: StepperView }) {
       {step.preview}
     </Callout>
   ));
+}
+
+/**
+ * Each value that changed since the request (`action-steppers.expect-stop`): its name, what the
+ * requester saw and what the check read today. The values come from the requester and the
+ * service, so they show as code, apart from Halonic's own sentence above them.
+ */
+export function ChangedValues({ changes }: { readonly changes: readonly StepperChange[] }) {
+  const code = "font-mono text-small text-fg wrap-anywhere";
+  return (
+    <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-body">
+      {changes.map((change) => {
+        const today = changedValueText(change.current);
+        return (
+          <div key={change.name} className="contents">
+            <dt>
+              <code className={code}>{change.name}</code>
+            </dt>
+            <dd className="flex min-w-0 flex-col text-fg">
+              <span>
+                {changeWords.expected}{" "}
+                <code className={code}>{changedValueText(change.expected)}</code>
+              </span>
+              <span>
+                {changeWords.today}{" "}
+                {today === undefined ? changeWords.notRead : <code className={code}>{today}</code>}
+              </span>
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
 }
 
 function Fact({ label, children }: { readonly label: string; readonly children: ReactNode }) {
