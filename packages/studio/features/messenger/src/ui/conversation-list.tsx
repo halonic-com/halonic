@@ -127,16 +127,16 @@ function Row({
       <Avatar name={chatAgent(row)?.name ?? row.conversation.title} picture={picture} />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-body">
-            <bdi>{chatName(row)}</bdi>
-            {after === undefined ? null : (
-              <span className="text-small text-fg-muted"> · {after}</span>
-            )}
+          {/* The dot sits outside the truncated name, so a long name's ellipsis never hides it. */}
+          <span className="flex min-w-0 flex-1 items-center">
+            <span className="min-w-0 truncate text-body">
+              <bdi>{chatName(row)}</bdi>
+              {after === undefined ? null : (
+                <span className="text-small text-fg-muted"> · {after}</span>
+              )}
+            </span>
             {waitsForPerson(row) ? (
-              <span
-                data-needs-you
-                className="ms-1.5 inline-block size-1.5 rounded-full bg-warning align-middle"
-              >
+              <span data-needs-you className="ms-1.5 size-1.5 shrink-0 rounded-full bg-warning">
                 <span className="sr-only">{messengerWords.needsYouDot}</span>
               </span>
             ) : null}

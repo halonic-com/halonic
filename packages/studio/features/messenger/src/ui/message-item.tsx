@@ -118,12 +118,16 @@ export function MessageItem({
 }
 
 /**
- * An agent's bubble on the start side, with no edge, in the agent's own tint at the strength of
- * the person's bubble (HAL-19134, approved on HAL-19132). An automatic note keeps its dashed edge
- * and no fill, so it reads lighter than the agent's answer (plan HAL-18743, sketch 3.2).
+ * An agent's bubble on the start side, with no visible edge, in the agent's own tint at the
+ * strength of the person's bubble (HAL-19134, approved on HAL-19132). The edge is transparent rather
+ * than absent: forced-colours mode drops the tint and paints that edge, so the bubble keeps its
+ * shape there. An automatic note keeps its dashed edge and no fill, so it reads lighter than the
+ * agent's answer (plan HAL-18743, sketch 3.2).
  */
 function agentBubble(automatic: boolean, tint: AgentTint): string {
-  const look = automatic ? "border border-dashed border-border-strong" : tint;
+  const look = automatic
+    ? "border border-dashed border-border-strong"
+    : `border border-transparent ${tint}`;
   return `min-w-0 rounded-lg px-3 py-2 wrap-break-word ${look}`;
 }
 

@@ -34,9 +34,10 @@ verifies("messenger.agent-bubbles", () => {
         "Chief: Build is green",
       ]);
       const bubble = agents[0]?.querySelector("[data-bubble]");
-      // No edge; the tint is the agent's, the same on every message of theirs (HAL-19132).
+      // No visible edge (a transparent one, for forced colours); the tint is the agent's, the same
+      // on every message of theirs (HAL-19132).
       expect(bubble?.className).toMatch(/\bbg-agent-(sky|teal|green|sand|coral|indigo)\b/);
-      expect(bubble?.className).not.toMatch(/\bborder\b/);
+      expect(bubble?.className).toMatch(/\bborder border-transparent\b/);
       const tint = bubble?.className.match(/bg-agent-\w+/)?.[0];
       expect(agents[1]?.querySelector("[data-bubble]")?.className).toContain(tint);
       // The name is semibold in the normal text colour; the time stays muted.
