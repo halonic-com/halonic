@@ -82,6 +82,18 @@ verifies("services.paperclip-restore", () => {
       expect(reported).toEqual([]);
     });
 
+    it("hands it back too when the host lists the connection as holding no key, as after a restart", async () => {
+      const { restored, handedOver } = await restoreWith({
+        stored: { "paperclip-halonic": signedInHere },
+        rows: [{ ...halonicRow, state: { kind: "no-key" } }],
+      });
+
+      expect(restored).toBe(1);
+      expect(handedOver).toEqual([
+        { workspace: "/work/acme", connection: "halonic", key: fakeKey, address, company },
+      ]);
+    });
+
     it("hands nothing over in another workspace, such as a clone", async () => {
       const { handedOver } = await restoreWith({
         stored: { "paperclip-halonic": signedInHere },

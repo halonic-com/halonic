@@ -86,6 +86,23 @@ verifies("connections.connection-row", () => {
     expect(dialog()?.querySelector("input")?.value).toBe("https://paperclip.acme.test");
   });
 
+  it("says a connection this computer holds no key for isn't connected here, not that its key expired", async () => {
+    const noKey: AgentConnection = { ...signedOut, state: { kind: "no-key" } };
+    const { view } = await showSection(new FakeAgentConnections({ connections: [noKey] }));
+    const row = rowOf(view, "Paperclip · Acme");
+    expect(row?.textContent).toContain("Not connected");
+    expect(row?.textContent).toContain("paperclip.acme.test · no key on this computer");
+    expect(row?.textContent).toContain("Sign in to read and answer from this computer.");
+    expect(row?.textContent).not.toContain("key expired or revoked");
+    expect(button("Sign in again", row)).toBeUndefined();
+    await press(button("Sign in", row));
+    expect(dialog()?.querySelector("h2")?.textContent).toBe("Sign in");
+    expect(dialog()?.textContent).toContain(
+      "Halonic has no key for Paperclip · Acme on this computer. Sign in to read and answer from here.",
+    );
+    expect(dialog()?.querySelector("input")?.value).toBe("https://paperclip.acme.test");
+  });
+
   it("asks first, then asks the engine once to disconnect, and says the key stays valid", async () => {
     const fake = new FakeAgentConnections({
       connections: [connected],

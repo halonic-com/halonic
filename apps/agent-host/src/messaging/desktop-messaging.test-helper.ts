@@ -35,6 +35,8 @@ export interface SeenRequest {
 export class FakePaperclip {
   readonly seen: SeenRequest[] = [];
   offline = false;
+  /** When set, it answers every request 401, as Paperclip does for an expired or revoked key. */
+  refusesKey = false;
   /** What `/api/cli-auth/me` answers; without it, a Paperclip that doesn't know the route. */
   me: unknown;
   /** When set, answers `/api/cli-auth/me` in place of {@link FakePaperclip.me}: a fault or a redirect. */
@@ -69,6 +71,7 @@ export class FakePaperclip {
       method: request.method,
       authorization: request.headers.get("authorization"),
     });
+    if (this.refusesKey) return json({ error: "Unauthorized" }, 401);
     const path = new URL(request.url).pathname;
     if (path === `/api/companies/${acme.company}/agents`) {
       return json([

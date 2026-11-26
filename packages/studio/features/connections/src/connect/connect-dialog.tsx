@@ -14,7 +14,7 @@ import {
 /** The props of {@link ConnectDialog}. */
 export interface ConnectDialogProps {
   readonly connections: AgentConnections;
-  /** The signed-out connection to sign in again, or none for a new one. */
+  /** The signed-out connection, or one this computer holds no key for, to sign in to; none for a new one. */
   readonly again?: AgentConnection | undefined;
   /** The connected connection to add another account beside, at its address. */
   readonly another?: AgentConnection | undefined;
@@ -41,8 +41,9 @@ function isAllowedAddress(address: string): boolean {
   }
 }
 
-/** The dialog's title: Connect Paperclip, Sign in again or Add another account. */
+/** The dialog's title: Connect Paperclip, Sign in, Sign in again or Add another account. */
 function titleOf(props: ConnectDialogProps): string {
+  if (props.again?.state.kind === "no-key") return words.SIGN_IN;
   if (props.again !== undefined) return words.SIGN_IN_AGAIN;
   if (props.another !== undefined) return words.ADD_ACCOUNT;
   return words.CONNECT;
@@ -50,6 +51,7 @@ function titleOf(props: ConnectDialogProps): string {
 
 /** The line above the address field, for the title the dialog has. */
 function leadOf(props: ConnectDialogProps): string {
+  if (props.again?.state.kind === "no-key") return words.signInNoKeyLead(props.again.label);
   if (props.again !== undefined) return words.signInAgainLead(props.again.label);
   if (props.another !== undefined) return words.ADD_ACCOUNT_LEAD;
   return words.CONNECT_LEAD;

@@ -27,7 +27,8 @@ export interface PaperclipRestoreOptions {
 /**
  * Gives the agent host back the keys the person signed in with in this
  * workspace, when it opens (`services.paperclip-restore`). For each
- * connection the host lists as signed out, it reads the keychain once and
+ * connection the host lists as holding no key (`no-key`, as after a restart)
+ * or as signed out, it reads the keychain once and
  * hands the key over only when the entry names this workspace (its real
  * path, as the host resolved it) and was made for the address and company
  * the connection file names now. Otherwise, such as in a clone or after the
@@ -47,7 +48,7 @@ export async function restorePaperclipKeys(options: PaperclipRestoreOptions): Pr
   if (list === undefined) return 0;
   let restored = 0;
   for (const row of list.connections) {
-    if (row.state.kind !== "signed-out") continue;
+    if (!needsKey(row)) continue;
     const handedOver = await restoreOne(options, list.workspace, row).catch((error: unknown) => {
       report(error);
       return false;
@@ -55,6 +56,11 @@ export async function restorePaperclipKeys(options: PaperclipRestoreOptions): Pr
     if (handedOver) restored++;
   }
   return restored;
+}
+
+/** Whether the host holds no usable key for the row: none on this computer yet, or one Paperclip refused. */
+function needsKey(row: PaperclipConnectionRow): boolean {
+  return row.state.kind === "no-key" || row.state.kind === "signed-out";
 }
 
 /** The open workspace's trust, as {@link restoreWhenTrusted} reads it. */

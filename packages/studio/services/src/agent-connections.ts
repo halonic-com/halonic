@@ -1,4 +1,5 @@
-import type { MessagingId, MessagingSourceState } from "@halonicjs/ports";
+import type { ConnectionRowState } from "@halonicjs/adapter-agent-host-client";
+import type { MessagingId } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
 /**
@@ -20,7 +21,8 @@ export interface AgentConnection {
   readonly userName?: string;
   /** The address its sign-in goes to, such as `https://paperclip.acme.test`. */
   readonly address: string;
-  readonly state: MessagingSourceState;
+  /** `no-key` while this computer holds no key for it; `signed-out` once Paperclip refused the key. */
+  readonly state: ConnectionRowState;
   /** When its key expires, as ISO text, when the engine knows it. */
   readonly keyExpiresAt?: string;
 }

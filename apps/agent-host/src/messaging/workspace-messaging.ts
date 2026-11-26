@@ -1,3 +1,4 @@
+import type { ConnectionRowState } from "@halonicjs/adapter-agent-host-client";
 import { CachedAgentMessaging } from "@halonicjs/adapter-agent-messaging-cache";
 import { type PaperclipTeamStatus, paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
 import type { PaperclipConnection } from "@halonicjs/format";
@@ -69,7 +70,8 @@ export interface ConnectionRow {
   address: string;
   /** The Paperclip company's ID the file names, which Studio compares with its keychain entry. */
   company: string;
-  state: MessagingSourceState;
+  /** `no-key` while this computer holds no key for it; `signed-out` only once Paperclip refused the key. */
+  state: ConnectionRowState;
   /** The Paperclip user the connection is signed in as, once read. */
   userName?: string;
 }
@@ -222,9 +224,10 @@ export class WorkspaceMessaging {
   }
 
   /**
-   * The workspace's connection files, each with its state: signed out until
-   * the person connects it here. It reads Paperclip only for connections
-   * the person connected, as Inbox does; when that fails they show as offline.
+   * The workspace's connection files, each with its state: `no-key` until
+   * the person connects it here, or Studio hands its key over again. It reads
+   * Paperclip only for connections the person connected, as Inbox does; when
+   * that fails they show as offline.
    */
   async connections(): Promise<ConnectionRow[]> {
     const { workspace, now } = this.#options;
@@ -249,7 +252,7 @@ export class WorkspaceMessaging {
         label: userName === undefined ? label : withUserName(label, userName),
         address: connection.address,
         company: connection.company,
-        state: provider === undefined ? { kind: "signed-out" } : stateOf(id, sources, asOf),
+        state: rowState(joined, provider === undefined, () => stateOf(id, sources, asOf)),
         ...(userName === undefined ? {} : { userName }),
       };
     });
@@ -366,6 +369,20 @@ function serverProviders(engine: Extract<JoinedEngine, { kind: "server" }>) {
   return engine.messaging === undefined
     ? []
     : [{ name: serverSourceName, messaging: engine.messaging }];
+}
+
+/**
+ * A row's state. On this computer, a connection the host holds no key for is
+ * `no-key`, so Studio doesn't call a key that is still valid "expired or
+ * revoked" (HAL-19032); a server engine's rows stay `signed-out`, as before.
+ */
+function rowState(
+  joined: boolean,
+  noKey: boolean,
+  connected: () => MessagingSourceState,
+): ConnectionRowState {
+  if (!joined) return { kind: "signed-out" };
+  return noKey ? { kind: "no-key" } : connected();
 }
 
 /** A connected source's state; offline when its sources couldn't be read. */
