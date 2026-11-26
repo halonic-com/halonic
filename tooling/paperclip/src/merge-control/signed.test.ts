@@ -66,6 +66,24 @@ verifies("paperclip.merge-control-signed-approval", () => {
     expect(approved([askedFix])).toBe(false);
   });
 
+  test("an opening approval line counts even over a change request below it, as live (HAL-19649)", () => {
+    // The side effect of #6528: the notes under an opening approval line aren't read.
+    const below = said(
+      `Julian: approved on head \`${h7}\`\n\nchanges requested: rename the seat rule`,
+    );
+    expect(approved([below])).toBe(true);
+    expect(enqueued(pass(snapshot({ pulls: [pull(1, { texts: [below] })] })))).toEqual([1]);
+  });
+
+  test("an approval line inside an HTML comment doesn't count (HAL-19778)", () => {
+    expect(approved([said(`<!-- Julian: approved on head \`${h7}\` -->`)])).toBe(false);
+    expect(approved([said(`Notes\n<!--\nJulian: approved on head \`${h7}\`\n-->`)])).toBe(false);
+    expect(approved([said(`Notes\n<!-- unclosed\nJulian: approved on head \`${h7}\``)])).toBe(
+      false,
+    );
+    expect(approved([said(`<!-- draft -->\nJulian: approved on head \`${h7}\``)])).toBe(true);
+  });
+
   test("two approval lines in one comment are ambiguous and don't count", () => {
     const twice = said(`Liam: approved on head \`${h7}\`\nLiam: re-approved on head \`${h7}\``);
     expect(approved([twice])).toBe(false);

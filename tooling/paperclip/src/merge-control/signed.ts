@@ -23,11 +23,16 @@ export interface SignedApproval {
   readonly rebaseOf?: string;
 }
 
-/** The lines that count: outside fenced code, not indented code, not quoted. */
+/** The body without HTML comments, which GitHub doesn't show; an unclosed one runs to the end. */
+function withoutHtmlComments(body: string): string {
+  return body.replace(/<!--[\s\S]*?(-->|$)/g, (comment) => comment.replace(/[^\n]/g, ""));
+}
+
+/** The lines that count: outside fenced code and HTML comments, not indented code, not quoted. */
 export function plainLines(body: string): string[] {
   const lines: string[] = [];
   let fence: string | null = null;
-  for (const line of body.split(/\r?\n/)) {
+  for (const line of withoutHtmlComments(body).split(/\r?\n/)) {
     const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1]?.slice(0, 3);
     if (marker !== undefined && (fence === null || fence === marker)) {
       fence = fence === null ? marker : null;

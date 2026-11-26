@@ -67,6 +67,7 @@ export function readFactsSettings(config: Readonly<Record<string, unknown>>) {
     repo: watcher.repos[0] ?? "halonic-com/halonic",
     mergerLogin: queueLoginOf(config),
     autoLabelAuthors: rulesOf(config).autoLabelAuthors,
+    teamLogin: rulesOf(config).teamLogin,
     capacity: {
       statusUrl: text("ciStatusUrl", /^https?:\/\/[\w.-]+(:\d+)?(\/[\w./-]*)?$/),
       prometheusUrl: text("prometheusUrl", /^https?:\/\/[\w.-]+(:\d+)?$/),

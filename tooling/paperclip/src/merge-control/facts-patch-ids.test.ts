@@ -13,6 +13,11 @@ const old = "0dd1010aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 /** The pulls page, with #101 approved by Liam on `old` instead of its head. */
 function approvedOnOld(query: string): unknown {
+  return approvedOnOldBy(query, "halonic-dev");
+}
+
+/** The same page with the approval posted by `login`. */
+function approvedOnOldBy(query: string, login: string): unknown {
   if (!query.includes("MergeFactsPulls")) {
     return undefined;
   }
@@ -27,7 +32,7 @@ function approvedOnOld(query: string): unknown {
             {
               body: `Liam: approved on head \`${old.slice(0, 7)}\``,
               createdAt: new Date(now.getTime() - 120 * 60_000).toISOString(),
-              author: { login: "halonic-dev" },
+              author: { login },
             },
           ],
         },
@@ -94,6 +99,23 @@ verifies("paperclip.merge-control-carry-over", () => {
     expect(snapshot.patchIds[old.slice(0, 7)]).toBeNull();
     expect(enqueued).toBe(false);
     expect(lines.some((line) => line.startsWith("patch-id of 0dd1010 unknown"))).toBe(true);
+  });
+
+  test("a failed compare is read once, not on every pass (HAL-19778)", async () => {
+    const { deps, sent } = recorded({
+      rest: { [compareHead]: compare(40) },
+      graphql: approvedOnOld,
+    });
+    await readMergeFacts(deps, now);
+    await readMergeFacts(deps, now);
+    expect(sent.filter((request) => request.url.includes(compareOld))).toHaveLength(1);
+  });
+
+  test("an approval line by another account makes the reader compare nothing (HAL-19778)", async () => {
+    const graphql = (query: string) => approvedOnOldBy(query, "someone-else");
+    const { deps, sent } = recorded({ rest: { [compareOld]: compare(10) }, graphql });
+    await readMergeFacts(deps, now);
+    expect(sent.some((request) => request.url.includes(compareOld))).toBe(false);
   });
 
   test("a pull request approved on its own head reads no compare", async () => {

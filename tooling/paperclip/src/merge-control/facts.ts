@@ -35,6 +35,7 @@ import {
 import { mainFileOf } from "./gate.ts";
 import type { ObservedAction } from "./shadow.ts";
 import type { CiOkRun, FailedJob, GatePull, MergeSnapshot } from "./snapshot.ts";
+import { defaultSettings } from "./state.ts";
 
 /**
  * Merge control's facts reader (ADR on HAL-17700): one `MergeSnapshot` for
@@ -56,6 +57,8 @@ export interface FactsSettings {
    * the auto-label rule (HAL-18506); missing: none.
    */
   readonly autoLabelAuthors?: readonly string[];
+  /** The login whose approval lines count, as in the gate's rules; missing: the default. */
+  readonly teamLogin?: string;
   readonly capacity: CapacitySources;
 }
 
@@ -312,7 +315,13 @@ async function readCountedFacts(deps: FactsDeps, now: Date, lean: boolean): Prom
     tasks: await deps.tasks(),
     mainFiles: await readMainFiles(deps, gateNodes(deps, read.pulls), read.main.sha),
     patchIds: await readPatchIds(
-      { get, repo: settings.repo, cache: deps.caches.patchIds, log: deps.log },
+      {
+        get,
+        repo: settings.repo,
+        teamLogin: settings.teamLogin ?? defaultSettings.teamLogin,
+        cache: deps.caches.patchIds,
+        log: deps.log,
+      },
       gate,
     ),
     groupRuns: await groupRunsOf(get, settings.repo, groups, now, deps.caches.failedJobs),

@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { reviewerFor } from "../reviewer-paths.ts";
 import { approvalOf, outsideJulianScope, outsideNoraScope } from "./approval.ts";
+import { changeRequestOf } from "./change-request.ts";
 import {
   actionsOf,
   ago,
@@ -115,6 +116,12 @@ verifies("paperclip.merge-control-carry-over", () => {
     const texts = [said(`Liam: approved on head \`${old.slice(0, 7)}\``)];
     expect(reasonsOf({ texts }, { [old.slice(0, 7)]: "p1", [head]: "p2" }).added).toEqual([]);
   });
+
+  test("an approval of the same head from before a push doesn't carry over to it (HAL-19778)", () => {
+    const texts = [said(`Liam: approved on head \`${head}\``, 30)];
+    const changes = { texts, forcePushedAt: [ago(10)] };
+    expect(reasonsOf(changes, { [head]: "p1" }).added).toEqual([]);
+  });
 });
 
 verifies("paperclip.merge-control-julian-scope", () => {
@@ -124,10 +131,13 @@ verifies("paperclip.merge-control-julian-scope", () => {
     expect(reasonsOf({ texts: [julian] }).added).toEqual([1]);
   });
 
-  test("Julian's approval from before the last push doesn't count, unless the diff is identical", () => {
+  test("Julian's approval from before the last push doesn't count; one of an older head with an identical diff does", () => {
     expect(reasonsOf({ texts: [julian], forcePushedAt: [ago(10)] }).added).toEqual([]);
     const same = { [head.slice(0, 7)]: "p1", [head]: "p1" };
-    expect(reasonsOf({ texts: [julian], forcePushedAt: [ago(10)] }, same).added).toEqual([1]);
+    expect(reasonsOf({ texts: [julian], forcePushedAt: [ago(10)] }, same).added).toEqual([]);
+    const older = said(`Julian: approved on head \`${old.slice(0, 7)}\``);
+    const rebased = { [old.slice(0, 7)]: "p1", [head]: "p1" };
+    expect(reasonsOf({ texts: [older], forcePushedAt: [ago(10)] }, rebased).added).toEqual([1]);
   });
 
   test("outside his limits, on his own branch or a release branch, it needs Liam", () => {
@@ -215,6 +225,63 @@ verifies("paperclip.merge-control-change-request", () => {
       said(`Liam: ${head.slice(0, 7)} not approved yet, reject`, 10),
     ];
     expect(reasonsOf({ texts }).added).toEqual([]);
+  });
+
+  test("only the same reviewer's later approval or a push clears a change request (HAL-19778)", () => {
+    const routine = { files: ["apps/cli/src/commands/run.ts"], filesTotal: 1, fileNet: {} };
+    const h7 = head.slice(0, 7);
+    const request = [
+      said(`Liam: approved on head \`${h7}\``, 40),
+      said(`Liam: changes requested on head \`${h7}\``, 30),
+    ];
+    for (const other of ["Nora", "Julian"]) {
+      const texts = [...request, said(`${other}: approved on head \`${h7}\``, 20)];
+      expect(reasonsOf({ ...routine, texts }).added).toEqual([]);
+      const each = pull(1, { ...routine, texts });
+      const approval = approvalOf(each, "halonic-dev", {}).approval;
+      expect(changeRequestOf(each, "halonic-dev", approval)?.who).toBe("Liam");
+    }
+    const again = [...request, said(`Liam: approved on head \`${h7}\``, 20)];
+    expect(reasonsOf({ ...routine, texts: again }).added).toEqual([1]);
+    const pushed = [...request, said(`Nora: approved on head \`${h7}\``, 10)];
+    expect(reasonsOf({ ...routine, texts: pushed, forcePushedAt: [ago(20)] }).added).toEqual([1]);
+    const julianAsked = [
+      said(`Julian: approved on head \`${h7}\``, 40),
+      said("Julian: [blocker] needs a fix in the gate", 30),
+      said(`Liam: approved on head \`${h7}\``, 20),
+    ];
+    expect(reasonsOf({ ...routine, texts: julianAsked }).added).toEqual([]);
+  });
+
+  test("another reviewer's own request and approval don't hide Liam's request in words (HAL-19778)", () => {
+    const routine = { files: ["apps/cli/src/commands/run.ts"], filesTotal: 1, fileNet: {} };
+    const h7 = head.slice(0, 7);
+    for (const other of ["Julian", "Nora"]) {
+      const texts = [
+        said(`Liam: approved on head \`${h7}\``, 40),
+        said("Liam: needs a fix in the gate before this goes in", 30),
+        said(`${other}: please fix the wording in the reason`, 20),
+        said(`${other}: approved on head \`${h7}\``, 10),
+      ];
+      expect(reasonsOf({ ...routine, texts }).added).toEqual([]);
+      const each = pull(1, { ...routine, texts });
+      const approval = approvalOf(each, "halonic-dev", {}).approval;
+      expect(changeRequestOf(each, "halonic-dev", approval)?.who).toBe("Liam");
+    }
+  });
+
+  test("an approval carried over a rebase from before the push doesn't clear a change request (HAL-19778)", () => {
+    const routine = { files: ["apps/cli/src/commands/run.ts"], filesTotal: 1, fileNet: {} };
+    const o7 = old.slice(0, 7);
+    const rebased = { [o7]: "p1", [head]: "p1" };
+    const asked = said(`Liam: changes requested on head \`${o7}\``, 30);
+    for (const texts of [
+      [said(`Liam: approved on head \`${o7}\``, 40), asked],
+      [said(`Julian: approved on head \`${o7}\``, 40), asked],
+      [asked, said(`Nora: approved on head \`${o7}\``, 25)],
+    ]) {
+      expect(reasonsOf({ ...routine, texts, forcePushedAt: [ago(20)] }, rebased).added).toEqual([]);
+    }
   });
 
   test("a queued pull request with a new change request comes out", () => {

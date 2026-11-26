@@ -11,7 +11,8 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * rule only: a queued pull request isn't taken out for it (no churn).
  *
  * A pull request is a security one by its `security` label, a line starting
- * `security-review` in its description, or a changed path in the security
+ * `security-review` (or "security review") in its description, more changed
+ * files than the gate can read (HAL-19778), or a changed path in the security
  * part of Julian's limits: `apps/studio/src-tauri/`, `docs/security/`,
  * `SECURITY.md`, or a path naming sandbox, secret, sign-in, oauth, keychain
  * or trust. Changesets don't count, nor do lockfiles, `package.json` or CI
@@ -23,7 +24,7 @@ export const securityLabel = "security";
 
 const securityFolders: readonly string[] = ["apps/studio/src-tauri/", "docs/security/"];
 const securityWords = /sandbox|secret|sign-in|oauth|keychain|trust/i;
-const reviewLine = /^security-review/im;
+const reviewLine = /^\s*security[- ]review\b/im;
 const signOffLine = /^Julian:[ \t]*security sign-off on head[ \t]*`?([0-9a-f]{7,40})`?/;
 
 function securityPath(path: string): boolean {
@@ -42,6 +43,7 @@ export function isSecurityPull(pull: GatePull): boolean {
   return (
     pull.labels.includes(securityLabel) ||
     reviewLine.test(pull.body ?? "") ||
+    pull.filesTotal > pull.files.length ||
     pull.files.some(securityPath)
   );
 }

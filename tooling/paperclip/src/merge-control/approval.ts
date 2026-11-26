@@ -10,7 +10,7 @@ import {
 } from "../reviewer-paths.ts";
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import { sensitiveOrigin, writtenByTeam } from "../reviewer-paths-routine.ts";
-import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
+import { blockWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 
 /**
@@ -19,21 +19,16 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * rebase with an identical diff, Julian within `reviewerRoleFor` or re-approving
  * after a rebase-only push (HAL-18459), Nora within `routineRefusal`
  * (HAL-19283), "Author: Liam", Julian's approval too on a plugin manifest
- * change (HAL-19440) and open change requests. A renamed file counts by its
- * old path too. The texts follow the Merger's own matching,
+ * change (HAL-19440); open change requests are in `change-request.ts`. A
+ * renamed file counts by its old path too. The texts follow the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
  * counts here (HAL-15553), and time after the last push matters. A signed
  * line counts on any line of a comment, outside code and quotes, once, and
  * never in a change request (`signed.ts`, HAL-17946, HAL-17927).
  */
 
-const signedLine = /^[ \t]*(Liam|Julian|Nora):/im;
-const reviewerName = /\b(Liam|Julian|Nora)\b/;
-
 /** A reviewer whose approval counts within Julian's scope. */
 type ScopedReviewer = "Julian" | "Nora";
-const rejectWords =
-  /\b(changes requested|request(ing)? changes|blocking|not approved|do not merge|don't merge|needs? (a )?(fix|rework|changes)|reject)/i;
 
 /** How a pull request's approval stands on its head. */
 export interface ApprovalVerdict {
@@ -70,20 +65,24 @@ function byAt(a: PullText, b: PullText): number {
   return a.at.localeCompare(b.at);
 }
 
-function teamTexts(pull: GatePull, teamLogin: string): PullText[] {
+export function teamTexts(pull: GatePull, teamLogin: string): PullText[] {
   return pull.texts.filter((text) => text.by === teamLogin).sort(byAt);
 }
 
 /** The queue manager's own comments name heads and approvals: never read them (lesson 2). */
-function ours(text: PullText): boolean {
+export function ours(text: PullText): boolean {
   return /queue manager/i.test(text.body);
 }
 
-function sameHead(head: string, sha: string): boolean {
+export function sameHead(head: string, sha: string): boolean {
   return head.startsWith(sha.slice(0, 7));
 }
 
+/** An approval of `from` holds on `to` when both have the same changes; never from the same head (HAL-19778). */
 function carriedOver(patchIds: Readonly<Record<string, string | null>>, from: string, to: string) {
+  if (sameHead(to, from)) {
+    return false;
+  }
   const a = patchIds[from];
   const b = patchIds[to];
   return a !== undefined && a !== null && a === b;
@@ -403,61 +402,4 @@ function manifestReason(pull: GatePull, teamLogin: string, patchIds: PatchIds): 
     return undefined;
   }
   return `changes a plugin manifest (${manifest}): needs Julian's approval on head ${h9} too`;
-}
-
-/** An open change request newer than the head's approval. */
-export interface ChangeRequest {
-  readonly who: string;
-  readonly at: string;
-}
-
-/** Its first line approves, or any line is a signed approval: then its notes aren't a change request. */
-function approves(body: string): boolean {
-  const first = body.split("\n")[0] ?? "";
-  const firstApproves = /\bapprov/i.test(first) && !/\b(not|un)\s*approv/i.test(first);
-  return firstApproves || anySignedApproval(body) !== null;
-}
-
-function approvesHead(text: PullText, head: string): boolean {
-  const sha = anySignedApproval(text.body)?.sha;
-  return sha !== undefined && sameHead(head, sha);
-}
-
-/**
- * The newest change request by Liam, Julian or Nora that is newer than the
- * head's approval, in words (rule 6) or as the newest signed line naming a head.
- */
-export function changeRequestOf(
-  pull: GatePull,
-  teamLogin: string,
-  approval: ApprovalVerdict | null,
-): ChangeRequest | null {
-  const texts = teamTexts(pull, teamLogin).filter((text) => !ours(text));
-  const named = texts.filter((text) => reviewerName.test(text.body.slice(0, 160)));
-  const blocks = named.filter(
-    (text) =>
-      !approves(text.body) && blockWords.test(text.body.slice(0, 600).replace(fixedWords, "")),
-  );
-  const last = blocks.pop();
-  if (last !== undefined) {
-    const approvedAt =
-      named.filter((text) => approvesHead(text, pull.head)).pop()?.at ?? approval?.at ?? "";
-    if (last.at > approvedAt) {
-      return {
-        who: reviewerName.exec(last.body.slice(0, 160))?.[1] ?? "a reviewer",
-        at: last.at,
-      };
-    }
-  }
-  const signed = texts
-    .filter((text) => signedLine.test(text.body) && /\b[0-9a-f]{7,40}\b/.test(text.body))
-    .pop();
-  if (signed === undefined || anySignedApproval(signed.body) !== null) {
-    return null;
-  }
-  const words = signed.body.slice(0, 600).replace(fixedWords, "");
-  if (!blockWords.test(words) && !rejectWords.test(words)) {
-    return null;
-  }
-  return { who: signedLine.exec(signed.body)?.[1] ?? "a reviewer", at: signed.at };
 }

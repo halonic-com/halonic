@@ -5,9 +5,11 @@ import {
   actionsOf,
   enqueued,
   entry,
+  headOf,
   logText,
   pass,
   pull,
+  said,
   snapshot,
 } from "./merge-control.test-helper.ts";
 
@@ -56,7 +58,13 @@ verifies("paperclip.merge-control-hotspots", () => {
   });
 
   test("over 100 changed files waits to be queued by hand", () => {
-    const decision = pass(snapshot({ pulls: [pull(1, { filesTotal: 140 })] }));
+    // Over 100 files is a security pull request too (HAL-19778): signed off here, to reach this rule.
+    const h7 = headOf(1).slice(0, 7);
+    const texts = [
+      said(`Liam: approved on head \`${h7}\``),
+      said(`Julian: security sign-off on head \`${h7}\``),
+    ];
+    const decision = pass(snapshot({ pulls: [pull(1, { filesTotal: 140, texts })] }));
     expect(enqueued(decision)).toEqual([]);
     expect(logText(decision)).toContain("touches 140 files (over 100), queue by hand");
   });

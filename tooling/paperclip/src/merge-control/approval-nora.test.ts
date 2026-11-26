@@ -83,8 +83,9 @@ verifies("paperclip.merge-control-nora-scope", () => {
 
   test("it carries over an identical diff and not over a push that changed it", () => {
     expect(addedWith({ texts: [nora], forcePushedAt: [ago(10)] })).toEqual([]);
-    const same = { [head.slice(0, 7)]: "p1", [head]: "p1" };
-    expect(addedWith({ texts: [nora], forcePushedAt: [ago(10)] }, same)).toEqual([1]);
+    const older = said(`Nora: approved on head \`${old.slice(0, 7)}\``);
+    const same = { [old.slice(0, 7)]: "p1", [head]: "p1" };
+    expect(addedWith({ texts: [older], forcePushedAt: [ago(10)] }, same)).toEqual([1]);
   });
 
   test("other names don't count, and Liam's change request isn't overruled by Nora", () => {
