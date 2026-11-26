@@ -92,6 +92,8 @@ function LastAnswerLink({
       onClick={() => onOpen(lastAnswer)}
     >
       {quickAskWords.lastAnswer(lastAnswer.agentName, time)}
+      {/* The chevron only shows the link goes somewhere; screen readers would read it out. */}
+      <span aria-hidden="true"> ›</span>
     </button>
   );
 }
