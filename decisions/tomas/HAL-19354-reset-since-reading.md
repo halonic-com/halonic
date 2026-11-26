@@ -3,6 +3,7 @@
 - Task: HAL-19354
 - Approval: the board's done-when on HAL-19354 ("nobody parked while a legal seat exists"), and the shadow log on HAL-16116 on 26 Nov, where the mover kept Nora on the Iris seat at "5h 100%" eight minutes after that seat's 5-hour window had reset. Liam approves the change in review on HAL-19354.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Yg8b5x/Csb7O0lSKNBmsIMfVZ9VDUkv7dYuHgwK9RYgGbSGCdn8PsYeZmsax46/VCUPa50zChXDphYBZxmaXBA==
 
 ## What changes
 
