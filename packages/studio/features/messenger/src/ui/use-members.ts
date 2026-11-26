@@ -31,7 +31,8 @@ interface Landed extends After {
  * Each change takes away the button that had focus, so once the panel shows it, focus moves on
  * (WCAG 2.4.3) and `announce` says what changed (4.1.3): after a remove to the next row's
  * **Remove from channel**, else **Add an agent**, else the heading; after Make lead or an add to
- * that agent's row (HAL-18835).
+ * that agent's row (HAL-18835). Where none of those is under `panel`, as under a channel's box,
+ * focus goes to what `fallback` selects.
  */
 export function useMembers(
   messenger: Messenger,
@@ -39,6 +40,7 @@ export function useMembers(
   onChanged: () => void,
   announce: (line: string) => void,
   panel: RefObject<HTMLElement | null>,
+  fallback = "h3",
 ) {
   const [pending, setPending] = useState<Pending | undefined>(undefined);
   const [failure, setFailure] = useState<string | undefined>(undefined);
@@ -50,9 +52,9 @@ export function useMembers(
 
   useEffect(() => {
     if (landed === undefined || !shows(row, landed.membership) || panel.current === null) return;
-    (landed.focus(panel.current) ?? panel.current.querySelector<HTMLElement>("h3"))?.focus();
+    (landed.focus(panel.current) ?? panel.current.querySelector<HTMLElement>(fallback))?.focus();
     setLanded(undefined);
-  }, [row, landed, panel]);
+  }, [row, landed, panel, fallback]);
 
   const failed = (error: unknown) => {
     console.error("Changing the channel's members failed:", error);

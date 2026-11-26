@@ -158,6 +158,59 @@ verifies("messenger.channel-work-actions", () => {
     expect(page.querySelectorAll('main li[data-author="me"]')).toHaveLength(2);
   });
 
+  /** "Check the build" to Elena, whose task closed without an answer; `body` changes the text. */
+  function closedForElena(body = "Check the build") {
+    const setup = engineering();
+    const { messaging, elena, channel } = setup;
+    messaging.addMessage(channel.id, {
+      author: { kind: "me" },
+      body,
+      to: [elena.id],
+      work: [{ agent: elena.id, state: "failed", since: "2026-11-24T10:00:00.000Z" }],
+    });
+    return setup;
+  }
+
+  it("sends once however often Ask again is pressed while it sends", async () => {
+    const { messaging } = closedForElena();
+    let finish: () => void = () => undefined;
+    const send = vi.spyOn(messaging, "send").mockReturnValue(
+      new Promise((resolve) => {
+        finish = () => resolve({ outcome: "refused", reason: "offline" });
+      }),
+    );
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    const lines = page.querySelector("[data-work-lines]");
+    await press(button("Ask again", lines ?? document));
+    expect(button("Ask again", lines ?? document)?.getAttribute("aria-busy")).toBe("true");
+    await press(button("Ask again", lines ?? document));
+    expect(send).toHaveBeenCalledOnce();
+    await act(async () => finish());
+  });
+
+  it("sends nothing while the source is offline, and says so after the lines", async () => {
+    const { messaging, acme } = closedForElena();
+    messaging.goOffline(acme.id);
+    const send = vi.spyOn(messaging, "send");
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    await press(button("Ask again", page.querySelector("[data-work-lines]") ?? document));
+    expect(send).not.toHaveBeenCalled();
+    const alert = page.querySelector('main p[role="alert"]');
+    expect(alert?.textContent).toBe("Paperclip · Acme is offline, so nothing was sent.");
+    expect(alert?.closest("[data-work-lines]")).toBeNull();
+  });
+
+  it("offers no Ask again for a message with no text", async () => {
+    const { messaging } = closedForElena("  ");
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    const lines = page.querySelector("[data-work-lines]");
+    expect(lines?.textContent).toBe("Elena's task was closed without an answer.");
+    expect(lines?.querySelector("button")).toBeNull();
+  });
+
   it("says as of when the source was last read while it is offline", async () => {
     const { messaging, acme, elena, channel } = engineering(() => at1402);
     messaging.addMessage(channel.id, {
@@ -200,6 +253,46 @@ verifies("messenger.channel-picker-add", () => {
     expect(setMembers).toHaveBeenCalledOnce();
     const [after] = await messaging.listConversations();
     expect(after?.members).toContain(writer.id);
+  });
+
+  it("moves focus to the box once Writer is added, and reads the note out", async () => {
+    const { messaging, channel } = engineering();
+    messaging.addMessage(channel.id, { body: "Plan for today" });
+    const page = await openMessenger(messaging);
+    const box = await openChat(page, "Engineering");
+    await typeInBox(box, "@Wri");
+    const spoken = [...page.querySelectorAll('main [role="status"] .sr-only')].map(
+      (each) => each.textContent,
+    );
+    expect(spoken).toContain("Writer isn't in this channel. Only members can be named here.");
+
+    await press(button("Add Writer", page.querySelector("[data-not-member]") ?? document));
+    await press(button("Add Writer", openDialog() ?? document));
+    await settle();
+    expect(page.querySelector("[data-not-member]")).toBeNull();
+    expect(document.activeElement).toBe(box);
+  });
+
+  it("can't add Writer to a channel of 8 agents, and says why", async () => {
+    const { messaging, acme, chief, elena, liam } = engineering();
+    const others = ["Ana", "Ben", "Cleo", "Dev", "Eli"].map(
+      (name) => messaging.addAgent(acme.id, { name }).id,
+    );
+    messaging.addConversation(chief.id, {
+      title: "Everyone",
+      members: [chief.id, elena.id, liam.id, ...others],
+    });
+    const setMembers = vi.spyOn(messaging, "setMembers");
+    const page = await openMessenger(messaging);
+    const box = await openChat(page, "Everyone");
+    await typeInBox(box, "@Wri");
+    const notMember = page.querySelector("[data-not-member]");
+    const add = button("Add Writer", notMember ?? document);
+    expect(add?.getAttribute("aria-disabled")).toBe("true");
+    expect(notMember?.textContent).toContain("A channel can have up to 8 agents.");
+    await press(add);
+    expect(openDialog()).toBeFalsy();
+    expect(setMembers).not.toHaveBeenCalled();
   });
 
   it("says nothing about adding while the name typed is a member's", async () => {

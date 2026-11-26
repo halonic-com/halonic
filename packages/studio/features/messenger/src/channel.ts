@@ -97,7 +97,7 @@ export type WorkLineKind = "running" | "answered" | "asks-you" | "failed" | "pas
 export interface WorkLine {
   readonly kind: WorkLineKind;
   readonly text: string;
-  /** For a line that ended without an answer: the agent **Ask again** sends the message to. */
+  /** For a line that ended without an answer: the agent **Ask again** sends the text to, if any. */
   readonly askAgain?: MessagingId;
 }
 
@@ -117,7 +117,9 @@ export function workLines(
   now: Date,
 ): readonly WorkLine[] {
   const work = message.work ?? [];
-  const lines = work.flatMap((share) => lineOf(share, row, questions, now) ?? []);
+  // A message with only files has no text to send again: the port gives back only their names.
+  const askable = message.body.trim() !== "";
+  const lines = work.flatMap((share) => lineOf(share, row, questions, now, askable) ?? []);
   const handOffs = work.filter((share) => share.state === "passed-on").length;
   if (handOffs >= handOffLimit) lines.push({ kind: "limit", text: channelWords.work.handOffLimit });
   return lines;
@@ -128,6 +130,7 @@ function lineOf(
   row: ConversationRow,
   questions: ReadonlyMap<MessagingId, string>,
   now: Date,
+  askable: boolean,
 ): WorkLine | undefined {
   const agent = agentName(row, share.agent);
   if (agent === undefined) return undefined;
@@ -146,7 +149,7 @@ function lineOf(
     case "failed": {
       const reason = shownReason(share.reason);
       const text = reason === undefined ? words.closed(agent) : words.couldntFinish(agent, reason);
-      return { kind: "failed", text, askAgain: share.agent };
+      return askable ? { kind: "failed", text, askAgain: share.agent } : { kind: "failed", text };
     }
     case "passed-on": {
       const to = share.passedTo === undefined ? undefined : agentName(row, share.passedTo);

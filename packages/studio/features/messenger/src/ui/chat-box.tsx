@@ -59,7 +59,8 @@ export function ChatBox({ messenger, row, onSending, onSent, onChanged }: ChatBo
   const waits = channel && address.line.waits !== undefined;
   const report = (what: string) => (error: unknown) => console.error(what, error);
   const container = useRef<HTMLDivElement>(null);
-  const members = useMembers(messenger, row, onChanged, box.say, container);
+  // The picker's **Add Writer** goes once Writer is a member, so focus goes back to the text.
+  const members = useMembers(messenger, row, onChanged, box.say, container, "textarea");
   const attach = useRef<HTMLButtonElement>(null);
   const remove = (index: number) => {
     flushSync(() => box.removeFile(index));

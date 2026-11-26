@@ -72,8 +72,9 @@ const workIcons: Record<WorkLineKind, { readonly icon: ReactNode; readonly tone:
 
 /**
  * Under the person's message: one work line per agent it went to, a symbol and words each. A line
- * that ended without an answer has **Ask again**, which sends the message again to that agent
- * only; `askAgain` gives back why nothing was sent, or nothing once it was.
+ * that ended without an answer has **Ask again**, which sends the message's text again to that
+ * agent only; it is busy until the send is done, so a second press sends nothing more. `askAgain`
+ * gives back why nothing was sent, or nothing once it was; that line follows the list.
  */
 export function WorkLines({
   message,
@@ -89,48 +90,61 @@ export function WorkLines({
   readonly askAgain: (message: Message, agent: MessagingId) => Promise<string | undefined>;
 }) {
   const [notSent, setNotSent] = useState<string | undefined>(undefined);
+  const [asking, setAsking] = useState<MessagingId | undefined>(undefined);
   const lines = workLines(message, row, questions, now);
   if (lines.length === 0) return null;
   const ask = (agent: MessagingId) => {
-    askAgain(message, agent).then(setNotSent, (error: unknown) =>
-      console.error("Asking again failed:", error),
-    );
+    if (asking !== undefined) return;
+    setAsking(agent);
+    askAgain(message, agent)
+      .then(setNotSent, (error: unknown) => console.error("Asking again failed:", error))
+      .finally(() => setAsking(undefined));
   };
   return (
-    <ul data-work-lines className="mt-1 flex flex-col gap-0.5 text-small text-fg-muted">
-      {lines.map((line, index) => (
-        // Two hand-offs between the same agents read the same, so the place tells them apart.
-        <li key={`${index}-${line.text}`} data-work={line.kind} className="flex items-center gap-1">
-          <span
-            aria-hidden="true"
-            className={`inline-grid size-icon-sm shrink-0 *:size-full ${workIcons[line.kind].tone}`}
+    <>
+      <ul data-work-lines className="mt-1 flex flex-col gap-0.5 text-small text-fg-muted">
+        {lines.map((line, index) => (
+          // Two hand-offs between the same agents read the same, so the place tells them apart.
+          <li
+            key={`${index}-${line.text}`}
+            data-work={line.kind}
+            className="flex items-center gap-1"
           >
-            {workIcons[line.kind].icon}
-          </span>
-          {line.text}
-          {line.askAgain === undefined ? null : <AskAgain agent={line.askAgain} onAsk={ask} />}
-        </li>
-      ))}
+            <span
+              aria-hidden="true"
+              className={`inline-grid size-icon-sm shrink-0 *:size-full ${workIcons[line.kind].tone}`}
+            >
+              {workIcons[line.kind].icon}
+            </span>
+            {line.text}
+            {line.askAgain === undefined ? null : (
+              <AskAgain agent={line.askAgain} busy={asking === line.askAgain} onAsk={ask} />
+            )}
+          </li>
+        ))}
+      </ul>
       {notSent === undefined ? null : (
-        <li role="alert" className="text-danger">
+        <p role="alert" className="text-small text-danger">
           {notSent}
-        </li>
+        </p>
       )}
-    </ul>
+    </>
   );
 }
 
 function AskAgain({
   agent,
+  busy,
   onAsk,
 }: {
   readonly agent: MessagingId;
+  readonly busy: boolean;
   readonly onAsk: (agent: MessagingId) => void;
 }) {
   return (
     <>
       <span aria-hidden="true"> · </span>
-      <Button size="sm" variant="ghost" onClick={() => onAsk(agent)}>
+      <Button size="sm" variant="ghost" busy={busy} onClick={() => onAsk(agent)}>
         {channelWords.work.askAgain}
       </Button>
     </>
