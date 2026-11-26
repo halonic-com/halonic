@@ -7,7 +7,7 @@ Send feedback is there while Studio is connected to Paperclip. It works in the d
 ## Send feedback
 
 1. Press **Ctrl+Shift+F** (**⌘⇧F** on macOS) in the Studio, Inbox or Messenger window. The shortcut works only in the window you are in, never from other apps. In Studio's main window you can also pick **Send feedback (Ctrl+Shift+F)** in **Help**, or find it with **Ctrl K**.
-2. The window dims. Drag a box around the area. Its size shows below it. Or press **Enter** to take the whole window, or click one corner and then the opposite corner. Press **Esc** to cancel, or press the shortcut again. The overlay also goes away by itself after two minutes.
+2. The window dims. Drag a box around the area. Its size shows below it. Or press **Enter** to take the whole window, or click one corner and then the opposite corner. Press **Esc** to cancel, or press the shortcut again. The window also goes back to normal by itself after two minutes.
 3. In the Send feedback dialog, write what you noticed. The first line becomes the task's title. Under the screenshot you see the app, the window and the size. Choose **Select again** to pick a new area; what you wrote stays.
 4. Press **Send**, or **Ctrl+Enter** (**⌘ ↩**).
 
@@ -27,7 +27,7 @@ If Studio is offline, or isn't connected to Paperclip, when you press Send, Stud
 
 When the connection is back, Studio sends what is waiting, oldest first, and says "Feedback sent" for each task it created. Each piece of feedback makes one task, even if a reply is lost on the way. Feedback waits for the workspace you wrote it in, and sends once that workspace is open and connected again.
 
-- Studio keeps up to 50 pieces of feedback (100 MB of screenshots). When there are more, it drops the oldest, also without a message.
+- Studio keeps up to 50 pieces of feedback (100 MB of screenshots). When there are more, it drops the oldest, without a message.
 - If Paperclip refuses a piece of feedback 3 times, Studio stops trying and deletes it without a message.
 - **Settings › Feedback** shows how many are waiting, for example "3 waiting to send".
 
