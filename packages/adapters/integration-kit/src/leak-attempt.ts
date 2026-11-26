@@ -7,9 +7,12 @@ import type { RefusalCode } from "./integration/index.ts";
  * say, or it asked for a client secret, which only Halonic's sign-in code
  * may send. A connector
  * that gets one of these should be paused, not just shown the error. Every
- * other code is an ordinary mistake, such as a host the sheet doesn't list
- * or a body that is too large, or comes from the server, such as
- * `secret-in-redirect` for a redirect whose URL holds a secret.
+ * other code is an ordinary mistake, such as a body that is too large, or
+ * comes from the server, such as `secret-in-redirect` for a redirect whose
+ * URL holds a secret. A host the sheet doesn't list is reported separately:
+ * the runner reports `host-not-allowed` as a block of its own when the
+ * integration's own request named the host, not when a redirect did
+ * (`IntegrationRefusedError.url`).
  *
  * @example
  * if (leakAttemptCodes.includes(error.code)) pauseConnector(); // "secret-in-request"

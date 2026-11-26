@@ -25,6 +25,7 @@ export {
   IntegrationRefusedError,
   IntegrationTimeoutError,
   type RefusalCode,
+  type RefusedUrl,
 } from "./integration/index.ts";
 export { leakAttemptCodes } from "./leak-attempt.ts";
 export {

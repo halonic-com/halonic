@@ -10,7 +10,6 @@ import {
   IntegrationRefusedError,
   type LimitedHttpClient,
   leakAttemptCodes,
-  type RefusalCode,
   type RequestLogEntry,
 } from "@halonicjs/adapter-integration-kit";
 import {
@@ -24,7 +23,7 @@ import type { FetchFrame, HalonicFrame } from "../frames.ts";
 import { type RequestFailure, requestFailure } from "../request-errors.ts";
 import type { CallTable } from "./calls.ts";
 import { ClosedRequests, type SentMark } from "./closed-requests.ts";
-import type { RunnerLimits } from "./limits.ts";
+import type { RequestBlock, RunnerLimits } from "./limits.ts";
 
 /** What the request table needs from the bridge. */
 export interface RequestTableHooks {
@@ -32,8 +31,8 @@ export interface RequestTableHooks {
   send(frame: HalonicFrame): void;
   /** The runner broke the protocol (A33). */
   violation(detail: string): void;
-  /** The kit refused a request with a code on its leak list. */
-  onLeakAttempt(code: RefusalCode): void;
+  /** The kit refused a request for something the connector should be paused for. */
+  onBlocked(block: RequestBlock): void;
   /** How far Halonic has sent: the numbers its next call and next ping get. */
   sentMark(): SentMark;
 }
@@ -232,9 +231,8 @@ export class RequestTable {
     } catch (error) {
       if (!this.#isLive(frame.id, entry)) return;
       this.#live.delete(frame.id);
-      if (error instanceof IntegrationRefusedError && leakAttemptCodes.includes(error.code)) {
-        this.#hooks.onLeakAttempt(error.code);
-      }
+      const block = error instanceof IntegrationRefusedError ? blockFor(error) : undefined;
+      if (block !== undefined) this.#hooks.onBlocked(block);
       return this.#fail(frame.id, requestFailure(error));
     }
     entry.answered = true;
@@ -361,6 +359,22 @@ export class RequestTable {
     entry.abort.abort();
     if (entry.reader !== undefined) dropReader(entry.reader);
   }
+}
+
+/**
+ * The block a kit refusal reports, or `undefined` for an ordinary mistake. A
+ * redirect hop to an undeclared host reports none, because the service chose
+ * that host, not the integration's own code.
+ */
+function blockFor(refusal: IntegrationRefusedError): RequestBlock | undefined {
+  if (leakAttemptCodes.includes(refusal.code)) {
+    return { kind: "leak-attempt", code: refusal.code };
+  }
+  const url = refusal.url;
+  if (refusal.code === "host-not-allowed" && url !== undefined && !url.fromRedirect) {
+    return { kind: "host-not-declared", host: url.host };
+  }
+  return undefined;
 }
 
 /** The message sent in place of one too large for an `error` frame. */

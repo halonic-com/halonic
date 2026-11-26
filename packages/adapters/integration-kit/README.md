@@ -272,7 +272,11 @@ huge name can't make a huge message. The codes in
 `leakAttemptCodes` (`secret-in-request`, `placement-not-in-sheet`,
 `secret-sign-in-only`, host side only) mean the integration tried to get a secret out; the bridge should pause the
 connector on any of them. Every other code is an ordinary mistake, or, like
-`secret-in-redirect`, something the server did.
+`secret-in-redirect`, something the server did. A refusal of the URL itself,
+such as `host-not-allowed`, also carries `url`: its `host`, and `fromRedirect`
+when a redirect chose it. The integration runner reports a `host-not-allowed`
+for the integration's own request as a block of its own, and none for a
+redirect.
 
 ## Loading an integration
 
