@@ -195,7 +195,8 @@ Stacks stay short, so a closed pull request never strands work above it:
   reviewer, and nobody else reviews it too:
   - the routine reviewer approves alone what the second reviewer may approve on a team branch,
     except `packages/core/`, `packages/host/`, `packages/testing/spec/`, `tooling/config/`, the
-    Merger's rules, plugin manifests, root files and root dot-folders (this file and `CLAUDE.md`
+    Merger's rules, the review verdicts (`tooling/paperclip/src/verdicts/`,
+    `plugin/review-verdict-tool*`), plugin manifests, root files and root dot-folders (this file and `CLAUDE.md`
     among them; `.changeset/` stays routine), `.gitattributes`, the legal files, security tests
     and docs, and a public interface (an entry point a package exports, such as `src/index.ts`
     or `src/api.ts`, or its `exports`). A renamed file counts by its old path too;

@@ -7,7 +7,7 @@
  */
 
 /**
- * Folders the routine reviewer doesn't approve alone: the core building
+ * Folders (and path prefixes) the routine reviewer doesn't approve alone: the core building
  * blocks, the host, the spec helper the guard runs on (the board, HAL-18424),
  * the shared lint, type and test config every package runs on, the agents'
  * own config, and the Merger's rules, tests included (HAL-19283).
@@ -18,9 +18,9 @@ export const routineExcludedFolders: readonly string[] = [
   "packages/testing/spec/",
   "tooling/config/",
   "tooling/paperclip/src/merge-control/",
-  // The review-verdict recorder and the carry-over the gates will read (HAL-19585).
+  // The review-verdict recorder and the carry-over the gates will read (HAL-19585), tests included.
   "tooling/paperclip/src/verdicts/",
-  "tooling/paperclip/src/plugin/review-verdict-tool.ts",
+  "tooling/paperclip/src/plugin/review-verdict-tool",
   // The DCO standing statement CONTRIBUTING.md links to, which covers every halonic-dev commit.
   "docs/legal/",
 ];
