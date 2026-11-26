@@ -93,7 +93,7 @@ export class DesktopMessaging {
   async switchEngine(folder: string): Promise<boolean> {
     const messaging = await this.of(folder);
     if (messaging === undefined) return false;
-    messaging.switchEngine(await this.#engineOf(messaging.workspace));
+    await messaging.switchEngine(await this.#engineOf(messaging.workspace));
     return true;
   }
 

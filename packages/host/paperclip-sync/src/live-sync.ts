@@ -38,10 +38,11 @@ export interface LiveSyncOptions {
  * `agent-host.paperclip-live-events`). An event that touches a local copy brings a read
  * {@link eventsBatchMs} later, gathering the ones that follow, and so does a `resync`, so a server
  * that repeats it can't bring reads back to back; a (re)connect reads at once, since events can't
- * be replayed. Adding and removing a source run one at a time per source. Events count as connected only while every source's
- * socket is open; otherwise the sync polls at the rates without events. Each change a read then
- * applies is counted by how it was announced: `event`, `catch-up`, or `poll` when nothing
- * announced it, which the counters call missed by events while they were connected.
+ * be replayed. Adding and removing a source run one at a time per source. Events count as
+ * connected only while every source's socket is open; otherwise the sync polls at the rates
+ * without events. Each change a read then applies is counted by how it was announced: `event`,
+ * `catch-up`, or `poll` when nothing announced it, which the counters call missed by events while
+ * they were connected.
  */
 export class LiveSync {
   readonly #options: LiveSyncOptions;
@@ -54,6 +55,7 @@ export class LiveSync {
   /** Per source, the add or remove still running, which the next one waits for. */
   readonly #changing = new Map<string, Promise<void>>();
   #combined: SyncConnection = "polling-only";
+  #stopped = false;
 
   constructor(options: LiveSyncOptions) {
     this.#options = options;
@@ -75,6 +77,8 @@ export class LiveSync {
 
   async #add(id: string, open: OpenEvents): Promise<void> {
     await this.#keepers.get(id)?.stop();
+    // Once the host stops, no source opens a socket again.
+    if (this.#stopped) return;
     const keeper = new LiveEventsKeeper({
       scheduler: this.#options.scheduler,
       clock: this.#options.clock,
@@ -125,8 +129,12 @@ export class LiveSync {
     };
   }
 
-  /** Runs one read of every source, then forgets what announced the changes it found. */
+  /**
+   * Runs one read of every source, then forgets what announced the changes it found. First it sets
+   * again each reconnect whose timer couldn't be set, so no source stays without a next attempt.
+   */
   async poll(read: () => Promise<void>): Promise<void> {
+    for (const keeper of this.#keepers.values()) await keeper.retrySchedule();
     const before = this.#heardCount;
     try {
       await read();
@@ -150,8 +158,13 @@ export class LiveSync {
     return true;
   }
 
-  /** Closes every socket and cancels their timers, when the host stops. */
+  /**
+   * Closes every socket and cancels their timers, when the host stops. It waits for every add and
+   * remove still running first, so none opens a socket after it.
+   */
   async stop(): Promise<void> {
+    this.#stopped = true;
+    await Promise.all([...this.#changing.values()].map((change) => change.catch(() => undefined)));
     const keepers = [...this.#keepers.values()];
     this.#keepers.clear();
     await Promise.all(keepers.map((keeper) => keeper.stop()));

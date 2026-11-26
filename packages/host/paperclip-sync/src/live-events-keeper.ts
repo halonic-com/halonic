@@ -57,6 +57,8 @@ export class LiveEventsKeeper {
   #openedAt: number | undefined;
   #state: SyncConnection = "polling-only";
   #stopped = false;
+  /** When the next attempt is due, while setting its timer failed; {@link retrySchedule} tries again. */
+  #unscheduled: string | undefined;
 
   constructor(options: LiveEventsKeeperOptions) {
     this.#options = options;
@@ -78,6 +80,16 @@ export class LiveEventsKeeper {
     if (timer.key !== own.key || timer.timerId !== own.timerId) return false;
     if (!this.#stopped && this.#socket === undefined) this.#connect();
     return true;
+  }
+
+  /**
+   * Sets the next attempt's timer again when setting it failed, so the source isn't left polling
+   * with no next attempt. A failure is reported and kept for the next call.
+   */
+  async retrySchedule(): Promise<void> {
+    const at = this.#unscheduled;
+    if (at === undefined || this.#stopped || this.#socket !== undefined) return;
+    await this.#schedule(at);
   }
 
   /** Closes the socket and cancels the next attempt; later signals are dropped. */
@@ -124,12 +136,19 @@ export class LiveEventsKeeper {
     this.#state = "polling-only";
     const wait = Math.floor(this.#options.random() * waitCap(this.#attempt));
     this.#attempt += 1;
-    const at = new Date(now + wait).toISOString();
-    await this.#options.scheduler.schedule(
-      this.#options.timer.key,
-      this.#options.timer.timerId,
-      at,
-    );
+    await this.#schedule(new Date(now + wait).toISOString());
+  }
+
+  /** Sets the next attempt's timer; a failure is reported and kept for {@link retrySchedule}. */
+  async #schedule(at: string): Promise<void> {
+    const { key, timerId } = this.#options.timer;
+    try {
+      await this.#options.scheduler.schedule(key, timerId, at);
+      this.#unscheduled = undefined;
+    } catch (error) {
+      this.#unscheduled = at;
+      this.#options.report(error);
+    }
   }
 }
 

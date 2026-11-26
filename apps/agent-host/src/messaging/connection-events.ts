@@ -35,6 +35,40 @@ export async function followEvents(
 }
 
 /**
+ * Each connected connection's live events in one workspace. While the workspace's engine is a
+ * server its Paperclip sockets are closed, since nothing reads the local copies they announce
+ * changes to; back on "This computer" each connection kept meanwhile opens a new one.
+ */
+export class ConnectionEvents {
+  readonly #options: EventsOptions;
+  /** What opens each connected connection's socket, kept while the sockets are closed. */
+  readonly #made = new Map<string, PaperclipProviderOptions>();
+  #closed: boolean;
+
+  /** `closed` is whether the workspace starts on a server. */
+  constructor(options: EventsOptions, closed: boolean) {
+    this.#options = options;
+    this.#closed = closed;
+  }
+
+  /** Follows `connection`'s events with the key just handed over, or none when `made` is `undefined`. */
+  async follow(connection: string, made: PaperclipProviderOptions | undefined): Promise<void> {
+    if (made === undefined) this.#made.delete(connection);
+    else this.#made.set(connection, made);
+    await followEvents(this.#options, connection, this.#closed ? undefined : made);
+  }
+
+  /** Closes every connection's socket while the engine is a server, and opens each again after. */
+  async setClosed(closed: boolean): Promise<void> {
+    if (closed === this.#closed) return;
+    this.#closed = closed;
+    for (const [connection, made] of this.#made) {
+      await followEvents(this.#options, connection, closed ? undefined : made);
+    }
+  }
+}
+
+/**
  * The counters for the connection's local copy: a change a read applies after an event announced
  * it counts as `event`, not `poll`.
  */

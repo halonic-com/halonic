@@ -20,7 +20,7 @@ import type {
 } from "@halonicjs/ports";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { ChangeLog, type ChangesSince, changesWaitMs } from "./change-log.ts";
-import { followEvents, liveCounters, liveIdOf } from "./connection-events.ts";
+import { ConnectionEvents, liveCounters } from "./connection-events.ts";
 import { listConnectionFiles } from "./connection-file.ts";
 import type { MessagingEngine } from "./messaging-engine-setting.ts";
 import {
@@ -114,6 +114,7 @@ export class WorkspaceMessaging {
   /** Each connected connection's team status, by the connection's name. */
   readonly #teams = new Map<string, PaperclipTeamStatus>();
   readonly #changes = new ChangeLog();
+  readonly #events: ConnectionEvents;
   #engine: JoinedEngine;
   #hub: MessagingHub;
   #served: CachedAgentMessaging;
@@ -122,6 +123,7 @@ export class WorkspaceMessaging {
   constructor(options: WorkspaceMessagingOptions) {
     this.#options = options;
     this.#engine = options.engine ?? { kind: "this-computer" };
+    this.#events = new ConnectionEvents(options, this.#engine.kind === "server");
     this.#hub = this.#joined();
     this.#served = this.#cached(this.#hub);
     this.#team = this.#teamJoined();
@@ -142,13 +144,16 @@ export class WorkspaceMessaging {
   /**
    * Joins `engine` in place of the one before: only the hub's providers
    * change, behind a cache over the same folder, and Studio's routes stay as
-   * they are. Every source either engine served is named on `changes`.
+   * they are. Every source either engine served is named on `changes`. On a
+   * server the Paperclip connections' events sockets close; they open again
+   * after it.
    */
-  switchEngine(engine: JoinedEngine): void {
+  async switchEngine(engine: JoinedEngine): Promise<void> {
     const before = this.#sourceNames();
     this.#engine = engine;
     this.#rejoin();
     for (const source of new Set([...before, ...this.#sourceNames()])) this.#changes.note(source);
+    await this.#events.setClosed(engine.kind === "server");
   }
 
   /**
@@ -158,7 +163,7 @@ export class WorkspaceMessaging {
    * The providers' next reads fill it again.
    */
   async leaveServer(): Promise<void> {
-    this.switchEngine({ kind: "this-computer" });
+    await this.switchEngine({ kind: "this-computer" });
     await rm(this.#options.cacheFolder, { recursive: true, force: true });
   }
 
@@ -218,7 +223,7 @@ export class WorkspaceMessaging {
     if (team === undefined) this.#teams.delete(connection);
     else this.#teams.set(connection, team);
     this.#rejoin();
-    await followEvents(this.#options, connection, provider === undefined ? undefined : made);
+    await this.#events.follow(connection, provider === undefined ? undefined : made);
     this.#changes.note(paperclipSourceId(connection));
   }
 
@@ -324,7 +329,7 @@ export class WorkspaceMessaging {
     this.#stored.delete(connection);
     this.#teams.delete(connection);
     this.#rejoin();
-    await this.#options.live?.remove(liveIdOf(this.#options, connection));
+    await this.#events.follow(connection, undefined);
     await this.#served.clear(source);
     // Closes the held copy first, so a poll, answer or send still in flight can't write it again.
     await stored?.clear();

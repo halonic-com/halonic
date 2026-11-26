@@ -269,6 +269,29 @@ verifies("agent-host.paperclip-live-events", () => {
       expect(second.current.closed).toBe(true);
     });
 
+    it("sets a reconnect whose timer couldn't be set again on the next poll", async () => {
+      const on = await startLive();
+      await on.events.current.say({ kind: "open" });
+      await on.scheduler.pass(0);
+      const schedule = on.scheduler.schedule.bind(on.scheduler);
+      const refused = new Error("The scheduler's store is full.");
+      on.scheduler.schedule = async () => {
+        on.scheduler.schedule = schedule;
+        throw refused;
+      };
+
+      await on.events.current.say({ kind: "closed", refused: false });
+      expect(on.errors).toEqual([refused]);
+      expect(on.reconnectDueIn()).toBeUndefined();
+      expect(on.connections).toEqual(["connected", "polling-only"]);
+      await on.scheduler.pass((on.pollDueIn() ?? 0) - 1);
+      expect(on.events.sockets).toHaveLength(1);
+
+      await on.scheduler.pass(1);
+
+      expect(on.events.sockets).toHaveLength(2);
+    });
+
     it("closes the socket and tries no more once removed", async () => {
       const on = await startLive();
       await on.events.current.say({ kind: "closed", refused: false });
@@ -277,6 +300,23 @@ verifies("agent-host.paperclip-live-events", () => {
       await on.scheduler.pass(60_000);
 
       expect(on.events.sockets).toHaveLength(1);
+    });
+  });
+
+  describe("stop", () => {
+    it("opens no socket for an add still running when it stops, nor for one after", async () => {
+      const on = await startLive();
+      const late = new FakeEvents();
+      const after = new FakeEvents();
+
+      const adding = on.live.add("acme", late.open);
+      await on.live.stop();
+      await adding;
+      await on.live.add("acme", after.open);
+
+      expect(late.sockets).toHaveLength(0);
+      expect(after.sockets).toHaveLength(0);
+      expect(on.events.current.closed).toBe(true);
     });
   });
 
