@@ -26,11 +26,12 @@ export interface PullRequestRow {
   readonly queue: { readonly total: number; readonly groupSince: string | undefined } | undefined;
 }
 
-/** What the One PR page shows: the PR's row, its timeline, and when its source made them. */
+/** What the One PR page shows: the PR's row, its timeline, and who holds its task. */
 export interface PullRequestPage {
   readonly row: PullRequestRow;
   readonly timeline: readonly PullRequestEvent[];
-  readonly asOf: string;
+  /** The name of the agent its task is assigned to, when messaging knows it. */
+  readonly taskHolder: string | undefined;
 }
 
 /**
@@ -137,7 +138,19 @@ export class PullRequests {
       ...listed,
       pullRequest: detail.pullRequest,
     };
-    return { row, timeline: detail.timeline, asOf: detail.asOf };
+    return { row, timeline: detail.timeline, taskHolder: await this.holderOf(row.task) };
+  }
+
+  /** The name of the agent `task` is assigned to. Without it the page still shows, so a failed read is logged. */
+  private async holderOf(task: WorkItem | undefined): Promise<string | undefined> {
+    if (task?.assignee === undefined || this.messaging === undefined) return undefined;
+    try {
+      const agents = await this.messaging.listAgents();
+      return agents.find((agent) => agent.id === task.assignee)?.name;
+    } catch (error) {
+      console.error("A pull request's page couldn't read who holds its task:", error);
+      return undefined;
+    }
   }
 
   /** Calls `listener` whenever a source says its team status changed. Returns a function that stops it. */

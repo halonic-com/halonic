@@ -8,6 +8,8 @@ today, and opens an agent's or a seat's detail page (`TeamDetails`, offered as `
 which add names, status words and tasks from `AgentMessaging`. Pull requests has four tabs: Needs
 attention, All open, Queue (the merge queue's groups, the PRs waiting to enter and those taken out
 today, laid out by `queueView`) and Merged today, with the queue's health in one line under them.
+A row's title opens that PR's own page (`PullRequests.detail`): its state, since when it's stuck,
+its Review, Queue and Task facts, its timeline and Open in GitHub.
 
 - **Layer:** studio
 - **Owner:** priya

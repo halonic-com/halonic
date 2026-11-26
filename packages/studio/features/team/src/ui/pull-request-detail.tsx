@@ -1,9 +1,10 @@
 import type { MessagingId, PullRequestEvent } from "@halonicjs/ports";
 import { ListHeading } from "@halonicjs/studio-kit";
+import { useId } from "react";
 import { reviewFact, pullRequestDetailWords as words } from "../pull-request-detail-words.ts";
 import { formatAge, pullRequestWords } from "../pull-request-words.ts";
 import type { PullRequestPage, PullRequestRow, PullRequests } from "../pull-requests.ts";
-import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
+import { formatDayTime, formatTime, minutesSince, type TeamClock } from "../team-format.ts";
 import { DetailFrame, useDetail } from "./detail-frame.tsx";
 import { authorName, StateLine, WebLinkButton, type WebLinkOpener } from "./pull-request-row.tsx";
 
@@ -54,9 +55,9 @@ function PullRequestBody(props: {
       <p className="text-fg-muted">{headerLine(page.row)}</p>
       <StateLine row={page.row} clock={clock} />
       {page.row.stuck.length === 0 ? null : (
-        <p className="text-attention">{words.stuckSince(formatTime(pullRequest.since, clock))}</p>
+        <p className="text-attention">{stuckLine(page.row, clock)}</p>
       )}
-      <Facts row={page.row} clock={clock} />
+      <Facts page={page} clock={clock} />
       <p className="flex flex-wrap gap-3">
         <WebLinkButton link={pullRequest.webLink} opener={props.opener}>
           {pullRequestWords.openInGitHub}
@@ -66,6 +67,23 @@ function PullRequestBody(props: {
       <p className="text-small text-fg-muted">{words.readOnly}</p>
     </>
   );
+}
+
+/**
+ * A time as "11:00" today and "Tue 11:00" on an earlier day, so a PR stuck for two days doesn't
+ * read as stuck since this morning.
+ */
+function when(at: string, clock: TeamClock): string {
+  const day = (time: Date) => time.toLocaleDateString("en-CA", { timeZone: clock.timeZone });
+  return day(new Date(at)) === day(clock.now()) ? formatTime(at, clock) : formatDayTime(at, clock);
+}
+
+/** "Stuck since 11:00", with when its fast-track review is due while it waits for one. */
+function stuckLine(row: PullRequestRow, clock: TeamClock): string {
+  const { pullRequest } = row;
+  const since = words.stuckSince(when(pullRequest.since, clock));
+  const waitsForFastTrack = pullRequest.fastTrack && pullRequest.state === "waiting-for-review";
+  return waitsForFastTrack ? `${since} · ${words.fastTrackDue}` : since;
 }
 
 /** "Ravi · task HAL-17451 · 312 lines": who opened it, its task and its size, as far as known. */
@@ -78,7 +96,8 @@ function headerLine(row: PullRequestRow): string {
 }
 
 /** The Review, Queue and Task facts (P12–P17), each a term and its words. */
-function Facts({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
+function Facts({ page, clock }: { page: PullRequestPage; clock: TeamClock }) {
+  const { row } = page;
   const { pullRequest } = row;
   const review = reviewFact({
     state: pullRequest.state,
@@ -88,7 +107,7 @@ function Facts({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
   const facts: readonly (readonly [string, string])[] = [
     [words.facts.review, review],
     [words.facts.queue, queueFact(row, clock)],
-    [words.facts.task, row.task?.label ?? pullRequestWords.noTask],
+    [words.facts.task, taskFact(page)],
   ];
   return (
     <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
@@ -102,13 +121,25 @@ function Facts({ row, clock }: { row: PullRequestRow; clock: TeamClock }) {
   );
 }
 
-/** "1 of 7 · group 1" in the queue, "Taken out at 12:40" once taken out, or "Not in the queue". */
+/**
+ * "1 of 7 · group 1 · ci-ok running 9 min" in the queue, "Taken out at 12:40" once taken out, or
+ * "Not in the queue".
+ */
 function queueFact(row: PullRequestRow, clock: TeamClock): string {
   const { pullRequest, queue } = row;
-  if (pullRequest.state === "dequeued")
-    return words.takenOutAt(formatTime(pullRequest.since, clock));
+  if (pullRequest.state === "dequeued") return words.takenOutAt(when(pullRequest.since, clock));
   if (pullRequest.queue === undefined || queue === undefined) return words.notInQueue;
-  return words.queuePlace(pullRequest.queue.position, queue.total, pullRequest.queue.group);
+  const place = words.queuePlace(pullRequest.queue.position, queue.total, pullRequest.queue.group);
+  if (queue.groupSince === undefined) return place;
+  return `${place} · ${words.groupRunning(minutesSince(queue.groupSince, clock))}`;
+}
+
+/** "HAL-17451 · in progress · Ravi": the task, its state and who holds it, as far as known. */
+function taskFact(page: PullRequestPage): string {
+  const task = page.row.task;
+  if (task === undefined) return pullRequestWords.noTask;
+  const parts = [task.label, words.taskState[task.state], page.taskHolder ?? ""];
+  return parts.filter((part) => part !== "").join(" · ");
 }
 
 /**
@@ -116,16 +147,17 @@ function queueFact(row: PullRequestRow, clock: TeamClock): string {
  * text, written from the PR's life by the source: React text, never Markdown or a link.
  */
 function Timeline({ events, clock }: { events: readonly PullRequestEvent[]; clock: TeamClock }) {
+  const heading = useId();
   if (events.length === 0) return null;
   return (
-    <section aria-label={words.timeline} className="flex flex-col gap-1">
-      <ListHeading name={words.timeline} />
+    <section aria-labelledby={heading} className="flex flex-col gap-1">
+      <ListHeading id={heading} name={words.timeline} />
       <ol className="flex flex-col gap-1">
         {events.map((event, index) => (
           // Steps can share a time and words, so their place in the list is their key.
           <li key={index} className="flex gap-3">
-            <time dateTime={event.at} className="w-12 shrink-0 text-fg-muted tabular-nums">
-              {formatTime(event.at, clock)}
+            <time dateTime={event.at} className="w-20 shrink-0 text-fg-muted tabular-nums">
+              {when(event.at, clock)}
             </time>
             <span className="wrap-anywhere">{event.text}</span>
           </li>

@@ -109,17 +109,18 @@ export function PullRequestsPage({ pullRequests, opener, onLink }: PullRequestsP
  */
 function useOpenedPullRequest() {
   const [opened, setOpened] = useState<MessagingId | undefined>(undefined);
-  const [cameBack, setCameBack] = useState<MessagingId | undefined>(undefined);
+  // A new object on each Back, so coming back to the same PR twice still moves focus.
+  const [cameBack, setCameBack] = useState<{ id: MessagingId } | undefined>(undefined);
   const list = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (cameBack === undefined) return;
-    const key = pullRequestKey(cameBack);
+    const key = pullRequestKey(cameBack.id);
     const titles = list.current?.querySelectorAll<HTMLElement>("[data-opens]") ?? [];
     const title = [...titles].find((each) => each.dataset["opens"] === key);
     title?.querySelector("button")?.focus();
   }, [cameBack]);
   const back = () => {
-    setCameBack(opened);
+    if (opened !== undefined) setCameBack({ id: opened });
     setOpened(undefined);
   };
   return { opened, open: setOpened, back, list };
