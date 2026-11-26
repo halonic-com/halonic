@@ -3,6 +3,7 @@
 - Task: HAL-19600
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19531 (the plan as Liam adjusted it on 26 Nov: a Windows CI job that reports the open timings as a job summary, failing only past a 10 s open); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nCwsanfDqZVYsuXJSJ6/Ee6EemTyRu3j85A7m1fqGwlLeIGrWMPofVtZT/4pOljJpiapY2yGEZrPVBjKv3uYBA==
 
 Opening a recent workspace right after Studio starts takes about 20 s on Windows (HAL-19531). Since #6514 the shell writes how long each start and open step took to `studio/shell.log`, under the source `timings`.
 
