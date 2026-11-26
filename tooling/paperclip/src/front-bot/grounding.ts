@@ -60,7 +60,7 @@ const bareAcknowledgements = new Set([
 
 /** A reply that starts by answering the question; the bot never answers, it only frames. */
 export const unhedgedAnswer =
-  /^\s*(?:yes|no|yep|nope|correct|right|sure thing|definitely|it is|it's|it isn't)\b/i;
+  /^\s*(?:yes|no|yep|yup|yeah|yea|nope|nah|correct|right|sure|definitely|it is|it's|it isn't)\b/i;
 
 export const firstPerson =
   /(?<![\w'’])(?:I|I'm|I’m|I'll|I’ll|I've|I’ve|I'd|I’d|me|my|mine)(?![\w'’])/;
@@ -116,6 +116,25 @@ export const resultWords = [
   "added",
   "opened",
   "updated",
+  // The same claims as ongoing actions: "On it, merging #6129 now".
+  "merging",
+  "fixing",
+  "deploying",
+  "shipping",
+  "releasing",
+  "publishing",
+  "resolving",
+  "closing",
+  "approving",
+  "queueing",
+  "queuing",
+  "restarting",
+  "reverting",
+  "landing",
+  "sending",
+  "posting",
+  "opening",
+  "updating",
 ];
 const resultPattern = new RegExp(`\\b(?:${resultWords.join("|")})\\b`, "gi");
 export const negation =

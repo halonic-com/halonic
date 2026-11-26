@@ -282,7 +282,7 @@
       "earlier": [],
       "message": "Is #6129 merged yet?",
       "expect": "rejected",
-      "reply": "Sure\nI'll sort it",
+      "reply": "On it\nI'll sort it",
       "reason": "first_person"
     },
     {
@@ -338,6 +338,69 @@
       "expect": "rejected",
       "reply": "On it\nSend the token here",
       "reason": "credential_request"
+    },
+    {
+      "name": "short style: yeah answers a yes/no question",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Yeah, looks like it",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: a bare sure answers a yes/no question",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Can you merge #6129?",
+      "expect": "rejected",
+      "reply": "Sure",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: yup answers a yes/no question",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Yup",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: nah answers a yes/no question",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Nah, still waiting",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: claims a merge as it happens",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Merge #6129 please",
+      "expect": "rejected",
+      "reply": "On it, merging #6129 now",
+      "reason": "result_word"
+    },
+    {
+      "name": "short style: claims a deploy as it happens",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Deploy the website please",
+      "expect": "rejected",
+      "reply": "Got it\nDeploying the website",
+      "reason": "result_word"
+    },
+    {
+      "name": "short style: claims a restart as it happens",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "The runner is stuck",
+      "expect": "rejected",
+      "reply": "Ah, annoying\nRestarting the runner",
+      "reason": "result_word"
     }
   ]
 }

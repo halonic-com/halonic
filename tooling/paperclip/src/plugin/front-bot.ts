@@ -186,6 +186,8 @@ interface LinesPosted {
   readonly stop?: "agent_answered" | "post_failed";
   /** Whether some posted line's id wasn't kept (see `PostResult`). */
   readonly unsaved: boolean;
+  /** When the first line went out; the reply's latency ends here, not after the pauses. */
+  readonly firstPostedAt: Date | undefined;
 }
 
 /**
@@ -203,16 +205,20 @@ async function postLines(
   const pause = deps.pause ?? waitFor;
   let posted = 0;
   let unsaved = false;
+  let firstPostedAt: Date | undefined;
   for (const line of lines) {
     if (posted > 0) await pause(lineDelayMs(line));
-    if (await agentAnswered(ctx, scene)) return { posted, stop: "agent_answered", unsaved };
+    if (await agentAnswered(ctx, scene)) {
+      return { posted, stop: "agent_answered", unsaved, firstPostedAt };
+    }
     const body = `${assistantLabel}${line}`;
     const result = await postNote(ctx, scene.issue, body, { runId: base.runId, at: base.at });
-    if (result === "failed") return { posted, stop: "post_failed", unsaved };
+    if (result === "failed") return { posted, stop: "post_failed", unsaved, firstPostedAt };
     posted += 1;
+    firstPostedAt ??= deps.now();
     unsaved ||= result === "unsaved";
   }
-  return { posted, unsaved };
+  return { posted, unsaved, firstPostedAt };
 }
 
 /** Calls Haiku, counts the call, keeps its run choice, checks the reply and posts it when it passes. */
@@ -234,20 +240,24 @@ async function callAndPost(
     runChoice,
   );
   await recordCall(ctx, companyId, ready.health, deps.now(), !call.answered);
-  const latencyMs = () => deps.now().getTime() - started.getTime();
+  const latencyMs = (end: Date = deps.now()) => end.getTime() - started.getTime();
   if (!call.answered) {
     return { ...notCalledRecord(base, "failed", call.reason), latencyMs: latencyMs() };
   }
   await keepRunChoice(ctx, ready, call.run);
   const cost = callCostMicroUsd(call.usage);
   await countSpend(ctx, companyId, ready.spend, cost);
-  const called = (outcome: FrontBotOutcome, reason?: FrontBotReason): FrontBotLogRecord => ({
+  const called = (
+    outcome: FrontBotOutcome,
+    reason?: FrontBotReason,
+    end?: Date,
+  ): FrontBotLogRecord => ({
     ...base,
     callType: "first_reply",
     inputTokens: call.inputTokens,
     outputTokens: call.outputTokens,
     costMicroUsd: cost,
-    latencyMs: latencyMs(),
+    latencyMs: latencyMs(end),
     outcome,
     reason,
   });
@@ -261,7 +271,11 @@ async function callAndPost(
       ? called("rejected", "agent_answered")
       : called("failed", "post_failed");
   }
-  const record = called("posted", lines.unsaved ? "note_unsaved" : undefined);
+  const record = called(
+    "posted",
+    lines.unsaved ? "note_unsaved" : undefined,
+    lines.firstPostedAt,
+  );
   await writeMetrics(ctx, { "front_bot.latency_ms": record.latencyMs }, { companyId });
   return record;
 }

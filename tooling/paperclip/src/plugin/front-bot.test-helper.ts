@@ -165,6 +165,7 @@ export function frontBotHarness(options: HarnessOptions = {}) {
     },
     pause: async (ms) => {
       pauses.push(ms);
+      clock += ms;
       options.onPause?.();
     },
     anthropicFetch: async (url, init) => {

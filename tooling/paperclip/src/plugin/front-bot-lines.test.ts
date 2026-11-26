@@ -34,6 +34,15 @@ verifies("paperclip.front-bot-first-reply", () => {
     expect(onlyRecord(harness.logs)["outcome"]).toBe("posted");
   });
 
+  test("the latency ends at the first line, so the pauses before later lines don't count", async () => {
+    const latencyOf = async (reply: string) => {
+      const harness = frontBotHarness({ answers: [{ reply }] });
+      await harness.bot.onCommentCreated(commentCreated(harness.message.id));
+      return onlyRecord(harness.logs)["latencyMs"];
+    };
+    expect(await latencyOf("On it\nLooking into the docs links now")).toBe(await latencyOf("On it"));
+  });
+
   test("a pause is 0.7 s and a bit per character, at most 2.5 s", () => {
     expect(lineDelayMs("On it")).toBe(875);
     expect(lineDelayMs("x".repeat(200))).toBe(2_500);
