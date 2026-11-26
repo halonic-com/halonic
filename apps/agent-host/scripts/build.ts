@@ -3,6 +3,7 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { bundleEntry, executableName, seaConfig } from "../src/build/build-sea.ts";
 import { collectPayload, payloadManifest } from "../src/build/payload.ts";
+import { signatureState, withoutSignature } from "../src/build/pe-signature.ts";
 
 /**
  * `pnpm build:sea`: writes `dist/halonic-agent-host` (`.exe` on Windows), with
@@ -33,9 +34,24 @@ writeFileSync(
     HALONIC_AGENT_HOST_PAYLOAD: manifest,
   }),
 );
+// Node's node.exe is signed, and injecting into it would leave its security directory
+// pointing at bytes that are no longer a signature, which Windows treats as a broken
+// signature rather than none. So build on a copy with the signature removed, as Node's
+// single-executable guide says (HAL-20055). Our own programs ship unsigned (HAL-16758).
+let base: string | undefined;
+if (process.platform === "win32") {
+  base = join(dist, "node-unsigned.exe");
+  writeFileSync(base, withoutSignature(readFileSync(process.execPath)));
+}
 const config = join(dist, "sea-config.json");
-writeFileSync(config, seaConfig(bundle, output, payload));
+writeFileSync(config, seaConfig(bundle, output, payload, base));
 execFileSync(process.execPath, ["--build-sea", config], { stdio: "inherit" });
+if (base !== undefined) {
+  if (signatureState(readFileSync(output)).kind !== "none") {
+    throw new Error(`${output} has a security directory; it must be empty (HAL-20055)`);
+  }
+  console.log(`${output}: empty security directory, no signature.`);
+}
 // macOS refuses to run a changed binary with an invalid signature, so give it an ad-hoc one.
 // The real signing identity comes with the release work.
 if (process.platform === "darwin") {
