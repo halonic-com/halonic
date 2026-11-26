@@ -1,7 +1,7 @@
 import { Callout, Field, RadioGroup, type RadioOption, StatusChip } from "@halonicjs/studio-kit";
 import type { ServerEngine, ServerEngineView } from "@halonicjs/studio-services";
 import { useCallback, useEffect, useState } from "react";
-import { withCode } from "../connect/connect-steps.tsx";
+import { plainText, withCode } from "../connect/connect-steps.tsx";
 import * as connectWords from "../connections-words.ts";
 import * as words from "../server-engine-words.ts";
 import { PairDialog } from "./pair-dialog.tsx";
@@ -56,7 +56,9 @@ export function EngineRow({ engine, announce, now }: EngineRowProps) {
 
   const tell = (next: EngineNote) => {
     setNote(next);
-    announce(next.kind === "line" ? next.line : `${next.ending.heading} ${next.ending.text}`);
+    announce(
+      next.kind === "line" ? next.line : `${next.ending.heading} ${plainText(next.ending.text)}`,
+    );
   };
 
   const onPaired = useCallback(

@@ -186,3 +186,8 @@ export function withCode(text: string): ReactNode {
     ),
   );
 }
+
+/** `text` without its backticks, for a field's error or an announcement, where a command can't be mono. */
+export function plainText(text: string): string {
+  return text.replaceAll("`", "");
+}

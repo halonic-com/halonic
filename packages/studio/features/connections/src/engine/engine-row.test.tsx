@@ -155,13 +155,16 @@ verifies("connections.engine-row", () => {
 
     it("says what the keychain kept", async () => {
       const left = { stillValid: true, keychainEntryKept: true } as const;
-      const { root, engine } = await showRow({ state: server, left });
+      const { root, engine, said } = await showRow({ state: server, left });
       await pick(radio(root, "This computer"));
       engine.answers.state = { engine: "this-computer" };
       await press(button("Use this computer", dialog() ?? document));
       expect(root.textContent).toContain("the keychain still holds the pairing");
       const codes = [...root.querySelectorAll("code")].map((code) => code.textContent);
       expect(codes).toContain("server-pairing");
+      expect(said).toEqual([
+        "Switched, but the keychain still holds the pairing. Halonic couldn't delete it from this computer's keychain. Unlock the keychain and remove the entry whose name starts with server-pairing.",
+      ]);
     });
 
     it("stays on Server when the person cancels", async () => {
