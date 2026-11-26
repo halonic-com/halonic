@@ -41,6 +41,7 @@ import { itemLocationKey, placeNames, type Shell, StudioWorkspace } from "@halon
 import { showEngineLockLost } from "../engine/engine-lock-lost-toast.ts";
 import { openShellEngine } from "../engine/remote-engine.ts";
 import { provideFeedbackSettings } from "../feedback/provide-feedback-settings.ts";
+import { provideAgentNotifier } from "../inbox/provide-agent-notifier.ts";
 import { provideAskKeysSettings } from "../quick-ask/provide-ask-keys-settings.ts";
 import { provideKeepAwake, provideRemoteControl } from "../remote/provide-remote.ts";
 import { provideRunNotifications } from "../runs/run-notifications-watch.ts";
@@ -171,6 +172,11 @@ export async function openFolder(
       onError: reportNotifications,
       trust,
     });
+    // A new card, question or finished work of an agent shows one too (HAL-17919).
+    provideAgentNotifier(
+      services,
+      new ShellNotifier(ipc, (error) => console.error("An agent notification", error)),
+    );
   }
   shell.services.instantiate(services);
   const testModel = demoModelWatch(services, () => device.recent.isSample(location));
