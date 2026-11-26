@@ -132,6 +132,15 @@ verifies("library.connector-paste-token", () => {
     expect(document.activeElement).toBe(entryOf(root, "acme-key"));
   });
 
+  it("says the integration sends its secret only to the sites it connects to (HAL-19672)", async () => {
+    const root = await openPage(shopOrders("not-accepted", ["shop-key"]));
+    // The stdio line, "gives it to the program it starts", is in connector-secrets.test.tsx.
+    expect(root.textContent).toContain(
+      "Kept in your system keychain, never in files. Shop orders sends it only to the sites it says it connects to. Studio uses this one; halonic secret set keeps a separate one for the command line.",
+    );
+    expect(root.textContent).not.toContain("the program it starts");
+  });
+
   it("shows no Paste a new token when the integration gets no secret", async () => {
     const root = await openPage(shopOrders("not-accepted", []));
     expect(root.textContent).toContain("didn't accept the token");

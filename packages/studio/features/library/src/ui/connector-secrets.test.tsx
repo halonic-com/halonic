@@ -253,7 +253,12 @@ describe("a connector's secrets on its page", () => {
       document.body.append(container);
       const root = createRoot(container);
       const section = (secrets: ConnectorSecrets) => (
-        <ConnectorSecretsSection secrets={secrets} names={["NOTES_TOKEN"]} sourceName="Notes" />
+        <ConnectorSecretsSection
+          secrets={secrets}
+          names={["NOTES_TOKEN"]}
+          sourceName="Notes"
+          kind="stdio"
+        />
       );
       try {
         act(() => root.render(section(store)));
