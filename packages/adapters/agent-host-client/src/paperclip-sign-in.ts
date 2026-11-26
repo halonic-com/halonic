@@ -6,6 +6,7 @@ const sourceState = s.discriminatedUnion("kind", [
   s.object({ kind: s.literal("online"), asOf: s.string() }).strict(),
   s.object({ kind: s.literal("offline"), asOf: s.string() }).strict(),
   s.object({ kind: s.literal("signed-out") }).strict(),
+  s.object({ kind: s.literal("no-key") }).strict(),
 ]);
 
 const connectionsAnswer = s
@@ -64,6 +65,16 @@ const stateAnswer = s.discriminatedUnion("status", [
 
 const confirmAnswer = s.object({ confirmed: s.boolean() }).strict();
 
+/**
+ * A connection row's state: a source's state, or `no-key` when the host holds
+ * no key for the connection on this computer (after a restart before Studio
+ * hands the key over again, or in a fresh clone). `signed-out` then means only
+ * that Paperclip refused the key. `no-key` exists only on rows, not on
+ * `MessagingSourceState`: it is a fact about this computer's keys, not about
+ * the source, and Inbox and Messenger never see a source without a key.
+ */
+export type ConnectionRowState = MessagingSourceState | { readonly kind: "no-key" };
+
 /** One of the workspace's Paperclip connection files, as Settings › Connections lists it. */
 export interface PaperclipConnectionRow {
   readonly id: MessagingId;
@@ -74,7 +85,7 @@ export interface PaperclipConnectionRow {
   readonly address: string;
   /** The Paperclip company's ID the file names. */
   readonly company: string;
-  readonly state: MessagingSourceState;
+  readonly state: ConnectionRowState;
   /** The Paperclip user the connection is signed in as, once the engine read it. */
   readonly userName?: string | undefined;
 }

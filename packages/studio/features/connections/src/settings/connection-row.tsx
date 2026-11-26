@@ -15,6 +15,8 @@ const chipTones: Record<AgentConnection["state"]["kind"], StatusChipTone> = {
   online: "success",
   offline: "attention",
   "signed-out": "danger",
+  // Nothing failed and nothing was revoked: this computer just holds no key yet (HAL-19034).
+  "no-key": "neutral",
 };
 
 /** The address's host, as the row shows it: `paperclip.halonic.test`. */
@@ -34,22 +36,37 @@ function StateCallout({
   readonly connection: AgentConnection;
   readonly onSignInAgain: () => void;
 }) {
-  if (connection.state.kind === "offline") {
-    return <Callout tone="attention">{words.OFFLINE_CALLOUT}</Callout>;
+  const { state } = connection;
+  switch (state.kind) {
+    case "online":
+      return null;
+    case "offline":
+      return <Callout tone="attention">{words.OFFLINE_CALLOUT}</Callout>;
+    case "signed-out":
+      return (
+        <Callout tone="danger" action={{ label: words.SIGN_IN_AGAIN, onClick: onSignInAgain }}>
+          {words.SIGNED_OUT_CALLOUT}
+        </Callout>
+      );
+    case "no-key":
+      return (
+        <Callout tone="info" action={{ label: words.SIGN_IN, onClick: onSignInAgain }}>
+          {words.NO_KEY_CALLOUT}
+        </Callout>
+      );
+    default:
+      return unknownState(state);
   }
-  if (connection.state.kind === "signed-out") {
-    return (
-      <Callout tone="danger" action={{ label: words.SIGN_IN_AGAIN, onClick: onSignInAgain }}>
-        {words.SIGNED_OUT_CALLOUT}
-      </Callout>
-    );
-  }
-  return null;
+}
+
+/** Fails typecheck when a state kind is added without its callout. */
+function unknownState(state: never): never {
+  throw new Error(`No callout for the connection state ${JSON.stringify(state)}.`);
 }
 
 /**
  * One connection, shown like a read-only hub (`connections.connection-row`): its name, host and
- * state, Sign in again once it is signed out, Add another account while it is connected
+ * state, Sign in again once it is signed out, Sign in while this computer holds no key for it, Add another account while it is connected
  * (`connections.add-account`), what its key can do, and Disconnect.
  */
 export function ConnectionRow({

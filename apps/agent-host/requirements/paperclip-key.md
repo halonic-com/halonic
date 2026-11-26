@@ -28,7 +28,7 @@ The Paperclip provider's key shall be kept in the OS keychain, in one entry per 
   then its keychain entry and cache are deleted and Studio says the key stays valid until its expiry and can be revoked in Paperclip.
 - Given `halonic.yaml` connected in two open workspaces with the same key,
   when it is disconnected in one of them while the revoke fails,
-  then the next poll sends no request with the key for either workspace, and both show the connection signed out.
+  then the next poll sends no request with the key for either workspace, and both show the connection with no key on this computer.
 - Given an approved sign-in,
   when Studio polls it twice,
   then only the first answer holds the key, and the connection's state that Settings shows holds none.

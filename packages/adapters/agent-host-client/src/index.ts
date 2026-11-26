@@ -57,6 +57,7 @@ export {
 } from "./paperclip-key.ts";
 export {
   AgentHostPaperclipSignIn,
+  type ConnectionRowState,
   type PaperclipConnectionList,
   type PaperclipConnectionRow,
   type PaperclipSignInStart,

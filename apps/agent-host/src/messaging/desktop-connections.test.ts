@@ -15,7 +15,7 @@ afterEach(async () => {
 
 verifies("agent-host.paperclip-connection", () => {
   describe("the workspace's connections, as Settings lists them", () => {
-    it("lists a connection nobody connected as signed out, and calls nobody", async () => {
+    it("lists a connection nobody connected here as having no key, and calls nobody", async () => {
       desktop = await startDesktop();
       const connections = new AgentHostPaperclipSignIn(desktop.transport, desktop.workspace);
       expect(await connections.connections()).toEqual([
@@ -25,10 +25,25 @@ verifies("agent-host.paperclip-connection", () => {
           label: "Paperclip · Halonic",
           address: acme.address,
           company: acme.company,
-          state: { kind: "signed-out" },
+          state: { kind: "no-key" },
         },
       ]);
       expect(desktop.paperclip.seen).toEqual([]);
+    });
+
+    it("lists a connection as signed out only once Paperclip refused its key", async () => {
+      desktop = await startDesktop();
+      const on = desktop;
+      on.paperclip.refusesKey = true;
+      await on.paperclipKey.handOver({
+        workspace: on.workspace,
+        connection: "halonic",
+        key: testKey,
+        ...acme,
+      });
+      await on.studio.listAgents().catch(() => []);
+      const [row] = await new AgentHostPaperclipSignIn(on.transport, on.workspace).connections();
+      expect(row?.state).toEqual({ kind: "signed-out" });
     });
 
     it("answers the workspace's real path, also when Studio names it through a link", async () => {

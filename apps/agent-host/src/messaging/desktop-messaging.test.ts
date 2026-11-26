@@ -170,7 +170,7 @@ verifies("agent-host.paperclip-key", () => {
       expect(withKey).toEqual([]);
       for (const workspace of [on.workspace, on.otherWorkspace]) {
         expect(on.keys.has({ workspace, connection: "halonic" })).toBe(false);
-        expect(await connectionStates(on, workspace)).toEqual([{ kind: "signed-out" }]);
+        expect(await connectionStates(on, workspace)).toEqual([{ kind: "no-key" }]);
       }
       expect([...(await on.filesIn(join(on.profile, "agent-messaging-cache"))).keys()]).toEqual([]);
     });

@@ -1,5 +1,11 @@
 import type { MessagingSourceState } from "@halonicjs/ports";
 
+/**
+ * A connection row's state, as `AgentConnection["state"]` has it. Spelled out here so the words
+ * read only `ports`: the click test loads them without Studio's services or a DOM.
+ */
+type RowState = MessagingSourceState | { readonly kind: "no-key" };
+
 // Every string the Connect dialog and Settings › Connections show, from Noah's wording table on
 // HAL-17498. "This key can do everything the board can in Paperclip", "Sign in again" and
 // "Offline, as of <HH:MM>" were fixed before it (HAL-17497).
@@ -18,6 +24,8 @@ export const NONE_LINE =
 export const CONNECT = "Connect Paperclip";
 /** The button on a signed-out connection, and the dialog's title for it. Fixed (HAL-17497). */
 export const SIGN_IN_AGAIN = "Sign in again";
+/** The button on a connection this computer holds no key for, and the dialog's title for it (Sofia, HAL-19034). */
+export const SIGN_IN = "Sign in";
 
 /** The button on a connected Paperclip, and the dialog's title for another account on it (HAL-18670). */
 export const ADD_ACCOUNT = "Add another account";
@@ -45,6 +53,9 @@ export const ADD_ACCOUNT_LEAD =
 /** The address step when signing in again, above the field. */
 export const signInAgainLead = (label: string): string =>
   `The key for ${label} has expired or was revoked. Sign in again to keep reading and answering.`;
+/** The address step when this computer holds no key for the connection (Sofia, HAL-19034). */
+export const signInNoKeyLead = (label: string): string =>
+  `Halonic has no key for ${label} on this computer. Sign in to read and answer from here.`;
 /** The address field. */
 export const ADDRESS_LABEL = "Paperclip address";
 /** Under the address field. */
@@ -123,16 +134,20 @@ export const OFFLINE_CALLOUT =
   "Paperclip isn't answering. Inbox and Messenger show what was read last; answering is off until it's back.";
 export const SIGNED_OUT_CALLOUT =
   "Sign in again to keep reading and answering. Until then, Inbox and Messenger show what was read last.";
+/** Under a connection this computer holds no key for (Sofia, HAL-19034). */
+export const NO_KEY_CALLOUT =
+  "Sign in to read and answer from this computer. Until then, Inbox and Messenger show what was read last.";
 
 /** A connection's state chip. */
-export const stateChips: Record<MessagingSourceState["kind"], string> = {
+export const stateChips: Record<RowState["kind"], string> = {
   online: "Connected",
   offline: "Offline",
   "signed-out": "Signed out",
+  "no-key": "Not connected",
 };
 
 /** What follows the host on the address line: "Checked 14:02 · key expires 24 Dec 2026". */
-export function stateMeta(state: MessagingSourceState, keyExpiresAt: string | undefined): string {
+export function stateMeta(state: RowState, keyExpiresAt: string | undefined): string {
   switch (state.kind) {
     case "online": {
       const checked = `Checked ${timeOfDay(state.asOf)}`;
@@ -142,7 +157,16 @@ export function stateMeta(state: MessagingSourceState, keyExpiresAt: string | un
       return `Offline, as of ${timeOfDay(state.asOf)}`;
     case "signed-out":
       return "key expired or revoked";
+    case "no-key":
+      return "no key on this computer";
+    default:
+      return unknownState(state);
   }
+}
+
+/** Fails typecheck when a state kind is added without its words. */
+function unknownState(state: never): never {
+  throw new Error(`No words for the connection state ${JSON.stringify(state)}.`);
 }
 
 /** The Disconnect confirmation. */
