@@ -2,6 +2,7 @@
 
 - Approval: findings and wording by Sofia on HAL-19111 and HAL-19120 (decided by the team, HAL-2282); Liam signs this note in his review of the pull request on HAL-19120
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:z5UBYbSCKNmA0Em1lSDb/54cwsvnkQEo8zHb3eoyfwp3qdSNIx9P+s1HBFhBT/tEFm6n3pm+VEAePkq5xVuxDA==
 - Task: HAL-19120
 
 ## What changes
