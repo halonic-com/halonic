@@ -3,7 +3,7 @@
 - Task: HAL-19588
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19588 (board direction on HAL-10, 26 Nov: short, varied, texting-style replies over several messages, shown as an assistant and not as the board; Julian's security review of #6515 on HAL-19588 signs the grounding change)
 - Kind: internal
-- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:J2gAA4q24nyDLDXakld22nhp9/echodBHgrtydqj4YgnIqo62GyTcPAjeFv2tSvCkTq/XexyFhTWK/LtKyysAw==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:kY4ze2X5a6jUWw1WB7z/Ulryg9c8Y7x8VQvaEeqCcg8Y933izSRNLGzO927mPQBwvvTbZBp8xSmjSsL+V0Z5Aw==
 
 ## What changes
 
