@@ -120,6 +120,51 @@ verifies("runtime.github-reviewer-rules", () => {
       });
     });
 
+    describe("with a narrower role", () => {
+      const narrowed: RepositoryReviewerRules = {
+        ...rules,
+        narrowTo: {
+          role: "routine-reviewer",
+          folders: ["src/kernel/"],
+          patterns: ["(^|\\/)src\\/index\\.[cm]?tsx?$"],
+        },
+      };
+
+      test.each([
+        ["a plain code change narrows", ["src/cart.ts"], 150, "routine-reviewer"],
+        [
+          "a path under its folders stays with default",
+          ["src/kernel/step.ts"],
+          3,
+          "second-reviewer",
+        ],
+        ["a path matching its patterns stays with default", ["src/index.ts"], 3, "second-reviewer"],
+        [
+          "one such path keeps the whole pull request",
+          ["src/cart.ts", "src/index.ts"],
+          3,
+          "second-reviewer",
+        ],
+        ["an escalating path still escalates", ["infra/deploy.ts"], 3, "code-reviewer"],
+        ["over the line limit still escalates", ["src/cart.ts"], 1201, "code-reviewer"],
+      ] as const)("%s", (_, paths, lines, role) => {
+        expect(reviewRoleByPaths(narrowed, paths, lines)).toBe(role);
+      });
+
+      test("notes the narrower reviewer's approval too", () => {
+        const routineRouting: Routing = {
+          ...routing,
+          roles: { ...routing.roles, "routine-reviewer": "nora" },
+        };
+        const reviewer = reviewerByPaths(narrowed, filesAt(["src/cart.ts"]), 3, routineRouting);
+        expect(reviewer).toEqual({ role: "routine-reviewer", person: "nora" });
+        const nora = { by: "Nora", head: "7651f8c", counts: true };
+        expect(noteDefaultReviewer([nora], narrowed, reviewer, () => true)).toEqual([
+          { ...nora, note: defaultReviewerNote },
+        ]);
+      });
+    });
+
     test("only the rules a repository gives fire: no line limit means none", () => {
       const { lineLimit: _, ...noLimit } = rules;
       expect(reviewRoleByPaths(noLimit, ["src/cart.ts"], 99_999)).toBe("second-reviewer");

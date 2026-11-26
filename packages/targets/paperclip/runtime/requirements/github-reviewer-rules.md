@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18292, PR 1 of HAL-18289 (Liam's review of the proposal): the generic `pr_status` names the reviewer by the company's path rules, as Agent tools' `pr_status` does; HAL-19256: line limits count each file's lines, and folder limits, as halonic's `overLineLimit` does
+- Source: HAL-18292, PR 1 of HAL-18289 (Liam's review of the proposal): the generic `pr_status` names the reviewer by the company's path rules, as Agent tools' `pr_status` does; HAL-19256: line limits count each file's lines, and folder limits, as halonic's `overLineLimit` does; HAL-19379: a narrower role below `default`, as halonic's `routine-reviewer` (HAL-19246)
 
-When a `github.pull-request` tool gives `reviewerRules` for the pull request's repository, the runtime shall match every changed path (both sides of a rename) and the changed lines against those rules, answer the rules' `escalateTo` role when a path is one of `files`, starts with one of `folders`, is a `package.json` below the root while `nestedPackageJson` is on, or holds one of `words` in any case without matching a `wordsSkip` regex, or when the changed lines of the paths matching no `lineLimit.skip` regex exceed `lineLimit.max`, or those of them under one of a folder limit's `folders` exceed that limit's `max` (counting each file's additions plus deletions once, under a renamed file's new path and none under its old one, and the whole pull request's lines when a path's own count is unknown), and the rules' `default` role otherwise; it shall name the agent the snapshot's routing gives that role, say that the answer is by paths only and that security or release PRs and the author's own PRs route differently, read the changed files only when the repository has rules, and answer that there are no path rules for a repository without them. Which tool files may hold rules: `format.tool-reviewer-rules`.
+When a `github.pull-request` tool gives `reviewerRules` for the pull request's repository, the runtime shall match every changed path (both sides of a rename) and the changed lines against those rules, answer the rules' `escalateTo` role when a path is one of `files`, starts with one of `folders`, is a `package.json` below the root while `nestedPackageJson` is on, or holds one of `words` in any case without matching a `wordsSkip` regex, or when the changed lines of the paths matching no `lineLimit.skip` regex exceed `lineLimit.max`, or those of them under one of a folder limit's `folders` exceed that limit's `max` (counting each file's additions plus deletions once, under a renamed file's new path and none under its old one, and the whole pull request's lines when a path's own count is unknown), and otherwise the rules' `narrowTo.role` when they give `narrowTo` and no path starts with one of its `folders` or matches one of its `patterns`, and the rules' `default` role when not; it shall name the agent the snapshot's routing gives that role, say that the answer is by paths only and that security or release PRs and the author's own PRs route differently, read the changed files only when the repository has rules, and answer that there are no path rules for a repository without them. Which tool files may hold rules: `format.tool-reviewer-rules`.
 
 ## Examples
 
@@ -26,6 +26,9 @@ When a `github.pull-request` tool gives `reviewerRules` for the pull request's r
 - Given rules with `lineLimit: { max: 1500, folderLimits: [{ folders: [src/kernel/], max: 800 }] }`,
   when a pull request renames `src/kernel/run.ts` to `src/kernel/step.ts` and changes 700 lines in it,
   then the line limits count 700 lines, not 1,400, and don't escalate it.
+- Given rules with `narrowTo: { role: routine-reviewer, folders: [src/kernel/], patterns: ['(^|/)src/index\.ts$'] }`,
+  when a pull request changes only `src/cart.ts`,
+  then the reviewer is the `routine-reviewer`; with `src/index.ts` or `src/kernel/step.ts` among its files, it is the `default` role.
 - Given a tool reading `acme/website` with no `reviewerRules`,
   when an agent reads a pull request,
   then the answer says there are no path rules for this repository and the files aren't read.
