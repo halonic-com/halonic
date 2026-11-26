@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19492
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YXKGA6OTrZnbVusoCuRWiP0DGd9LUUU5xzIVDlJf1KRXKItqraf/DMot++OGibDpDCvWGuwoYNwTqlVrvD3WCg==
 
 The read and unread rule the board approved on HAL-19192 put **Mark as unread** on a row's hover
 as well as in the item's ··· menu, and Sofia's sketch D there shows each row's hover action:
