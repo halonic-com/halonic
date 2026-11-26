@@ -120,8 +120,9 @@ $env:CLICK_TEST_BUILD = '9115b95'
 pnpm --filter @halonicjs/testing-studio-click-test click-test
 ```
 
-Steps 4 to 9 need step 3, and check their click through the test Paperclip's API as well as on
-screen. Step 9 checks the key Studio last sent through the recording proxy.
+Steps 4 to 13 need step 3, and check their click through the test Paperclip's API as well as on
+screen. Step 13 checks that the test Paperclip refuses the key Studio signed in with, which it
+reads from the recording proxy.
 
 Results: `click-test/results.json`, `click-test/results.md` and `click-test/screenshots/NN-step.png`.
 To test an older build with today's suite: `gh workflow run studio-preview.yml -f build-ref=<commit>`.
