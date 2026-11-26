@@ -401,6 +401,78 @@
       "expect": "rejected",
       "reply": "Ah, annoying\nRestarting the runner",
       "reason": "result_word"
+    },
+    {
+      "name": "short style: answers yes after an opener (Hmm, yeah, looks like it)",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Hmm, yeah, looks like it",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: answers yes after an opener (Ah, looks like it)",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Ah, looks like it",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: answers yes after an opener (Good question, yes)",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Good question, yes",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: answers yes after an opener (Oh yeah, it is)",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Oh yeah, it is",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: answers yes after an opener (Hmm. Yeah, looks like it)",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Hmm. Yeah, looks like it",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: answers yes after an opener (Hmm, seems so)",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Is #6129 merged yet?",
+      "expect": "rejected",
+      "reply": "Hmm, seems so",
+      "reason": "unhedged_answer"
+    },
+    {
+      "name": "short style: claims a release as it starts",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "Ship the release please",
+      "expect": "rejected",
+      "reply": "On it, starting the release",
+      "reason": "result_word"
+    },
+    {
+      "name": "short style: claims a rerun of the build",
+      "title": "Merge #6129",
+      "earlier": [],
+      "message": "The build failed",
+      "expect": "rejected",
+      "reply": "Got it, rerunning the build",
+      "reason": "result_word"
     }
   ]
 }

@@ -17,9 +17,11 @@ when one line fails, so a reply is never posted in part. The length limit is
 now 12 words or 100 characters per line and at most 3 lines, instead of 30
 words or 240 characters for the whole reply. A bare acknowledgement such as
 "On it" is no longer rejected, since the board asked for exactly that. All the
-other reasons stay; "starts by answering yes or no" now also covers yeah, yup,
-yea, nah and sure, and the result words now include their "-ing" forms
-(merging, deploying, restarting and the like).
+other reasons stay; the yes/no check now also covers yeah, yup, yea, nah,
+sure, "looks like it" and "seems so", and looks past texting openers such as
+"Hmm," or "Good question," so "Hmm, yeah, looks like it" is still rejected.
+The result words now include their "-ing" forms (merging, deploying,
+starting, rerunning, rolling back and the like).
 
 `paperclip.front-bot-own-comments` treats a comment with no author that starts
 with `*Assistant:* ` as the bot's, and still recognises the older

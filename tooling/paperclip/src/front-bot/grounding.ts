@@ -58,9 +58,18 @@ const bareAcknowledgements = new Set([
   "one moment",
 ]);
 
-/** A reply that starts by answering the question; the bot never answers, it only frames. */
-export const unhedgedAnswer =
-  /^\s*(?:yes|no|yep|yup|yeah|yea|nope|nah|correct|right|sure|definitely|it is|it's|it isn't)\b/i;
+/** Texting openers a line may start with before an answer: "Hmm, yeah, looks like it". */
+const answerOpeners = String.raw`(?:ah|oh|hm+|ugh|well|so|ok|okay|got it|noted|thanks|good question|fair question|fair)`;
+const answerWords = String.raw`(?:yes|no|yep|yup|yeah|yea|nope|nah|correct|right|sure|definitely|it is|it's|it isn't|looks like it|seems so|seems like it)`;
+
+/**
+ * A reply that answers the question, at the start of a line or after any
+ * openers; the bot never answers, it only frames.
+ */
+export const unhedgedAnswer = new RegExp(
+  String.raw`^\s*(?:${answerOpeners}[\s,.…:;-]+)*${answerWords}\b`,
+  "i",
+);
 
 export const firstPerson =
   /(?<![\w'’])(?:I|I'm|I’m|I'll|I’ll|I've|I’ve|I'd|I’d|me|my|mine)(?![\w'’])/;
@@ -135,6 +144,20 @@ export const resultWords = [
   "posting",
   "opening",
   "updating",
+  "starting",
+  "adding",
+  "completing",
+  "finishing",
+  "rerunning",
+  "re-running",
+  "retrying",
+  "triggering",
+  "kicking off",
+  "rebasing",
+  "pushing",
+  "cancelling",
+  "canceling",
+  "rolling back",
 ];
 const resultPattern = new RegExp(`\\b(?:${resultWords.join("|")})\\b`, "gi");
 export const negation =
@@ -151,7 +174,7 @@ const commonWords = new Set(
     "this that these those it its your for on in to of and or but so which what why how " +
     "when where who whether same earlier new still not needs part follows ties waiting " +
     "pr prs ci utc task build run release " +
-    "got good ok okay sure noted ah ugh hm hmm oh right fair yeah thanks looking checking " +
+    "got good ok okay noted ah ugh hm hmm oh fair thanks looking checking " +
     "digging working reading on into let's let"
   ).split(" "),
 );
