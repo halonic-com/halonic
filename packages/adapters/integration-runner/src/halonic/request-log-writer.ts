@@ -83,7 +83,9 @@ export class RequestLogWriter {
  * `node_modules` and hidden folders. The loader's link check has already
  * refused a folder with a link out of it, and a link isn't followed here.
  * Each file's size is checked on the open file before it is read: one past
- * `maxFileBytes`, or past what is left of `maxCodeBytes`, is skipped.
+ * `maxFileBytes`, or past what is left of `maxCodeBytes`, is skipped. So is
+ * one that can't be read, such as one an editor's save deleted or replaced
+ * since it was listed: less code only masks more.
  */
 async function integrationCode(folder: string): Promise<string> {
   const texts: string[] = [];
@@ -100,7 +102,9 @@ async function integrationCode(folder: string): Promise<string> {
     }
   };
   const keep = async (path: string): Promise<void> => {
-    const text = await readUpTo(path, Math.min(maxFileBytes, maxCodeBytes - bytes));
+    const text = await readUpTo(path, Math.min(maxFileBytes, maxCodeBytes - bytes)).catch(
+      () => undefined,
+    );
     if (text === undefined) return;
     bytes += text.bytes;
     texts.push(text.text);

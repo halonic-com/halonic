@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, open, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-integration-kit";
@@ -9,6 +9,21 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeSecret } from "../pipes.test-helper.ts";
 import { RunnerToolError } from "./limits.ts";
 import { loadLocalIntegration } from "./local-integration.ts";
+
+// A code file named `gone.js` can't be opened, as when an editor's save
+// deletes it between the listing and the read.
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const original = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...original,
+    open: (async (path, ...rest) => {
+      if (String(path).endsWith("gone.js")) {
+        throw Object.assign(new Error("no such file"), { code: "ENOENT" });
+      }
+      return original.open(path, ...rest);
+    }) as typeof original.open,
+  };
+});
 
 const workspace = "0123456789abcdef0123456789abcdef";
 const canaryReply = "canary-reply-body-7f3a";
@@ -137,6 +152,19 @@ verifies("app.integration-request-log", () => {
 
   it("skips a code file past the size cap, so its words mask instead of keeping a segment", async () => {
     await writeFile(join(folder, "big.js"), `"/v2/forecast/Ghent"\n${" ".repeat(1_000_000)}`);
+    const files = memoryFiles();
+    const loaded = await loadWeather(files);
+    if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
+    const { integration, host } = loaded.value;
+    await expect(integration.connect(host).callTool("forecast", {})).rejects.toThrow();
+    await vi.waitFor(() =>
+      expect(files.texts.get(`${workspace}/weather.jsonl`)).toContain("/v2/forecast/{…}"),
+    );
+  });
+
+  it("still writes the batch, masked, when one code file can't be read", async () => {
+    await writeFile(join(folder, "gone.js"), `"/v2/forecast/Ghent"`);
+    await expect(open(join(folder, "gone.js"))).rejects.toThrow("no such file");
     const files = memoryFiles();
     const loaded = await loadWeather(files);
     if (!loaded.ok) expect.fail(JSON.stringify(loaded.error));
