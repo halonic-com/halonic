@@ -19,7 +19,10 @@ beforeEach(() => {
   };
 });
 
-afterEach(unmountAll);
+afterEach(() => {
+  unmountAll();
+  vi.useRealTimers();
+});
 
 const channel: Conversation = {
   id: "c1",
@@ -33,6 +36,7 @@ const channel: Conversation = {
 const { members: _members, ...lead } = channel;
 const direct: Conversation = { ...lead, id: "c2", title: "Chief" };
 const pullRequest = "https://github.com/acme/app/pull/12";
+const paperclip = "Paperclip · Halonic";
 
 function message(body: string): Message {
   const author = { kind: "agent", agent: "elena", name: "Elena" } as const;
@@ -87,7 +91,10 @@ function type(text: string) {
   });
 }
 
-const line = () => document.querySelector('[role="status"]')?.textContent;
+/** The live regions: a failed read's line first, then in a chat the line under the box. */
+const statuses = () => [...document.querySelectorAll('[role="status"]')];
+const line = () => statuses().at(-1)?.textContent;
+const readLine = () => statuses()[0]?.textContent;
 
 verifies("remote.phone-messenger", () => {
   describe("the phone's Messenger tab", () => {
@@ -183,6 +190,86 @@ verifies("remote.phone-messenger", () => {
       expect(messageParts("[the PR](https://evil.io/x)")).toEqual([
         { kind: "text", text: "[the PR](https://evil.io/x)" },
       ]);
+    });
+
+    it("says a source is offline instead of an empty list, and Try again reads again", async () => {
+      vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 10, 26, 15, 0) });
+      const scene = new GatewayScene();
+      scene.connect();
+      render(
+        <PhoneMessenger
+          messaging={scene.client.messaging}
+          computer={SCENE_COMPUTER}
+          olderComputer={false}
+          onOpenLink={() => undefined}
+        />,
+      );
+      const reads = () => scene.tunnel.sentOf("msg-read").filter((read) => read.what !== "sources");
+      const refused = reads().find((read) => read.what === "conversations");
+      scene.host({ type: "error", replyTo: refused?.id ?? "", code: "offline" });
+      answer(scene, "agents", []);
+      await settle();
+      // Nothing until the sources read answers, so the generic refusal never shows first.
+      expect(readLine()).toBe("");
+      const asOf = new Date(2026, 10, 26, 14, 2).toISOString();
+      const state = { kind: "offline", asOf } as const;
+      answer(scene, "sources", [{ id: "s1", provider: "paperclip", label: paperclip, state }]);
+      await settle();
+      expect(readLine()).toBe(
+        "Paperclip · Halonic is offline, as of 14:02, so its chats may be out of date.",
+      );
+      const before = reads().length;
+      await act(async () => buttonNamed("Try again")?.click());
+      expect(reads().slice(before)).toEqual([expect.objectContaining({ what: "conversations" })]);
+      answer(scene, "conversations", [channel]);
+      await settle();
+      expect(buttonNamed("Try again")).toBeUndefined();
+      expect(readLine()).toBe("");
+      expect(buttonNamed("Engineering")).toBeDefined();
+    });
+
+    it("says a chat cut off by a drop couldn't be loaded, and Try again reads it again", async () => {
+      const { scene } = await openChannel();
+      await act(async () => buttonNamed("Back")?.click());
+      answer(scene, "conversations", [channel]);
+      answer(scene, "agents", []);
+      await settle();
+      await act(async () => buttonNamed("Engineering")?.click());
+      scene.drop();
+      scene.connect();
+      await settle();
+      expect(readLine()).toBe("Couldn't load it: Work laptop isn't answering.");
+      const messageReads = () =>
+        scene.tunnel.sentOf("msg-read").filter((read) => read.what === "messages");
+      const before = messageReads().length;
+      await act(async () => buttonNamed("Try again")?.click());
+      expect(messageReads()).toHaveLength(before + 1);
+      answer(scene, "messages", [message("Merged.")]);
+      await settle();
+      expect(buttonNamed("Try again")).toBeUndefined();
+      expect(document.body.textContent).toContain("Merged.");
+    });
+
+    it("says the computer turned down a list it refused for any other reason", async () => {
+      const scene = new GatewayScene();
+      scene.connect();
+      render(
+        <PhoneMessenger
+          messaging={scene.client.messaging}
+          computer={SCENE_COMPUTER}
+          olderComputer={false}
+          onOpenLink={() => undefined}
+        />,
+      );
+      answer(scene, "conversations", [channel]);
+      const agents = scene.tunnel.sentOf("msg-read").find((read) => read.what === "agents");
+      scene.host({ type: "error", replyTo: agents?.id ?? "", code: "signed-out" });
+      await settle();
+      expect(readLine()).toBe(
+        "Couldn't load it: Work laptop turned it down. You can open it there.",
+      );
+      expect(buttonNamed("Engineering")).toBeDefined();
+      expect(scene.tunnel.sentOf("msg-read").map((read) => read.what)).not.toContain("sources");
     });
 
     it("shows the update note and reads nothing while the computer speaks version 3", () => {

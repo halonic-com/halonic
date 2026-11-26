@@ -1,10 +1,11 @@
 import type { Conversation, MessagingAgent, MessagingId } from "@halonicjs/ports";
 import { FilterChips } from "@halonicjs/studio-kit";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MessagingClient } from "./messaging-client.ts";
 import { OlderComputerPanel } from "./older-computer-note.tsx";
 import { PhoneChat } from "./phone-chat.tsx";
-import { phoneMessengerWords as words } from "./phone-messenger-words.ts";
+import { type ReadFailure, phoneMessengerWords as words } from "./phone-messenger-words.ts";
+import { ReadFailedLine } from "./read-failed-line.tsx";
 
 /** What the Messenger tab asks of the computer: the messaging client's reads and its send. */
 export type PhoneMessaging = Pick<MessagingClient, "readList" | "readMessages" | "send">;
@@ -31,7 +32,8 @@ const maxPages = 10;
  * and a tapped one's chat in their place (requirement `remote.phone-messenger`). The phone only
  * reads and writes chats: it has no control to start a chat or a channel, join or leave one, or
  * change its members; those stay on the computer. While the computer speaks only version 3 it
- * shows the update note instead and asks the computer nothing.
+ * shows the update note instead and asks the computer nothing. A list or chat it couldn't read
+ * says why, with Try again, instead of showing an empty screen.
  */
 export function PhoneMessenger(props: PhoneMessengerProps) {
   if (props.olderComputer) return <OlderComputerPanel computer={props.computer} />;
@@ -39,24 +41,16 @@ export function PhoneMessenger(props: PhoneMessengerProps) {
 }
 
 function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps) {
-  const [conversations, setConversations] = useState<readonly Conversation[]>([]);
-  const [names, setNames] = useState<AgentNames>(() => new Map());
   const [waitingOnly, setWaitingOnly] = useState(false);
   const [open, setOpen] = useState<Conversation | undefined>(undefined);
-
-  useEffect(() => {
-    if (open !== undefined) return;
-    let current = true;
-    void readAll(messaging, "conversations", isConversation).then((read) => {
-      if (current) setConversations(read);
-    });
-    void readAll(messaging, "agents", isAgent).then((read) => {
-      if (current) setNames(new Map(read.map((agent) => [agent.id, agent.name])));
-    });
-    return () => {
-      current = false;
-    };
-  }, [messaging, open]);
+  const listed = useListRead(messaging, "conversations", isConversation, open === undefined);
+  const agents = useListRead(messaging, "agents", isAgent, open === undefined);
+  const names: AgentNames = useMemo(
+    () => new Map(agents.items.map((agent) => [agent.id, agent.name])),
+    [agents.items],
+  );
+  const failure = listed.failure ?? agents.failure;
+  const conversations = listed.items;
 
   if (open !== undefined) {
     return (
@@ -85,6 +79,15 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
         value={waitingOnly ? "waiting" : "all"}
         onChange={(value) => setWaitingOnly(value === "waiting")}
       />
+      <ReadFailedLine
+        messaging={messaging}
+        failure={failure}
+        computer={computer}
+        onTryAgain={() => {
+          listed.retry();
+          agents.retry();
+        }}
+      />
       <ul className="flex flex-col">
         {shown.map((conversation) => (
           <li key={conversation.id}>
@@ -102,22 +105,62 @@ function MessengerLists({ messaging, computer, onOpenLink }: PhoneMessengerProps
   );
 }
 
-/** Every page of `what`, up to {@link maxPages}; what was read so far when a read fails. */
+/** A list read whole, why its newest read failed, and a way to read it again. */
+interface ListRead<Item> {
+  readonly items: readonly Item[];
+  readonly failure: ReadFailure | undefined;
+  /** Reads the list again, only if its newest read failed. */
+  readonly retry: () => void;
+}
+
+/** Reads `what` whole while `active`, again each time it turns active or `retry` is called. */
+function useListRead<Item>(
+  messaging: PhoneMessaging,
+  what: "conversations" | "agents",
+  isItem: (item: unknown) => item is Item,
+  active: boolean,
+): ListRead<Item> {
+  const [items, setItems] = useState<readonly Item[]>([]);
+  const [failure, setFailure] = useState<ReadFailure | undefined>(undefined);
+  const [reads, setReads] = useState(0);
+
+  useEffect(() => {
+    if (!active) return;
+    let current = true;
+    void readAll(messaging, what, isItem).then((read) => {
+      if (!current) return;
+      setItems(read.items);
+      setFailure(read.failure);
+    });
+    return () => {
+      current = false;
+    };
+  }, [messaging, what, isItem, active, reads]);
+
+  const retry = () => {
+    if (failure === undefined) return;
+    setFailure(undefined);
+    setReads((count) => count + 1);
+  };
+  return { items, failure, retry };
+}
+
+/** Every page of `what`, up to {@link maxPages}; what was read so far and why when a read fails. */
 async function readAll<Item>(
   messaging: PhoneMessaging,
   what: "conversations" | "agents",
   isItem: (item: unknown) => item is Item,
-): Promise<readonly Item[]> {
+): Promise<{ readonly items: readonly Item[]; readonly failure: ReadFailure | undefined }> {
   const items: Item[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < maxPages; page += 1) {
     const read = await messaging.readList(what, cursor);
-    if (read.kind !== "done") break;
+    if (read.kind !== "done") return { items, failure: read };
     items.push(...read.value.items.filter(isItem));
     cursor = read.value.more;
     if (cursor === undefined) break;
   }
-  return items;
+  return { items, failure: undefined };
 }
 
 function isConversation(item: unknown): item is Conversation {
