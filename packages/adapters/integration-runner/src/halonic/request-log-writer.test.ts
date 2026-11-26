@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AddressCheckingHttpClient } from "@halonicjs/adapter-integration-kit";
 import { type RequestLogFiles, RequestLogStore } from "@halonicjs/app";
+import type { HttpClient } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakeSecret } from "../pipes.test-helper.ts";
@@ -31,6 +32,9 @@ const sheet = {
     },
   ],
 };
+
+// Answers every request with the canary body, without a network.
+const canaryTransport: HttpClient = { fetch: async () => new Response(canaryReply) };
 
 /** Keeps the store's files in memory, so the test reads exactly the text that would be written. */
 function memoryFiles(): RequestLogFiles & { texts: Map<string, string> } {
@@ -71,7 +75,7 @@ verifies("app.integration-request-log", () => {
       approvedSheet: sheet,
       folder,
       choices: { secretNames: { "weather-key": "example-key" } },
-      transport: { fetch: async () => new Response(canaryReply) } as AddressCheckingHttpClient,
+      transport: canaryTransport as AddressCheckingHttpClient,
       secrets: { get: async (name) => (name === "example-key" ? fakeSecret : null) },
       tokens: { get: async () => null, set: async () => undefined, remove: async () => undefined },
       requestLog: { store: new RequestLogStore(files), workspace },
