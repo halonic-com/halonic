@@ -92,7 +92,8 @@ export function ModelPage({
   // `provider/model` name is fine as it is; an alias the hub doesn't have gets an error under it.
   const options: SelectOption[] = aliases.map((alias) => ({ value: alias, label: alias }));
   if (model !== "" && !aliases.includes(model)) options.push({ value: model, label: model });
-  // The alias line is the picker's hint, so a screen reader hears it on the picker.
+  // The alias line is the picker's hint, so screen readers hear it with the picker. It never
+  // meets "No models yet" or an error: both mean the model isn't an alias, which has no line.
   const aliasLine = summary && <AliasLine alias={model} summary={summary} openAlias={openAlias} />;
   return (
     <div className="flex flex-col gap-6">

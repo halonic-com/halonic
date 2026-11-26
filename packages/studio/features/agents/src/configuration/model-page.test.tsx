@@ -257,6 +257,37 @@ verifies("agents.configuration.model", () => {
   });
 });
 
+verifies("agents.configuration.alias-line", () => {
+  it("is the picker's hint, so screen readers hear it with the picker", async () => {
+    const host = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [{ ...ref, name: "Sorter", model: "smart" }],
+      modelAliases: ["fast", "smart"],
+      aliasSummaries: {
+        smart: {
+          provider: "Anthropic",
+          model: "claude-sonnet-5-5",
+          cost: { kind: "price", input: "€3.00", output: "€15.00" },
+        },
+      },
+    });
+    const page = await show(<AgentScreen host={host} hubId="acme" id="sorter" />);
+    await act(async () => buttonNamed(page, "Configuration")?.click());
+    await act(async () =>
+      [...page.querySelectorAll<HTMLElement>("[role=tab]")]
+        .find((tab) => tab.textContent?.startsWith("Model"))
+        ?.click(),
+    );
+    const select = page.querySelector("select") as HTMLSelectElement;
+    const description = document.getElementById(select.getAttribute("aria-describedby") ?? "");
+    expect(description?.textContent).toBe(
+      "smart · Anthropic / claude-sonnet-5-5 · €3.00 in, €15.00 out per million tokens",
+    );
+    // Drawn by the Field in its hint's style, not as a line of its own.
+    expect(description?.className).toBe("text-caption text-fg-subtle");
+  });
+});
+
 verifies("agents.configuration.open-at-model", () => {
   const agents = () =>
     memoryAgentsHost({
