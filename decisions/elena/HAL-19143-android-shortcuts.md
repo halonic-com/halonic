@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19148 (plan approved by Liam; sketch approved by the board on HAL-18991); Liam reviews and Julian signs off this PR as a security PR
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:JTb/uvjG+wKKhCTRvW5Rd1AOEECcB6Qz8Z5cThHdSgR8KogjEdyperP504+Bcr/57sHTlK8AbL+qtgeO5V2+Dw==
 
 The phone's own page gets four new commands, on Android only, from a local capability for the
 `main` window (`capabilities/app-shortcuts.json`). `phone_open_target` answers, once, the screen
