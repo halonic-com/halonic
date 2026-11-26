@@ -16,7 +16,7 @@ too. A reviewer who gets a pull request outside their scope passes it on.
 
 | Role | Who | Approves alone |
 | --- | --- | --- |
-| Routine reviewer | Nora (Julian until her calibration ends) | Everything the second reviewer may approve, except `packages/core/`, `packages/host/`, `packages/testing/spec/`, `tooling/paperclip/`, a public interface (`src/index.ts`) and any `package.json`, up to 800 changed lines of code |
+| Routine reviewer | Nora (Julian until she runs) | Everything the second reviewer may approve, except `packages/core/`, `packages/host/`, `packages/testing/spec/` and a public interface (`src/index.ts`) |
 | Second reviewer | Julian | Everything outside the maintainer's paths and the security words, up to 1500 changed lines of code (800 in the kernel and the event types) |
 | Maintainer | Liam | Everything else: the maintainer's paths, security and release pull requests, anything that changes what a run may do |
 
@@ -24,20 +24,18 @@ Tests, Markdown and wording files don't count toward the line limits. The
 exact lists are `paperclip.routine-review` and `paperclip.reviewer-paths` in
 `tooling/paperclip/requirements/`.
 
-Outside their own scope, the routine reviewer still reviews first: findings
-go on the pull request, and the second reviewer or the maintainer reads them
-and gives the signed approval. A decision note is still signed by the
+On a pull request outside its scope, the routine reviewer may post a first
+pass of findings; the role `pr_status` names still gives the signed approval.
+The second reviewer keeps approving within its own scope, and its approval
+counts on routine pull requests too. The routine reviewer never approves a
+pull request from its own branch. A decision note is still signed by the
 maintainer (or, for the maintainer's own pull request, the second reviewer)
 right after the routine reviewer's approval, in one quick step.
 
-**Calibration.** The routine reviewer starts in shadow: for at least two days
-and at least 20 pull requests the maintainer or the second reviewer also
-reviews, its findings go on its calibration task, not on the pull request,
-and don't count for merging. It goes live when it missed no `[blocker]` or
-`[major]` the other reviewer found, agreed on the verdict for at least 9 in
-10, and raised at least 7 in 10 of the other reviewer's `[minor]` findings.
-After that, the maintainer reads every 10th approval it gives, and an escaped
-`[blocker]` or `[major]` puts that area back in shadow.
+**Audit.** There is no shadow period (the board's decision of 26 Nov). The
+maintainer reads the routine reviewer's approvals afterwards, and the board
+then reviews how it did. An escaped `[blocker]` or `[major]` goes on the
+maintainer's review task and can narrow the scope again.
 
 ## Tag every finding
 
