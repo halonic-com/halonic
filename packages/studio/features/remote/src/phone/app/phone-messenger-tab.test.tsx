@@ -11,6 +11,7 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { GatewayHost } from "../../test-support/gateway-scene.ts";
 import { listedSession } from "../../test-support/listed-session.ts";
+import { rowNamed } from "../../test-support/phone-messenger-scene.tsx";
 import { FakePhoneTunnel } from "../../test-support/phone-tunnel.ts";
 import type { MessagingList } from "../messaging-client.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
@@ -162,10 +163,13 @@ verifies("remote.phone-messenger-tab", () => {
     await openTab("Messenger");
     await answer(host, "conversations", [engineering, chief]);
     await answer(host, "agents", [{ id: "elena", name: "Elena" }]);
-    expect(buttonNamed("Engineering")).toBeDefined();
-    expect(buttonNamed("Chief")).toBeDefined();
+    expect(rowNamed("Engineering")).toBeDefined();
+    expect(rowNamed("Chief")).toBeDefined();
 
-    await press("Engineering");
+    const row = rowNamed("Engineering");
+    expect(row, "Engineering").toBeDefined();
+    await act(async () => row?.click());
+    await settle();
     await answer(host, "messages", [message(`Merged: ${pullRequest}.`)]);
     const link = document.querySelector<HTMLAnchorElement>(`a[href="${pullRequest}"]`);
     expect(link).not.toBeNull();
