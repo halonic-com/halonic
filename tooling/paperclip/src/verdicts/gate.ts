@@ -61,11 +61,21 @@ export interface RecordedGate {
   readonly securityOk: boolean;
   /** The author, as `authorOf` works it out. */
   readonly author?: string;
+  /**
+   * A read failed, so the records say nothing either way: not approved, but
+   * a queued pull request stays in the queue, as on a refused GitHub read.
+   */
+  readonly unread?: true;
 }
 
 /** Not approved, for one reason, with nothing read. */
 export function refusedGate(reason: string): RecordedGate {
   return { approved: false, reasons: [reason], approvals: [], holds: [], securityOk: false };
+}
+
+/** Not approved because a read failed: the gate adds nothing, and removes nothing for it. */
+export function unreadGate(reason: string): RecordedGate {
+  return { ...refusedGate(reason), unread: true };
 }
 
 /** Why the records don't approve, or none when they do. */

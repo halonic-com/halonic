@@ -1,7 +1,8 @@
-import { type CopyAgent, copyTaskOf } from "../pr-tools/approval-copy.ts";
+import type { CopyAgent } from "../pr-tools/approval-copy.ts";
 import { judgeApprovals } from "../pr-tools/approvals.ts";
 import { ToolInputError } from "../task-tools/input.ts";
 import { type AuthorComment, authorOf, namesPull } from "./author.ts";
+import { copyTaskOf } from "./branch.ts";
 import { judgeVerdicts } from "./reader.ts";
 import {
   reviewerName,

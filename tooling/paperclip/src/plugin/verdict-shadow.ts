@@ -11,9 +11,9 @@ import {
   type VerdictShadowSettings,
 } from "../merge-control/shadow-verdicts.ts";
 import type { MergeSnapshot } from "../merge-control/snapshot.ts";
+import { paperclipCopies } from "../verdicts/approval-copies.ts";
 import type { ImportComment } from "../verdicts/import.ts";
 import { entityVerdicts } from "../verdicts/store.ts";
-import { paperclipCopies } from "./approval-copies.ts";
 
 /**
  * Merge control's shadow comparison of the recorded verdicts with the gate

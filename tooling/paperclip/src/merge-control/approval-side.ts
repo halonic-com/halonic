@@ -1,7 +1,7 @@
 import { routineRefusal } from "../reviewer-paths.ts";
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import { pathReviewer } from "../reviewer-paths-who.ts";
-import { type GateVerdictPull, type RecordedGate, refusedGate } from "../verdicts/gate.ts";
+import { type GateVerdictPull, type RecordedGate, unreadGate } from "../verdicts/gate.ts";
 import { type ApprovalVerdict, approvalOf, routedOf } from "./approval.ts";
 import { type ChangeRequest, changeRequestOf } from "./change-request.ts";
 import { isSecurityPull, securityReason } from "./security-signoff.ts";
@@ -19,6 +19,8 @@ export interface ApprovalSide {
   readonly approval: ApprovalVerdict | null;
   readonly changeRequest: ChangeRequest | null;
   readonly reReview: boolean;
+  /** The recorded verdicts couldn't be read: not approved, but no reason to remove it from the queue. */
+  readonly unread: boolean;
   readonly reasons: readonly string[];
 }
 
@@ -44,7 +46,13 @@ export function commentSide(
   if (security !== undefined) {
     reasons.push(security);
   }
-  return { approval: result.approval, changeRequest, reReview: result.reReview, reasons };
+  return {
+    approval: result.approval,
+    changeRequest,
+    reReview: result.reReview,
+    unread: false,
+    reasons,
+  };
 }
 
 /**
@@ -89,11 +97,14 @@ function recordedApproval(gate: RecordedGate): ApprovalVerdict | null {
   };
 }
 
-/** The approval part from the recorded verdicts; a pull request not read this pass isn't approved. */
+/**
+ * The approval part from the recorded verdicts. A pull request whose records
+ * weren't read this pass, or whose read failed, isn't approved and is unread.
+ */
 export function recordedSide(snapshot: MergeSnapshot, pull: GatePull): ApprovalSide {
   const gate: RecordedGate =
     snapshot.recorded?.[String(pull.number)] ??
-    refusedGate("the recorded verdicts weren't read this pass");
+    unreadGate("the recorded verdicts weren't read this pass");
   const [hold] = gate.holds;
   const reasons = [...gate.reasons];
   if (isSecurityPull(pull) && !gate.securityOk) {
@@ -105,6 +116,7 @@ export function recordedSide(snapshot: MergeSnapshot, pull: GatePull): ApprovalS
     approval: recordedApproval(gate),
     changeRequest: hold === undefined ? null : { who: hold.by, at: hold.at },
     reReview: false,
+    unread: gate.unread === true,
     reasons,
   };
 }

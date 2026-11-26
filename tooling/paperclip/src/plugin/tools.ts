@@ -10,18 +10,18 @@ import type {
 import { defaultSettings } from "../merge-control/state.ts";
 import { type CiTarget, ciFailures, ciFailuresText } from "../pr-tools/ci-failures.ts";
 import { prStatus, statusText } from "../pr-tools/pr-status.ts";
-import { withVerdictGate } from "../pr-tools/pr-status-verdicts.ts";
 import { queueState, queueStateText } from "../pr-tools/queue-state.ts";
 import { rebaseCheck, rebaseCheckText } from "../pr-tools/rebase-pr.ts";
 import { type GitHubGet, gitHubReader } from "../pr-watcher/github.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
 import { loadSnapshot, type StateApi } from "../snapshot/store.ts";
-import { type CopiesApi, paperclipCopies } from "./approval-copies.ts";
+import { type CopiesApi, paperclipCopies } from "../verdicts/approval-copies.ts";
+import { withVerdictGate } from "../verdicts/pr-status-verdicts.ts";
+import { recordedSourceOf, type VerdictGateApi } from "../verdicts/verdict-gate.ts";
 import { readSettings } from "./job.ts";
 import { manifest } from "./manifest.ts";
 import { countingGet, type MetricsApi, writeMetrics } from "./metrics.ts";
 import { verdictGateOn } from "./review-verdict-declaration.ts";
-import { recordedSourceOf, type VerdictGateApi } from "./verdict-gate.ts";
 
 /**
  * The agent tools `pr_status`, `ci_failures`, `rebase_pr` and `queue_state`. Like the watcher,

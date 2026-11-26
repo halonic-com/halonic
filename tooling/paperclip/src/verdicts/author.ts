@@ -1,5 +1,5 @@
 import type { CopyAgent } from "../pr-tools/approval-copy.ts";
-import { branchOwner } from "../pr-watcher/decide.ts";
+import { branchAgentOf } from "./branch.ts";
 
 /**
  * Who wrote a pull request, as `review_verdict` works it out (HAL-19481,
@@ -62,7 +62,7 @@ export function authorOf(facts: AuthorFacts): AuthorOf {
   if (facts.openedBy.toLowerCase() !== facts.teamLogin.toLowerCase()) {
     return { author: facts.openedBy.toLowerCase() };
   }
-  const owner = facts.ownBranch ? branchOwner(facts.branch) : undefined;
+  const owner = facts.ownBranch ? branchAgentOf(facts.branch) : undefined;
   if (owner === undefined) {
     return { refusal: "its branch isn't an agent's branch (<agent>/HAL-<n>-…) in the repository" };
   }

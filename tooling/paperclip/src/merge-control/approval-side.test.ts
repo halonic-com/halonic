@@ -46,6 +46,8 @@ verifies("paperclip.verdicts-gate", () => {
       expect(row.noApproval).toBe(true);
       expect(row.pass).toBe(false);
       expect(row.reasons).toContain("the recorded verdicts weren't read this pass");
+      // Not read is unread: it isn't added, nor removed from the queue for it.
+      expect(row.verdictsUnread).toBe(true);
     });
 
     test("flag on: a recorded approval decides, with no line on GitHub", () => {
@@ -61,6 +63,7 @@ verifies("paperclip.verdicts-gate", () => {
       const row = gateRow(facts, pull(3), flagOn);
       expect(row.pass).toBe(false);
       expect(row.reasons).toContain("who wrote it isn't clear: no hand-over");
+      expect(row.verdictsUnread).toBe(false);
     });
 
     test("flag on: a recorded change request holds it", () => {

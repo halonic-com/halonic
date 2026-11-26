@@ -1,11 +1,12 @@
-import { copyTaskOf } from "../pr-tools/approval-copy.ts";
 import { authorOf } from "./author.ts";
+import { copyTaskOf } from "./branch.ts";
 import {
   type GateVerdictPull,
   judgedGate,
   type RecordedGate,
   type RecordedSource,
   refusedGate,
+  unreadGate,
 } from "./gate.ts";
 import { verdictsFor } from "./reader.ts";
 
@@ -45,10 +46,13 @@ async function readGate(source: RecordedSource, pull: GateVerdictPull): Promise<
   });
   return read.state === "read"
     ? judgedGate(read.verdicts, pull, found.author)
-    : refusedGate(read.reason);
+    : unreadGate(read.reason);
 }
 
-/** The gate on the records for one pull request; a read that fails is not approved. */
+/**
+ * The gate on the records for one pull request; a read that fails is not
+ * approved, and is marked unread so a queued pull request isn't removed for it.
+ */
 export async function recordedGateOf(
   source: RecordedSource,
   pull: GateVerdictPull,
@@ -56,6 +60,6 @@ export async function recordedGateOf(
   try {
     return await readGate(source, pull);
   } catch (error) {
-    return refusedGate(`the recorded verdicts couldn't be read: ${(error as Error).message}`);
+    return unreadGate(`the recorded verdicts couldn't be read: ${(error as Error).message}`);
   }
 }

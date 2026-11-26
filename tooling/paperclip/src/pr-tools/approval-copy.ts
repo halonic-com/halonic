@@ -1,3 +1,4 @@
+import { copyTaskOf } from "../verdicts/branch.ts";
 import { type Approval, signedLines } from "./approvals.ts";
 
 /**
@@ -29,7 +30,7 @@ export interface CopySource {
   readonly agents: readonly CopyAgent[];
 }
 
-/** How the copies are read from Paperclip; the plugin implements it (`plugin/approval-copies.ts`). */
+/** How the copies are read from Paperclip; the plugin implements it (`verdicts/approval-copies.ts`). */
 export interface CopyReader {
   /** The comments on the task with this identifier, or none when there is no such task. */
   taskComments(identifier: string): Promise<readonly CopyComment[]>;
@@ -37,12 +38,6 @@ export interface CopyReader {
 }
 
 const fullSha = /^[0-9a-f]{40}$/;
-
-/** The task a branch `<agent>/HAL-<n>-…` names, or undefined for any other branch. */
-export function copyTaskOf(branch: string): string | undefined {
-  const match = /^[a-z0-9][\w.-]*\/(HAL-\d+)(?:-|$)/i.exec(branch);
-  return match?.[1]?.toUpperCase();
-}
 
 /**
  * Whether the reviewer's own agent wrote the approval on the task: a line

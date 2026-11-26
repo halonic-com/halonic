@@ -10,7 +10,8 @@ import { texts } from "./texts.ts";
  * request never comes out on a gate check, only for a board hold, a branch
  * outside the repository, a conflict with main (a), 15 minutes unmergeable
  * in the queue (b), a new change request (c), a head moved after approval
- * (d), or no signed approval on its head (board checker, 22 Nov). The
+ * (d), or no signed approval on its head (board checker, 22 Nov; not when
+ * the recorded verdicts couldn't be read, HAL-19992). The
  * culprit of a failed group (e) is taken out by GitHub; `culprit.ts` holds it.
  */
 
@@ -31,7 +32,9 @@ function reasonOf(context: PassContext, row: GateRow): RemovalReason | undefined
   if (row.changeRequest !== null) {
     return "change-request";
   }
-  if (row.noApproval) {
+  // A failed read of the recorded verdicts says nothing about the approval,
+  // so it stays queued, as on a refused GitHub read (Julian, HAL-19992).
+  if (row.noApproval && !row.verdictsUnread) {
     return "no-signed-approval";
   }
   if (row.pull.mergeable === "CONFLICTING") {

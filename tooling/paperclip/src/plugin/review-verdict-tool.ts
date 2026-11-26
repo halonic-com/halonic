@@ -6,6 +6,7 @@ import type {
 } from "@paperclipai/plugin-sdk";
 import { defaultSettings } from "../merge-control/state.ts";
 import { ToolInputError } from "../task-tools/input.ts";
+import { paperclipCopies } from "../verdicts/approval-copies.ts";
 import { readVerdictPull } from "../verdicts/pull-facts.ts";
 import {
   readVerdictParams,
@@ -15,7 +16,6 @@ import {
   type VerdictTask,
 } from "../verdicts/review-verdict.ts";
 import { entityVerdicts } from "../verdicts/store.ts";
-import { paperclipCopies } from "./approval-copies.ts";
 import { verdictReviewerOf } from "./review-verdict-declaration.ts";
 import { findTask, registerCounted } from "./task-tools.ts";
 import { companyGitHub, type ToolsApi, toolTimeoutMs, withTimeout } from "./tools.ts";

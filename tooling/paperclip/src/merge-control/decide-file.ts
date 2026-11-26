@@ -68,8 +68,8 @@ const snapshotLists = [
 /**
  * Runs one pass of the plugin's rules. It throws on input it can't trust
  * (a bad time, an unknown setting, a state of another version, a snapshot
- * missing a list), so the Merger falls back to its own rules for that pass
- * instead of acting on a guess.
+ * missing a list, the board's flag on with no recorded verdicts), so the
+ * Merger falls back to its own rules for that pass instead of acting on a guess.
  */
 export function decidePass(input: DecideFileInput): DecideFileAnswer {
   const now = new Date(input.now);
@@ -103,6 +103,13 @@ export function decidePass(input: DecideFileInput): DecideFileAnswer {
     );
   }
   const settings: MergeSettings = { ...defaultSettings, ...input.settings };
+  // With the board's flag on, a snapshot without the records would leave
+  // every pull request unapproved and empty the queue (Julian, HAL-19992).
+  if (settings.verdictGate && input.snapshot.recorded === undefined) {
+    throw new Error(
+      "merge rules: the board's flag verdictGate is on, but the snapshot has no recorded verdicts",
+    );
+  }
   return {
     ...decide(input.snapshot, state, settings, now),
     rules: rulesVersion,
