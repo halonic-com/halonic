@@ -117,7 +117,7 @@ export const switchedStillValid = (host: string, name: string): Ending => ({
 /** The keychain kept its entry: the setting is This computer all the same (HAL-18747). */
 export const SWITCHED_KEYCHAIN_KEPT: Ending = {
   heading: "Switched, but the keychain still holds the pairing.",
-  text: "Halonic couldn't delete it from this computer's keychain. Unlock the keychain and remove the entry whose name starts with server-pairing.",
+  text: "Halonic couldn't delete it from this computer's keychain. Unlock the keychain and remove the entry whose name starts with `server-pairing`.",
 };
 /** The host couldn't be asked at all: nothing changed (HAL-18747). */
 export const SWITCH_FAILED = "Halonic couldn't switch to this computer. Try again.";

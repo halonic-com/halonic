@@ -160,6 +160,8 @@ verifies("connections.engine-row", () => {
       engine.answers.state = { engine: "this-computer" };
       await press(button("Use this computer", dialog() ?? document));
       expect(root.textContent).toContain("the keychain still holds the pairing");
+      const codes = [...root.querySelectorAll("code")].map((code) => code.textContent);
+      expect(codes).toContain("server-pairing");
     });
 
     it("stays on Server when the person cancels", async () => {
