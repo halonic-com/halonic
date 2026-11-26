@@ -22,3 +22,7 @@ on the same day, in the past.
 
 `readings.test.ts` gains two tests, one for each change. Both fail on the code before this
 change. No test or assertion is removed.
+
+## Covers
+
+- paperclip.seat-mover-job
