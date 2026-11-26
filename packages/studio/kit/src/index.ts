@@ -30,6 +30,7 @@ export { AppLogo, type AppLogoProps } from "./app-logo/app-logo.tsx";
 export { type AgentTint, agentTint } from "./avatar/agent-tint.ts";
 export { AuthorLine, type AuthorLineProps } from "./avatar/author-line.tsx";
 export { Avatar, type AvatarProps, type AvatarSize } from "./avatar/avatar.tsx";
+export { type PictureRead, type Pictures, usePictures } from "./avatar/use-pictures.ts";
 export {
   Button,
   type ButtonProps,
@@ -217,6 +218,7 @@ export { ForwardIcon } from "./icons/forward-icon.tsx";
 export { HandIcon } from "./icons/hand-icon.tsx";
 export { HelpIcon } from "./icons/help-icon.tsx";
 export { InfoIcon } from "./icons/info-icon.tsx";
+export { KindIcon, type KindIconName } from "./icons/kind-icon.tsx";
 export { LaptopIcon } from "./icons/laptop-icon.tsx";
 export { LockIcon } from "./icons/lock-icon.tsx";
 export { MaximiseIcon } from "./icons/maximise-icon.tsx";

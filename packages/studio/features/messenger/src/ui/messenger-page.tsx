@@ -15,7 +15,12 @@ import { ChatOpensService, MessengerService } from "../api.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
-import { type AgentPictures, pictureOf, useAgentPictures } from "./agent-pictures.ts";
+import {
+  type AgentPictures,
+  pictureOf,
+  pictureOfAgent,
+  useAgentPictures,
+} from "./agent-pictures.ts";
 import { ChatsColumn, useChats } from "./chats-column.tsx";
 import { ConversationView } from "./conversation-view.tsx";
 import { useFadeIn } from "./load-states.tsx";
@@ -166,6 +171,7 @@ export function MessengerPage({
               <NeedsYouPanel
                 messenger={messenger}
                 read={waiting}
+                pictureOf={(agent) => pictureOfAgent(pictures, rows ?? [], agent)}
                 onOpenChat={select}
                 onAnswered={readAgain}
               />

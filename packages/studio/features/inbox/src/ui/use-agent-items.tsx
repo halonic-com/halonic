@@ -28,6 +28,7 @@ import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
 import { lineEndingInWait, wholeLine } from "./inbox-row.tsx";
 import type { ItemHeading } from "./item-header.tsx";
 import { agentMark } from "./row-marks.tsx";
+import { type AskerPicture, useAskerPictures } from "./use-asker-pictures.ts";
 
 /** What the Inbox page shows of the agents' items, next to its own. */
 export interface AgentItems {
@@ -129,6 +130,7 @@ export function useAgentItems(
     [inbox],
   );
   const state = useSyncExternalStore(subscribe, () => inbox?.state ?? nothing);
+  const pictureOf = useAskerPictures(inbox, state);
   const [opened, setOpened] = useState<Opened | undefined>(undefined);
   const waiting = state.items.filter((item) => item.state.kind === "open");
   const bundles = bundleAgentItems(waiting);
@@ -153,7 +155,7 @@ export function useAgentItems(
     rows: (now, filter) =>
       bundles
         .filter((bundle) => bundle.items.some((item) => agentItemShows(item, filter)))
-        .map((bundle) => bundleRow(bundle, state, now)),
+        .map((bundle) => bundleRow(bundle, state, now, pictureOf)),
     lines: (now) => (
       <SourceLines
         sources={state.sources}
@@ -177,11 +179,13 @@ export function useAgentItems(
       if (bundle === undefined) {
         // Once none waits, the first card heads itself, and its line ends at who asks (HAL-19913).
         const line = agentItemAsker(first, sourceOf(first));
-        return { picture: agentMark(first, "header").avatar, title: agentItemTitle(first), line };
+        const picture = agentMark(first, "header", pictureOf(first)).avatar;
+        return { picture, title: agentItemTitle(first), line };
       }
-      const row = bundleRow(bundle, state, now);
+      const row = bundleRow(bundle, state, now, pictureOf);
+      const [oldest] = bundle.items;
       return {
-        picture: agentMark(bundle.items[0], "header").avatar,
+        picture: agentMark(oldest, "header", pictureOf(oldest)).avatar,
         title: row.title,
         line: wholeLine(row),
       };
@@ -226,14 +230,19 @@ interface Opened {
  * A row of the agents' items: one item's title, or a bundle's count, then the source, who asks and
  * how long the oldest has waited (`inbox.agent-item-bundles`).
  */
-function bundleRow(bundle: AgentBundle, state: AgentInboxState, now: Date): ListRow {
+function bundleRow(
+  bundle: AgentBundle,
+  state: AgentInboxState,
+  now: Date,
+  pictureOf: AskerPicture,
+): ListRow {
   const [oldest] = bundle.items;
   if (oldest === undefined) return { id: bundle.key, title: "" };
   const source = state.sources.find((each) => each.id === oldest.source);
-  if (bundle.items.length === 1) return agentRow(oldest, source, now);
+  if (bundle.items.length === 1) return agentRow(oldest, source, now, pictureOf(oldest));
   const work = state.work.find((each) => each.id === bundle.work);
   const row = {
-    ...agentMark(oldest),
+    ...agentMark(oldest, "sidebar", pictureOf(oldest)),
     id: bundle.key,
     title: bundleTitle(bundle, work),
     ...lineEndingInWait(bundleAsker(bundle, source), waitingFor(new Date(oldest.createdAt), now)),
@@ -246,9 +255,14 @@ function bundleRow(bundle: AgentBundle, state: AgentInboxState, now: Date): List
 }
 
 /** An agent item's row: its title, then its source, who asks and how long it has waited. */
-function agentRow(item: AgentItem, source: MessagingSource | undefined, now: Date): ListRow {
+function agentRow(
+  item: AgentItem,
+  source: MessagingSource | undefined,
+  now: Date,
+  picture: ImageBitmap | undefined,
+): ListRow {
   const row = {
-    ...agentMark(item),
+    ...agentMark(item, "sidebar", picture),
     id: agentItemKey(item),
     title: agentItemTitle(item),
     ...lineEndingInWait(agentItemAsker(item, source), waitingFor(new Date(item.createdAt), now)),

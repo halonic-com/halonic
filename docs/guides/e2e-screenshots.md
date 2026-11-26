@@ -115,6 +115,13 @@ load through `loadUpdateButton` in its `api.ts`.
 person, with who asks, the work it came from and Approve and Reject, on the lifted card surface
 (HAL-19651). The page draws the card through `AgentItemCard` in the Inbox feature's `api.ts`.
 
+## Who asks and what kind
+
+`item-pictures-<light|dark>.png` draws who asks as the picture and the item's kind as its badge, at
+the Inbox row's 60 px, the item header's 40 px and Needs you's 28 px (HAL-19666): made-up agents on
+their tints, one with a picture, a person's initials, a sender nobody named, and the Inbox's own
+items with no badge. The page draws them with the kit's `Avatar` and `KindIcon`.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a

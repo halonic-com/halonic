@@ -23,6 +23,7 @@ export default defineConfig({
         approval: `${import.meta.dirname}/e2e/pages/approval.html`,
         "plan-limit": `${import.meta.dirname}/e2e/pages/plan-limit.html`,
         "agent-card": `${import.meta.dirname}/e2e/pages/agent-card.html`,
+        "item-pictures": `${import.meta.dirname}/e2e/pages/item-pictures.html`,
         settings: `${import.meta.dirname}/e2e/pages/settings.html`,
         "agents-list": `${import.meta.dirname}/e2e/pages/agents-list.html`,
         welcome: `${import.meta.dirname}/e2e/pages/welcome.html`,

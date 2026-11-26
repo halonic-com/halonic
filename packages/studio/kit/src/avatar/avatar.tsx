@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { AgentTint } from "./agent-tint.ts";
 
 /** The props of `Avatar`. */
@@ -22,6 +22,18 @@ export interface AvatarProps {
    * wherever it shows (`kit.avatar-tint`). Without a tint, as for the signed-in person, it stays neutral.
    */
   readonly tint?: AgentTint | undefined;
+  /**
+   * What kind of item the member asks about, as a small glyph such as `KindIcon`'s, on a round
+   * badge at the tile's bottom right: 16px on a 28px tile, 20px on a 40px or 60px one
+   * (`kit.avatar-badge`). The picture says who asks, the badge what it is. On a 28px tile the
+   * initials keep one letter, so the badge covers none of the second.
+   */
+  readonly badge?: ReactNode;
+  /**
+   * A glyph in place of the initials, on the neutral tile, such as `KindIcon`'s silhouette for a
+   * sender the source doesn't name (`kit.avatar-badge`). A picture still wins.
+   */
+  readonly glyph?: ReactNode;
 }
 
 /** The Avatar's three sizes: 28px in a row, 40px in a header, 60px in a sidebar row. */
@@ -73,10 +85,66 @@ const neutral = "bg-surface-muted on-muted:bg-surface";
  * @example
  * <Avatar name={member.name} />
  * <Avatar name={agent.name} tint={agentTint(agent.id)} picture={pictures.get(agent.avatar)} />
+ * <Avatar name={agent.name} tint={agentTint(agent.id)} badge={<KindIcon kind="approval" />} />
  */
-export function Avatar({ name, picture, size = "row", tint }: AvatarProps) {
+export function Avatar({ badge, ...tile }: AvatarProps) {
+  if (badge === undefined) return <AvatarTile {...tile} />;
+  const size = tile.size ?? "row";
+  return (
+    <span aria-hidden="true" className={`relative inline-flex shrink-0 ${badgeHolders[size]}`}>
+      <AvatarTile {...tile} letters={size === "row" ? 1 : 2} />
+      <span
+        data-avatar-badge
+        className={`absolute -end-0.5 -bottom-0.5 flex items-center justify-center rounded-full bg-surface text-fg-muted ring-1 ring-border-strong ${badgeSizes[size]}`}
+      >
+        {badge}
+      </span>
+    </span>
+  );
+}
+
+/** The square that holds the tile and its badge, the tile's own size, so the row lines up as before. */
+const badgeHolders: Record<AvatarSize, string> = {
+  row: "size-7",
+  header: "size-10",
+  sidebar: "size-15",
+};
+
+/** The badge's side and its glyph's: 16px on a 28px tile, 20px on the larger ones. */
+const badgeSizes: Record<AvatarSize, string> = {
+  row: "size-4 [&>svg]:size-3",
+  header: "size-5 [&>svg]:size-3.5",
+  sidebar: "size-5 [&>svg]:size-3.5",
+};
+
+/** A glyph's side on each tile, as the Inbox's marks: half the tile or a little more. */
+const glyphSizes: Record<AvatarSize, string> = {
+  row: "[&>svg]:size-4",
+  header: "[&>svg]:size-5",
+  sidebar: "[&>svg]:size-8",
+};
+
+/** The round tile alone: the picture, or up to `letters` initials. */
+function AvatarTile({
+  name,
+  picture,
+  size = "row",
+  tint,
+  glyph,
+  letters = 2,
+}: Omit<AvatarProps, "badge"> & { readonly letters?: 1 | 2 }) {
   const { tile, text } = sizes[size];
   if (picture !== undefined) return <AvatarPicture picture={picture} size={size} />;
+  if (glyph !== undefined) {
+    return (
+      <span
+        aria-hidden="true"
+        className={`flex items-center justify-center ${neutral} text-fg-muted ring-1 ring-inset ring-border-strong ${glyphSizes[size]} ${tile}`}
+      >
+        {glyph}
+      </span>
+    );
+  }
   // A hovered, focused or open plain row is filled `surface-muted` too, so the edge keeps the
   // circle from vanishing into it (`kit.avatar-edge`); a picture fills the tile on its own.
   const look = tint === undefined ? `${neutral} text-fg-muted` : `${tint} text-fg`;
@@ -85,7 +153,7 @@ export function Avatar({ name, picture, size = "row", tint }: AvatarProps) {
       aria-hidden="true"
       className={`flex items-center justify-center ${text} font-semibold ${look} ring-1 ring-inset ring-border-strong ${tile}`}
     >
-      {initials(name)}
+      {initials(name, letters)}
     </span>
   );
 }
@@ -135,12 +203,12 @@ function AvatarPicture({
   );
 }
 
-/** The first letters of the first two words, upper case: "Sofia Marin" is "SM"; empty is "?". */
-function initials(name: string): string {
+/** The first letters of the first two words (or the first word), upper case: "Sofia Marin" is "SM"; empty is "?". */
+function initials(name: string, most: 1 | 2): string {
   const words = name
     .trim()
     .split(/\s+/u)
     .filter((word) => word !== "");
-  const letters = words.slice(0, 2).map((word) => [...word][0] ?? "");
+  const letters = words.slice(0, most).map((word) => [...word][0] ?? "");
   return letters.join("").toUpperCase() || "?";
 }
