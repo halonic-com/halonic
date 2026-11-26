@@ -121,5 +121,29 @@ verifies("agent-host.paperclip-live-events", () => {
 
       expect(on.sockets.opened).toHaveLength(2);
     });
+
+    it("Disconnect closes the socket, and none opens again", async () => {
+      const on = await connectedWithEvents();
+
+      await on.paperclipKey.disconnect({ workspace: on.workspace, connection: "halonic" });
+      await settle();
+      await on.wait(60_000);
+
+      expect(on.sockets.opened).toHaveLength(1);
+      expect(on.sockets.opened[0]?.closed).toBe(true);
+    });
+
+    it("Disconnect while a dropped socket waits to open again cancels that attempt", async () => {
+      const on = await connectedWithEvents();
+      const dropped = eventsSignalOf({ kind: "closed", code: 1006, why: "closed" });
+      if (dropped !== undefined) on.sockets.say(dropped);
+      await settle();
+
+      await on.paperclipKey.disconnect({ workspace: on.workspace, connection: "halonic" });
+      await settle();
+      await on.wait(60_000);
+
+      expect(on.sockets.opened).toHaveLength(1);
+    });
   });
 });

@@ -31,13 +31,16 @@ verifies("agent-host.paperclip-live-events", () => {
       }
     });
 
-    it("a run's once-a-second activity, its logs and plugin events touch nothing", () => {
+    it("a run's once-a-second activity, its logs, plugin events and names of an object's own properties touch nothing", () => {
       for (const type of [
         "heartbeat.run.activity",
         "heartbeat.run.log",
         "heartbeat.run.event",
         "agent.runtime_state.updated",
         "plugin.acme.ready",
+        "constructor",
+        "hasOwnProperty",
+        "isPrototypeOf",
       ]) {
         expect(touchedBy({ kind: "other", type, createdAt })).toEqual([]);
       }

@@ -36,8 +36,9 @@ export interface LiveSyncOptions {
 /**
  * Every connected source's live events, joined to the sync (requirement
  * `agent-host.paperclip-live-events`). An event that touches a local copy brings a read
- * {@link eventsBatchMs} later, gathering the ones that follow; a `resync` or a (re)connect reads at
- * once, since events can't be replayed. Events count as connected only while every source's
+ * {@link eventsBatchMs} later, gathering the ones that follow, and so does a `resync`, so a server
+ * that repeats it can't bring reads back to back; a (re)connect reads at once, since events can't
+ * be replayed. Adding and removing a source run one at a time per source. Events count as connected only while every source's
  * socket is open; otherwise the sync polls at the rates without events. Each change a read then
  * applies is counted by how it was announced: `event`, `catch-up`, or `poll` when nothing
  * announced it, which the counters call missed by events while they were connected.
@@ -50,6 +51,8 @@ export class LiveSync {
   readonly #announced = new Map<string, { source: SyncSource; heard: number }>();
   #heardCount = 0;
   #batching = false;
+  /** Per source, the add or remove still running, which the next one waits for. */
+  readonly #changing = new Map<string, Promise<void>>();
   #combined: SyncConnection = "polling-only";
 
   constructor(options: LiveSyncOptions) {
@@ -61,7 +64,16 @@ export class LiveSync {
    * Starts following `id`'s events, replacing the socket it had: a new key always comes with a
    * new socket, so a source refused before is tried again.
    */
-  async add(id: string, open: OpenEvents): Promise<void> {
+  add(id: string, open: OpenEvents): Promise<void> {
+    return this.#oneAtATime(id, () => this.#add(id, open));
+  }
+
+  /** Stops following `id`'s events, as Disconnect does. */
+  remove(id: string): Promise<void> {
+    return this.#oneAtATime(id, () => this.#remove(id));
+  }
+
+  async #add(id: string, open: OpenEvents): Promise<void> {
     await this.#keepers.get(id)?.stop();
     const keeper = new LiveEventsKeeper({
       scheduler: this.#options.scheduler,
@@ -77,13 +89,27 @@ export class LiveSync {
     await this.#combine();
   }
 
-  /** Stops following `id`'s events, as Disconnect does. */
-  async remove(id: string): Promise<void> {
+  async #remove(id: string): Promise<void> {
     const keeper = this.#keepers.get(id);
     this.#keepers.delete(id);
     this.#announced.delete(id);
     await keeper?.stop();
     await this.#combine();
+  }
+
+  /**
+   * Runs `work` once every add or remove of `id` before it ended, so two that overlap can't both
+   * replace the same keeper and leave one socket open. A failed one doesn't stop the next.
+   */
+  async #oneAtATime(id: string, work: () => Promise<void>): Promise<void> {
+    const before = this.#changing.get(id) ?? Promise.resolve();
+    const running = before.catch(() => undefined).then(work);
+    this.#changing.set(id, running);
+    try {
+      await running;
+    } finally {
+      if (this.#changing.get(id) === running) this.#changing.delete(id);
+    }
   }
 
   /**
@@ -141,7 +167,7 @@ export class LiveSync {
         return;
       case "resync":
         this.#announce(id, "catch-up");
-        await this.#options.sync.pollNow();
+        await this.#batch();
         return;
       case "open":
         // A read at once catches up on what happened while the socket was down.
@@ -169,7 +195,13 @@ export class LiveSync {
     this.#batching = true;
     const { key, timerId } = liveSyncTimers.batch;
     const at = new Date(this.#options.clock.now().getTime() + eventsBatchMs).toISOString();
-    await this.#options.scheduler.schedule(key, timerId, at);
+    try {
+      await this.#options.scheduler.schedule(key, timerId, at);
+    } catch (error) {
+      // No timer is set, so the next event must be able to set one.
+      this.#batching = false;
+      throw error;
+    }
   }
 
   /** Tells the sync and the counters whether every source's events reach the engine. */

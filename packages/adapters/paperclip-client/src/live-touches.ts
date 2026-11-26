@@ -11,13 +11,14 @@ const taskCollections: readonly SyncCollectionName[] = ["conversations", "inbox"
  * Event types outside `activity.logged` that change the local copy: an agent's status changes the
  * agents list, and a run that starts or ends changes whether a chat's agent is working.
  * `heartbeat.run.activity` (once a second per run), run logs and plugin events change nothing
- * we keep, so they bring no read.
+ * we keep, so they bring no read. A `Map`, so a type the server names such as `constructor` finds
+ * nothing rather than an object's own property.
  */
-const otherTouches: Readonly<Record<string, readonly SyncCollectionName[]>> = {
-  "agent.status": ["agents"],
-  "heartbeat.run.queued": ["conversations"],
-  "heartbeat.run.status": ["conversations"],
-};
+const otherTouches: ReadonlyMap<string, readonly SyncCollectionName[]> = new Map([
+  ["agent.status", ["agents"]],
+  ["heartbeat.run.queued", ["conversations"]],
+  ["heartbeat.run.status", ["conversations"]],
+]);
 
 /**
  * The collections of the local copy a live event touches, or none for one that changes nothing
@@ -29,7 +30,7 @@ const otherTouches: Readonly<Record<string, readonly SyncCollectionName[]>> = {
  * secret proposal or a join request, the Inbox, where those show.
  */
 export function touchedBy(event: LiveEvent): readonly SyncCollectionName[] {
-  if (event.kind === "other") return otherTouches[event.type] ?? [];
+  if (event.kind === "other") return otherTouches.get(event.type) ?? [];
   if (event.entityType === "issue") return taskCollections;
   if (event.entityType === "agent") return ["agents"];
   return ["inbox"];

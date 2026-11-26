@@ -121,15 +121,39 @@ verifies("agent-host.paperclip-live-events", () => {
       expect(on.applied).toEqual(["catch-up", "event", "poll"]);
     });
 
-    it("reads at once on a resync, as a catch-up", async () => {
+    it("reads 300 ms after a resync, gathering the resyncs that follow, as a catch-up", async () => {
       const on = await startLive();
       await on.events.current.say({ kind: "open" });
       await on.scheduler.pass(0);
       const before = on.polls();
 
-      await on.events.current.say({ kind: "resync" });
-      await on.scheduler.pass(0);
+      for (let resync = 0; resync < 5; resync += 1) {
+        await on.events.current.say({ kind: "resync" });
+        await on.scheduler.pass(50);
+      }
+      expect(on.polls()).toBe(before);
+      await on.scheduler.pass(50);
 
+      expect(on.polls()).toBe(before + 1);
+    });
+
+    it("lets the next event bring a read when setting the batch's timer failed", async () => {
+      const on = await startLive();
+      await on.events.current.say({ kind: "open" });
+      await on.scheduler.pass(0);
+      const schedule = on.scheduler.schedule.bind(on.scheduler);
+      const refused = new Error("The scheduler's store is full.");
+      on.scheduler.schedule = async () => {
+        on.scheduler.schedule = schedule;
+        throw refused;
+      };
+      await on.events.current.say({ kind: "change" });
+      const before = on.polls();
+
+      await on.events.current.say({ kind: "change" });
+      await on.scheduler.pass(300);
+
+      expect(on.errors).toEqual([refused]);
       expect(on.polls()).toBe(before + 1);
     });
 
@@ -181,6 +205,20 @@ verifies("agent-host.paperclip-live-events", () => {
       expect(on.reconnectDueIn()).toBe(999);
     });
 
+    it("keeps the waits growing after a socket open less than 5 minutes", async () => {
+      const on = await startLive(() => 0.999_999);
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await on.events.current.say({ kind: "closed", refused: false });
+        await on.scheduler.pass(on.reconnectDueIn() ?? 0);
+      }
+      await on.events.current.say({ kind: "open" });
+      await on.scheduler.pass(5 * 60_000 - 1_000);
+
+      await on.events.current.say({ kind: "closed", refused: false });
+
+      expect(on.reconnectDueIn()).toBe(7_999);
+    });
+
     it("on a refused socket tries no more and polls at the rates without events", async () => {
       const on = await startLive();
       await on.events.current.say({ kind: "open" });
@@ -215,6 +253,20 @@ verifies("agent-host.paperclip-live-events", () => {
 
       expect(old.closed).toBe(true);
       expect(on.connections).toEqual([]);
+    });
+
+    it("leaves one socket open when two keys for one source come at once, and removing closes it", async () => {
+      const on = await startLive();
+      const first = new FakeEvents();
+      const second = new FakeEvents();
+
+      await Promise.all([on.live.add("acme", first.open), on.live.add("acme", second.open)]);
+
+      expect(on.events.current.closed).toBe(true);
+      expect(first.current.closed).toBe(true);
+      expect(second.current.closed).toBe(false);
+      await on.live.remove("acme");
+      expect(second.current.closed).toBe(true);
     });
 
     it("closes the socket and tries no more once removed", async () => {

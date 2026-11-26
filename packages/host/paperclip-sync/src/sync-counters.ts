@@ -19,8 +19,9 @@ export const syncLogEveryMs = 15 * 60_000;
 const samplesMax = 20_000;
 
 /**
- * The most changes of connection kept. The reconnect waits (up to a minute, from 1 second again
- * only after 5 minutes open) allow about 3,000 in 24 hours, so a flapping socket stays well below.
+ * The most changes of connection kept. A socket that opens and drops at once reconnects about
+ * every 30 seconds at the 60-second cap (full jitter halves the mean), so about 5,760 changes in
+ * 24 hours; this cap bounds that case, and any socket that stays open longer stays below it.
  */
 export const connectionChangesMax = 5_000;
 
