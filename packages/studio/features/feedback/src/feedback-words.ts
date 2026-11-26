@@ -21,6 +21,8 @@ export const feedbackWords = {
   cancel: "Cancel",
   send: "Send",
   placeholder: "What did you notice? The first line becomes the title.",
+  /** The text field's name for screen readers: the placeholder's question (design check, HAL-19208). */
+  textLabel: "What did you notice?",
   /** Under the text field: where the task goes and what it carries. */
   footnote: (project: string, assignee: string) =>
     `Goes to ${project} as a task in Paperclip for ${assignee}, with the time and Studio version.`,

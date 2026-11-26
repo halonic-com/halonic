@@ -1,5 +1,5 @@
 import { Button, Field, Kbd, TextArea } from "@halonicjs/studio-kit";
-import { type FormEvent, type RefObject, useRef, useState } from "react";
+import { type FormEvent, type RefObject, useId, useRef, useState } from "react";
 import { sizeLabel } from "../crop.ts";
 import { endFeedback, type FeedbackIpc, feedbackCommands } from "../feedback-ipc.ts";
 import { feedbackWords } from "../feedback-words.ts";
@@ -58,6 +58,7 @@ export function SendFeedback({ ipc, send, details, encodePng = canvasPng }: Send
   const [text, setText] = useState("");
   const [error, setError] = useState<string>();
   const [sending, setSending] = useState(false);
+  const footnoteId = useId();
   useEscapeEnds(ipc);
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -80,12 +81,14 @@ export function SendFeedback({ ipc, send, details, encodePng = canvasPng }: Send
 
   return (
     <form
-      className="fixed inset-0 flex flex-col gap-4 bg-app-panel p-6 text-fg"
+      // The window is opaque and has no frame, so a 1px edge keeps it apart from a window of the
+      // same colour behind it (design check on HAL-19208).
+      className="fixed inset-0 flex flex-col gap-4 border border-border-strong bg-app-panel p-6 text-fg"
       data-feedback-send=""
       onSubmit={onSubmit}
     >
       <CropView canvas={canvas} crop={crop} />
-      <Field label={feedbackWords.sendTitle} hideLabel error={error ?? null}>
+      <Field label={feedbackWords.textLabel} hideLabel error={error ?? null}>
         <TextArea
           ref={textField}
           value={text}
@@ -93,6 +96,8 @@ export function SendFeedback({ ipc, send, details, encodePng = canvasPng }: Send
           minRows={3}
           maxRows={8}
           submitOnCtrlEnter
+          // A screen reader also hears what goes with the text.
+          describedBy={footnoteId}
           // The window opens to be typed in (sketch §2).
           autoFocus
           onChange={(event) => {
@@ -101,9 +106,10 @@ export function SendFeedback({ ipc, send, details, encodePng = canvasPng }: Send
           }}
         />
       </Field>
-      <Footnote details={details} />
+      <Footnote id={footnoteId} details={details} />
       {/* Last in the page, so Tab goes from the text to Cancel and Send; shown first, as a title bar. */}
-      <TitleBar busy={sending || crop === undefined} onCancel={() => endFeedback(ipc)} />
+      {/* Send stays still while the crop loads: a press then does nothing, and nothing is sending. */}
+      <TitleBar busy={sending} onCancel={() => endFeedback(ipc)} />
     </form>
   );
 }
@@ -117,7 +123,8 @@ function CropView({
   readonly crop: StillImage | undefined;
 }) {
   return (
-    <>
+    // Close together, so the size reads as the crop's caption.
+    <div className="flex flex-col gap-2">
       <div
         className="flex shrink-0 items-center justify-center rounded-md bg-surface-subtle"
         style={{ height: cropBox.height }}
@@ -127,15 +134,15 @@ function CropView({
       <p className="font-mono text-caption text-fg-muted" data-feedback-size="">
         {crop === undefined ? "" : sizeLabel({ x: 0, y: 0, ...crop })}
       </p>
-    </>
+    </div>
   );
 }
 
 /** Where the task goes and what it carries, with the keys that send it. */
-function Footnote({ details }: { readonly details: FeedbackDetails }) {
+function Footnote({ id, details }: { readonly id: string; readonly details: FeedbackDetails }) {
   return (
     <div className="flex items-center justify-between gap-4 text-caption text-fg-muted">
-      <p>{feedbackWords.footnote(details.project, details.assignee)}</p>
+      <p id={id}>{feedbackWords.footnote(details.project, details.assignee)}</p>
       <span className="flex shrink-0 items-center gap-1">
         <Kbd keys={details.mac ? ["⌘", "↩"] : ["Ctrl", "Enter"]} />
         {feedbackWords.sendKeyHint}

@@ -106,6 +106,17 @@ verifies("feedback.send-window", () => {
     expect(element.textContent).toContain("CtrlEntersend");
   });
 
+  it("names the field with the placeholder's question and describes it with the footnote", async () => {
+    await open();
+    const label = element.querySelector(`label[for="${textField().id}"]`);
+    expect(label?.textContent).toBe("What did you notice?");
+    const described = textField().getAttribute("aria-describedby")?.split(" ") ?? [];
+    const footnote = described.map((id) => document.getElementById(id)?.textContent);
+    expect(footnote).toContain(
+      "Goes to Acme apps as a task in Paperclip for Robin, with the time and Studio version.",
+    );
+  });
+
   it("sends once with text, with the crop as a PNG, then ends", async () => {
     const { shell, send, sent } = await open();
     type("Run list jumps\nIt scrolls to the top");
