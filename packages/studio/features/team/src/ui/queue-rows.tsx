@@ -5,7 +5,12 @@ import { mergeQueueWords } from "../merge-queue-words.ts";
 import { formatAge, pullRequestWords } from "../pull-request-words.ts";
 import type { PullRequestRow } from "../pull-requests.ts";
 import { formatTime, minutesSince, type TeamClock } from "../team-format.ts";
-import { authorName, OwnerLine, type WebLinkOpener } from "./pull-request-row.tsx";
+import {
+  authorName,
+  OwnerLine,
+  PullRequestTitle,
+  type WebLinkOpener,
+} from "./pull-request-row.tsx";
 
 /** A "·" only screen readers hear, between parts a row lays out apart. */
 function SpokenDot() {
@@ -73,10 +78,9 @@ export function QueueRow(props: { row: PullRequestRow; clock: TeamClock; opener:
       <span className="w-6 shrink-0 text-end text-body-strong tabular-nums">
         {pullRequest.queue?.position}
       </span>
-      <p className="min-w-0 flex-1 wrap-anywhere text-body-strong">
-        <span className="font-mono text-small text-fg-muted">{pullRequest.label}</span>{" "}
-        {pullRequest.title}
-      </p>
+      <span className="min-w-0 flex-1">
+        <PullRequestTitle pullRequest={pullRequest} />
+      </span>
       {pullRequest.fastTrack ? (
         <>
           <SpokenDot />

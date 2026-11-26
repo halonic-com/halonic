@@ -96,7 +96,11 @@ verifies("team.phone-screens", () => {
       expect(rows(page)[0]).toContain("[x](javascript:alert(1))");
       expect(rows(page)[1]).toContain('<button type="button">Approve</button>');
       expect(page.querySelectorAll("a")).toHaveLength(0);
-      expect([...page.querySelectorAll("li button")]).toHaveLength(0);
+      // The only button in each row is the one that opens the PR's page, named by the title as typed.
+      expect([...page.querySelectorAll("li button")].map((each) => each.textContent)).toEqual([
+        "#60 [x](javascript:alert(1))",
+        '#61 <button type="button">Approve</button>',
+      ]);
     });
 
     it("shows a GitHub page's full address before it opens", async () => {

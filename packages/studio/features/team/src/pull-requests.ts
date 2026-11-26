@@ -1,7 +1,9 @@
 import type {
   AgentMessaging,
   MergeQueue,
+  MessagingId,
   PullRequest,
+  PullRequestEvent,
   PullRequestList,
   TeamStatus,
   WorkItem,
@@ -22,6 +24,14 @@ export interface PullRequestRow {
   readonly task: WorkItem | undefined;
   /** For a PR in the queue: how many are in it, and how long its group has been building. */
   readonly queue: { readonly total: number; readonly groupSince: string | undefined } | undefined;
+}
+
+/** What the One PR page shows: the PR's row, its timeline, and who holds its task. */
+export interface PullRequestPage {
+  readonly row: PullRequestRow;
+  readonly timeline: readonly PullRequestEvent[];
+  /** The name of the agent its task is assigned to, when messaging knows it. */
+  readonly taskHolder: string | undefined;
 }
 
 /**
@@ -107,6 +117,40 @@ export class PullRequests {
       merged: mergedRows(list.recent, work),
       queue: queue === undefined ? undefined : queueView(queue, rows, list.recent),
     };
+  }
+
+  /**
+   * One PR's page (HAL-17515 P12–P17): its row as the lists have it, with its task and queue
+   * place, and its timeline, oldest step first. `undefined` when no source knows the PR.
+   */
+  async detail(id: MessagingId): Promise<PullRequestPage | undefined> {
+    if (this.team === undefined) return undefined;
+    const [state, detail] = await Promise.all([this.read(), this.team.pullRequest(id)]);
+    if (detail === undefined) return undefined;
+    const listed =
+      state.kind === "read"
+        ? [...state.rows, ...state.merged].find((row) => row.pullRequest.id === id)
+        : undefined;
+    const row: PullRequestRow = {
+      stuck: [],
+      task: undefined,
+      queue: undefined,
+      ...listed,
+      pullRequest: detail.pullRequest,
+    };
+    return { row, timeline: detail.timeline, taskHolder: await this.holderOf(row.task) };
+  }
+
+  /** The name of the agent `task` is assigned to. Without it the page still shows, so a failed read is logged. */
+  private async holderOf(task: WorkItem | undefined): Promise<string | undefined> {
+    if (task?.assignee === undefined || this.messaging === undefined) return undefined;
+    try {
+      const agents = await this.messaging.listAgents();
+      return agents.find((agent) => agent.id === task.assignee)?.name;
+    } catch (error) {
+      console.error("A pull request's page couldn't read who holds its task:", error);
+      return undefined;
+    }
   }
 
   /** Calls `listener` whenever a source says its team status changed. Returns a function that stops it. */
