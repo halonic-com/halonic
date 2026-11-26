@@ -71,6 +71,11 @@ export function clockTime(at: Date): string {
   return at.toISOString().slice(11, 16);
 }
 
+/** The earlier comments the bot is shown: the last few. Each body is capped at `commentLimit` when quoted. */
+export function shownEarlier(input: FrontBotInput): readonly EarlierComment[] {
+  return input.earlier.slice(-earlierCommentLimit);
+}
+
 /** Quotes text as data: capped, on its own lines between fences the text can't close. */
 function quoted(text: string, limit: number): string {
   const capped = text.length > limit ? `${text.slice(0, limit)} …` : text;
@@ -82,9 +87,7 @@ function quoted(text: string, limit: number): string {
  * pasted comment reads as data, never as an instruction to the bot.
  */
 export function frontBotUserText(input: FrontBotInput): string {
-  const earlier = input.earlier
-    .slice(-earlierCommentLimit)
-    .map(
+  const earlier = shownEarlier(input).map(
       (comment) =>
         `Comment by ${comment.author} at ${clockTime(comment.at)} UTC:\n${quoted(comment.body, commentLimit)}`,
     );

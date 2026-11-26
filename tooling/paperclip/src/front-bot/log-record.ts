@@ -31,7 +31,8 @@ export type FrontBotReason =
   | "timeout"
   | "network"
   | "unreadable_answer"
-  | "post_failed";
+  | "post_failed"
+  | "note_unsaved";
 
 /** The one record per decision. Every field is a number, a fixed code or an id. */
 export interface FrontBotLogRecord {

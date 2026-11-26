@@ -1,4 +1,11 @@
 import { findSecretShape } from "@halonicjs/std";
+import {
+  clockTime,
+  commentLimit,
+  type FrontBotInput,
+  frontBotUserText,
+  shownEarlier,
+} from "./prompt.ts";
 
 /**
  * The plain-code check every first reply passes before it is posted
@@ -58,7 +65,8 @@ const timePromises =
 
 /**
  * Words that state a result or a claimed action. Allowed only when negated
- * ("Not done yet.") or quoted from the input together with a time from it.
+ * ("Not done yet.") or quoted from an earlier comment together with that
+ * comment's own time.
  */
 const resultWords = [
   "merged",
@@ -148,17 +156,25 @@ function allNamesKnown(line: string, input: string): boolean {
   return true;
 }
 
-/** A result word is fine when negated, or when the input has it and the reply names a time from the input. */
-function resultWordsAllowed(line: string, input: string): boolean {
-  const lowerInput = input.toLowerCase();
-  const times = line.match(/\b\d{1,2}:\d{2}\b/g) ?? [];
-  const quotesTime = times.some((time) => input.includes(time));
+/**
+ * A result word is fine when negated, or when an earlier comment the bot was
+ * shown says it and the reply names that comment's time: then the reply quotes
+ * who said it and when. The task title and the new message never count, since
+ * the person's own question ("Is #6129 merged yet?") holds the word it asks
+ * about, and a time from one comment never vouches for a word from another.
+ */
+function resultWordsAllowed(line: string, input: FrontBotInput): boolean {
+  const timesInLine = new Set(line.match(/\b\d{1,2}:\d{2}\b/g) ?? []);
+  const quotedBodies = shownEarlier(input)
+    .filter((comment) => timesInLine.has(clockTime(comment.at)))
+    .map((comment) => comment.body.slice(0, commentLimit).toLowerCase());
   for (const match of line.matchAll(resultPattern)) {
     const before = line.slice(0, match.index);
     if (negation.test(before)) {
       continue;
     }
-    if (!(quotesTime && lowerInput.includes(match[0].toLowerCase()))) {
+    const word = new RegExp(`\\b${match[0].toLowerCase()}\\b`);
+    if (!quotedBodies.some((body) => word.test(body))) {
       return false;
     }
   }
@@ -166,12 +182,14 @@ function resultWordsAllowed(line: string, input: string): boolean {
 }
 
 /**
- * Checks one reply against the exact text the bot was given. Cheap checks on
- * the reply alone come first; then every number, link and name must be found
- * in the input, and result words need a negation or a quoted time. Result words
- * come before names, so a sentence that starts with one is reported as a result.
+ * Checks one reply against what the bot was given. Cheap checks on the reply
+ * alone come first; then every number, link and name must be found in the exact
+ * text it sent, and result words need a negation or an earlier comment quoted
+ * with its time. Result words come before names, so a sentence that starts with
+ * one is reported as a result.
  */
-export function checkGrounding(line: string, input: string): Grounding {
+export function checkGrounding(line: string, given: FrontBotInput): Grounding {
+  const input = frontBotUserText(given);
   const reject = (reason: GroundingReason): Grounding => ({ ok: false, reason });
   if (findSecretShape(line) !== undefined) return reject("secret_shape");
   if (line.length > maxCharacters || words(line).length > maxWords) return reject("too_long");
@@ -182,7 +200,7 @@ export function checkGrounding(line: string, input: string): Grounding {
   if (timePromises.test(line)) return reject("time_promise");
   if (!allNumbersKnown(line, input)) return reject("unknown_number");
   if (!allLinksKnown(line, input)) return reject("unknown_link");
-  if (!resultWordsAllowed(line, input)) return reject("result_word");
+  if (!resultWordsAllowed(line, given)) return reject("result_word");
   if (!allNamesKnown(line, input)) return reject("unknown_name");
   return { ok: true };
 }

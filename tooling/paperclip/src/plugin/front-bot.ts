@@ -26,7 +26,7 @@ import {
   logMeta,
   notCalledRecord,
 } from "../front-bot/log-record.ts";
-import { automaticNotePrefix, frontBotUserText } from "../front-bot/prompt.ts";
+import { automaticNotePrefix } from "../front-bot/prompt.ts";
 import { frontBotKey, readFrontBotSettings } from "../front-bot/settings.ts";
 import type { StateApi } from "../snapshot/store.ts";
 import { errorCode } from "./board-check-api.ts";
@@ -155,24 +155,33 @@ async function beforeCall(
   return { scene, keyRef, base, started, spend, health };
 }
 
-/** Posts the line as an Automatic note with no author and keeps its id. Returns whether it did. */
+/**
+ * What posting the note came to: not posted, posted and its id kept, or
+ * posted but its id not kept. The readers still skip an unkept note by its
+ * prefix, so it is logged as posted with its own reason.
+ */
+type PostResult = "failed" | "posted" | "unsaved";
+
+/** Posts the line as an Automatic note with no author and keeps its id. */
 async function postNote(
   ctx: FrontBotApi,
   scene: Scene,
   line: string,
   base: RecordBase,
-): Promise<boolean> {
+): Promise<PostResult> {
   const { companyId, id } = scene.issue;
+  let commentId: string;
   try {
     const posted = await ctx.issues.createComment(id, `${automaticNotePrefix}${line}`, companyId);
-    await rememberNote(ctx.state, companyId, id, {
-      commentId: posted.id,
-      runId: base.runId,
-      at: base.at,
-    });
-    return true;
+    commentId = posted.id;
   } catch {
-    return false;
+    return "failed";
+  }
+  try {
+    await rememberNote(ctx.state, companyId, id, { commentId, runId: base.runId, at: base.at });
+    return "posted";
+  } catch {
+    return "unsaved";
   }
 }
 
@@ -207,12 +216,13 @@ async function callAndPost(
     reason,
   });
   if (call.answer.kind === "skip") return called("skip");
-  const grounding = checkGrounding(call.answer.line, frontBotUserText(input));
+  const grounding = checkGrounding(call.answer.line, input);
   if (!grounding.ok) return called("rejected", grounding.reason);
   // The agent may have answered while Haiku wrote: then the line would talk over it.
   if (await agentAnswered(ctx, scene)) return called("rejected", "agent_answered");
-  if (!(await postNote(ctx, scene, call.answer.line, base))) return called("failed", "post_failed");
-  const record = called("posted");
+  const posted = await postNote(ctx, scene, call.answer.line, base);
+  if (posted === "failed") return called("failed", "post_failed");
+  const record = called("posted", posted === "unsaved" ? "note_unsaved" : undefined);
   await writeMetrics(ctx, { "front_bot.latency_ms": record.latencyMs }, { companyId });
   return record;
 }
