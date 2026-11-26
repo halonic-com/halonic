@@ -36,6 +36,7 @@ import { precheckWaits } from "./precheck-waits.ts";
 import { realDeps, registerReadyForReview } from "./ready-for-review.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
 import { seatMovePass } from "./seat-move-job.ts";
+import { handleSeatReset, seatResetRouteKey } from "./seat-reset-route.ts";
 import { registerStatePacket } from "./state-packet-data.ts";
 import { taskEffort } from "./task-effort.ts";
 import { registerTaskTools } from "./task-tools.ts";
@@ -222,6 +223,9 @@ export const plugin = definePlugin({
     }
     if (input.routeKey === githubPullRouteKey) {
       return await handleGitHubPull(input, context);
+    }
+    if (input.routeKey === seatResetRouteKey) {
+      return await handleSeatReset(input, context, (url, init) => fetch(url, init), new Date());
     }
     if (input.routeKey !== "gh-guard") {
       return { status: 404, body: { error: "No such Agent tools route." } };

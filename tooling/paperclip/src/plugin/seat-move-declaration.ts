@@ -1,5 +1,6 @@
-import type { PluginJobDeclaration } from "@paperclipai/plugin-sdk";
+import type { PluginApiRouteDeclaration, PluginJobDeclaration } from "@paperclipai/plugin-sdk";
 import { defaultSeatMoverSettings as d } from "../seat-mover/settings.ts";
+import { seatResetRouteKey } from "./seat-reset-route.ts";
 
 /**
  * The seat mover's job and settings in the manifest (HAL-19354,
@@ -14,6 +15,16 @@ export const seatMoveJob: PluginJobDeclaration = {
   description:
     "Every minute, unless it is off: reads the seat readings plugin, where each agent sits and the runs parked for a seat, and moves agents off full seats to seats that pass the board's checklist (shadow: only logs and comments what it would do).",
   schedule: "* * * * *",
+};
+
+/** "Seat was reset", board only (HAL-19490, src/plugin/seat-reset-route.ts). */
+export const seatResetRoute: PluginApiRouteDeclaration = {
+  routeKey: seatResetRouteKey,
+  method: "POST",
+  path: "/seat-mover/seat-reset",
+  auth: "board",
+  capability: "api.routes.register",
+  companyResolution: { from: "query", key: "companyId" },
 };
 
 const list = (title: string, description: string, fallback: readonly string[]) => ({
