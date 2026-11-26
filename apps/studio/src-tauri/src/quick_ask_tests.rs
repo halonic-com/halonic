@@ -260,8 +260,14 @@ fn every_capability() -> Vec<(String, Value)> {
             let path = entry.expect("a capability file").path();
             let text = std::fs::read_to_string(&path).expect("a readable capability");
             let name = path.display().to_string();
-            let capability = serde_json::from_str(&text)
+            let capability: Value = serde_json::from_str(&text)
                 .unwrap_or_else(|error| panic!("{name} isn't JSON: {error}"));
+            // Tauri also reads a list of capabilities from one file, as `[…]`
+            // or `{"capabilities": […]}`, which `reaches_the_box` would skip.
+            assert!(
+                capability.get("identifier").is_some_and(Value::is_string),
+                "{name} isn't one capability object"
+            );
             (name, capability)
         })
         .collect();

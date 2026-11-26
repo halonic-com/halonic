@@ -521,7 +521,9 @@ and starts nothing. The yes is saved only through
 launch token, which only Studio's shell holds: runners and harness agents
 never get it, and no tool the model can call reaches the route. The main
 window's page reaches the route through the shell's `agent_host_request`, so a
-compromised page could ask for it. Before the shell sends that call, it asks
+compromised page could ask for it. Quick ask's box, which opens over other
+apps, can't: the shell refuses it every route but the three messaging routes
+its page calls (`studio.src-tauri.quick-ask-window`, HAL-19520). Before the shell sends that call, it asks
 the person in its own native dialog, and sends nothing without their yes
 (`studio.src-tauri.unfenced-allow-asks`, HAL-16466). The gate saves
 it only for the reason that holds at that moment, so a caller can't save a yes
