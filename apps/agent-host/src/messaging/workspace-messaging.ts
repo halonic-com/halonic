@@ -5,6 +5,7 @@ import { type PaperclipTeamStatus, paperclipSourceId } from "@halonicjs/adapter-
 import type { PaperclipConnection } from "@halonicjs/format";
 import type { PaperclipConnectionNow, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { type MessagingFailure, MessagingHub } from "@halonicjs/host-agent-messaging-hub";
+import { StoredAgentMessaging } from "@halonicjs/host-paperclip-sync";
 import type {
   AgentMessaging,
   MessagingId,
@@ -24,6 +25,7 @@ import {
   withUserName,
 } from "./paperclip-provider.ts";
 import { type JoinedEngine, ServerEngineInUse } from "./server-engine.ts";
+import { syncFiles } from "./sync-files.ts";
 import { TeamStatusHub } from "./team-status-hub.ts";
 
 /** What one workspace's messaging needs. */
@@ -95,6 +97,8 @@ export class WorkspaceMessaging {
   readonly #options: WorkspaceMessagingOptions;
   /** Each connected connection's provider, by the connection's name. */
   readonly #providers = new Map<string, PaperclipConnectionProvider>();
+  /** Each connected connection's provider answered from its local copy, as the hub joins it. */
+  readonly #stored = new Map<string, StoredAgentMessaging>();
   /** Each connected connection's team status, by the connection's name. */
   readonly #teams = new Map<string, PaperclipTeamStatus>();
   readonly #changes = new ChangeLog();
@@ -192,8 +196,13 @@ export class WorkspaceMessaging {
     const provider = made === undefined ? undefined : paperclipProvider(made);
     const team = made === undefined ? undefined : paperclipTeamStatus(made);
     await provider?.readUser();
-    if (provider === undefined) this.#providers.delete(connection);
-    else this.#providers.set(connection, provider);
+    if (provider === undefined) {
+      this.#providers.delete(connection);
+      this.#stored.delete(connection);
+    } else {
+      this.#providers.set(connection, provider);
+      this.#stored.set(connection, this.#storedOf(connection, provider));
+    }
     if (team === undefined) this.#teams.delete(connection);
     else this.#teams.set(connection, team);
     this.#rejoin();
@@ -296,11 +305,17 @@ export class WorkspaceMessaging {
   /** Forgets the connection's key, drops its provider and deletes its cache. */
   async #drop(connection: string): Promise<void> {
     const source = paperclipSourceId(connection);
+    const stored = this.#stored.get(connection);
     this.#options.keys.forget({ workspace: this.#options.workspace, connection });
     this.#providers.delete(connection);
+    this.#stored.delete(connection);
     this.#teams.delete(connection);
     this.#rejoin();
     await this.#served.clear(source);
+    // Closes the held copy first, so a poll, answer or send still in flight can't write it again.
+    await stored?.clear();
+    // Also a copy saved before this start, when no provider holds it.
+    await syncFiles(this.#options.cacheFolder, source, this.#options.warn).clear();
     await this.#team.clear(source);
     this.#changes.note(source);
   }
@@ -337,11 +352,28 @@ export class WorkspaceMessaging {
     const providers =
       engine.kind === "server"
         ? serverProviders(engine)
-        : [...this.#providers].map(([connection, messaging]) => ({
+        : [...this.#stored].map(([connection, messaging]) => ({
             name: paperclipSourceId(connection),
             messaging,
           }));
     return new MessagingHub({ providers, report: this.#options.report });
+  }
+
+  /**
+   * The provider answered from its local copy (`agent-host.paperclip-sync`), saved in this
+   * workspace's cache folder. A provider that is signed out isn't read again.
+   */
+  #storedOf(connection: string, provider: PaperclipConnectionProvider): StoredAgentMessaging {
+    const source = paperclipSourceId(connection);
+    const { cacheFolder, warn } = this.#options;
+    return new StoredAgentMessaging({
+      live: provider,
+      sync: provider.sync(),
+      source,
+      persistence: syncFiles(cacheFolder, source, warn),
+      warn,
+      mayRead: () => provider.mayRead(),
+    });
   }
 
   #cached(hub: MessagingHub): CachedAgentMessaging {

@@ -46,6 +46,16 @@ export class FakePaperclip {
   liveRuns: unknown[] = [];
   /** What `heartbeat-runs` answers: the newest runs, finished ones included. */
   runs: unknown[] = [];
+  /**
+   * When set, the company's projects, approvals, decisions, secret proposals and join requests
+   * answer empty lists, so a whole poll works and fills the local copy (`agent-host.paperclip-sync`).
+   */
+  servesInbox = false;
+  /**
+   * When set, a request to `path` calls `arrived` once seen, then waits for `until`: a read held
+   * open, which a test knows has started.
+   */
+  hold: { path: string; arrived: () => void; until: Promise<void> } | undefined;
 
   /**
    * When set, every object in every answer also carries fields no app may
@@ -72,6 +82,10 @@ export class FakePaperclip {
       method: request.method,
       authorization: request.headers.get("authorization"),
     });
+    if (new URL(request.url).pathname === this.hold?.path) {
+      this.hold.arrived();
+      await this.hold.until;
+    }
     if (this.refusesKey) return json({ error: "Unauthorized" }, 401);
     const path = new URL(request.url).pathname;
     if (path === `/api/companies/${acme.company}/agents`) {
@@ -91,10 +105,8 @@ export class FakePaperclip {
         },
       ]);
     }
-    // The open tasks, where the provider finds channels (`paperclip-client.channels`): none here.
-    if (path === `/api/companies/${acme.company}/issues`) return json([]);
-    if (path === `/api/companies/${acme.company}/live-runs`) return json(this.liveRuns);
-    if (path === `/api/companies/${acme.company}/heartbeat-runs`) return json(this.runs);
+    const list = this.#listAt(path);
+    if (list !== undefined) return json(list);
     if (path === "/api/issues/task-1")
       return json({ identifier: "ACME-7", title: "Chat with Ada" });
     // A message the person sends to Ada; what it says isn't read back.
@@ -111,7 +123,24 @@ export class FakePaperclip {
     if (path === "/api/cli-auth/me" && this.me !== undefined) return json(this.me);
     return json({ error: "API route not found" }, 404);
   }
+
+  /** What a company list route answers, or `undefined` for any other path. */
+  #listAt(path: string): unknown[] | undefined {
+    const company = `/api/companies/${acme.company}`;
+    // The open tasks, where the provider finds channels (`paperclip-client.channels`): none here.
+    if (path === `${company}/issues`) return [];
+    if (path === `${company}/live-runs`) return this.liveRuns;
+    if (path === `${company}/heartbeat-runs`) return this.runs;
+    return this.servesInbox && inboxLists.has(path) ? [] : undefined;
+  }
 }
+
+/** The company lists an Inbox read reads besides the tasks and their cards. */
+const inboxLists = new Set(
+  ["projects", "approvals", "decisions", "secret-proposals", "join-requests"].map(
+    (list) => `/api/companies/${acme.company}/${list}`,
+  ),
+);
 
 /** `value` with the canary's fields added to every object in it. */
 function withCanary(value: unknown, canary: string): unknown {

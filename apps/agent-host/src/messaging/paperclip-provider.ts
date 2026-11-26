@@ -167,11 +167,19 @@ export class PaperclipConnectionProvider extends PaperclipMessaging {
     return sources.map((source) => ({ ...source, label: withUserName(source.label, userName) }));
   }
 
-  override async refresh(): Promise<void> {
+  /**
+   * Whether the source may be read again: not once it is signed out. Reads whom the key belongs
+   * to first, when Connect's read failed.
+   */
+  async mayRead(): Promise<boolean> {
     const [source] = await super.listSources();
-    if (source?.state.kind === "signed-out") return;
+    if (source?.state.kind === "signed-out") return false;
     await this.readUser();
-    await super.refresh();
+    return true;
+  }
+
+  override async refresh(): Promise<void> {
+    if (await this.mayRead()) await super.refresh();
   }
 }
 

@@ -74,6 +74,7 @@
     "@halonicjs/host-google-sign-in": "workspace:*",
     "@halonicjs/host-harness-host": "workspace:*",
     "@halonicjs/host-integration-sign-in": "workspace:*",
+    "@halonicjs/host-paperclip-sync": "workspace:*",
     "@halonicjs/host-server": "workspace:*",
     "@halonicjs/oauth-sign-in": "workspace:*",
     "@halonicjs/ports": "workspace:*",
