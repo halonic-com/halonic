@@ -67,8 +67,11 @@ impl AnswerWindow {
     }
 
     /// Keeps a pass from `now`, or forgets the last one on anything else.
-    /// The count is read after the prompt, which may itself have covered
-    /// the app (a PIN screen), so that doesn't end the window it opens.
+    /// `now` is when the answer reached the shell, before the prompt showed,
+    /// so the time spent in the prompt comes off the window: it only gets
+    /// shorter, never longer. The count is read after the prompt, which may
+    /// itself have covered the app (a PIN screen), so that doesn't end the
+    /// window it opens.
     async fn keep(&self, host: &dyn TunnelHost, confirmation: Confirmation, now: Instant) {
         let times_away = if confirmation.is_confirmed() {
             host.times_away().await
