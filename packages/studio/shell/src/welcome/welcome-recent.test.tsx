@@ -26,4 +26,29 @@ verifies("shell.welcome-recent", () => {
     expect(nameLine?.className).not.toContain("truncate");
     expect(nameLine?.className).toContain("wrap-break-word");
   });
+
+  it.each([
+    ["engine", "Starting the engine…"],
+    ["workspace", "Reading the workspace…"],
+  ] as const)(
+    "shows the opening row's %s step on the row, not only to a screen reader",
+    (step, text) => {
+      const location = "~/Documents/Acme Support";
+      const container = render(
+        <WelcomeRecent
+          workspaces={[{ name: "Acme Support", location }]}
+          opening={{ location, step }}
+          onOpen={() => {}}
+          rowRef={() => null}
+        />,
+      );
+
+      const shown = [...container.querySelectorAll("li button span")].find(
+        (span) => span.textContent === text,
+      );
+      expect(shown?.closest(".sr-only")).toBeNull();
+      // A screen reader keeps the one polite "Opening…", rather than one line per step.
+      expect(container.querySelector('[role="status"]')?.textContent).toBe("Opening…");
+    },
+  );
 });

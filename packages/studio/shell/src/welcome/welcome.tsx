@@ -24,7 +24,7 @@ import {
   trySampleWords,
   type WelcomeSampleProblem,
 } from "./welcome-sample.tsx";
-import { useWelcomeStart, WelcomeStartArea } from "./welcome-start.tsx";
+import { useWelcomeStart, WelcomeStartArea, type WelcomeStartState } from "./welcome-start.tsx";
 
 /** The Welcome screen's Recent list and what its rows do. */
 export interface WelcomeRecentList {
@@ -88,6 +88,17 @@ async function untilAnswered<T>(
   }
 }
 
+/** How a press waits for the start: a Recent row only for the engine, not the agent host (HAL-19599). */
+function holdFor(start: WelcomeStartState, what: Opening): WelcomeStartState["afterStart"] {
+  return what.from === "recent" ? start.afterEngine : start.afterStart;
+}
+
+/** The Recent row that is opening, and the step it waits on. */
+function recentOpening(opening: Opening | undefined, engineReady: boolean) {
+  if (opening?.from !== "recent") return undefined;
+  return { location: opening.location, step: engineReady ? "workspace" : "engine" } as const;
+}
+
 /** What failed to open, and whether a Recent row asked for it. */
 interface ShownProblem {
   readonly problem: WelcomeOpenProblem;
@@ -115,7 +126,7 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * While Halonic starts, the waiting line shows under the buttons from 2 seconds, and **Open demo**
  * and **Open folder** are off with a line that says why; a start that fails shows why there, with
  * **Try again** (`shell.welcome-start`). A press that comes before the start is ready keeps its
- * button busy, and runs once it is.
+ * button busy, and runs once it is; a Recent row's press waits only for the engine.
  *
  * A demo that couldn't be copied says why right under the **Open demo** that was pressed, with
  * **Try again** and **Choose a folder…** (`shell.welcome-sample-error`).
@@ -190,7 +201,10 @@ export function Welcome({
     setSampleProblem(undefined);
     try {
       // The picker's folder is retried by whoever opens it, so the picker isn't shown again.
-      const problem = await startState.afterStart(() =>
+      const problem = await holdFor(
+        startState,
+        what,
+      )(() =>
         what.from === "recent"
           ? untilAnswered(open, (answer) => answer?.kind === "unavailable")
           : open(),
@@ -325,7 +339,7 @@ export function Welcome({
         {recent === undefined ? null : (
           <WelcomeRecent
             workspaces={recent.workspaces}
-            opening={opening?.from === "recent" ? opening.location : undefined}
+            opening={recentOpening(opening, startState.engineReady)}
             onOpen={(location) => run({ from: "recent", location }, () => recent.onOpen(location))}
             rowRef={rowRef}
             failed={

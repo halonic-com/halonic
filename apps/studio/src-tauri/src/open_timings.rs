@@ -47,8 +47,9 @@ impl StepTimes {
     }
 
     /// One line for the log: `what`, then each step and the whole, as
-    /// `wsl 812 ms, start 4000 ms (4812 ms in all)`.
-    pub fn line(&self, what: &str) -> String {
+    /// `wsl 812 ms, start 4000 ms (4812 ms in all)`. `what` is a fixed
+    /// text, so no path or error message can reach the line.
+    pub fn line(&self, what: &'static str) -> String {
         let mut line = format!("{what}:");
         for (index, (name, took)) in self.steps.iter().enumerate() {
             let comma = if index == 0 { "" } else { "," };
@@ -72,13 +73,24 @@ pub fn ready_line(since_page_loaded: Option<Duration>) -> Option<String> {
 }
 
 /// The line for a window's `engine_open`: when it was asked, counted from
-/// the page's load, and how long the engine took to answer.
+/// the page's load, and how long the engine took to answer, or to be
+/// refused with the refusal's fixed `kind`, such as `engine_failed`.
 #[cfg(desktop)]
-pub fn engine_open_line(asked_after_page_load: Option<Duration>, took: Duration) -> String {
+pub fn engine_open_line(
+    asked_after_page_load: Option<Duration>,
+    took: Duration,
+    refused: Option<&'static str>,
+) -> String {
     let asked = asked_after_page_load.map_or_else(String::new, |asked| {
         format!(", asked {} ms after the page loaded", millis(asked))
     });
-    format!("a window's engine answered in {} ms{asked}", millis(took))
+    match refused {
+        None => format!("a window's engine answered in {} ms{asked}", millis(took)),
+        Some(kind) => format!(
+            "a window's engine was refused ({kind}) after {} ms{asked}",
+            millis(took)
+        ),
+    }
 }
 
 /// Writes `line` to `shell.log`.

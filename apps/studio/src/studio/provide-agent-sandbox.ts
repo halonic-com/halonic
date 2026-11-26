@@ -66,15 +66,16 @@ export async function provideAgentSandbox(
         () => transport.securityUpdates(),
         ipc === undefined ? undefined : await wslBackupOf(ipc),
         ipc === undefined ? undefined : await elevateHelperOf(ipc),
-        await studioStartsUnfencedOn(transport),
+        // Not awaited: the host may still be starting, and the folder opens without it (HAL-19599).
+        studioStartsUnfencedOn(transport),
         ipc === undefined ? undefined : await wslSetupOf(ipc),
       ),
     );
 }
 
 /**
- * Whether the agent host opens sessions on this computer. A host that can't say counts as one
- * that doesn't: the section then keeps its hint that Studio can't start such an agent, the
+ * Whether the agent host opens sessions on this computer, once it answers. A host that can't say
+ * counts as one that doesn't: the section then keeps its hint that Studio can't start such an agent, the
  * cautious answer, and the error goes to the console.
  */
 async function studioStartsUnfencedOn(transport: AgentHostTransport): Promise<boolean> {
