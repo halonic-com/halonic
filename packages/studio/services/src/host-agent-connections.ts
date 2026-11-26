@@ -71,12 +71,18 @@ export class HostAgentConnections implements AgentConnections {
   readonly #names = new Map<MessagingId, string>();
   /** The workspace's real path, as the host last listed it. */
   #realWorkspace: string | undefined;
+  /** Whether {@link restore} was asked for and no listing has succeeded for it yet. */
+  #restorePending = false;
+  /** The restore attempt running now, if any. */
+  #restoring: Promise<void> | undefined;
 
   constructor(options: HostAgentConnectionsOptions) {
     this.#options = options;
   }
 
   async list(): Promise<readonly AgentConnection[]> {
+    // A restore whose listing failed, such as while the host was still starting, goes first (HAL-19027).
+    if (this.#restorePending) await this.#restoreOnce();
     const { connections: rows } = await this.#listed();
     return rows.map(({ id, label, address, state, userName }) => ({
       id,
@@ -92,10 +98,32 @@ export class HostAgentConnections implements AgentConnections {
    * Gives the host back the keys the person signed in with in this workspace,
    * once, when it opens (`services.paperclip-restore`). It never throws or
    * asks anything; a failure is reported and leaves that row on Sign in again.
+   *
+   * When the host can't list the workspace's connections yet, as right after
+   * a start, the restore stays pending and the next {@link list} tries it
+   * again, until one listing succeeds (HAL-19027).
    */
   async restore(): Promise<void> {
+    this.#restorePending = true;
+    await this.#restoreOnce();
+  }
+
+  /** One restore attempt; a second caller waits for the one already running. */
+  #restoreOnce(): Promise<void> {
+    this.#restoring ??= this.#tryRestore().finally(() => {
+      this.#restoring = undefined;
+    });
+    return this.#restoring;
+  }
+
+  async #tryRestore(): Promise<void> {
     const { tokens, host, workspace, report } = this.#options;
-    const listed = () => this.#listed();
+    const listed = async () => {
+      const list = await this.#listed();
+      // Listed: what happens to each row now is final, and nothing is tried again.
+      this.#restorePending = false;
+      return list;
+    };
     const restored = await restorePaperclipKeys({ listed, tokens, host, workspace, report });
     if (restored > 0) this.#changed();
   }
