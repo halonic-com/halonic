@@ -10,6 +10,7 @@ import {
   ProposalGoneError,
   type ProposalUndone,
 } from "@halonicjs/studio-feature-inbox/api";
+import { AgentHostNotAnswering } from "@halonicjs/studio-services";
 import { EngineNotAnswering } from "@halonicjs/studio-shell";
 
 /**
@@ -18,7 +19,9 @@ import { EngineNotAnswering } from "@halonicjs/studio-shell";
  * trusted yet asks the host nothing, so opening one starts no host call. A host that
  * doesn't serve proposals here, because it has no profile folder (`not_found`)
  * or wasn't told to serve the workspace (`unknown_workspace`), keeps none for
- * it, so that lists none; any other failure is thrown, and the Inbox shows it.
+ * it, so that lists none. Neither does a sandbox that isn't set up, whose host the shell can't
+ * start (`wsl-missing`, `distro-missing`): Settings › Agent sandbox offers its setup (HAL-19066).
+ * Any other failure is thrown, and the Inbox shows it.
  */
 export function hostProposalsOf(
   transport: AgentHostTransport,
@@ -54,12 +57,20 @@ function hostRecordsOf(
       return await read(proposals);
     } catch (error) {
       if (error instanceof AgentHostError && servesNone.has(error.kind)) return [];
+      if (error instanceof AgentHostNotAnswering && noSandbox.has(error.reason ?? "")) return [];
       throw error;
     }
   };
 }
 
 const servesNone = new Set(["not_found", "unknown_workspace"]);
+
+/**
+ * The shell's reasons for a host it couldn't start because the sandbox has no distro yet, so it
+ * keeps no proposals. A distro without its runtime (`runtime-missing`) may keep some, so that
+ * failure still shows.
+ */
+const noSandbox = new Set(["wsl-missing", "distro-missing"]);
 
 /**
  * Accept, Reject, Compare, Undo and settle on the workspace's run proposals through the agent
