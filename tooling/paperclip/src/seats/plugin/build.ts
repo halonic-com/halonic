@@ -1,6 +1,7 @@
 import { cp, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import { writeDataManifest } from "../../plugin/data-manifest.ts";
 import { manifest } from "./manifest.ts";
 
 /**
@@ -26,6 +27,8 @@ await build({
   target: "node24",
   outdir: outDir,
 });
+// The manifest ships as data only, so the server's deployer can read it without running it (HAL-19231).
+await writeDataManifest(`${outDir}manifest.js`, manifest);
 await build({
   entryPoints: { index: here("../ui/index.tsx") },
   bundle: true,
