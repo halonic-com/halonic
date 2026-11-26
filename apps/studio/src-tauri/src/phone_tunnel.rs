@@ -25,8 +25,8 @@
 //! no capability grants them there.
 
 use halonic_phone_tunnel::{
-    ComputersAnswer, ConnectOutcome, ForgetOutcome, PairingOutcome, PairingStart, PairingStep,
-    Problem, SendAnswer, SendRefusal,
+    ComputersAnswer, ConnectOutcome, ForgetOutcome, PageStatus, PairingOutcome, PairingStart,
+    PairingStep, Problem, SendAnswer, SendRefusal,
 };
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
@@ -87,8 +87,8 @@ pub async fn phone_computers<R: Runtime>(app: AppHandle<R>) -> ComputersAnswer {
     ComputersAnswer::Stopped(NO_TUNNEL)
 }
 
-/// Forgets a computer: its connection, its key, its details and what the
-/// phone saved of its Inbox and Messenger. Without a tunnel the page's own
+/// Forgets a computer: its connection, its key, its details, what the
+/// phone saved of its Inbox and Messenger, and its last chat. Without a tunnel the page's own
 /// `SavedMessaging.forget()` still deletes the saved file, through
 /// `phone_saved_clear`.
 #[tauri::command]
@@ -97,11 +97,7 @@ pub async fn phone_forget<R: Runtime>(app: AppHandle<R>, computer: String) -> Fo
     {
         if let Some(tunnel) = android::tunnel(&app) {
             let outcome = tunnel.forget(&computer).await;
-            if matches!(outcome, ForgetOutcome::Forgotten)
-                && let Ok(id) = halonic_device_keys::ComputerId::parse(&computer)
-            {
-                crate::saved_messaging::clear(&app, &id);
-            }
+            after_forget(&android::ShellKept(&app), &computer, &outcome);
             return outcome;
         }
     }
@@ -214,6 +210,37 @@ fn end_pairing<R: Runtime>(app: &AppHandle<R>) {
     }
     #[cfg(not(target_os = "android"))]
     let _ = app;
+}
+
+/// What the phone keeps of a computer outside the tunnel: what it saved of
+/// its Inbox and Messenger, and the last-chat shortcut when its chat is on
+/// that computer. Neither may outlive the computer (Julian, #6357).
+#[cfg_attr(not(any(target_os = "android", test)), expect(dead_code))]
+pub(crate) trait KeptOfComputer {
+    /// Deletes what the phone saved of `computer`'s Inbox and Messenger.
+    fn clear_saved(&self, computer: &str);
+    /// Removes the last-chat shortcut if its chat is on `computer`.
+    fn forget_last_chat(&self, computer: &str);
+}
+
+/// After Forget: a forgotten computer's saved text and last chat go, in
+/// the shell, so they go even when the page isn't there to ask.
+#[cfg_attr(not(any(target_os = "android", test)), expect(dead_code))]
+pub(crate) fn after_forget(kept: &impl KeptOfComputer, computer: &str, outcome: &ForgetOutcome) {
+    if matches!(outcome, ForgetOutcome::Forgotten) {
+        kept.clear_saved(computer);
+        kept.forget_last_chat(computer);
+    }
+}
+
+/// After a status: Removed deletes what the phone kept of the computer, as
+/// Forget does.
+#[cfg_attr(not(any(target_os = "android", test)), expect(dead_code))]
+pub(crate) fn after_status(kept: &impl KeptOfComputer, computer: &str, status: &PageStatus) {
+    if matches!(status, PageStatus::Removed) {
+        kept.clear_saved(computer);
+        kept.forget_last_chat(computer);
+    }
 }
 
 /// Each computer's latest status, then each open session, as events.
@@ -355,10 +382,7 @@ mod android {
         }
 
         fn status_changed(&self, computer: &ComputerId, status: &PageStatus) {
-            // Removed deletes what the phone saved of the computer, as Forget does.
-            if matches!(status, PageStatus::Removed) {
-                crate::saved_messaging::clear(&self.app, computer);
-            }
+            super::after_status(&ShellKept(&self.app), computer.as_str(), status);
             let event = TunnelEvent::Status {
                 computer: computer.as_str().to_owned(),
                 status: *status,
@@ -387,7 +411,25 @@ mod android {
             halonic_shell_log::record("phone-tunnel", line);
         }
     }
+    /// The shell's own stores of what the phone keeps of a computer.
+    pub struct ShellKept<'a, R: Runtime>(pub &'a AppHandle<R>);
+
+    impl<R: Runtime> super::KeptOfComputer for ShellKept<'_, R> {
+        fn clear_saved(&self, computer: &str) {
+            if let Ok(id) = ComputerId::parse(computer) {
+                crate::saved_messaging::clear(self.0, &id);
+            }
+        }
+
+        fn forget_last_chat(&self, computer: &str) {
+            crate::app_shortcuts::forget_computer(self.0, computer);
+        }
+    }
 }
 
 #[cfg(target_os = "android")]
 pub use android::plugin;
+
+#[cfg(test)]
+#[path = "phone_tunnel_tests.rs"]
+mod tests;

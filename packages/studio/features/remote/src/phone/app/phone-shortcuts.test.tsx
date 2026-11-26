@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import type { PairingQrPayload } from "@halonicjs/ports";
+import type { Conversation, PairingQrPayload } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { GatewayHost } from "../../test-support/gateway-scene.ts";
 import { listedSession } from "../../test-support/listed-session.ts";
 import { FakePhoneTunnel } from "../../test-support/phone-tunnel.ts";
+import type { MessagingList } from "../messaging-client.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
 import type { ComputerId } from "../phone-tunnel.ts";
 import { mountPhoneApp, type PhoneShortcuts } from "./mount-phone-app.tsx";
@@ -44,16 +45,29 @@ const scanner: PhoneScanner = {
 type Opening = Awaited<ReturnType<PhoneShortcuts["takeOpening"]>>;
 
 /** The shell's shortcuts: `openings` are taken in turn, then none. */
-function fakeShortcuts(openings: Opening[], pinnable = true) {
+function fakeShortcuts(openings: Opening[], canPin = () => Promise.resolve(true)) {
   return {
     takeOpening: vi.fn(() => Promise.resolve(openings.shift())),
-    canPin: () => Promise.resolve(pinnable),
+    setLastChat: vi.fn(),
+    canPin,
     pin: vi.fn(),
   } satisfies PhoneShortcuts;
 }
 
+const launchReview: Conversation = {
+  id: "c-launch",
+  source: "acme",
+  agent: "elena",
+  title: "Launch review",
+  updatedAt: "2026-11-25T10:00:00.000Z",
+  waitingForMe: false,
+};
+
 /** The phone app as the Android page mounts it, with nothing paired yet. */
-async function mount(shortcuts: PhoneShortcuts) {
+async function mount(
+  shortcuts: PhoneShortcuts,
+  report: (problem: string) => void = () => undefined,
+) {
   const tunnel = new FakePhoneTunnel();
   const hosts = new Map<ComputerId, GatewayHost>();
   const container = document.createElement("section");
@@ -69,7 +83,7 @@ async function mount(shortcuts: PhoneShortcuts) {
         },
         scanner,
         window,
-        report: () => undefined,
+        report,
         onAddress: () => undefined,
         onCamera: () => undefined,
         onOpenSettings: () => undefined,
@@ -115,6 +129,16 @@ async function press(name: string): Promise<void> {
   await settle();
 }
 
+/** The host answers the newest `msg-read` of `what` with `items`. */
+async function answer(host: GatewayHost, what: MessagingList, items: unknown[]): Promise<void> {
+  const read = host.tunnel.sentOf("msg-read").findLast((each) => each.what === what);
+  await act(async () => host.host({ type: "msg-data", replyTo: read?.id ?? "", what, items }));
+  await settle();
+}
+
+/** The heading of the open chat, if one is open. */
+const openChat = () => document.querySelector("header h2")?.textContent;
+
 /** The picked tab's label, from the tab bar at the foot of the computer's screen. */
 const pickedTab = () =>
   document.querySelector('nav button[aria-current="page"]')?.textContent?.replace(/\d+.*$/, "");
@@ -133,11 +157,55 @@ verifies("remote.phone-shortcuts", () => {
     expect(pickedTab()).toBe("Messenger");
   });
 
-  it("opens the last chat's shortcut on the Messenger tab", async () => {
-    const { tunnel, hosts } = await mount(fakeShortcuts([{ screen: "chat" }]));
-    expect(document.body.textContent).toContain("After pairing, Messenger opens.");
+  it("opens the last chat's shortcut in that chat on the Messenger tab", async () => {
+    const shortcuts = fakeShortcuts([]);
+    const { tunnel, hosts } = await mount(shortcuts);
     await pairAndConnect(tunnel, hosts);
+    const [[computer, host] = []] = [...hosts];
+    if (computer === undefined || host === undefined) throw new Error("No gateway client held.");
+
+    shortcuts.takeOpening.mockResolvedValueOnce({
+      screen: "chat",
+      computer,
+      chat: launchReview.id,
+    });
+    await showAgain();
     expect(pickedTab()).toBe("Messenger");
+    await answer(host, "conversations", [launchReview]);
+
+    expect(openChat()).toBe("Launch review");
+    expect(shortcuts.setLastChat.mock.calls).toEqual([
+      [{ computer, chat: launchReview.id, name: "Launch review" }],
+    ]);
+  });
+
+  it("opens the Messenger list for a last chat that's gone", async () => {
+    const shortcuts = fakeShortcuts([]);
+    const { tunnel, hosts } = await mount(shortcuts);
+    await pairAndConnect(tunnel, hosts);
+    const [[computer, host] = []] = [...hosts];
+    if (computer === undefined || host === undefined) throw new Error("No gateway client held.");
+
+    shortcuts.takeOpening.mockResolvedValueOnce({ screen: "chat", computer, chat: "c-gone" });
+    await showAgain();
+    await answer(host, "conversations", [launchReview]);
+
+    expect(openChat()).toBeUndefined();
+    expect(buttonNamed("Launch review")).toBeDefined();
+    expect(shortcuts.setLastChat).not.toHaveBeenCalled();
+  });
+
+  it("makes a chat the person opens the last chat", async () => {
+    const shortcuts = fakeShortcuts([{ screen: "messenger" }]);
+    const { tunnel, hosts } = await mount(shortcuts);
+    await pairAndConnect(tunnel, hosts);
+    const [[computer, host] = []] = [...hosts];
+    if (computer === undefined || host === undefined) throw new Error("No gateway client held.");
+    await answer(host, "conversations", [launchReview]);
+    await press("Launch review");
+    expect(shortcuts.setLastChat.mock.calls).toEqual([
+      [{ computer, chat: launchReview.id, name: "Launch review" }],
+    ]);
   });
 
   it("says nothing more on Pair with a computer when no shortcut opened the app", async () => {
@@ -176,11 +244,24 @@ verifies("remote.phone-shortcuts", () => {
   });
 
   it("shows no Home screen group when the launcher can't pin", async () => {
-    const { tunnel, hosts } = await mount(fakeShortcuts([], false));
+    const { tunnel, hosts } = await mount(fakeShortcuts([], () => Promise.resolve(false)));
     await pairAndConnect(tunnel, hosts);
     await press("Connected to Tim's laptop. Details");
     await press("Paired computers");
     expect(document.body.textContent).not.toContain("Home screen");
     expect(buttonNamed("Add Inbox")).toBeUndefined();
+  });
+
+  it("shows no Home screen group, and logs why, when asking whether the launcher pins fails", async () => {
+    const report = vi.fn();
+    const failed = fakeShortcuts([], () => Promise.reject(new Error("not allowed")));
+    const { tunnel, hosts } = await mount(failed, report);
+    await pairAndConnect(tunnel, hosts);
+    await press("Connected to Tim's laptop. Details");
+    await press("Paired computers");
+    expect(document.body.textContent).not.toContain("Home screen");
+    expect(report).toHaveBeenCalledWith(
+      "Whether the launcher pins couldn't be read: Error: not allowed",
+    );
   });
 });

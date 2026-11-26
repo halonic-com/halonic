@@ -13,6 +13,7 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicReference
 
 /** Where the last chat is kept: this phone only, as the manifest backs nothing up. */
 private const val STORE = "app-shortcuts"
@@ -22,16 +23,18 @@ private const val STORE = "app-shortcuts"
  * sets it from the intent that started or reached it; it lives as long as the app's process.
  */
 internal object PendingShortcut {
-  @Volatile
-  var address: String? = null
+  private val address = AtomicReference<String?>(null)
 
   /** Keeps [intent]'s address, unless Android replays it from the recent apps. */
   fun keep(intent: Intent?) {
     if (intent == null || intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
       return
     }
-    address = intent.dataString
+    address.set(intent.dataString)
   }
+
+  /** The kept address, once: a second take, even at the same time, gets none (Liam, #6357). */
+  fun take(): String? = address.getAndSet(null)
 }
 
 /**
@@ -45,8 +48,7 @@ class AppShortcutsPlugin(private val host: Activity) : Plugin(host) {
   /** Answers `{target, computer?, chat?}` for the screen the last shortcut asked for, once. */
   @Command
   fun takeOpenTarget(invoke: Invoke) {
-    val address = PendingShortcut.address
-    PendingShortcut.address = null
+    val address = PendingShortcut.take()
     val answer = JSObject()
     when (val target = ShortcutTargets.targetOf(address, storedChat())) {
       OpenTarget.Inbox -> answer.put("target", "inbox")
@@ -71,6 +73,20 @@ class AppShortcutsPlugin(private val host: Activity) : Plugin(host) {
       keepChat(LastChat(computer, chat, name))
     }
     invoke.resolve(JSObject().put("done", true))
+  }
+
+  /**
+   * `{computer}`: the phone forgot it, or it removed the phone. The last chat goes when it's on that
+   * computer, and only then. Answers `{forgot}`.
+   */
+  @Command
+  fun forgetComputer(invoke: Invoke) {
+    val computer = invoke.getArgs().getString("computer", null)
+    val forgot = computer != null && ShortcutTargets.isOn(storedChat(), computer)
+    if (forgot) {
+      forgetChat()
+    }
+    invoke.resolve(JSObject().put("forgot", forgot))
   }
 
   /** Answers `{pinnable}`: whether the launcher pins shortcuts. */

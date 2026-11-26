@@ -75,22 +75,18 @@ fn served_page_test_sees_the_phone_s_shortcuts_granted_to_the_phone_s_own_page_o
 }
 
 #[test]
-fn no_page_may_call_the_app_shortcuts_plugin() {
-    let window = app_window();
-    for from in [CONNECT_PAGE, SERVED_PAGE] {
-        for command in [
-            "plugin:app-shortcuts|takeOpenTarget",
-            "plugin:app-shortcuts|setLastChat",
-            "plugin:app-shortcuts|canPin",
-            "plugin:app-shortcuts|pin",
-            "plugin:app-shortcuts|take_open_target",
-            "plugin:app-shortcuts|set_last_chat",
-        ] {
-            assert!(
-                invoke(&window, from, command, json!({})).is_err(),
-                "{command} must be refused from {from}"
-            );
-        }
+fn no_capability_names_the_app_shortcuts_plugin() {
+    // The Kotlin plugin's own commands (`takeOpenTarget`, `setLastChat`,
+    // `forgetComputer`, `canPin`, `pin`) are reached only from Rust while no
+    // capability grants the plugin, whose permissions all start with
+    // `app-shortcuts:`. The mock app has no Android plugin, so an invoke
+    // would be refused whatever the capabilities say (Liam, #6357).
+    for (path, text) in super::owner_check::capabilities() {
+        assert!(
+            !text.contains("app-shortcuts:"),
+            "{} must not grant the app shortcuts plugin",
+            path.display()
+        );
     }
 }
 

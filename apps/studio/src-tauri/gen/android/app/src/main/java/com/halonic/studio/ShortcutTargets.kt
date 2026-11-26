@@ -55,6 +55,9 @@ object ShortcutTargets {
       else -> null
     }
 
+  /** Whether [chat] is on [computer]: Forget and Removed take only that computer's last chat. */
+  fun isOn(chat: LastChat?, computer: String): Boolean = chat != null && chat.computer == computer
+
   /** [name] cut to [length] characters, never inside a pair that draws one character. */
   fun cut(name: String, length: Int): String {
     val trimmed = name.trim()

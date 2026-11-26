@@ -18,8 +18,15 @@ const pinnable: readonly ShortcutTab[] = ["inbox", "messenger"];
  * with Add, which opens Android's own dialog. Nothing shows until the launcher says it pins, and
  * nothing at all when it can't, so no Add ever does nothing.
  */
-export function HomeScreenGroup({ pinning }: { readonly pinning: PhonePinning | undefined }) {
-  const canPin = useCanPin(pinning);
+export function HomeScreenGroup({
+  pinning,
+  report,
+}: {
+  readonly pinning: PhonePinning | undefined;
+  /** Where a `canPin` that failed goes, for the log. */
+  readonly report?: ((problem: string) => void) | undefined;
+}) {
+  const canPin = useCanPin(pinning, report);
   const heading = useId();
   if (pinning === undefined || !canPin) return null;
   return (
@@ -46,18 +53,30 @@ export function HomeScreenGroup({ pinning }: { readonly pinning: PhonePinning | 
   );
 }
 
-/** The launcher's answer to whether it pins; false until it answers, and without the shell. */
-function useCanPin(pinning: PhonePinning | undefined): boolean {
+/**
+ * The launcher's answer to whether it pins; false until it answers, without the shell, and when
+ * the question fails, which goes to `report` (Liam, #6689).
+ */
+function useCanPin(
+  pinning: PhonePinning | undefined,
+  report: ((problem: string) => void) | undefined,
+): boolean {
   const [canPin, setCanPin] = useState(false);
   useEffect(() => {
     if (pinning === undefined) return;
     let showing = true;
-    void pinning.canPin().then((answer) => {
-      if (showing) setCanPin(answer);
-    });
+    pinning.canPin().then(
+      (answer) => {
+        if (showing) setCanPin(answer);
+      },
+      (error: unknown) => {
+        if (showing) setCanPin(false);
+        report?.(`Whether the launcher pins couldn't be read: ${String(error)}`);
+      },
+    );
     return () => {
       showing = false;
     };
-  }, [pinning]);
+  }, [pinning, report]);
   return canPin;
 }

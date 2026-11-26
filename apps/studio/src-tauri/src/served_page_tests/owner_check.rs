@@ -44,7 +44,7 @@ fn no_page_may_call_the_owner_check() {
 }
 
 /// Every capability file, so one added later is checked too.
-fn capabilities() -> Vec<(std::path::PathBuf, String)> {
+pub(super) fn capabilities() -> Vec<(std::path::PathBuf, String)> {
     let folder = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("capabilities");
     let files = std::fs::read_dir(&folder).expect("the capabilities folder is readable");
     files

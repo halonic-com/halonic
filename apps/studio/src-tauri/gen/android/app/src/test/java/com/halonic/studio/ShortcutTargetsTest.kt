@@ -1,7 +1,9 @@
 package com.halonic.studio
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -46,6 +48,13 @@ class ShortcutTargetsTest {
       assertNull(forged, ShortcutTargets.targetOf(forged, launchReview))
     }
     assertNull(ShortcutTargets.targetOf(null, launchReview))
+  }
+
+  @Test
+  fun forgetting_a_computer_takes_only_its_own_last_chat() {
+    assertTrue(ShortcutTargets.isOn(launchReview, "acme-desk"))
+    assertFalse(ShortcutTargets.isOn(launchReview, "acme-laptop"))
+    assertFalse(ShortcutTargets.isOn(null, "acme-desk"))
   }
 
   @Test

@@ -5,21 +5,29 @@ import type { OwnerCheckAvailable } from "../gateway-client.ts";
 import type { PhonePinning } from "../home-screen-group.tsx";
 import type { NearbyComputers } from "../nearby-computers.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
-import type { PhoneTunnel } from "../phone-tunnel.ts";
+import type { ComputerId, PhoneTunnel } from "../phone-tunnel.ts";
 import type { SavedDataStore } from "../saved-messaging.ts";
 import type { PhoneOutside } from "./computer-screen.tsx";
 import { type ComputerTunnelOf, holdGateway } from "./held-gateway.ts";
 import { PhoneApp } from "./phone-app.tsx";
 import { PhoneAppRouter } from "./phone-app-router.ts";
-import type { ShortcutTab } from "./shortcut-landing.ts";
+import type { ShortcutLanding, ShortcutTab } from "./shortcut-landing.ts";
+
+/** The screen a shortcut asks for: a tab, or the last chat on its computer. */
+export type ShortcutOpening =
+  | { readonly screen: ShortcutTab }
+  | { readonly screen: "chat"; readonly computer: string; readonly chat: string };
 
 /** The Android app's shortcuts, as the phone app uses them (HAL-19143). */
 export interface PhoneShortcuts extends PhonePinning {
-  /**
-   * The screen the last shortcut asked for, once; undefined when none did. The last chat opens
-   * the Messenger tab, as a chat that's gone does, until the phone app opens a chat by itself.
-   */
-  readonly takeOpening: () => Promise<{ readonly screen: ShortcutTab | "chat" } | undefined>;
+  /** The screen the last shortcut asked for, once; undefined when none did. */
+  readonly takeOpening: () => Promise<ShortcutOpening | undefined>;
+  /** Makes a chat the phone opened the last-chat shortcut (HAL-20160). */
+  readonly setLastChat: (chat: {
+    readonly computer: string;
+    readonly chat: string;
+    readonly name: string;
+  }) => void;
 }
 
 /** What the page hands the phone app. */
@@ -68,6 +76,7 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
     scanner: mount.scanner,
     report: mount.report,
     ...(mount.saved === undefined ? {} : { saved: mount.saved }),
+    ...(mount.shortcuts === undefined ? {} : { lastChat: mount.shortcuts.setLastChat }),
     ...(mount.computerTunnel === undefined
       ? {}
       : {
@@ -112,7 +121,7 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
     if (shortcuts === undefined || page.visibilityState !== "visible") return;
     shortcuts.takeOpening().then(
       (opening) => {
-        if (opening !== undefined) router.openShortcut(tabOf(opening));
+        if (opening !== undefined) router.openShortcut(landingOf(opening));
       },
       (error: unknown) => mount.report(`The shortcut's screen couldn't be read: ${String(error)}`),
     );
@@ -131,6 +140,7 @@ export function mountPhoneApp(container: HTMLElement, mount: PhoneAppMount): () 
           onCamera={mount.onCamera}
           nearby={mount.nearby}
           pinning={shortcuts}
+          report={mount.report}
         />
       </PresentationProvider>
     </StrictMode>,
@@ -155,10 +165,11 @@ async function startOn(
     report(`The shortcut's screen couldn't be read: ${String(error)}`);
     return undefined;
   });
-  await router.start(opening === undefined ? undefined : tabOf(opening));
+  await router.start(opening === undefined ? undefined : landingOf(opening));
 }
 
-/** The tab a shortcut's screen opens on. */
-function tabOf(opening: { readonly screen: ShortcutTab | "chat" }): ShortcutTab {
-  return opening.screen === "chat" ? "messenger" : opening.screen;
+/** Where a shortcut's screen lands. The shell checked the chat's computer id before it answered. */
+function landingOf(opening: ShortcutOpening): ShortcutLanding {
+  if (opening.screen !== "chat") return opening.screen;
+  return { computer: opening.computer as ComputerId, chat: opening.chat };
 }

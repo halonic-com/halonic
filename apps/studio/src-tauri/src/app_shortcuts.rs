@@ -15,7 +15,8 @@
 //! exported: Kotlin reads only a screen's name from it, and the chat it
 //! answers is the one stored here, checked again below. Every command does
 //! nothing while the window isn't on the app's own page. No capability
-//! grants the plugin's own commands.
+//! grants the plugin's own commands. Forget and Removed remove the last
+//! chat when it's on that computer (`forget_computer`, from `phone_tunnel`).
 
 use serde::{Deserialize, Serialize};
 use tauri::{Runtime, Webview};
@@ -59,10 +60,48 @@ pub(crate) struct Taken {
     chat: Option<String>,
 }
 
+/// The Unicode format characters (`Cf`, Unicode 15.1), as
+/// `halonic_server_session`'s brief check lists them: zero-width
+/// characters, U+FEFF, the bidi controls and the tag characters, among
+/// others. Each hides or reorders text, so a chat's name could read as
+/// another in the launcher (Liam, #6357).
+const FORMAT_CHARACTERS: [(u32, u32); 21] = [
+    (0xAD, 0xAD),
+    (0x600, 0x605),
+    (0x61C, 0x61C),
+    (0x6DD, 0x6DD),
+    (0x70F, 0x70F),
+    (0x890, 0x891),
+    (0x8E2, 0x8E2),
+    (0x180E, 0x180E),
+    (0x200B, 0x200F),
+    (0x202A, 0x202E),
+    (0x2060, 0x2064),
+    (0x2066, 0x206F),
+    (0xFEFF, 0xFEFF),
+    (0xFFF9, 0xFFFB),
+    (0x110BD, 0x110BD),
+    (0x110CD, 0x110CD),
+    (0x13430, 0x1343F),
+    (0x1BCA0, 0x1BCA3),
+    (0x1D173, 0x1D17A),
+    (0xE0001, 0xE0001),
+    (0xE0020, 0xE007F),
+];
+
+/// Whether `character` is a control or a format character.
+fn is_hidden(character: char) -> bool {
+    let code = u32::from(character);
+    character.is_control()
+        || FORMAT_CHARACTERS
+            .iter()
+            .any(|(first, last)| (*first..=*last).contains(&code))
+}
+
 /// Whether `text` is fit for a shortcut: not empty, not too long, no
-/// control characters.
+/// control or format characters.
 fn fit(text: &str) -> bool {
-    !text.trim().is_empty() && text.len() <= MAX_CHAT_TEXT && !text.chars().any(char::is_control)
+    !text.trim().is_empty() && text.len() <= MAX_CHAT_TEXT && !text.chars().any(is_hidden)
 }
 
 /// Whether `id` follows `halonic_device_keys::ComputerId`'s rule: 1 to 64
@@ -250,6 +289,34 @@ mod android {
         app.try_state::<Shortcuts<R>>()
     }
 
+    #[derive(Serialize)]
+    struct ForgetArgs {
+        computer: String,
+    }
+
+    /// Removes the last chat, and its dynamic shortcut, when it's on
+    /// `computer`, as on Forget and Removed. Nothing waits for it, as the
+    /// tunnel calls this; a failure is logged.
+    pub fn forget_computer<R: Runtime>(app: &AppHandle<R>, computer: &str) {
+        let app = app.clone();
+        let args = ForgetArgs {
+            computer: computer.to_owned(),
+        };
+        let detached = tauri::async_runtime::spawn(async move {
+            let Some(shortcuts) = shortcuts(&app) else {
+                return;
+            };
+            let forgot = shortcuts
+                .0
+                .run_mobile_plugin_async::<serde_json::Value>("forgetComputer", args)
+                .await;
+            if let Err(problem) = forgot {
+                halonic_shell_log::record("app-shortcuts", &format!("forget failed: {problem}"));
+            }
+        });
+        drop(detached);
+    }
+
     /// Loads the Kotlin side, which only Android has.
     pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
         tauri::plugin::Builder::new("app-shortcuts")
@@ -264,7 +331,7 @@ mod android {
 }
 
 #[cfg(target_os = "android")]
-pub use android::plugin;
+pub use android::{forget_computer, plugin};
 
 #[cfg(test)]
 #[path = "app_shortcuts_tests.rs"]

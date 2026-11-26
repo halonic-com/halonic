@@ -98,6 +98,31 @@ fn app_shortcuts_commands_keep_only_a_chat_that_fits() {
 }
 
 #[test]
+fn app_shortcuts_commands_refuse_a_name_with_a_bidi_or_format_character() {
+    for hidden in [
+        '\u{202E}',
+        '\u{2066}',
+        '\u{200B}',
+        '\u{FEFF}',
+        '\u{E0041}',
+        '\u{AD}',
+    ] {
+        let name = format!("Launch{hidden}review");
+        assert!(
+            !chat_fits(&last_chat(COMPUTER, "launch-review", &name)),
+            "U+{:04X} must be refused",
+            u32::from(hidden)
+        );
+        assert!(!chat_fits(&last_chat(COMPUTER, &name, "Launch review")));
+    }
+    assert!(chat_fits(&last_chat(
+        COMPUTER,
+        "launch-review",
+        "Launch review 🚀"
+    )));
+}
+
+#[test]
 fn app_shortcuts_commands_answer_the_page_s_screen_shape() {
     let chat = OpenTarget::Chat {
         computer: COMPUTER.to_owned(),
