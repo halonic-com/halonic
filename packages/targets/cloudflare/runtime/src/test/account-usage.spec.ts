@@ -42,16 +42,22 @@ describe("the account menu's usage", () => {
   it("answers the plan's name and the share of its cost limit spent", async () => {
     const principal = principalOf("eu_acme0000000000001");
     const usage = usageOf("u/eu_acme0000000000001");
-    await usage.applyLimits("u/eu_acme0000000000001", proLimits());
+    const limits = proLimits();
+    await usage.applyLimits("u/eu_acme0000000000001", limits);
     const ada = { actor: principal.actor, scope: "u/eu_acme0000000000001" };
     await usage.record(ada, "call_1", "run_1", "model_call", { cost: 425 });
     const accountUsage = createAccountUsage(env as unknown as RuntimeEnv);
-    expect(await accountUsage?.(principal)).toEqual({ plan: "Pro", usedPercent: 42 });
+    const resetsAt = new Date(limits.period.end).toISOString();
+    expect(await accountUsage?.(principal)).toEqual({
+      plan: "Pro",
+      usedPercent: 42,
+      units: [{ unit: "cost", percent: 42, resetsAt }],
+    });
   });
 
   it("answers no plan and no percent for a scope with no limits", async () => {
     const accountUsage = createAccountUsage(env as unknown as RuntimeEnv);
     const principal = principalOf("eu_acme0000000000002");
-    expect(await accountUsage?.(principal)).toEqual({ plan: null, usedPercent: null });
+    expect(await accountUsage?.(principal)).toEqual({ plan: null, usedPercent: null, units: [] });
   });
 });

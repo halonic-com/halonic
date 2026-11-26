@@ -1,5 +1,10 @@
 import type { UsageSummary } from "@halonicjs/adapter-cloudflare-durable";
-import { type AccountUsage, type Principal, scopeName } from "@halonicjs/host-server";
+import {
+  type AccountUsage,
+  type Principal,
+  scopeName,
+  type UnitUsage,
+} from "@halonicjs/host-server";
 import type { RuntimeEnv } from "./env.ts";
 
 /** The `UsageObject` method the account menu calls, as its RPC stub has it. */
@@ -18,8 +23,19 @@ export function accountUsageOf(
   return async (principal) => {
     const scope = scopeName(principal.scope);
     const summary = await objectOf(scope).summary(scope);
-    return { plan: summary.planName, usedPercent: summary.costPercent };
+    return {
+      plan: summary.planName,
+      usedPercent: summary.costPercent,
+      units: unitsOf(summary),
+    };
   };
+}
+
+/** Each limited unit's percent, starting again from 0 when the period ends. */
+function unitsOf({ units, periodEnd }: UsageSummary): UnitUsage[] {
+  if (periodEnd === null) return [];
+  const resetsAt = new Date(periodEnd).toISOString();
+  return units.map(({ unit, percent }) => ({ unit, percent, resetsAt }));
 }
 
 /**
