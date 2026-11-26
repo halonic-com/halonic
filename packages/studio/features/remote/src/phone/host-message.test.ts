@@ -205,6 +205,13 @@ verifies("remote.phone-messaging-client", () => {
       },
       { type: "msg-result", replyTo: "p-4", result: { outcome: "sent", message: sent } },
       { type: "msg-changed", source: "acme" },
+      // A provider's ids may hold `:` and `%`; the phone takes them as the host does.
+      { type: "msg-changed", source: "acme:c%2F1" },
+      {
+        type: "msg-result",
+        replyTo: "p-4",
+        result: { outcome: "sent", message: { ...sent, id: "m:1", conversation: "c%201" } },
+      },
     ]) {
       expect(problemOf(JSON.stringify(message))).toBeUndefined();
     }
@@ -225,7 +232,9 @@ verifies("remote.phone-messaging-client", () => {
       const changed = { type: "msg-changed", source };
       expect(problemOf(JSON.stringify(changed))).toBe("malformed");
     }
+    // `more` is the host's own cursor, so it keeps the host's strict id rule.
     expect(problemOf(JSON.stringify({ ...page, more: "a b" }))).toBe("malformed");
+    expect(problemOf(JSON.stringify({ ...page, more: "a:b" }))).toBe("malformed");
     expect(problemOf(JSON.stringify(result({ ...sent, to: ["a@b"] })))).toBe("malformed");
     const older = parseHostMessage(JSON.stringify(page), gatewayFallbackProtocolVersion);
     expect(older).toEqual({ ok: false, problem: "malformed" });

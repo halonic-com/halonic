@@ -169,7 +169,7 @@ const isMessagingResult = anyOf(
   exactly({ outcome: oneOf("sent"), message: isSentMessage }),
 );
 
-/** A page of port values: each item one object, its fields the port's own. */
+/** A page of port values: each item one object, its fields the port's own. `more` is the host's own cursor, read back by its strict id rule. */
 const isMessagingPage = exactly(
   {
     type: oneOf("msg-data"),
@@ -177,7 +177,7 @@ const isMessagingPage = exactly(
     what: oneOf(...gatewayMessagingLists, "messages", "hits"),
     items: listOf(isObject),
   },
-  { more: isMessagingId },
+  { more: isId },
 );
 
 /** A page of team status: each item one `TeamStatus` value, its fields the port's own. */
@@ -188,7 +188,7 @@ const isTeamPage = exactly(
     what: oneOf(...gatewayTeamLists, "pull-request"),
     items: listOf(isObject),
   },
-  { more: isMessagingId },
+  { more: isId },
 );
 
 /** The types only version 4 lists: a version 3 host never sends them. */
