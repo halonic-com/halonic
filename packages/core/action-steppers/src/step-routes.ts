@@ -111,6 +111,7 @@ function routeOf(
       };
     case "input":
     case "script":
+    case "sign-in":
       return undefined;
   }
 }
@@ -120,8 +121,8 @@ function routeOf(
  * holds them (architecture note, 2.4): a `guided` step's address, a `call`
  * step's method, path, body and kept fields, and a `check` as a `GET` with no
  * body that runs without the native dialog. Each placeholder and body field
- * takes its pattern from the parameter of the same name. An `input` or
- * `script` step has no route.
+ * takes its pattern from the parameter of the same name. An `input`,
+ * `script` or `sign-in` step has no route.
  *
  * @throws Error when a step names a placeholder or body field that isn't a
  *   parameter, or the parameters weren't built with `strictParameters`: a bug
