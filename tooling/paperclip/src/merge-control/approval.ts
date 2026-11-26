@@ -4,9 +4,12 @@ import {
   overLineLimit,
   type RoutedPull,
   reviewerRoleFor,
+  routedPaths,
   routineRefusal,
+  unknownRename,
 } from "../reviewer-paths.ts";
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
+import { sensitiveOrigin, writtenByTeam } from "../reviewer-paths-routine.ts";
 import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 
@@ -14,10 +17,10 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * The approval rules of the gate (MERGER.md §4, rules 1–6): signed
  * approvals on the current head after the last push, carry-over across a
  * rebase with an identical diff, Julian within `reviewerRoleFor` or re-approving
- * after a rebase-only push (HAL-18459), "Author: Liam", Nora within the routine
- * reviewer's scope (HAL-19248, board 26 Nov), Julian's approval too on a plugin
- * manifest change (HAL-19440) and open change requests. The texts follow
- * the Merger's own matching,
+ * after a rebase-only push (HAL-18459), Nora within `routineRefusal`
+ * (HAL-19283), "Author: Liam", Julian's approval too on a plugin manifest
+ * change (HAL-19440) and open change requests. A renamed file counts by its
+ * old path too. The texts follow the Merger's own matching,
  * which differs from `pr-tools/approvals.ts`: a bare "re-approved on head"
  * counts here (HAL-15553), and time after the last push matters. A signed
  * line counts on any line of a comment, outside code and quotes, once, and
@@ -160,13 +163,33 @@ export function rebaseOnlyAfterLiam(
   if (rebaseOf === undefined || pull.filesTotal > pull.files.length) {
     return false;
   }
-  if (julianRebaseRefusal({ files: pull.files, branch: pull.branch }) !== null) {
+  const routed = routedOf(pull);
+  if (unknownRename(routed) !== undefined) {
+    return false;
+  }
+  if (julianRebaseRefusal({ files: routedPaths(routed), branch: pull.branch }) !== null) {
     return false;
   }
   return teamTexts(pull, teamLogin).some((text) => {
     const liam = ours(text) ? undefined : signedApproval(text.body, "Liam")?.sha;
     return liam !== undefined && (liam.startsWith(rebaseOf) || rebaseOf.startsWith(liam));
   });
+}
+
+/**
+ * The pull request as the reviewer path list reads it: renamed files' old
+ * paths, who wrote it, and whether its branch or labels make it a security
+ * or release one (HAL-19283).
+ */
+function routedOf(pull: GatePull): RoutedPull {
+  return {
+    files: pull.files,
+    changedLines: pull.additions + pull.deletions,
+    sensitive: sensitiveOrigin(pull),
+    ...(pull.manifests === undefined ? {} : { manifests: pull.manifests }),
+    ...(pull.previousPaths === undefined ? {} : { previousPaths: pull.previousPaths }),
+    ours: writtenByTeam(pull),
+  };
 }
 
 /** Why Julian's approval doesn't count here, or null when it is within his scope (HAL-14809). */
@@ -193,24 +216,25 @@ function outsideScope(pull: GatePull, reviewer: ScopedReviewer): string | null {
   if (pull.branch.startsWith(`${reviewer.toLowerCase()}/`)) {
     return `${reviewer}'s own branch`;
   }
-  const changedLines = pull.additions + pull.deletions;
-  const routed = {
-    files: pull.files,
-    changedLines,
-    sensitive: false,
-    ...(pull.manifests === undefined ? {} : { manifests: pull.manifests }),
-  };
+  const routed = routedOf(pull);
   // By role, as the PR watcher routes (`reviewerRoleFor`): a routing never widens Julian's limits.
   // The routine reviewer's scope (HAL-19246) is inside them, so Julian's approval counts there too.
   if (reviewerRoleFor(routed) === "code-reviewer") {
-    return codeReviewerReason(pull, routed);
+    return codeReviewerReason(routed);
   }
   return reviewer === "Nora" ? routineRefusal(routed) : null;
 }
 
 /** Why only the code reviewer may approve this pull request, in the gate's words. */
-function codeReviewerReason(pull: GatePull, routed: RoutedPull): string {
-  const bad = pull.files.filter(isLiamPath);
+function codeReviewerReason(routed: RoutedPull): string {
+  if (routed.sensitive) {
+    return "a security or release pull request";
+  }
+  const renamed = unknownRename(routed);
+  if (renamed !== undefined) {
+    return `renames ${renamed} from a path that isn't known`;
+  }
+  const bad = routedPaths(routed).filter(isLiamPath);
   if (bad.length > 0) {
     return `touches ${bad.slice(0, 2).join(", ")}${bad.length > 2 ? " …" : ""}`;
   }
@@ -314,7 +338,8 @@ function noraVerdict(
     const carried = nora.carried === undefined ? {} : { carried: nora.carried };
     return { approval: { ok: true, nora: true, ...withAt(nora.at), ...carried } };
   }
-  return { note: `Nora approved, but it is outside her scope (${out}): needs Liam` };
+  const next = outsideJulianScope(pull) === null ? "Julian or Liam" : "Liam";
+  return { note: `Nora approved, but it is outside her scope (${out}): needs ${next}` };
 }
 
 function approvalReason(pull: GatePull, approval: ApprovalVerdict | null, reReview: boolean) {

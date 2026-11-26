@@ -108,6 +108,11 @@ export interface GatePull {
   readonly filesTotal: number;
   /** Additions minus deletions per changed file, files not removed only. */
   readonly fileNet: Readonly<Record<string, number>>;
+  /**
+   * The old path of each renamed file, by its new path; null until a REST
+   * read names it, since GraphQL doesn't (HAL-19283). Missing: no renames.
+   */
+  readonly previousPaths?: Readonly<Record<string, string | null>>;
   /** Each changed package `package.json` at merge base and head, for Julian's scope. */
   readonly manifests: Readonly<Record<string, ManifestChange>> | undefined;
   readonly headCommittedAt: string;

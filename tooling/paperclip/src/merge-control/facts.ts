@@ -29,6 +29,7 @@ import {
   listRuns,
   mainRunsOf,
   manifestsOf,
+  previousPathsOf,
   runFactOf,
 } from "./facts-runs.ts";
 import { mainFileOf } from "./gate.ts";
@@ -65,6 +66,7 @@ export interface FactsCaches extends ObservedCaches {
   readonly mainRedJobs: BoundedCache<string[]>;
   readonly ciOkRuns: BoundedCache<CiOkRun | null>;
   readonly manifests: BoundedCache<GatePull["manifests"]>;
+  readonly previousPaths: BoundedCache<GatePull["previousPaths"]>;
   readonly mainFiles: BoundedCache<{ readonly lines: number; readonly barrel: boolean } | null>;
   /** Change ids by `<base>...<sha>` (`facts-patch-ids.ts`). */
   readonly patchIds: BoundedCache<string | null>;
@@ -79,6 +81,7 @@ export function factsCaches(): FactsCaches {
     mainRedJobs: boundedCache(),
     ciOkRuns: boundedCache(),
     manifests: boundedCache(),
+    previousPaths: boundedCache(),
     mainFiles: boundedCache(),
     patchIds: boundedCache(),
     gets: boundedCache(),
@@ -201,6 +204,12 @@ async function readMainFiles(
   return files;
 }
 
+function withPreviousPaths(
+  previousPaths: GatePull["previousPaths"],
+): Pick<GatePull, "previousPaths"> {
+  return previousPaths === undefined ? {} : { previousPaths };
+}
+
 /** The open pull requests the gate looks at. */
 function gateNodes(deps: FactsDeps, pulls: readonly PullNode[]): PullNode[] {
   return pulls.filter((node) => isGatePull(node, deps.settings.autoLabelAuthors));
@@ -208,7 +217,7 @@ function gateNodes(deps: FactsDeps, pulls: readonly PullNode[]): PullNode[] {
 
 /**
  * The gate's pull requests, with every check run of their head, their
- * manifests and red fast-track run.
+ * manifests, renamed files' old paths and red fast-track run.
  */
 async function readGatePulls(
   deps: FactsDeps,
@@ -223,6 +232,7 @@ async function readGatePulls(
     gate.push({
       ...pull,
       manifests: await manifestsOf(get, settings.repo, pull, caches.manifests),
+      ...withPreviousPaths(await previousPathsOf(get, settings.repo, pull, caches.previousPaths)),
       ciOkRun: lean ? null : await ciOkRunOf(get, settings.repo, pull, caches.ciOkRuns),
     });
   }

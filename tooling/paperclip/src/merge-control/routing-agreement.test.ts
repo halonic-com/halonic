@@ -6,7 +6,7 @@ import { gitHubRoute } from "../pr-watcher/route.ts";
 import { reviewerFor, reviewerRoleFor } from "../reviewer-paths.ts";
 import { snapshotWith } from "../routing.test-helper.ts";
 import { routingOf } from "../routing-load.ts";
-import { outsideJulianScope } from "./approval.ts";
+import { outsideJulianScope, outsideNoraScope } from "./approval.ts";
 import { pull } from "./merge-control.test-helper.ts";
 
 /**
@@ -27,7 +27,7 @@ function answers(files: readonly string[]) {
       additions: 30,
       deletions: 10,
       base: { ref: "main" },
-      head: { sha: head, ref: "mateo/HAL-6016-work" },
+      head: { sha: head, ref: "mateo/HAL-6016-work", repo: { full_name: repo } },
     },
     [`/repos/${repo}/pulls/6016/files?per_page=100&page=1`]: files.map((filename) => ({
       filename,
@@ -40,6 +40,9 @@ function answers(files: readonly string[]) {
 const cases: readonly (readonly string[])[] = [
   ["tooling/paperclip/src/pr-watcher/watch.ts"],
   ["docs/guides/review.md"],
+  ["packages/core/app/src/a.ts"],
+  ["packages/studio/features/inbox/src/api.ts"],
+  ["tooling/config/biome.jsonc"],
   [".github/workflows/ci.yml"],
   ["packages/x/src/sandbox/fence.ts"],
   ["tooling/paperclip/src/reviewer-paths.ts"],
@@ -53,10 +56,15 @@ verifies("paperclip.pr-watcher-handoff", () => {
         number: 6016,
         head,
       } as PullFacts);
-      const gate = outsideJulianScope(pull(6016, { files, filesTotal: files.length }));
-      expect({ files, julian: route.reviewer === "julian" }).toEqual({
+      const gatePull = pull(6016, { files, filesTotal: files.length });
+      expect({
         files,
-        julian: gate === null,
+        julian: route.reviewer !== "liam",
+        nora: route.reviewer === "nora",
+      }).toEqual({
+        files,
+        julian: outsideJulianScope(gatePull) === null,
+        nora: outsideNoraScope(gatePull) === null,
       });
     }
   });

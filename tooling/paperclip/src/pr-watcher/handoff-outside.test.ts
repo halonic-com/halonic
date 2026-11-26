@@ -40,7 +40,7 @@ verifies("paperclip.pr-watcher-handoff", () => {
     ]);
     const body = watcher.comments["task-5701"]?.at(-1)?.body ?? "";
     expect(body).toContain(
-      "Julian's approval on #5701 doesn't count: it touches Liam's paths (HAL-14809), so Liam reviews it.",
+      "Julian's approval on #5701 doesn't count: only the code reviewer may approve it (HAL-14809).",
     );
   });
 

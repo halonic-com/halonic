@@ -54,7 +54,9 @@ export function carries(pull: PullFacts, since: SinceApproval, byPaths: Reviewer
   const [judged] = judgeApprovals([{ by: since.by, head: pull.head }], {
     head: pull.head,
     author,
-    reviewer: byPaths,
+    reviewer: byPaths === "liam" ? "liam" : "julian",
+    // Nora's approval carries only to a routine review (HAL-19283).
+    routineRefusal: byPaths === "nora" ? null : "not a routine review by its paths",
   });
   return judged?.counts === true;
 }

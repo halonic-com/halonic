@@ -55,14 +55,17 @@ export function answerOf(
 
 /**
  * The reviewer who asked for changes on any of these pull requests, when a
- * finding names one: Liam when any names him, otherwise Julian.
+ * finding names one: Liam when any names him, otherwise Julian, then Nora.
  */
 export function blockingReviewer(pulls: readonly PullFacts[]): Reviewer | undefined {
   const names = pulls.map((pull) => pull.latestReview?.by);
   if (names.includes("Liam")) {
     return "liam";
   }
-  return names.includes("Julian") ? "julian" : undefined;
+  if (names.includes("Julian")) {
+    return "julian";
+  }
+  return names.includes("Nora") ? "nora" : undefined;
 }
 
 /**

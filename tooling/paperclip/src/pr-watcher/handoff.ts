@@ -18,8 +18,18 @@ import {
  * `decide.ts`; `watch.ts` carries them out.
  */
 
-/** Who reviews a pull request on `halonic` (HAL-14809). */
-export type Reviewer = "julian" | "liam";
+/** Who reviews a pull request on `halonic` (HAL-14809, HAL-19283). */
+export type Reviewer = "nora" | "julian" | "liam";
+
+/** Each reviewer's name as their signed line writes it. */
+const reviewerNames: Readonly<Record<Reviewer, string>> = {
+  nora: "Nora",
+  julian: "Julian",
+  liam: "Liam",
+};
+
+/** The reviewers whose approval counts only within their limits: Julian's, and Nora's routine scope. */
+const limitedReviewers: readonly string[] = ["Julian", "Nora"];
 
 /** What a pull request's paths say: its reviewer, and whether they make it a security one. */
 export interface PathReview {
@@ -27,6 +37,8 @@ export interface PathReview {
   readonly security: boolean;
   /** Why Julian's rebase-only re-approval can't count on it (`julianRebaseRefusal`), or null when it can. */
   readonly rebaseRefusal?: string | null;
+  /** Why Nora's approval can't count on it (`routineRefusal`), or null when it can. */
+  readonly routineRefusal?: string | null;
 }
 
 /** The path rules (`reviewerFor`, `isSecurityPath`), read from GitHub for one pull request. */
@@ -47,10 +59,13 @@ export function pullId(pull: { readonly repo: string; readonly number: number })
   return `${pull.repo}#${pull.number}`;
 }
 
-/** Pull requests whose approvals on the head don't count (Julian outside his limits). */
-export type Refused = ReadonlySet<string>;
+/**
+ * Pull requests whose approvals on the head don't count (Julian or Nora
+ * outside their limits), with the line that says who approved and why.
+ */
+export type Refused = ReadonlyMap<string, string>;
 
-const none: Refused = new Set();
+const none: Refused = new Map();
 
 /**
  * Someone other than its author signed an approval on its current head, and
@@ -88,10 +103,10 @@ export function handoffKey(
 const noAnswers: Answers = new Map();
 
 /**
- * Its only approvals on the head are Julian's, on a pull request neither
- * Liam nor Julian wrote: whether they count depends on its paths, so the
- * watcher reads them (`julianRefused`) unless it already handed this head to
- * Liam.
+ * Its only approvals on the head are Julian's or Nora's, on a pull request
+ * neither Liam nor Julian wrote: whether they count depends on its paths, so
+ * the watcher reads them (`julianRefused`) unless it already handed this
+ * head on.
  */
 export function julianOnlyOnHead(pull: PullFacts, memory: Memory): boolean {
   const author = branchOwner(pull.branch);
@@ -101,28 +116,46 @@ export function julianOnlyOnHead(pull: PullFacts, memory: Memory): boolean {
   const onHead = othersApprovals(pull).filter(({ head }) => pull.head.startsWith(head));
   return (
     onHead.length > 0 &&
-    onHead.every(({ by }) => by === "Julian") &&
+    onHead.every(({ by }) => limitedReviewers.includes(by)) &&
     !memory.reported.has(outsideKey(pull))
   );
 }
 
 /**
- * Julian approved the head but, by the HAL-14809 rules the queue gate uses,
- * his approval doesn't count there and nobody else's does: the pull request
+ * Julian or Nora approved the head but, by the rules the queue gate uses,
+ * the approval doesn't count there and nobody else's does: the pull request
  * is Liam's by its paths and it isn't a re-approval after a rebase-only push
- * Liam approved, on a pull request `julianRebaseRefusal` allows (HAL-18459).
+ * Liam approved, on a pull request `julianRebaseRefusal` allows (HAL-18459),
+ * or Nora's is outside the routine scope (HAL-19283).
  */
 export function julianRefused(pull: PullFacts, paths: PathReview): boolean {
+  return refusalOf(pull, paths) !== null;
+}
+
+/** Who approved and why it doesn't count, for the handoff, or null when an approval counts. */
+export function refusalOf(pull: PullFacts, paths: PathReview): string | null {
   const judged = judgeApprovals(pull.approvals ?? [], {
     head: pull.head,
     author: branchOwner(pull.branch),
-    reviewer: paths.reviewer,
+    reviewer: paths.reviewer === "liam" ? "liam" : "julian",
     ...(paths.rebaseRefusal === undefined ? {} : { rebaseRefusal: paths.rebaseRefusal }),
+    ...(paths.routineRefusal === undefined ? {} : { routineRefusal: paths.routineRefusal }),
   }).filter(({ head }) => pull.head.startsWith(head));
-  return (
-    judged.some(({ by, counts }) => by === "Julian" && !counts) &&
-    !judged.some(({ counts }) => counts)
-  );
+  const by = [
+    ...new Set(
+      judged
+        .filter(({ by, counts }) => limitedReviewers.includes(by) && !counts)
+        .map(({ by }) => by),
+    ),
+  ];
+  if (by.length === 0 || judged.some(({ counts }) => counts)) {
+    return null;
+  }
+  const why =
+    paths.reviewer === "liam"
+      ? "only the code reviewer may approve it (HAL-14809)"
+      : `it is outside the routine scope (${paths.routineRefusal ?? "its paths"}, HAL-19283)`;
+  return `${by.join(" and ")}'s approval on #${pull.number} doesn't count: ${why}.`;
 }
 
 /** Approved on its head, or the watcher recorded that an approval carries to it (HAL-18460). */
@@ -176,8 +209,9 @@ export function waitingForReview(
 
 /**
  * The reviewer of the task: Liam when any of its pull requests is his by
- * the path rules. Liam's own pull requests go to Julian, whose approval
- * counts on any path there, and Julian's go to Liam (HAL-14809).
+ * the path rules, else Julian when any is his, else Nora (HAL-19283). Liam's
+ * own pull requests go to Julian, whose approval counts on any path there,
+ * and Julian's go to Liam (HAL-14809).
  */
 export function reviewerOf(author: string | undefined, byPaths: readonly Reviewer[]): Reviewer {
   if (author === "liam") {
@@ -186,7 +220,13 @@ export function reviewerOf(author: string | undefined, byPaths: readonly Reviewe
   if (author === "julian") {
     return "liam";
   }
-  return byPaths.includes("liam") ? "liam" : "julian";
+  if (byPaths.includes("liam")) {
+    return "liam";
+  }
+  // Nora never reviews her own: her pull requests go to Julian at the least.
+  return byPaths.includes("julian") || byPaths.length === 0 || author === "nora"
+    ? "julian"
+    : "nora";
 }
 
 /** The newest approval by someone else, on an older head, of a pull request not approved on its head. */
@@ -250,7 +290,7 @@ export function handoffMessage(
   since: SinceApprovals = new Map(),
   answers: Answers = noAnswers,
 ): string {
-  const name = reviewer === "julian" ? "Julian" : "Liam";
+  const name = reviewerNames[reviewer];
   const lines = pulls.map(
     (pull) =>
       `PR watcher: ready for review: [#${pull.number}](${pull.url}), head \`${short(pull.head)}\`.`,
@@ -260,12 +300,10 @@ export function handoffMessage(
     const answer = answers.get(pullId(pull));
     return answer === undefined ? [] : [answerLine(pull, answer)];
   });
-  const outside = pulls
-    .filter((pull) => refused.has(pullId(pull)))
-    .map(
-      (pull) =>
-        `Julian's approval on #${pull.number} doesn't count: it touches Liam's paths (HAL-14809), so Liam reviews it.`,
-    );
+  const outside = pulls.flatMap((pull) => {
+    const line = refused.get(pullId(pull));
+    return line === undefined ? [] : [line];
+  });
   return [
     ...lines,
     "",

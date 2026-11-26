@@ -31,8 +31,8 @@ export const agentNamePattern = /^[a-z][a-z0-9-]{0,39}$/;
 export const defaultRoles: Readonly<Record<RoutingRole, string>> = {
   "code-reviewer": "liam",
   "second-reviewer": "julian",
-  // Nora takes it once she runs (HAL-19246, no shadow trial); until then Julian keeps it.
-  "routine-reviewer": "julian",
+  // Nora, the review-only agent (HAL-19246, the board: no shadow trial).
+  "routine-reviewer": "nora",
   // Today the clarifier is a plugin setting and the merge captain is the code reviewer.
   clarifier: "liam",
   "merge-captain": "liam",
