@@ -173,6 +173,15 @@ verifies("feedback.send-window", () => {
     expect(element.textContent).toContain("CtrlEntersend");
   });
 
+  it("shows the crop the shell answers as a list of bytes, as Tauri's postMessage IPC does", async () => {
+    // The desktop windows' policy keeps Tauri off its custom protocol, so it answers raw bytes as
+    // a JSON array of numbers; the dialog said "Couldn't load the screenshot." (HAL-19757).
+    const listed = Array.from(new Uint8Array(cropBytes()));
+    await open({ shell: fakeShell(async () => listed) });
+    expect(element.textContent).not.toContain("Couldn't load the screenshot.");
+    expect(element.querySelector("canvas")?.classList.contains("hidden")).toBe(false);
+  });
+
   it("names the field with the placeholder's question and describes it with the footnote", async () => {
     await open();
     const label = element.querySelector(`label[for="${textField().id}"]`);
