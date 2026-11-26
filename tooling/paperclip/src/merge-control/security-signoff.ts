@@ -14,7 +14,7 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * `security-review` (or "security review") in its description, more changed
  * files than the gate can read (HAL-19778), or a changed path in the security
  * part of Julian's limits: `apps/studio/src-tauri/`, `docs/security/`,
- * `SECURITY.md`, or a path naming sandbox, secret, sign-in, oauth, keychain
+ * `packages/core/action-catalog/` (HAL-20215), `SECURITY.md`, or a path naming sandbox, secret, sign-in, oauth, keychain
  * or trust. Changesets don't count, nor do lockfiles, `package.json` or CI
  * paths, which would hold every dependency pull request.
  */
@@ -22,7 +22,13 @@ import type { GatePull, PullText } from "./snapshot.ts";
 /** The label that marks a security pull request. */
 export const securityLabel = "security";
 
-const securityFolders: readonly string[] = ["apps/studio/src-tauri/", "docs/security/"];
+// The action catalog sets which GitHub calls the shell sends with the user's
+// token, their risk and the web origins (HAL-20215).
+const securityFolders: readonly string[] = [
+  "apps/studio/src-tauri/",
+  "docs/security/",
+  "packages/core/action-catalog/",
+];
 const securityWords = /sandbox|secret|sign-in|oauth|keychain|trust/i;
 const reviewLine = /^\s*security[- ]review\b/im;
 const signOffLine = /^Julian:[ \t]*security sign-off on head[ \t]*`?([0-9a-f]{7,40})`?/;

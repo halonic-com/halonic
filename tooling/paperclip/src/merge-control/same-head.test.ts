@@ -7,6 +7,7 @@ import {
   enqueued,
   logText,
   pull,
+  said,
   snapshot,
   testSettings,
 } from "./merge-control.test-helper.ts";
@@ -46,8 +47,12 @@ const fixture: Case = JSON.parse(
 function factsOf(pass: Pass): MergeSnapshot {
   const { number, head, files } = fixture.pull;
   const runs = fixture.groupRuns.filter((run) => pass.groupRuns.includes(run.id));
+  // #5969 changes the action catalog, a security path since HAL-20215: the
+  // sign-off keeps this replay about the culprit hold alone.
+  const base = pull(number, { head, files, filesTotal: files.length });
+  const signOff = said(`Julian: security sign-off on head \`${head.slice(0, 12)}\``, 20);
   return snapshot({
-    pulls: [pull(number, { head, files, filesTotal: files.length })],
+    pulls: [{ ...base, texts: [...base.texts, signOff] }],
     groupRuns: runs.map((run) => ({
       ...run,
       failedJobs: run.failedJobs.map((job) => ({ ...job, url: run.url })),
