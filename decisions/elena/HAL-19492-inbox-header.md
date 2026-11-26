@@ -23,6 +23,11 @@ Nora's review added the rest of that rule: a bundle's header names what in it st
 approval or person step that you decided, or whose run moved on, keeps its run in the header's line
 but drops the wait, as its card no longer says since when it waits (`inbox.wait-card`).
 
+The pull request also moves the eight phone tests of `inbox-page.test.tsx` (the "on a phone"
+group of `inbox.page`), unchanged, to `inbox-page-phone.test.tsx`, so the file stays under 480
+lines. No test is weakened or dropped: the same eight run there under the same requirement.
+
 ## Covers
 
 - inbox.header-avatar
+- packages/studio/features/inbox/src/ui/inbox-page.test.tsx
