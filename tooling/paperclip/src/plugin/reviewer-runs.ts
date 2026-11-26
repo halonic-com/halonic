@@ -55,6 +55,7 @@ export function runRow(value: unknown): RunRow | null {
     createdAt,
     scheduledRetryReason: text(run?.["scheduledRetryReason"]),
     errorCode: text(run?.["errorCode"]),
+    error: text(run?.["error"]),
     startedAt: text(run?.["startedAt"]),
     finishedAt: text(run?.["finishedAt"]),
   };
