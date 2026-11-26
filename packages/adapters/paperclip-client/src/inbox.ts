@@ -6,17 +6,8 @@ import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
 import type { PaperclipSteppers } from "./steppers.ts";
+import { PaperclipTaskList } from "./task-list.ts";
 import { companyPrefix, type PaperclipWebLinks, prefixOf, withWebLink } from "./web-links.ts";
-
-/** Task states whose cards may still wait on the person. A closed task's cards can't be answered. */
-export const openTaskStates = "backlog,todo,in_progress,in_review,blocked";
-
-/**
- * Paperclip's largest page of tasks. The provider reads one page: a company
- * with more than 1000 open tasks loses the rest from work and the Inbox
- * without an error. Paging comes when a company gets near that.
- */
-const taskPage = "1000";
 
 /** Approval states the Inbox shows: waiting on the person, or on the agent after Request changes. */
 const waitingApprovalStates = ["pending", "revision_requested"] as const;
@@ -74,6 +65,7 @@ export class PaperclipInbox {
   readonly #company: string;
   readonly #steppers: PaperclipSteppers | undefined;
   readonly #boardRequests: PaperclipBoardRequests;
+  readonly #tasks: PaperclipTaskList;
   readonly #webLinks: PaperclipWebLinks;
   #cards = new Map<string, TaskCards>();
   /** Each pending approval's first linked task, read once: an approval's links don't change. */
@@ -94,15 +86,12 @@ export class PaperclipInbox {
     this.#webLinks = webLinks;
     this.#steppers = steppers;
     this.#boardRequests = new PaperclipBoardRequests(reader, company);
+    this.#tasks = new PaperclipTaskList(reader, company);
   }
 
-  /** The company's open tasks. */
-  async openTasks(): Promise<JsonRecord[]> {
-    const body = await this.#reader.read("listTasks", {
-      path: { company: this.#company },
-      query: { status: openTaskStates, limit: taskPage },
-    });
-    return asRecords(body);
+  /** The company's open tasks, read as the changes since the last read (`paperclip-client.delta-reads`). */
+  openTasks(): Promise<readonly JsonRecord[]> {
+    return this.#tasks.read();
   }
 
   /** The cards on task `task`, as Paperclip has them now. */

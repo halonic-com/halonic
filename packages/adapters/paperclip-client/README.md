@@ -111,12 +111,12 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listAgents` | `GET /api/companies/{company}/agents` | agents, and authors' names |
 | `readAgentAvatar` | `GET /api/agent-avatars/{segment}` | an agent's picture, when its `avatarUrl` is a path under `/api/agent-avatars/`: PNG, JPEG or WebP, at most 256 KB |
 | `readAgentAvatarSet` | `GET /api/agent-avatars/{set}/{palette}/{file}` | Paperclip's own agent pictures, read like `readAgentAvatar` and without their `?size=` query |
-| `listTasks` | `GET /api/companies/{company}/issues?status=backlog,todo,in_progress,in_review,blocked&limit=1000` | work, and the tasks whose cards are read |
+| `listTasks` | `GET /api/companies/{company}/issues?status=backlog,todo,in_progress,in_review,blocked&view=index&sortField=id&sortDir=asc&limit=1000`, then `?updatedSince=…&view=index&sortField=id&sortDir=asc&limit=1000`, each with `&afterId=` for the next page | work, and the tasks whose cards are read: the open tasks once, then only what changed |
 | `listTasks` with `parentId=` | `GET /api/companies/{company}/issues?parentId={task}&limit=200` | a channel's child tasks, for its work lines and replies |
 | `searchTasks` | `GET /api/companies/{company}/issues?q={query}&limit=50` | search: Paperclip's matching tasks, as work or as a chat |
 | `listProjects` | `GET /api/companies/{company}/projects` | each inbox item's project, from its task |
 | `listChats` | `GET /api/companies/{company}/chats` | the signed-in user's chats; 404 when Agent Chat is off |
-| `listComments` | `GET /api/issues/{task}/comments?order=desc&limit=100` | a chat's newest messages |
+| `listComments` | `GET /api/issues/{task}/comments?order=desc&limit=100`, then `?after={comment}&order=asc&limit=100` | a chat's newest messages, then only the new ones |
 | `listTaskCards` | `GET /api/issues/{task}/interactions` | a task's cards |
 | `listApprovals` | `GET /api/companies/{company}/approvals?status=pending`, then `?status=revision_requested` | pending approvals, and those waiting on the agent after Request changes, company-wide |
 | `getApproval` | `GET /api/approvals/{approval}` | before Approve or Reject: whether it is a budget override; who decided an approval first |
@@ -208,9 +208,16 @@ reads, 4 at a time; later polls read only the tasks that changed. A task without
 read on every poll. Each poll reads the open tasks once, for both the Inbox and the work list, and an
 approval's linked task is read once while it is pending.
 
-**At most 1000 open tasks.** The provider reads one page of `listTasks`, Paperclip's largest. Open tasks
-past the first 1000 are missing from work and the Inbox, without an error. Paging comes when a company
-gets near that; ours has about 400.
+**Delta reads** (`paperclip-client.delta-reads`, HAL-19334). The provider keeps the open tasks in memory.
+The first read loads them with `view=index`, in pages of 1000 by task ID. Every later read asks only for
+the tasks Paperclip changed since the newest `updatedAt` it has seen, less 30 seconds, with no status
+filter, so a task that closes comes back once and leaves the list. While a read is unfinished it keeps
+the last task ID it read, so a page boundary among equal `updatedAt` values, or a failed page, resumes
+after that ID instead of reading the same tasks again. A read where nothing changed is one request. A
+chat's messages are read whole once, then only the comments after the ones kept; every 10th read, and
+whenever the newest comment kept is gone, the newest page is read whole again, because `after` doesn't
+see a deleted or blanked comment. A task Paperclip hides from the list (deleted, or made private) stays
+until the client is made again.
 
 **Search** uses Paperclip's issue search (`searchTasks`, the `listTasks` route with `q=`, so it reads
 nothing the provider couldn't already) in the connection's company, all states included. A matching chat
