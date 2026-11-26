@@ -2,7 +2,7 @@
 
 - Approval: plan approved by Liam on HAL-19033; wording approved by Sofia on HAL-19034 (decided by the team, HAL-2282); Liam signs this note in his review of the pull request on HAL-19032
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:UBjfQqnh5sQcZgQiw8SJaTxm6DFz1zWt2ZgFAuuWC8hC4C3K/tw33RRhvn4I1rLMqoELDlyNrhNsZclaC4dgCg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TUe6FcGMdNgEcSmhN6BDlAPIuKxFzZ/Uk4CRxNQT/Bl6K8KaGJ0ZW7h0EOznUFfphutRySfAJM4/r7O1RHjDBA==
 - Task: HAL-19032
 
 ## What changes
