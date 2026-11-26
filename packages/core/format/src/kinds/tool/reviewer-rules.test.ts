@@ -44,7 +44,10 @@ verifies("format.tool-reviewer-rules", () => {
           "acme/website",
           "files: [pnpm-lock.yaml]",
           "wordsSkip: ['(^|/)(test|tests)/']",
-          "lineLimit: { max: 1200, skip: ['\\.md$'] }",
+          "lineLimit:",
+          "  max: 1500",
+          "  skip: ['\\.md$']",
+          "  folderLimits: [{ folders: [src/kernel/], max: 800 }]",
         ),
       ),
     );
@@ -57,11 +60,34 @@ verifies("format.tool-reviewer-rules", () => {
           folders: [],
           words: [],
           wordsSkip: ["(^|/)(test|tests)/"],
-          lineLimit: { max: 1200, skip: ["\\.md$"] },
+          lineLimit: {
+            max: 1500,
+            skip: ["\\.md$"],
+            folderLimits: [{ folders: ["src/kernel/"], max: 800 }],
+          },
           nestedPackageJson: false,
         },
       },
     });
+  });
+
+  it("fills in no folder limits when the line limit gives none", () => {
+    const tool = parsedValue(
+      "tool",
+      prStatus(...rulesFor("acme/website", "lineLimit: { max: 1200 }")),
+    );
+    expect(tool.action.with).toMatchObject({
+      reviewerRules: { "acme/website": { lineLimit: { max: 1200, skip: [], folderLimits: [] } } },
+    });
+  });
+
+  it("refuses a folder limit without its max", () => {
+    const text = prStatus(
+      ...rulesFor("acme/website", "lineLimit: { max: 1200, folderLimits: [{ folders: [src/] }] }"),
+    );
+    expect(pathsOf(text)).toEqual([
+      "action.with.reviewerRules.acme/website.lineLimit.folderLimits.0.max",
+    ]);
   });
 
   it("refuses a person where a role goes", () => {

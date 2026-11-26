@@ -30,6 +30,13 @@ const pattern = s
 
 const paths = s.array(s.string().min(1).max(300)).max(100).default([]);
 const patterns = s.array(pattern).max(30).default([]);
+const maxLines = s.number().int().min(1);
+
+/**
+ * A tighter line limit for some folders, such as an engine's kernel: more
+ * changed lines than `max` in files under `folders` escalate.
+ */
+const FolderLineLimit = s.object({ folders: paths, max: maxLines }).strict();
 
 /** One repository's rules. A pull request goes to `escalateTo` when any rule fires. */
 export const RepositoryReviewerRules = s
@@ -46,9 +53,16 @@ export const RepositoryReviewerRules = s
     words: s.array(s.string().min(1).max(40)).max(30).default([]),
     /** Paths the word rule skips, such as tests and Markdown. */
     wordsSkip: patterns,
-    /** More changed lines than `max` escalate, unless every file matches `skip`. */
+    /**
+     * More changed lines than `max` escalate; lines in files matching `skip`
+     * don't count. `folderLimits` count only the files under their folders.
+     */
     lineLimit: s
-      .object({ max: s.number().int().min(1), skip: patterns })
+      .object({
+        max: maxLines,
+        skip: patterns,
+        folderLimits: s.array(FolderLineLimit).max(10).default([]),
+      })
       .strict()
       .optional(),
     /** Whether a `package.json` below the root escalates. */

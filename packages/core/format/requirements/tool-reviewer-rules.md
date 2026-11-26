@@ -2,13 +2,16 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18292, PR 1 of HAL-18289 (Liam's review of the proposal): reviewer path rules name roles, not people, and hold exact regexes, not labels
+- Source: HAL-18292, PR 1 of HAL-18289 (Liam's review of the proposal): reviewer path rules name roles, not people, and hold exact regexes, not labels; HAL-19256: folder line limits, for halonic's 800-line limit on the kernel and the event types (HAL-18459)
 
-When a tool file running `github.pull-request` gives `reviewerRules`, the format shall accept, per repository, a `default` and an `escalateTo` role, `files`, `folders`, `words`, `wordsSkip` regexes, an optional `lineLimit` with `max` and `skip` regexes, and `nestedPackageJson`; and it shall refuse the file when the rules name a role other than `second-reviewer` or `code-reviewer`, hold a regex that doesn't compile, name a repository outside the tool's `repositories`, or hold a key it doesn't know.
+When a tool file running `github.pull-request` gives `reviewerRules`, the format shall accept, per repository, a `default` and an `escalateTo` role, `files`, `folders`, `words`, `wordsSkip` regexes, an optional `lineLimit` with `max`, `skip` regexes and `folderLimits` (each with `folders` and its own `max`), and `nestedPackageJson`; and it shall refuse the file when the rules name a role other than `second-reviewer` or `code-reviewer`, hold a regex that doesn't compile, give a folder limit without its `max`, name a repository outside the tool's `repositories`, or hold a key it doesn't know.
 
 ## Examples
 
 - Given rules for `acme/website` with `default: second-reviewer`, `escalateTo: code-reviewer` and `wordsSkip: ['(^|/)(test|tests)/']`,
+  when the workspace is checked,
+  then the tool file is accepted.
+- Given rules with `lineLimit: { max: 1500, folderLimits: [{ folders: [src/kernel/], max: 800 }] }`,
   when the workspace is checked,
   then the tool file is accepted.
 - Given rules whose `escalateTo` is `liam`,

@@ -35,20 +35,38 @@ export function reviewerRulesOf(tool: Tool, repo: string): RepositoryReviewerRul
 interface ChangedFile {
   readonly filename: string;
   readonly previous_filename?: string;
+  readonly additions?: number;
+  readonly deletions?: number;
 }
 
-/** Every path a pull request changes: both sides of a rename, so moving a file out of a folder still counts. */
-export async function changedPaths(
+/** The paths a pull request changes, and the changed lines (additions plus deletions) of each. */
+export interface ChangedFiles {
+  /** Both sides of a rename, so moving a file out of a folder still counts. */
+  readonly paths: readonly string[];
+  /** Changed lines by path; both sides of a rename get the file's count. */
+  readonly lines: Readonly<Record<string, number>>;
+}
+
+/** Every path a pull request changes, with its changed lines. */
+export async function changedFiles(
   get: GitHubGet,
   repo: string,
   number: number,
-): Promise<string[]> {
+): Promise<ChangedFiles> {
   const files = (await everyPage(get, `/repos/${repo}/pulls/${number}/files`)) as ChangedFile[];
-  return files.flatMap((file) =>
-    file.previous_filename === undefined
-      ? [file.filename]
-      : [file.filename, file.previous_filename],
-  );
+  const paths: string[] = [];
+  const lines: Record<string, number> = {};
+  for (const file of files) {
+    const sides =
+      file.previous_filename === undefined
+        ? [file.filename]
+        : [file.filename, file.previous_filename];
+    for (const path of sides) {
+      paths.push(path);
+      lines[path] = (file.additions ?? 0) + (file.deletions ?? 0);
+    }
+  }
+  return { paths, lines };
 }
 
 /** Whether any of the regexes matches the path. */
@@ -86,21 +104,72 @@ function escalatesPath(
 }
 
 /**
+ * Changed lines in the `picked` paths. Without a picked path's own count,
+ * the whole pull request's lines stand in for them, which can only escalate
+ * more often, never less.
+ */
+function linesIn(
+  picked: readonly string[],
+  changedLines: number,
+  fileLines: Readonly<Record<string, number>> | undefined,
+): number {
+  let sum = 0;
+  for (const path of picked) {
+    const lines = fileLines?.[path];
+    if (lines === undefined) {
+      return changedLines;
+    }
+    sum += lines;
+  }
+  return sum;
+}
+
+/**
+ * Whether the pull request is over the line limit or one of its folder
+ * limits, counting only the files the limit doesn't skip.
+ */
+function overLineLimit(
+  rules: RepositoryReviewerRules,
+  regexps: ReturnType<typeof compiled>,
+  paths: readonly string[],
+  changedLines: number,
+  fileLines: Readonly<Record<string, number>> | undefined,
+): boolean {
+  if (rules.lineLimit === undefined) {
+    return false;
+  }
+  const counted = paths.filter((path) => !matchesAny(regexps.lineSkip, path));
+  if (counted.length === 0) {
+    return false;
+  }
+  if (linesIn(counted, changedLines, fileLines) > rules.lineLimit.max) {
+    return true;
+  }
+  return rules.lineLimit.folderLimits.some((limit) => {
+    const inFolders = counted.filter((path) =>
+      limit.folders.some((folder) => path.startsWith(folder)),
+    );
+    return inFolders.length > 0 && linesIn(inFolders, changedLines, fileLines) > limit.max;
+  });
+}
+
+/**
  * The role by the rules: `escalateTo` when a path fires a rule or the pull
- * request is over the line limit with a file the limit doesn't skip;
- * otherwise `default`.
+ * request is over a line limit; otherwise `default`. `fileLines` gives each
+ * path's changed lines; without it, the line limits count the whole pull
+ * request's `changedLines`.
  */
 export function reviewRoleByPaths(
   rules: RepositoryReviewerRules,
   paths: readonly string[],
   changedLines: number,
+  fileLines?: Readonly<Record<string, number>>,
 ): ReviewRole {
   const regexps = compiled(rules);
-  const overLimit =
-    rules.lineLimit !== undefined &&
-    changedLines > rules.lineLimit.max &&
-    !paths.every((path) => matchesAny(regexps.lineSkip, path));
-  if (overLimit || paths.some((path) => escalatesPath(rules, regexps, path))) {
+  if (
+    overLineLimit(rules, regexps, paths, changedLines, fileLines) ||
+    paths.some((path) => escalatesPath(rules, regexps, path))
+  ) {
     return rules.escalateTo;
   }
   return rules.default;
@@ -109,11 +178,11 @@ export function reviewRoleByPaths(
 /** The role and the agent the routing names for it. */
 export function reviewerByPaths(
   rules: RepositoryReviewerRules,
-  paths: readonly string[],
+  files: ChangedFiles,
   changedLines: number,
   routing: Routing | undefined,
 ): ReviewerByPaths {
-  const role = reviewRoleByPaths(rules, paths, changedLines);
+  const role = reviewRoleByPaths(rules, files.paths, changedLines, files.lines);
   return { role, person: routing?.roles[role] };
 }
 

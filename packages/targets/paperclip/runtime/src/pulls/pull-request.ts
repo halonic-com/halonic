@@ -19,7 +19,8 @@ import {
   untrustedNote,
 } from "./reads.ts";
 import {
-  changedPaths,
+  type ChangedFiles,
+  changedFiles,
   noteDefaultReviewer,
   type ReviewerByPaths,
   reviewerByPaths,
@@ -103,6 +104,9 @@ export function agentNames({ paperclip, companyId }: ActionCall): AgentName {
   };
 }
 
+/** No changed files read: the repository has no rules to match them against. */
+const noFiles: ChangedFiles = { paths: [], lines: {} };
+
 /** Reads one pull request's whole status: about 9 GitHub requests. */
 export async function pullRequestStatus(
   get: GitHubGet,
@@ -116,7 +120,7 @@ export async function pullRequestStatus(
   const state = pull.merged_at !== null ? "merged" : pull.state;
   const open = state === "open";
   const changedLines = (pull.additions ?? 0) + (pull.deletions ?? 0);
-  const [ciOk, comments, inQueue, compare, paths] = await Promise.all([
+  const [ciOk, comments, inQueue, compare, files] = await Promise.all([
     ciOkOf(get, repo, pull),
     everyPage(get, `/repos/${repo}/issues/${number}/comments`) as Promise<Review[]>,
     open ? inMergeQueue(get, repo, number) : Promise.resolve(false),
@@ -126,7 +130,7 @@ export async function pullRequestStatus(
         }>)
       : Promise.resolve(undefined),
     // The files list costs a request per 100 files, so only with rules to match.
-    sources.rules === undefined ? Promise.resolve([]) : changedPaths(get, repo, number),
+    sources.rules === undefined ? Promise.resolve(noFiles) : changedFiles(get, repo, number),
   ]);
   const finding = await latestFinding(get, repo, number, head, comments);
   // A fork's branch can be named like ours, so it names no author or task.
@@ -135,7 +139,7 @@ export async function pullRequestStatus(
   const reviewer =
     sources.rules === undefined
       ? undefined
-      : reviewerByPaths(sources.rules, paths, changedLines, sources.routing);
+      : reviewerByPaths(sources.rules, files, changedLines, sources.routing);
   const found = await withReviewerNote(
     approvals(comments, {
       head,
