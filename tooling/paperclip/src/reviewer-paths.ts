@@ -25,6 +25,9 @@ export const liamFiles: readonly string[] = [
   "tooling/paperclip/src/pr-tools/approvals.ts",
   "tooling/paperclip/requirements/routine-review.md",
   "tooling/paperclip/src/routine-review.test.ts",
+  "tooling/paperclip/requirements/merge-control-nora-scope.md",
+  // Builds the routed pull request (origin, old paths) that decides Nora's scope in pr_status and the watcher.
+  "tooling/paperclip/src/pr-tools/manifests.ts",
   // What the live Merger's loader needs from them (HAL-18282).
   "tooling/paperclip/requirements/reviewer-paths-standalone.md",
   // Who covers each role: the routing is a trust root (HAL-17982).
@@ -369,25 +372,29 @@ function needsCodeReviewer(pull: RoutedPull): boolean {
   );
 }
 
-/** The first changed `package.json` whose `exports` change, or undefined (HAL-19283). */
+/** The `package.json` fields that name a package's entry points. */
+const entryFields: readonly string[] = ["exports", "main", "module", "types", "typings", "browser"];
+
+/** The first changed `package.json` whose entry points change, or undefined (HAL-19283). */
 function exportsChange(pull: RoutedPull): string | undefined {
   return Object.entries(pull.manifests ?? {}).find(([, change]) => {
     const before = parseManifest(change.before);
     const after = parseManifest(change.after);
     return (
-      before === undefined || after === undefined || !sameValue(before["exports"], after["exports"])
+      before === undefined ||
+      after === undefined ||
+      entryFields.some((field) => !sameValue(before[field], after[field]))
     );
   })?.[0];
 }
 
 /**
  * Why the routine reviewer (Nora, HAL-19246) can't approve this pull request
- * alone, or null when it can: it fits the second reviewer's limits, touches
- * none of the routine exclusions (`reviewer-paths-routine.ts`), by a file's
- * path or a renamed file's old one, changes no public interface (an entry
- * point a package exports, or a package's `exports`, HAL-19283) and no plugin
- * manifest (`manifestFileOf`, which Julian approves, HAL-19440). A new
- * package already needs the code reviewer (its `package.json` has no base).
+ * alone, or null when it can: it fits the second reviewer's limits and, by a
+ * file's path or a renamed file's old one, touches no routine exclusion
+ * (`reviewer-paths-routine.ts`), public interface (HAL-19283) or plugin
+ * manifest (`manifestFileOf`, Julian's, HAL-19440). A new package already
+ * needs the code reviewer (its `package.json` has no base).
  * The PR watcher, the Agent tools plugin and the Merger's gate all call
  * this, so they count the same approvals.
  */
@@ -407,7 +414,7 @@ export function routineRefusal(pull: RoutedPull): string | null {
   if (publicInterface !== undefined) {
     return `changes a public interface (${publicInterface})`;
   }
-  const manifest = manifestFileOf(pull.files);
+  const manifest = manifestFileOf(paths);
   if (manifest !== undefined) {
     return `changes a plugin manifest (${manifest}): Julian approves it`;
   }
@@ -435,8 +442,7 @@ export function reviewerRoleFor(pull: RoutedPull): ReviewRole {
  * The agent who reviews a pull request: its role (`reviewerRoleFor`),
  * covered by the person the routing names. Without a routing that is
  * `nora`, `julian` or `liam` (`defaultRoles`); a refused routing is no routing.
- * A plugin manifest change goes to Julian at least, and needs his approval
- * even when it goes to Liam (`manifestFileOf`, HAL-19440).
+ * A plugin manifest change also needs Julian's approval (HAL-19440).
  */
 export function reviewerFor(pull: RoutedPull): "nora" | "julian" | "liam";
 export function reviewerFor(pull: RoutedPull, routing: Routing | undefined): string;

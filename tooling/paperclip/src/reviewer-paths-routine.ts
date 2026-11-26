@@ -18,6 +18,8 @@ export const routineExcludedFolders: readonly string[] = [
   "packages/testing/spec/",
   "tooling/config/",
   "tooling/paperclip/src/merge-control/",
+  // The DCO standing statement CONTRIBUTING.md links to, which covers every halonic-dev commit.
+  "docs/legal/",
 ];
 
 /**

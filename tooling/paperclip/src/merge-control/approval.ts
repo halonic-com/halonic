@@ -227,6 +227,9 @@ function outsideScope(pull: GatePull, reviewer: ScopedReviewer): string | null {
 
 /** Why only the code reviewer may approve this pull request, in the gate's words. */
 function codeReviewerReason(routed: RoutedPull): string {
+  if (routed.sensitive) {
+    return "a security or release pull request";
+  }
   const renamed = unknownRename(routed);
   if (renamed !== undefined) {
     return `renames ${renamed} from a path that isn't known`;
@@ -335,7 +338,8 @@ function noraVerdict(
     const carried = nora.carried === undefined ? {} : { carried: nora.carried };
     return { approval: { ok: true, nora: true, ...withAt(nora.at), ...carried } };
   }
-  return { note: `Nora approved, but it is outside her scope (${out}): needs Liam` };
+  const next = outsideJulianScope(pull) === null ? "Julian or Liam" : "Liam";
+  return { note: `Nora approved, but it is outside her scope (${out}): needs ${next}` };
 }
 
 function approvalReason(pull: GatePull, approval: ApprovalVerdict | null, reReview: boolean) {

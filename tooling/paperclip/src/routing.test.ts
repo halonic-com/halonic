@@ -73,7 +73,7 @@ const cases: readonly (readonly [RoutedPull, "nora" | "julian" | "liam"])[] = [
       manifests: {
         "apps/cli/package.json": {
           before: manifest,
-          after: manifest.replace("}", ',"main":"b.js"}'),
+          after: manifest.replace("}", ',"description":"The CLI"}'),
         },
       },
     },

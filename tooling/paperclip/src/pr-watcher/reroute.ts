@@ -122,10 +122,10 @@ function heldBy(task: TaskRow, owners: ReadonlyMap<string, string>): Reviewer | 
   return reviewers.find((reviewer) => owners.get(reviewer) === task.assigneeAgentId);
 }
 
-/** Every waiting pull request is Julian's by its paths and none is a security one. */
+/** Every waiting pull request is Julian's or Nora's by its paths, so within his limits, and none is a security one. */
 async function julianScope(route: ReviewerRoute, pulls: readonly PullFacts[]): Promise<boolean> {
   const reviews = await Promise.all(pulls.map(route));
-  return reviews.every((review) => review.reviewer === "julian" && !review.security);
+  return reviews.every((review) => review.reviewer !== "liam" && !review.security);
 }
 
 /** What the step read: the held reviewer's limit, the other's state, and the choice. */

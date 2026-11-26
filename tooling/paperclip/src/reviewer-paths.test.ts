@@ -162,7 +162,7 @@ verifies("paperclip.reviewer-paths", () => {
 
   test("a package.json goes to Julian only without lockfile or publish changes", () => {
     const files = ["apps/cli/package.json"];
-    const manifests = { "apps/cli/package.json": change({ main: "b.js" }) };
+    const manifests = { "apps/cli/package.json": change({ description: "The CLI" }) };
     // Within Julian's limits and routine (HAL-19246), so Nora's.
     expect(reviewerFor({ files, changedLines: 2, sensitive: false, ours: true, manifests })).toBe(
       "nora",

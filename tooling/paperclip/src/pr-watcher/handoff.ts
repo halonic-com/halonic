@@ -59,10 +59,13 @@ export function pullId(pull: { readonly repo: string; readonly number: number })
   return `${pull.repo}#${pull.number}`;
 }
 
-/** Pull requests whose approvals on the head don't count (Julian or Nora outside their limits). */
-export type Refused = ReadonlySet<string>;
+/**
+ * Pull requests whose approvals on the head don't count (Julian or Nora
+ * outside their limits), with the line that says who approved and why.
+ */
+export type Refused = ReadonlyMap<string, string>;
 
-const none: Refused = new Set();
+const none: Refused = new Map();
 
 /**
  * Someone other than its author signed an approval on its current head, and
@@ -126,6 +129,11 @@ export function julianOnlyOnHead(pull: PullFacts, memory: Memory): boolean {
  * or Nora's is outside the routine scope (HAL-19283).
  */
 export function julianRefused(pull: PullFacts, paths: PathReview): boolean {
+  return refusalOf(pull, paths) !== null;
+}
+
+/** Who approved and why it doesn't count, for the handoff, or null when an approval counts. */
+export function refusalOf(pull: PullFacts, paths: PathReview): string | null {
   const judged = judgeApprovals(pull.approvals ?? [], {
     head: pull.head,
     author: branchOwner(pull.branch),
@@ -133,10 +141,21 @@ export function julianRefused(pull: PullFacts, paths: PathReview): boolean {
     ...(paths.rebaseRefusal === undefined ? {} : { rebaseRefusal: paths.rebaseRefusal }),
     ...(paths.routineRefusal === undefined ? {} : { routineRefusal: paths.routineRefusal }),
   }).filter(({ head }) => pull.head.startsWith(head));
-  return (
-    judged.some(({ by, counts }) => limitedReviewers.includes(by) && !counts) &&
-    !judged.some(({ counts }) => counts)
-  );
+  const by = [
+    ...new Set(
+      judged
+        .filter(({ by, counts }) => limitedReviewers.includes(by) && !counts)
+        .map(({ by }) => by),
+    ),
+  ];
+  if (by.length === 0 || judged.some(({ counts }) => counts)) {
+    return null;
+  }
+  const why =
+    paths.reviewer === "liam"
+      ? "only the code reviewer may approve it (HAL-14809)"
+      : `it is outside the routine scope (${paths.routineRefusal ?? "its paths"}, HAL-19283)`;
+  return `${by.join(" and ")}'s approval on #${pull.number} doesn't count: ${why}.`;
 }
 
 /** Approved on its head, or the watcher recorded that an approval carries to it (HAL-18460). */
@@ -204,7 +223,10 @@ export function reviewerOf(author: string | undefined, byPaths: readonly Reviewe
   if (byPaths.includes("liam")) {
     return "liam";
   }
-  return byPaths.includes("julian") || byPaths.length === 0 ? "julian" : "nora";
+  // Nora never reviews her own: her pull requests go to Julian at the least.
+  return byPaths.includes("julian") || byPaths.length === 0 || author === "nora"
+    ? "julian"
+    : "nora";
 }
 
 /** The newest approval by someone else, on an older head, of a pull request not approved on its head. */
@@ -278,12 +300,10 @@ export function handoffMessage(
     const answer = answers.get(pullId(pull));
     return answer === undefined ? [] : [answerLine(pull, answer)];
   });
-  const outside = pulls
-    .filter((pull) => refused.has(pullId(pull)))
-    .map(
-      (pull) =>
-        `Julian's approval on #${pull.number} doesn't count: it touches Liam's paths (HAL-14809), so Liam reviews it.`,
-    );
+  const outside = pulls.flatMap((pull) => {
+    const line = refused.get(pullId(pull));
+    return line === undefined ? [] : [line];
+  });
   return [
     ...lines,
     "",

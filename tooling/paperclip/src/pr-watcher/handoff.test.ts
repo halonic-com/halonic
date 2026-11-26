@@ -61,6 +61,9 @@ verifies("paperclip.pr-watcher-handoff", () => {
     expect(outside.handoffs.map(({ to, key }) => [to, key])).toEqual([
       [agents.julian, `${repo}#5701 5701aaa outside julian`],
     ]);
+    expect(outside.comments["task-5701"]?.at(-1)?.body ?? "").toContain(
+      "Nora's approval on #5701 doesn't count: it is outside the routine scope (touches packages/core/app/src/a.ts, HAL-19283).\nOut of draft with a green `ci-ok`, so the task goes to Julian.",
+    );
     const inside = setup({
       tasks: [task(5701, agents.mateo, { branch: mateoBranch })],
       pulls: [approved],

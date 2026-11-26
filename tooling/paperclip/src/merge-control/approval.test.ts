@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { reviewerFor } from "../reviewer-paths.ts";
-import { approvalOf, outsideJulianScope, outsideRoutineScope } from "./approval.ts";
+import { approvalOf, outsideJulianScope, outsideNoraScope } from "./approval.ts";
 import {
   actionsOf,
   ago,
@@ -244,7 +244,7 @@ verifies("paperclip.routine-review", () => {
     const core = { files: ["packages/core/app/src/a.ts"], filesTotal: 1, fileNet: {} };
     expect(reasonsOf({ ...core, texts: [nora] }).added).toEqual([]);
     expect(approvalOf(pull(1, { ...core, texts: [nora] }), "halonic-dev", {}).reasons).toContain(
-      "Nora approved, but it is outside the routine scope (touches packages/core/app/src/a.ts): needs Julian or Liam",
+      "Nora approved, but it is outside her scope (touches packages/core/app/src/a.ts): needs Julian or Liam",
     );
     const api = { ...routine, files: ["packages/studio/features/inbox/src/api.ts"] };
     expect(reasonsOf({ ...api, texts: [nora] }).added).toEqual([]);
@@ -275,11 +275,11 @@ verifies("paperclip.routine-review", () => {
   test("it doesn't count on a pull request the team didn't write, or a sensitive one", () => {
     const fork = { ...routine, texts: [nora], crossRepository: true };
     expect(reasonsOf(fork).added).toEqual([]);
-    expect(outsideRoutineScope(pull(1, fork))).toBe("not written by the team");
+    expect(outsideNoraScope(pull(1, fork))).toBe("not written by the team");
     const bot = { ...routine, texts: [nora], branch: "dependabot/npm_and_yarn/acme-1.2.3" };
     expect(reasonsOf(bot).added).toEqual([]);
     const trust = { ...routine, texts: [nora], labels: ["area: trust and sandbox"] };
-    expect(outsideRoutineScope(pull(1, trust))).toBe("outside the second reviewer's limits");
+    expect(outsideNoraScope(pull(1, trust))).toBe("a security or release pull request");
   });
 
   test("Nora's change request holds a pull request Julian approved", () => {

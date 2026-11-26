@@ -52,9 +52,17 @@ verifies("paperclip.routine-review", () => {
   test("a package.json the second reviewer may approve is routine; a new package isn't", () => {
     const path = "packages/studio/features/inbox/package.json";
     const manifest = JSON.stringify({ name: "@halonicjs/acme", version: "0.1.0" });
-    const after = manifest.replace("}", ',"main":"b.js"}');
+    const after = manifest.replace("}", ',"description":"Inbox"}');
     const changed = { ...pullOf([path]), manifests: { [path]: { before: manifest, after } } };
     expect(routineRefusal(changed)).toBeNull();
+    for (const field of ["main", "module", "types"]) {
+      const entry = manifest.replace("}", `,"${field}":"b.js"}`);
+      const moved = {
+        ...pullOf([path]),
+        manifests: { [path]: { before: manifest, after: entry } },
+      };
+      expect(routineRefusal(moved)).toBe(`changes a public interface (${path})`);
+    }
     const added = { ...pullOf([path]), manifests: { [path]: { before: null, after } } };
     expect(reviewerRoleFor(added)).toBe("code-reviewer");
   });
@@ -99,6 +107,7 @@ verifies("paperclip.routine-review", () => {
     ["CONTRIBUTING.md", "touches CONTRIBUTING.md"],
     ["LICENSE", "touches LICENSE"],
     ["NOTICE", "touches NOTICE"],
+    ["docs/legal/dco-standing-statement.md", "touches docs/legal/dco-standing-statement.md"],
     [
       "packages/studio/kit/src/fonts/LICENSE.txt",
       "touches packages/studio/kit/src/fonts/LICENSE.txt",

@@ -19,7 +19,10 @@ Julian's review of #6385 found gaps that had to close first:
   and the other `exports` targets, which a test keeps in step with every `package.json`), or
   a change to a package's `exports`.
 - The routine reviewer doesn't approve `tooling/config/`, the root `AGENTS.md` and
-  `CLAUDE.md`, `.gitattributes`, or the legal files alone.
+  `CLAUDE.md`, `.gitattributes`, or the legal files alone: `LICENSE`, `NOTICE` and the DCO
+  standing statement in `docs/legal/`.
+- A change to a package's `main`, `module`, `types`, `typings` or `browser` counts as a
+  public interface change, as `exports` does.
 
 Julian's scope list for Nora on HAL-18424 adds more, closed here too:
 
@@ -33,6 +36,18 @@ Julian's scope list for Nora on HAL-18424 adds more, closed here too:
 - `sensitive` is no longer always `false`: a `changeset-release/` or `release/` branch, or the
   `area: trust and sandbox` label, sends a pull request to Liam in all three places that
   route it. The author still says so on the task for a security pull request without them.
+
+#6390 (HAL-19248) had added its own Nora path to the gate and `pr_status`. After the
+rebase there is one: the gate's `outsideNoraScope` builds the routed pull request with
+`routedOf`, so it sees the old paths, who wrote it and whether it is sensitive, and
+`pr_status` and the watcher read the same `routineRefusal`. `merge-control-nora-scope`
+now points at `paperclip.routine-review` for the scope. `pr-tools/manifests.ts`, which
+builds the routed pull request for `pr_status` and the watcher, and that requirement are
+Liam's paths, so Nora can't approve a change to her own scope.
+
+When Nora's approval doesn't count, the watcher's handoff names her and the reason, and
+a limited Liam's routine review can move to Julian. A pull request on a `nora/` branch
+goes to Julian, never to Nora.
 
 Test fixtures that expect Nora now say the team wrote the pull request (`ours: true`, a
 team branch in this repository), since a pull request without that is never routine.
@@ -53,3 +68,4 @@ outside the scope the board set, so they close in the same change that names her
 - paperclip.routine-review
 - paperclip.pr-watcher-handoff
 - paperclip.reviewer-paths-standalone
+- paperclip.merge-control-nora-scope

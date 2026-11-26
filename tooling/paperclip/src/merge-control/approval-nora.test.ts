@@ -1,7 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { judgeApprovals, signedApprovals } from "../pr-tools/approvals.ts";
-import type { ReviewRole } from "../reviewer-paths.ts";
 import { approvalOf } from "./approval.ts";
 import { ago, enqueued, headOf, pass, pull, said, snapshot } from "./merge-control.test-helper.ts";
 
@@ -96,25 +95,24 @@ verifies("paperclip.merge-control-nora-scope", () => {
     expect(addedWith({ texts: [request, later] })).toEqual([]);
   });
 
-  test("pr_status counts Nora's approval only for the routine reviewer's role, without Author: Liam", () => {
+  test("pr_status counts Nora's approval only where routineRefusal finds nothing, without Author: Liam", () => {
     const signed = signedApprovals([
       { body: "Nora: approved on head `bb12791`", author_association: "MEMBER" },
       { body: "Nina: approved on head `bb12791`", author_association: "MEMBER" },
     ]);
     expect(signed).toEqual([{ by: "Nora", head: "bb12791" }]);
     const fullHead = "bb12791aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    const judge = (author: string, role: ReviewRole) =>
+    const judge = (author: string, refusal: string | null) =>
       judgeApprovals(signed, {
         head: fullHead,
         author,
-        reviewer: role === "code-reviewer" ? "liam" : "julian",
-        role,
+        reviewer: refusal === null ? "julian" : "liam",
+        routineRefusal: refusal,
       })[0]?.counts;
-    expect(judge("owen", "routine-reviewer")).toBe(true);
-    expect(judge("liam", "routine-reviewer")).toBe(true);
-    expect(judge("owen", "second-reviewer")).toBe(false);
-    expect(judge("owen", "code-reviewer")).toBe(false);
-    expect(judge("liam", "code-reviewer")).toBe(false);
-    expect(judge("nora", "routine-reviewer")).toBe(false);
+    expect(judge("owen", null)).toBe(true);
+    expect(judge("liam", null)).toBe(true);
+    expect(judge("owen", "touches packages/core/x.ts")).toBe(false);
+    expect(judge("liam", "touches turbo.json")).toBe(false);
+    expect(judge("nora", null)).toBe(false);
   });
 });
