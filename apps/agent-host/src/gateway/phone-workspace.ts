@@ -16,7 +16,7 @@ export function phoneWorkspaceMessaging(pick: PhoneWorkspacePick): PhoneMessagin
   const view = async (): Promise<PhoneMessaging> => {
     const workspace = await pick();
     if (workspace === undefined) throw new Error("No workspace's messaging is open for the phone");
-    return phoneMessaging(workspace.messaging, workspace.team);
+    return phoneMessaging(workspace.messaging, workspace.team, workspace.reactions);
   };
   return {
     listSources: async () => (await view()).listSources(),
@@ -43,5 +43,18 @@ export function phoneWorkspaceMessaging(pick: PhoneWorkspacePick): PhoneMessagin
         yield* (await view()).team.changes();
       },
     },
+    reactions: {
+      list: async (conversation) => (await reactionsOf(view)).list(conversation),
+      react: async (message, emoji, on) => (await reactionsOf(view)).react(message, emoji, on),
+    },
   };
+}
+
+/** The reactions of the workspace's view; `phoneMessaging` always gives them. */
+async function reactionsOf(
+  view: () => Promise<PhoneMessaging>,
+): Promise<NonNullable<PhoneMessaging["reactions"]>> {
+  const { reactions } = await view();
+  if (reactions === undefined) throw new Error("The phone's view has no reactions");
+  return reactions;
 }

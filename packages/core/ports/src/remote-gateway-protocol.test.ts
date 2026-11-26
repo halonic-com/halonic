@@ -7,12 +7,15 @@ import {
   gatewayClosingErrorCodes,
   gatewayErrorCodes,
   gatewayFallbackProtocolVersion,
+  gatewayHostProtocolVersions,
   gatewayMaxBufferedBytes,
   gatewayMaxIdLength,
   gatewayMaxMessageBytes,
   gatewayMaxPromptLength,
   gatewayMaxWatches,
+  gatewayPhoneProtocolVersions,
   gatewayProtocolVersion,
+  gatewayReactionsProtocolVersion,
   gatewayRefusalCodes,
 } from "./remote-gateway-protocol.ts";
 
@@ -29,6 +32,7 @@ verifies("ports.remote-gateway-protocol", () => {
       | "msg-search"
       | "msg-answer"
       | "msg-send"
+      | "msg-react"
       | "msg-watch"
       | "msg-unwatch"
       | "team-read"
@@ -77,8 +81,11 @@ verifies("ports.remote-gateway-protocol", () => {
     expectTypeOf([unconfirmed, stepper, start]).toEqualTypeOf<GatewayClientMessage[]>();
   });
 
-  it("is message version 4, with one Noise transport message less its tag per message", () => {
-    expect(gatewayProtocolVersion).toBe(4);
+  it("is message version 5, with one Noise transport message less its tag per message", () => {
+    expect(gatewayProtocolVersion).toBe(5);
+    expect(gatewayReactionsProtocolVersion).toBe(5);
+    expect(gatewayHostProtocolVersions).toEqual([5, 4]);
+    expect(gatewayPhoneProtocolVersions).toEqual([5, 4, 3]);
     expect(gatewayFallbackProtocolVersion).toBe(3);
     expect(gatewayRefusalCodes).toContain("not-allowed-from-phone");
     expect(gatewayMaxMessageBytes).toBe(65_519);
@@ -104,9 +111,14 @@ verifies("ports.remote-gateway-protocol", () => {
       | "send"
       | "changes"
       | "team"
+      | "reactions"
     >();
     expectTypeOf<keyof PhoneMessaging["team"]>().toEqualTypeOf<
       "parts" | "spend" | "seats" | "pullRequests" | "pullRequest" | "mergeQueue" | "changes"
+    >();
+    // Only the person's own reactions: read and toggle, nothing else of the port.
+    expectTypeOf<keyof NonNullable<PhoneMessaging["reactions"]>>().toEqualTypeOf<
+      "list" | "react"
     >();
   });
 

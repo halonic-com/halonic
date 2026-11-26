@@ -10,6 +10,12 @@
  */
 
 import type { AgentMessaging, AnswerResult, MessagingId, SendResult } from "./agent-messaging.ts";
+import type {
+  MessageReaction,
+  MessageReactions,
+  ReactionEmoji,
+  ReactResult,
+} from "./message-reactions.ts";
 import type { SpendRange, TeamStatus } from "./team-status.ts";
 
 /**
@@ -53,6 +59,9 @@ export type GatewayInboxAnswer =
  * - `msg-send` writes only to an existing conversation; `to` names only its
  *   members, which the host checks itself.
  * - `msg-watch` asks for a `msg-changed` push when a source changes.
+ * - Since version 5, `msg-read` of `reactions` reads a conversation's
+ *   reactions a page at a time, and `msg-react` adds or removes the person's
+ *   own reaction on one of its messages.
  */
 export type GatewayMessagingClientMessage =
   | {
@@ -68,6 +77,13 @@ export type GatewayMessagingClientMessage =
       readonly conversation: MessagingId;
       readonly before?: string;
     }
+  | {
+      readonly type: "msg-read";
+      readonly id: string;
+      readonly what: "reactions";
+      readonly conversation: MessagingId;
+      readonly cursor?: string;
+    }
   | { readonly type: "msg-search"; readonly id: string; readonly text: string }
   | {
       readonly type: "msg-answer";
@@ -82,6 +98,14 @@ export type GatewayMessagingClientMessage =
       readonly conversation: MessagingId;
       readonly body: string;
       readonly to?: readonly MessagingId[];
+    }
+  | {
+      readonly type: "msg-react";
+      readonly id: string;
+      readonly conversation: MessagingId;
+      readonly message: MessagingId;
+      readonly emoji: ReactionEmoji;
+      readonly on: boolean;
     }
   | { readonly type: "msg-watch"; readonly id: string }
   | { readonly type: "msg-unwatch"; readonly id: string }
@@ -108,15 +132,18 @@ export type GatewayMessagingHostMessage =
   | {
       readonly type: "msg-data";
       readonly replyTo: string;
-      readonly what: (typeof gatewayMessagingLists)[number] | "messages" | "hits";
-      /** Port values (`MessagingSource`, `Conversation`, `Message`, `SearchHit`, …), as the port returned them. */
+      readonly what: (typeof gatewayMessagingLists)[number] | "messages" | "hits" | "reactions";
+      /**
+       * Port values (`MessagingSource`, `Conversation`, `Message`, `SearchHit`, …), as the port
+       * returned them; for `reactions`, one {@link GatewayMessageReactions} per message.
+       */
       readonly items: readonly unknown[];
       readonly more?: string;
     }
   | {
       readonly type: "msg-result";
       readonly replyTo: string;
-      readonly result: AnswerResult | SendResult;
+      readonly result: AnswerResult | SendResult | ReactResult;
     }
   | { readonly type: "msg-changed"; readonly source: MessagingId }
   | {
@@ -127,6 +154,12 @@ export type GatewayMessagingHostMessage =
       readonly items: readonly unknown[];
       readonly more?: string;
     };
+
+/** One message's reactions, as an item of a `reactions` page. */
+export interface GatewayMessageReactions {
+  readonly message: MessagingId;
+  readonly reactions: readonly MessageReaction[];
+}
 
 /**
  * The refusals version 4 adds, which leave the connection open. The ports'
@@ -155,6 +188,9 @@ export const gatewayMessagingRefusalCodes = [
  * Left off on purpose: starting a channel and changing its members (on the
  * phone, Members is read-only), reading attachments, `agentSpend`, and every
  * host route (connect, sign in, Settings, remote control and pairing).
+ *
+ * `reactions` is the person's own reactions (version 5); without it the
+ * phone's reactions messages get `not-supported`.
  */
 export interface PhoneMessaging
   extends Pick<
@@ -175,4 +211,5 @@ export interface PhoneMessaging
     TeamStatus,
     "parts" | "spend" | "seats" | "pullRequests" | "pullRequest" | "mergeQueue" | "changes"
   >;
+  readonly reactions?: Pick<MessageReactions, "list" | "react">;
 }

@@ -4,6 +4,7 @@ import {
   type GatewaySession,
   gatewayFallbackProtocolVersion,
   gatewayMaxPromptLength,
+  gatewayPhoneProtocolVersions,
   gatewayProtocolVersion,
 } from "@halonicjs/ports";
 import type { ComputerTunnel, ComputerTunnelEvent } from "./computer-tunnel.ts";
@@ -55,9 +56,9 @@ export class GatewayClient implements PhoneRemote {
   /** The last connection found the computer on another message version. */
   private updateNeeded = false;
   /** The message version the open session's `hello` named. */
-  private speaking = gatewayProtocolVersion;
-  /** The computer refused version 4, so the next session says `hello` with version 3 once. */
-  private fallBackNext = false;
+  private speaking: number = gatewayProtocolVersion;
+  /** The computer refused the last `hello`'s version, so the next session says `hello` with this one, once. */
+  private stepDownTo: number | undefined;
   /** The last `welcome` was version 3's: the computer serves Agents only, no Inbox or Messenger. */
   private olderComputer = false;
   private readonly memories = new Map<string, SessionMemory>();
@@ -68,10 +69,13 @@ export class GatewayClient implements PhoneRemote {
   private readonly listeners = new Set<() => void>();
   private readonly unsubscribe: () => void;
   /** The Inbox and Messenger over message version 4; it sends nothing while the computer speaks version 3. */
-  readonly messaging = new MessagingClient(() => {
-    if (this.olderComputer) return "older";
-    return this.session?.welcomed === true ? this.session : undefined;
-  });
+  readonly messaging = new MessagingClient(
+    () => {
+      if (this.olderComputer) return "older";
+      return this.session?.welcomed === true ? this.session : undefined;
+    },
+    () => this.speaking,
+  );
 
   private readonly tunnel: ComputerTunnel;
   /** The computer's name, for the header label. */
@@ -161,9 +165,9 @@ export class GatewayClient implements PhoneRemote {
       () => this.newId(),
       (pending, reason) => this.notSent(pending, { kind: "not-sent", reason }),
     );
-    // Every session tries version 4 first, so a computer updated since is found at once.
-    this.speaking = this.fallBackNext ? gatewayFallbackProtocolVersion : gatewayProtocolVersion;
-    this.fallBackNext = false;
+    // Every session tries the newest version first, so a computer updated since is found at once.
+    this.speaking = this.stepDownTo ?? gatewayProtocolVersion;
+    this.stepDownTo = undefined;
     const version = this.speaking;
     this.send({ kind: "hello" }, (id) => ({ type: "hello", id, version }));
   }
@@ -215,13 +219,16 @@ export class GatewayClient implements PhoneRemote {
   }
 
   /**
-   * The computer closes on the `hello`'s version. A version 4 phone tries
-   * version 3 on the next session, for one release (`ports.remote-gateway-protocol`);
-   * only when that is refused too does it say an update is needed.
+   * The computer closes on the `hello`'s version. The phone tries the next
+   * older version on the next session: 4, without reactions, then 3, for one
+   * release (`ports.remote-gateway-protocol`); only when 3 is refused too
+   * does it say an update is needed.
    */
   private versionRefused(): void {
-    if (this.speaking === gatewayProtocolVersion) this.fallBackNext = true;
-    else this.updateNeeded = true;
+    const versions: readonly number[] = gatewayPhoneProtocolVersions;
+    const next = versions[versions.indexOf(this.speaking) + 1];
+    if (next === undefined) this.updateNeeded = true;
+    else this.stepDownTo = next;
   }
 
   /**
@@ -403,7 +410,7 @@ export class GatewayClient implements PhoneRemote {
     this.sentAnswers.clear();
     this.asOf = undefined;
     this.olderComputer = false;
-    this.fallBackNext = false;
+    this.stepDownTo = undefined;
   }
 
   /** The phone's clock when the last session list or event arrived. */

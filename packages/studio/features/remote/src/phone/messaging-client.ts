@@ -14,9 +14,12 @@ import type {
   GatewayClientMessage,
   GatewayHostMessage,
   GatewayInboxAnswer,
+  GatewayMessageReactions,
   gatewayMessagingLists,
   gatewayTeamLists,
+  MessageReaction,
   MessagingId,
+  ReactionEmoji,
   SendResult,
   SpendRange,
 } from "@halonicjs/ports";
@@ -25,6 +28,8 @@ import {
   gatewayMaxPromptLength,
   gatewayMaxSearchLength,
   gatewayMessagingIdPattern,
+  gatewayProtocolVersion,
+  gatewayReactionsProtocolVersion,
 } from "@halonicjs/ports";
 import type {
   MessagingAnswer,
@@ -62,15 +67,28 @@ export type MessagingOutcome<Value> =
 /** The open session to speak version 4 in; `older` while the computer speaks version 3. */
 export type MessagingSession = () => OpenSession | "older" | undefined;
 
+/** The message version the open session's `hello` named. */
+export type SpokenVersion = () => number;
+
+/** One page of a conversation's reactions, one item per message that has any. */
+export interface ReactionsPage {
+  readonly items: readonly GatewayMessageReactions[];
+  /** The cursor that reads the next page; `undefined` on the last one. */
+  readonly more: string | undefined;
+}
+
 /** The phone's Inbox, Messenger and team status requests, for the screens to come. */
 export class MessagingClient {
   private readonly session: MessagingSession;
+  private readonly spoken: SpokenVersion;
   private onChanged: ((source: MessagingId) => void) | undefined;
   /** The session the newest `msg-watch` went out in, until it is refused, dropped or unwatched. */
   private watchedIn: OpenSession | undefined;
 
-  constructor(session: MessagingSession) {
+  /** `spoken` gives the open session's version; reactions go out only from version 5. */
+  constructor(session: MessagingSession, spoken: SpokenVersion = () => gatewayProtocolVersion) {
     this.session = session;
+    this.spoken = spoken;
   }
 
   /** Reads one page of `what`; `cursor` is the `more` of the page before. */
@@ -116,10 +134,15 @@ export class MessagingClient {
     }
     return this.request(
       (id) => ({ type: "msg-answer", id, item, answer, confirmed: true }),
-      (message) =>
-        message.type === "msg-result" && message.result.outcome !== "sent"
-          ? message.result
-          : undefined,
+      (message) => {
+        if (message.type !== "msg-result") return undefined;
+        const { result } = message;
+        return result.outcome === "answered" ||
+          result.outcome === "already-answered" ||
+          result.outcome === "refused"
+          ? result
+          : undefined;
+      },
     );
   }
 
@@ -141,12 +164,53 @@ export class MessagingClient {
     const base = { type: "msg-send", conversation: conversation.id, body } as const;
     return this.request(
       (id) => (to.length > 0 ? { ...base, id, to } : { ...base, id }),
+      (message) => {
+        if (message.type !== "msg-result") return undefined;
+        const { result } = message;
+        return result.outcome === "sent" || result.outcome === "refused" ? result : undefined;
+      },
+    );
+  }
+
+  /**
+   * Reads one page of a conversation's reactions; `cursor` is the `more` of
+   * the page before. Before version 5 nothing is sent (`off`), and the chat
+   * shows without reactions.
+   */
+  readReactions(
+    conversation: MessagingId,
+    cursor?: string,
+  ): Promise<MessagingOutcome<ReactionsPage>> {
+    if (this.spoken() < gatewayReactionsProtocolVersion) return notSent("off");
+    return this.request(
+      (id) =>
+        cursor === undefined
+          ? { type: "msg-read", id, what: "reactions", conversation }
+          : { type: "msg-read", id, what: "reactions", conversation, cursor },
       (message) =>
-        message.type === "msg-result" &&
-        message.result.outcome !== "answered" &&
-        message.result.outcome !== "already-answered" &&
-        message.result.outcome !== "closed"
-          ? message.result
+        message.type === "msg-data" && message.what === "reactions"
+          ? { items: message.items as readonly GatewayMessageReactions[], more: message.more }
+          : undefined,
+    );
+  }
+
+  /**
+   * Adds (`on: true`) or removes the person's own `emoji` on a message of
+   * `conversation`; gives the message's reactions after it. Before version 5
+   * nothing is sent (`off`).
+   */
+  react(
+    conversation: MessagingId,
+    message: MessagingId,
+    emoji: ReactionEmoji,
+    on: boolean,
+  ): Promise<MessagingOutcome<readonly MessageReaction[]>> {
+    if (this.spoken() < gatewayReactionsProtocolVersion) return notSent("off");
+    return this.request(
+      (id) => ({ type: "msg-react", id, conversation, message, emoji, on }),
+      (answer) =>
+        answer.type === "msg-result" && answer.result.outcome === "saved"
+          ? answer.result.reactions
           : undefined,
     );
   }

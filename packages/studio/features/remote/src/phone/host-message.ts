@@ -15,8 +15,10 @@ import {
   gatewayMessagingIdPattern,
   gatewayMessagingLists,
   gatewayProtocolVersion,
+  gatewayReactionsProtocolVersion,
   gatewayRefusalCodes,
   gatewayTeamLists,
+  reactionEmoji,
 } from "@halonicjs/ports";
 
 /**
@@ -184,6 +186,32 @@ const isMessagingPage = exactly(
   { more: isId },
 );
 
+/** One reaction as the port gives it: which of the six, who and when. */
+const isReaction = exactly({ emoji: oneOf(...reactionEmoji), by: isAuthor, at: isText });
+
+/** Version 5's page of a conversation's reactions: each item one message's. */
+const isReactionsPage = exactly(
+  {
+    type: oneOf("msg-data"),
+    replyTo: isId,
+    what: oneOf("reactions"),
+    items: listOf(exactly({ message: isMessagingId, reactions: listOf(isReaction) })),
+  },
+  { more: isMessagingId },
+);
+
+/** Version 5's `ReactResult` once saved: the message's reactions after it. */
+const isReactResult = message("msg-result", {
+  replyTo: isId,
+  result: exactly({ outcome: oneOf("saved"), reactions: listOf(isReaction) }),
+});
+
+/** The shapes version 5 adds to version 4's, by `type`. */
+const versionFiveShapes: Readonly<Partial<Record<GatewayHostMessage["type"], readonly Check[]>>> = {
+  "msg-data": [isReactionsPage],
+  "msg-result": [isReactResult],
+};
+
 /** A page of team status: each item one `TeamStatus` value, its fields the port's own. */
 const isTeamPage = exactly(
   {
@@ -194,6 +222,9 @@ const isTeamPage = exactly(
   },
   { more: isId },
 );
+
+/** The version that added the Inbox, Messenger and team status. */
+const versionFour = 4;
 
 /** The types only version 4 lists: a version 3 host never sends them. */
 const versionFourTypes = new Set(["msg-data", "msg-result", "msg-changed", "team-data"]);
@@ -231,7 +262,8 @@ const hostMessages: Readonly<Record<GatewayHostMessage["type"], readonly Check[]
  * parsed. A `welcome` of another version than `version`, the one the phone's
  * `hello` named, is `other-version` whatever else it holds, since the phone
  * closes on it either way. Version 3 lists the messages of version 4 but
- * the Inbox, Messenger and team status ones, so one table reads both.
+ * the Inbox, Messenger and team status ones, and version 5 adds the
+ * reactions page and result, so one table reads all three.
  */
 export function parseHostMessage(
   text: string,
@@ -242,11 +274,13 @@ export function parseHostMessage(
   if (value === undefined) return refused("malformed");
   const type = value["type"];
   if (typeof type !== "string" || !Object.hasOwn(hostMessages, type)) return refused("malformed");
-  if (version < gatewayProtocolVersion && versionFourTypes.has(type)) return refused("malformed");
+  if (version < versionFour && versionFourTypes.has(type)) return refused("malformed");
   if (type === "welcome" && isWhole(value["version"]) && value["version"] !== version) {
     return refused("other-version");
   }
-  const shapes = hostMessages[type as GatewayHostMessage["type"]];
+  const known = type as GatewayHostMessage["type"];
+  const added = version >= gatewayReactionsProtocolVersion ? (versionFiveShapes[known] ?? []) : [];
+  const shapes = [...hostMessages[known], ...added];
   return shapes.some((shape) => shape(value))
     ? { ok: true, message: value as unknown as GatewayHostMessage }
     : refused("malformed");

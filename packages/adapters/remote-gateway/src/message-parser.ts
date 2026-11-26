@@ -8,6 +8,7 @@ import {
   gatewayMessagingIdPattern,
   gatewayMessagingLists,
   gatewayTeamLists,
+  isReactionEmoji,
 } from "@halonicjs/ports";
 
 /** One frame as the transport received it: its bytes, and whether it was a binary one. */
@@ -36,6 +37,10 @@ interface FieldSpec {
 const readMessages: FieldSpec = {
   required: { id: isId, what: isOneOf(["messages"]), conversation: isMessagingId },
   optional: { before: isCursor },
+};
+const readReactions: FieldSpec = {
+  required: { id: isId, what: isOneOf(["reactions"]), conversation: isMessagingId },
+  optional: { cursor: isCursor },
 };
 const readList: FieldSpec = {
   required: { id: isId, what: isOneOf(gatewayMessagingLists) },
@@ -67,7 +72,10 @@ const fieldSpecs: Record<
   FieldSpec | ((message: Record<string, unknown>) => FieldSpec)
 > = {
   ...sessionMessages,
-  "msg-read": (message) => (message["what"] === "messages" ? readMessages : readList),
+  "msg-read": (message) => {
+    if (message["what"] === "reactions") return readReactions;
+    return message["what"] === "messages" ? readMessages : readList;
+  },
   "msg-search": { required: { id: isId, text: isTextUpTo(gatewayMaxSearchLength) } },
   "msg-answer": {
     required: { id: isId, item: isMessagingId, answer: isInboxAnswer, confirmed: isTrue },
@@ -75,6 +83,15 @@ const fieldSpecs: Record<
   "msg-send": {
     required: { id: isId, conversation: isMessagingId, body: isTextUpTo(gatewayMaxPromptLength) },
     optional: { to: isAddressees },
+  },
+  "msg-react": {
+    required: {
+      id: isId,
+      conversation: isMessagingId,
+      message: isMessagingId,
+      emoji: isReactionEmoji,
+      on: isBoolean,
+    },
   },
   "msg-watch": { required: { id: isId } },
   "msg-unwatch": { required: { id: isId } },
@@ -164,6 +181,10 @@ function isOneOf(allowed: readonly string[]): FieldCheck {
 /** A page cursor the host made; the phone only hands it back, so an id's rule is enough. */
 function isCursor(value: unknown): boolean {
   return isId(value);
+}
+
+function isBoolean(value: unknown): boolean {
+  return typeof value === "boolean";
 }
 
 function isTrue(value: unknown): boolean {

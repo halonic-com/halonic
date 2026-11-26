@@ -5,12 +5,16 @@ import type {
   InboxItem,
   MessagingId,
   PhoneMessaging,
+  ReactResult,
   SendResult,
 } from "@halonicjs/ports";
 import { fitPage, type GatewayPage } from "./fit-page.ts";
 import type { GatewayPolicy } from "./session-source.ts";
 
-/** What a paired phone may spend on calls that cost the board a Paperclip request each. */
+/**
+ * What a paired phone may spend on calls that cost the board a Paperclip
+ * request each. A reaction is a write, like a message, so it counts as a send.
+ */
 export type GatewayRateLimited = "search" | "send";
 
 /**
@@ -76,6 +80,7 @@ const handlers: { readonly [Type in MessagingType]: Handler<Type> } = Object.fre
   "msg-search": search,
   "msg-answer": answer,
   "msg-send": send,
+  "msg-react": react,
   "msg-watch": watch,
   "msg-unwatch": unwatch,
   "team-read": readTeam,
@@ -92,6 +97,7 @@ export function dispatchMessaging(
 
 async function readMessaging(context: Context, message: MessageOf<"msg-read">): Promise<void> {
   const { view } = context.messaging;
+  if (message.what === "reactions") return readReactions(context, message);
   if (message.what === "messages") {
     // Only a conversation the view lists, as `msg-send` checks it.
     const conversations = await view.listConversations();
@@ -121,6 +127,71 @@ async function readMessaging(context: Context, message: MessageOf<"msg-read">): 
     items,
     message.cursor,
   );
+}
+
+/**
+ * A conversation's reactions, one item per message that has any, only for a
+ * conversation the view lists. A source that keeps none gives `not-supported`,
+ * and the phone shows the chat without them.
+ */
+async function readReactions(
+  context: Context,
+  message: Extract<MessageOf<"msg-read">, { what: "reactions" }>,
+): Promise<void> {
+  const { view } = context.messaging;
+  if (!(await listsConversation(view, message.conversation))) {
+    return context.replies.refuse(message.id, "not-found");
+  }
+  if (view.reactions === undefined) return context.replies.refuse(message.id, "not-supported");
+  const read = await view.reactions.list(message.conversation);
+  if (read.outcome === "refused") {
+    return context.replies.refuse(message.id, portRefusalOr(read.reason, "not-supported"));
+  }
+  const items = Object.entries(read.reactions).map(([id, reactions]) => ({
+    message: id,
+    reactions,
+  }));
+  return sendPage(
+    context,
+    { type: "msg-data", replyTo: message.id, what: "reactions", items: [] },
+    items,
+    message.cursor,
+  );
+}
+
+/**
+ * Adds or removes the person's own reaction on a message of a conversation
+ * the view lists, read again here; it counts against the phone's sends.
+ */
+async function react(context: Context, message: MessageOf<"msg-react">): Promise<void> {
+  const { view, rateLimit } = context.messaging;
+  if (!(await listsConversation(view, message.conversation))) {
+    return context.replies.refuse(message.id, "not-found");
+  }
+  const messages = await view.listMessages(message.conversation);
+  if (!messages.some((candidate) => candidate.id === message.message)) {
+    return context.replies.refuse(message.id, "not-found");
+  }
+  if (view.reactions === undefined) return context.replies.refuse(message.id, "not-supported");
+  if (!rateLimit.take("send")) return context.replies.refuse(message.id, "rate-limited");
+  return sendResult(
+    context,
+    message.id,
+    await view.reactions.react(message.message, message.emoji, message.on),
+  );
+}
+
+async function listsConversation(
+  view: PhoneMessaging,
+  conversation: MessagingId,
+): Promise<boolean> {
+  const conversations = await view.listConversations();
+  return conversations.some((candidate) => candidate.id === conversation);
+}
+
+/** A port refusal the protocol has a code for, or `fallback`. */
+function portRefusalOr(reason: string, fallback: RefusalCode): RefusalCode {
+  return portRefusals.has(reason) ? (reason as RefusalCode) : fallback;
 }
 
 async function search(context: Context, message: MessageOf<"msg-search">): Promise<void> {
@@ -233,7 +304,11 @@ async function readTeam(context: Context, message: MessageOf<"team-read">): Prom
 }
 
 /** A port refusal the protocol has a code for goes out as that `error`; any other result as `msg-result`. */
-function sendResult(context: Context, replyTo: string, result: AnswerResult | SendResult): void {
+function sendResult(
+  context: Context,
+  replyTo: string,
+  result: AnswerResult | SendResult | ReactResult,
+): void {
   if (result.outcome === "refused" && portRefusals.has(result.reason)) {
     context.replies.refuse(replyTo, result.reason as RefusalCode);
   } else {

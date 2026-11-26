@@ -421,6 +421,7 @@ export {
 } from "./remote-control.ts";
 export {
   type GatewayInboxAnswer,
+  type GatewayMessageReactions,
   type GatewayMessagingClientMessage,
   type GatewayMessagingHostMessage,
   gatewayMaxAddressees,
@@ -441,6 +442,7 @@ export {
   gatewayClosingErrorCodes,
   gatewayErrorCodes,
   gatewayFallbackProtocolVersion,
+  gatewayHostProtocolVersions,
   gatewayMaxBufferedBytes,
   gatewayMaxIdLength,
   gatewayMaxMessageBytes,
@@ -448,7 +450,9 @@ export {
   gatewayMaxPromptLength,
   gatewayMaxWatches,
   gatewayMessagingIdPattern,
+  gatewayPhoneProtocolVersions,
   gatewayProtocolVersion,
+  gatewayReactionsProtocolVersion,
   gatewayRefusalCodes,
 } from "./remote-gateway-protocol.ts";
 export {
