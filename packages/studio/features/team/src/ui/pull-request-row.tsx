@@ -72,8 +72,7 @@ export function PullRequestTitleWords(props: { pullRequest: PullRequest; heading
     props.heading === true ? "font-mono text-fg-muted" : "font-mono text-small text-fg-muted";
   return (
     <>
-      <span className={labelClass}>{pullRequest.label}</span>{" "}
-      {pullRequest.title}
+      <span className={labelClass}>{pullRequest.label}</span> {pullRequest.title}
     </>
   );
 }
