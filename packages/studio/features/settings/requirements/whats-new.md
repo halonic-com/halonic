@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19364 (the board's request on HAL-10); HAL-19365 (plan review)
 
-At the first start after an update, the window shall show the dialog "Updated to Halonic *0.1.1*",
+When the window opens at the first start after an update, it shall show the dialog "Updated to Halonic *0.1.1*",
 which says the version it came from and what's new in it, as plain text, with a link to its release
 notes, and **Close**. It shall show once for that version: not again when the window remounts or the
 page reloads. Where the page can't remember it, the dialog shall show rather than be skipped.
