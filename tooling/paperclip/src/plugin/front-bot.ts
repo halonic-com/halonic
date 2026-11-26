@@ -1,6 +1,4 @@
-import { findSecretShape } from "@halonicjs/std";
 import type {
-  IssueComment,
   PluginAgentsClient,
   PluginConfigClient,
   PluginEvent,
@@ -28,12 +26,13 @@ import {
   logMeta,
   notCalledRecord,
 } from "../front-bot/log-record.ts";
-import { automaticNotePrefix, type FrontBotInput, frontBotUserText } from "../front-bot/prompt.ts";
+import { automaticNotePrefix, frontBotUserText } from "../front-bot/prompt.ts";
 import { frontBotKey, readFrontBotSettings } from "../front-bot/settings.ts";
 import type { StateApi } from "../snapshot/store.ts";
 import { errorCode } from "./board-check-api.ts";
 import { askFrontBot, type FrontBotDeps } from "./front-bot-calls.ts";
-import { automaticNoteIds, isAutomaticNote, rememberNote } from "./front-bot-notes.ts";
+import { rememberNote } from "./front-bot-notes.ts";
+import { agentAnswered, inputBlock, inputOf, type Scene, sceneOf } from "./front-bot-scene.ts";
 import { companyConfig } from "./job.ts";
 import { type MetricsApi, writeMetrics } from "./metrics.ts";
 
@@ -56,8 +55,6 @@ export interface FrontBotApi extends MetricsApi, StateApi {
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly logger: Pick<PluginLogger, "info" | "error">;
 }
-
-type Issue = NonNullable<Awaited<ReturnType<FrontBotApi["issues"]["get"]>>>;
 
 function companyKey(companyId: string, stateKey: "spend" | "health") {
   return { scopeKind: "company", scopeId: companyId, namespace: "front-bot", stateKey } as const;
@@ -85,81 +82,6 @@ async function report(ctx: FrontBotApi, record: FrontBotLogRecord): Promise<void
   await writeMetrics(ctx, { "front_bot.first_reply": 1 }, tags);
 }
 
-/** What the bot reads before it decides: the task, the person's message and the comments around it. */
-interface Scene {
-  readonly issue: Issue;
-  readonly agentId: string;
-  readonly message: IssueComment;
-  readonly before: readonly IssueComment[];
-  readonly ownIds: ReadonlySet<string>;
-}
-
-/** The chat task and a board user's message on it, or undefined when the message is out of scope. */
-async function sceneOf(
-  ctx: FrontBotApi,
-  companyId: string,
-  taskId: string,
-  commentId: string | undefined,
-) {
-  const issue = await ctx.issues.get(taskId, companyId);
-  const agentId = issue?.conversationAgentId ?? null;
-  if (issue === null || issue.companyId !== companyId || agentId === null) {
-    return undefined;
-  }
-  const comments = await ctx.issues.listComments(issue.id, companyId);
-  const index =
-    commentId === undefined ? comments.length - 1 : comments.findIndex((c) => c.id === commentId);
-  const message = comments[index];
-  const ownIds = await automaticNoteIds(ctx.state, companyId, issue.id);
-  // Only a person's message: never an agent's, never a plugin's or Paperclip's, never the bot's own.
-  if (message === undefined || message.authorAgentId !== null || message.authorUserId === null) {
-    return undefined;
-  }
-  if (isAutomaticNote(message, ownIds)) {
-    return undefined;
-  }
-  return { issue, agentId, message, before: comments.slice(0, index), ownIds } satisfies Scene;
-}
-
-/** Whether the chat's agent wrote after the message: then the bot stays quiet for good. */
-async function agentAnswered(ctx: FrontBotApi, scene: Scene): Promise<boolean> {
-  const comments = await ctx.issues.listComments(scene.issue.id, scene.issue.companyId);
-  const sentAt = new Date(scene.message.createdAt).getTime();
-  return comments.some(
-    (comment) =>
-      comment.authorAgentId === scene.agentId && new Date(comment.createdAt).getTime() >= sentAt,
-  );
-}
-
-/** The input the bot sends: the bot's own comments and anything shaped like a key left out. */
-async function inputOf(ctx: FrontBotApi, scene: Scene): Promise<FrontBotInput> {
-  const agents = await ctx.agents.list({ companyId: scene.issue.companyId, limit: 500 });
-  const names = new Map(agents.map((agent) => [agent.id, agent.name]));
-  const earlier = scene.before
-    .filter(
-      (comment) =>
-        !isAutomaticNote(comment, scene.ownIds) && findSecretShape(comment.body) === undefined,
-    )
-    .map((comment) => ({
-      author:
-        comment.authorAgentId === null ? "board" : (names.get(comment.authorAgentId) ?? "an agent"),
-      at: new Date(comment.createdAt),
-      body: comment.body,
-    }));
-  return {
-    title: scene.issue.title,
-    message: scene.message.body,
-    messageAt: new Date(scene.message.createdAt),
-    earlier,
-  };
-}
-
-/** Why the bot makes no call before it reads its limits, or undefined when it may. */
-function inputBlock(scene: Scene): FrontBotReason | undefined {
-  const secret = findSecretShape(scene.message.body) ?? findSecretShape(scene.issue.title);
-  return secret === undefined ? undefined : "secret_in_input";
-}
-
 /** Counts a call's cost; tells Chief once a day at 80% of the cap. */
 async function countSpend(ctx: FrontBotApi, companyId: string, spend: DaySpend, cost: number) {
   const next = { ...spend, microUsd: spend.microUsd + cost };
@@ -175,12 +97,29 @@ async function countSpend(ctx: FrontBotApi, companyId: string, spend: DaySpend, 
   }
 }
 
-/** One message, start to finish. Returns the record of what it decided. */
-async function handle(
+/** The ids and time every record of one message carries. */
+type RecordBase = Pick<FrontBotLogRecord, "at" | "companyId" | "taskId" | "runId">;
+
+/** A message the bot may call for: what it read, and the day's spend and call health before the call. */
+interface Ready {
+  readonly scene: Scene;
+  readonly keyRef: NonNullable<ReturnType<typeof frontBotKey>>;
+  readonly base: RecordBase;
+  readonly started: Date;
+  readonly spend: DaySpend;
+  readonly health: CallHealth;
+}
+
+/**
+ * Decides whether to call: undefined when the message isn't the bot's
+ * business (off or out of scope: no record), a record when a rail stops the
+ * call, or what the call needs.
+ */
+async function beforeCall(
   ctx: FrontBotApi,
   deps: FrontBotDeps,
   event: PluginEvent,
-): Promise<FrontBotLogRecord | undefined> {
+): Promise<Ready | FrontBotLogRecord | undefined> {
   const { companyId } = event;
   const { taskId, commentId } = eventIds(event);
   const config = await companyConfig(ctx.config, companyId);
@@ -200,38 +139,64 @@ async function handle(
     taskId: scene.issue.id,
     runId: scene.issue.activeRun?.id,
   };
-  const skip = (outcome: FrontBotOutcome, reason: FrontBotReason) =>
+  const stop = (outcome: FrontBotOutcome, reason: FrontBotReason) =>
     notCalledRecord(base, outcome, reason);
   const keyRef = frontBotKey(settings);
-  if (keyRef === undefined) return skip("not_called", "no_key");
+  if (keyRef === undefined) return stop("not_called", "no_key");
   const blocked = inputBlock(scene);
-  if (blocked !== undefined) return skip("not_called", blocked);
-  if (await agentAnswered(ctx, scene)) return skip("not_called", "agent_answered");
-  const spend = spendFor(
-    (await ctx.state.get(companyKey(companyId, "spend"))) as DaySpend | null,
-    spendDay(started),
-  );
-  if (capReached(spend)) return skip("capped", "cap_reached");
+  if (blocked !== undefined) return stop("not_called", blocked);
+  if (await agentAnswered(ctx, scene)) return stop("not_called", "agent_answered");
+  const stored = (await ctx.state.get(companyKey(companyId, "spend"))) as DaySpend | null;
+  const spend = spendFor(stored, spendDay(started));
+  if (capReached(spend)) return stop("capped", "cap_reached");
   const health =
     ((await ctx.state.get(companyKey(companyId, "health"))) as CallHealth | null) ?? freshHealth;
-  if (stoppedForErrors(health, started)) return skip("stopped", "error_rate");
+  if (stoppedForErrors(health, started)) return stop("stopped", "error_rate");
+  return { scene, keyRef, base, started, spend, health };
+}
 
+/** Posts the line as an Automatic note with no author and keeps its id. Returns whether it did. */
+async function postNote(
+  ctx: FrontBotApi,
+  scene: Scene,
+  line: string,
+  base: RecordBase,
+): Promise<boolean> {
+  const { companyId, id } = scene.issue;
+  try {
+    const posted = await ctx.issues.createComment(id, `${automaticNotePrefix}${line}`, companyId);
+    await rememberNote(ctx.state, companyId, id, {
+      commentId: posted.id,
+      runId: base.runId,
+      at: base.at,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Calls Haiku, counts the call, checks the reply and posts it when it passes. */
+async function callAndPost(
+  ctx: FrontBotApi,
+  deps: FrontBotDeps,
+  ready: Ready,
+): Promise<FrontBotLogRecord> {
+  const { scene, base, started } = ready;
+  const { companyId } = scene.issue;
   const input = await inputOf(ctx, scene);
-  const call = await askFrontBot(ctx, deps, keyRef, companyId, input);
+  const call = await askFrontBot(ctx, deps, ready.keyRef, companyId, input);
   await ctx.state.set(
     companyKey(companyId, "health"),
-    afterCall(health, deps.now(), !call.answered),
+    afterCall(ready.health, deps.now(), !call.answered),
   );
   const latencyMs = () => deps.now().getTime() - started.getTime();
   if (!call.answered) {
-    return { ...skip("failed", call.reason), latencyMs: latencyMs() };
+    return { ...notCalledRecord(base, "failed", call.reason), latencyMs: latencyMs() };
   }
   const cost = callCostMicroUsd(call.usage);
-  await countSpend(ctx, companyId, spend, cost);
-  const called = (
-    outcome: FrontBotOutcome,
-    reason: FrontBotReason | undefined,
-  ): FrontBotLogRecord => ({
+  await countSpend(ctx, companyId, ready.spend, cost);
+  const called = (outcome: FrontBotOutcome, reason?: FrontBotReason): FrontBotLogRecord => ({
     ...base,
     callType: "first_reply",
     inputTokens: call.inputTokens,
@@ -241,28 +206,25 @@ async function handle(
     outcome,
     reason,
   });
-  if (call.answer.kind === "skip") return called("skip", undefined);
+  if (call.answer.kind === "skip") return called("skip");
   const grounding = checkGrounding(call.answer.line, frontBotUserText(input));
   if (!grounding.ok) return called("rejected", grounding.reason);
   // The agent may have answered while Haiku wrote: then the line would talk over it.
   if (await agentAnswered(ctx, scene)) return called("rejected", "agent_answered");
-  try {
-    const posted = await ctx.issues.createComment(
-      scene.issue.id,
-      `${automaticNotePrefix}${call.answer.line}`,
-      companyId,
-    );
-    await rememberNote(ctx.state, companyId, scene.issue.id, {
-      commentId: posted.id,
-      runId: base.runId,
-      at: base.at,
-    });
-  } catch {
-    return called("failed", "post_failed");
-  }
-  const record = called("posted", undefined);
+  if (!(await postNote(ctx, scene, call.answer.line, base))) return called("failed", "post_failed");
+  const record = called("posted");
   await writeMetrics(ctx, { "front_bot.latency_ms": record.latencyMs }, { companyId });
   return record;
+}
+
+/** One message, start to finish. Returns the record of what it decided, or undefined when there is none. */
+async function handle(
+  ctx: FrontBotApi,
+  deps: FrontBotDeps,
+  event: PluginEvent,
+): Promise<FrontBotLogRecord | undefined> {
+  const ready = await beforeCall(ctx, deps, event);
+  return ready === undefined || !("scene" in ready) ? ready : await callAndPost(ctx, deps, ready);
 }
 
 /** The front bot for one plugin worker. */
