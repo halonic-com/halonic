@@ -57,7 +57,7 @@ export class FakePaperclip {
     return this.on("GET", `/api/companies/${company}/agents`, { body: data.agents })
       .on("GET", `/api/companies/${company}/chats`, { body: data.chats })
       .on("GET", `/api/companies/${company}/issues`, ({ query }) => ({
-        body: matchingTasks(data.tasks, query.get("q")),
+        body: asListed(matchingTasks(data.tasks, query.get("q")), query),
       }))
       .on("GET", `/api/issues/${chatTask}/comments`, { body: data.comments })
       .on("GET", `/api/issues/${chatTask}/interactions`, { body: [] })
@@ -136,6 +136,19 @@ function matchingTasks<T extends object>(tasks: readonly T[], query: string | nu
 
 /** The opaque ID of the Acme connection's source. */
 export const sourceId = "paperclip:acme";
+
+/**
+ * `tasks` as Paperclip's task list sends them for `query`: with `view=index` every task's
+ * `description` is `null`, as Paperclip selects no description for a list view.
+ */
+export function asListed<Task extends object>(
+  tasks: readonly Task[],
+  query: URLSearchParams,
+): (Task | (Task & { description: null }))[] {
+  return query.get("view") === "index"
+    ? tasks.map((task) => ({ ...task, description: null }))
+    : [...tasks];
+}
 
 /** The opaque ID of card `id` on task `task`. */
 export const cardId = (task: string, id: string): string => `${sourceId}:card:${task}:${id}`;

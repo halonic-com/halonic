@@ -123,6 +123,20 @@ verifies("paperclip-client.route-timing", () => {
       ]);
     });
 
+    it("records an answer whose status text a Response can't be built with, and reads it", async () => {
+      const oddText = (): Promise<Response> =>
+        Promise.resolve(
+          Object.defineProperties(new Response("{}"), { statusText: { value: "O\u0001K" } }),
+        );
+
+      const answer = await transport(oddText).send("getTask", { path: { task: plainTask } });
+
+      expect(answer).toEqual({ kind: "ok", body: {} });
+      expect(timings).toEqual([
+        { method: "GET", route: "issues/:task", status: 200, ms: 25, bytes: 2 },
+      ]);
+    });
+
     it("without a sink, reads no clock and hands the reader fetch's own answer", async () => {
       const fetched = new Response("acme");
       const plain = new PaperclipTransport({
