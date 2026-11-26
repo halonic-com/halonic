@@ -192,6 +192,7 @@ export class GatewayClient implements PhoneRemote {
       case "msg-data":
       case "msg-result":
       case "msg-changed":
+      case "team-data":
         return this.messaging.received(message);
       default:
         // Pairing messages come only while pairing, which isn't this client's.
