@@ -11,7 +11,8 @@
     "./fonts": {
       "style": "./src/theme-font.css"
     },
-    "./app-glyphs": "./src/app-logo/app-glyphs.ts"
+    "./app-glyphs": "./src/app-logo/app-glyphs.ts",
+    "./settle": "./src/settle/settle.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

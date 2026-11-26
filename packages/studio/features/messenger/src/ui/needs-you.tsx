@@ -1,12 +1,6 @@
 import type { MessagingId } from "@halonicjs/ports";
-import {
-  Avatar,
-  agentTint,
-  Button,
-  PlaceIcon,
-  useSettleAway,
-  useSettling,
-} from "@halonicjs/studio-kit";
+import { Avatar, agentTint, Button, PlaceIcon } from "@halonicjs/studio-kit";
+import { useSettleAway, useSettling } from "@halonicjs/studio-kit/settle";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { chatAgent } from "../chat-name.ts";
 import { listWords } from "../list-words.ts";

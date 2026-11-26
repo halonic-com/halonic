@@ -1,5 +1,6 @@
 import type { InboxItem, Message, MessagingId, ReactionEmoji } from "@halonicjs/ports";
-import { Button, ChatLoading, EmptyState, enter, useSettling } from "@halonicjs/studio-kit";
+import { Button, ChatLoading, EmptyState, enter } from "@halonicjs/studio-kit";
+import { useSettling } from "@halonicjs/studio-kit/settle";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import {
   type RefObject,

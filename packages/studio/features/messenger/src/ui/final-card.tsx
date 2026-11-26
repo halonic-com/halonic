@@ -1,11 +1,6 @@
 import type { InboxItem, MessagingId } from "@halonicjs/ports";
-import {
-  ChatText,
-  finalState,
-  StatusChip,
-  useOpenExternal,
-  useSettleAway,
-} from "@halonicjs/studio-kit";
+import { ChatText, StatusChip, useOpenExternal } from "@halonicjs/studio-kit";
+import { finalState, useSettleAway } from "@halonicjs/studio-kit/settle";
 import { useEffect, useRef } from "react";
 import { CardPageLink, chatCardClasses } from "./chat-cards.tsx";
 

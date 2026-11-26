@@ -10,10 +10,10 @@ import {
   FormatLocaleProvider,
   NarrowProvider,
   OpenExternalProvider,
-  SettleMotionProvider,
   ToastRegion,
   ToastStoreProvider,
 } from "@halonicjs/studio-kit";
+import { SettleMotionProvider } from "@halonicjs/studio-kit/settle";
 import type { AgentActivity } from "@halonicjs/studio-services";
 import { act, StrictMode } from "react";
 import { Messenger } from "../messenger.ts";
