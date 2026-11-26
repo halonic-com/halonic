@@ -58,12 +58,21 @@ export class ConnectionEvents {
     await followEvents(this.#options, connection, this.#closed ? undefined : made);
   }
 
-  /** Closes every connection's socket while the engine is a server, and opens each again after. */
+  /**
+   * Closes every connection's socket while the engine is a server, and opens each again after.
+   * A socket that fails to close or open is reported, not thrown, so the other connections still
+   * switch and the engine switch itself goes on (leaving a server still deletes its cache).
+   */
   async setClosed(closed: boolean): Promise<void> {
     if (closed === this.#closed) return;
     this.#closed = closed;
     for (const [connection, made] of this.#made) {
-      await followEvents(this.#options, connection, closed ? undefined : made);
+      try {
+        await followEvents(this.#options, connection, closed ? undefined : made);
+      } catch (error) {
+        const provider = paperclipSourceId(connection);
+        this.#options.report({ provider, action: "live events", error });
+      }
     }
   }
 }
