@@ -32,6 +32,11 @@ export function checkDocsReaders(
       );
     }
   }
+  // The map's entries name this repo's docs: a tree without the file that
+  // holds the map, such as a test's fixture repo, has none of them.
+  if (!context.files.includes(listFile)) {
+    return report;
+  }
   for (const [doc, readers] of Object.entries(listed)) {
     if (!context.files.includes(doc)) {
       report.error(listFile, `docsReaders lists ${doc}, which doesn't exist. Remove its entry.`);

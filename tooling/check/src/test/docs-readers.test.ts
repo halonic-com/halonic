@@ -14,6 +14,7 @@ const packages: WorkspacePackage[] = [
 const up = "../".repeat(3);
 
 const files: Readonly<Record<string, string>> = {
+  "tooling/check/src/lib/affected-tests.ts": "",
   "docs/guides/runbook.md": "# Runbook\n",
   "apps/cli/src/runbook.test.ts": [
     'import { readFileSync } from "node:fs";',
@@ -55,6 +56,18 @@ verifies("check.docs-readers", () => {
       ).toEqual([
         "tooling/check/src/lib/affected-tests.ts: docsReaders lists docs/guides/gone.md, which doesn't exist. Remove its entry.",
       ]);
+    });
+
+    it("leaves the entries alone in a tree without the file that holds them", () => {
+      const fixture = {
+        ...context,
+        files: context.files.filter((file) => file.startsWith("apps/")),
+      };
+      const problems = checkDocsReaders(fixture, { "docs/guides/gone.md": ["acme"] }).problems;
+      expect(problems.map(({ file }) => file)).toEqual(["apps/cli/src/runbook.test.ts"]);
+      expect(checkDocsReaders(fixture, { "docs/guides/runbook.md": ["acme"] }).problems).toEqual(
+        [],
+      );
     });
 
     it("finds a path the formatter put on the line after findRepoRoot()", () => {
