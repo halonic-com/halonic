@@ -65,7 +65,7 @@ verifies("kit.app-logo", () => {
     expect(glyph.getAttribute("mask")).toBe(`url(#${mask.id})`);
     const flap = mask.querySelector("path") as SVGPathElement;
     expect(flap.getAttribute("d")).toBe("M35 40.5 L50 52 L65 40.5");
-    expect(flap.getAttribute("stroke")).toBe("#000");
+    expect(flap.getAttribute("stroke")).toBe("black");
     expect(flap.getAttribute("stroke-width")).toBe("7");
   });
 

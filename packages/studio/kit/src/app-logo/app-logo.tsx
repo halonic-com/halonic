@@ -37,14 +37,15 @@ export function AppLogo({ app, label, className = "size-icon-md", pixels = 20 }:
   return (
     <HalonicMark label={label} className={className}>
       {cuts.length > 0 && (
+        // A mask's luminance only says keep (white) or cut (black), so these aren't theme colours.
         <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-          <rect width="100" height="100" fill="#fff" />
+          <rect width="100" height="100" fill="white" />
           {cuts.map((shape) => (
             <path
               key={keyOf(shape)}
               d={shape.d}
               fill="none"
-              stroke="#000"
+              stroke="black"
               strokeWidth={shape.width}
               strokeLinecap="round"
               strokeLinejoin="round"
