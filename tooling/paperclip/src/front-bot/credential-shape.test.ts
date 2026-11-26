@@ -26,6 +26,7 @@ const samples: Record<string, string> = {
   "url-password": ["https://deploy:", random, "@example.com/repo"].join(""),
   "npm-auth-token": `//registry.npmjs.org/:_authToken=${random.repeat(3)}`,
   "oauth-field": `refresh_token=${random.repeat(3)}`,
+  "oauth-code": `https://example.com/callback?code=${random.repeat(3)}`,
 };
 
 verifies("paperclip.front-bot-grounding", () => {
@@ -40,6 +41,25 @@ verifies("paperclip.front-bot-grounding", () => {
   test("GitHub's installation, OAuth, user and refresh tokens count as keys", () => {
     for (const prefix of ["ghs_", "gho_", "ghu_", "ghr_"]) {
       expect(findCredentialShape(`token ${prefix}${random.repeat(3)}`)).toBe("github-token");
+    }
+  });
+
+  test("a sign-in code counts in a token request, and the word code alone doesn't", () => {
+    expect(findCredentialShape(`grant_type=authorization_code&code=${random.repeat(3)}`)).toBe(
+      "oauth-code",
+    );
+    expect(findCredentialShape(`code: ${random.repeat(3)}`)).toBe(undefined);
+  });
+
+  test("a long earlier comment that names grant_type is checked quickly", () => {
+    // Every earlier comment in a chat goes through this check, not only the
+    // short reply. Without the per-line gate and the value's end, this took seconds.
+    const codes = `${"code=".repeat(800)}${random.repeat(3)}`;
+    const comments = [`grant_type\n${codes}`, `${codes} grant_typ`, `${codes}\ngrant_type`];
+    for (const comment of comments) {
+      const start = performance.now();
+      findCredentialShape(comment);
+      expect(performance.now() - start).toBeLessThan(500);
     }
   });
 
