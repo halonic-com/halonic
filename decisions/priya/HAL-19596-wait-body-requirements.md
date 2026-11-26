@@ -2,6 +2,7 @@
 
 - Approval: HAL-19596 (found by Julian in the review of #6493, HAL-19560)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:XLpn5siY9gMwww0Zclvy8a2C8fcc1bMZameaSbetB0EOhBpz/FETYZ4Hu3Y6k1JivrBdGQTgyLL3WU/Hs5zmBw==
 
 #6406 (HAL-19285) made `halonic run` and `halonic runs show` print the wait's body between
 "! Waiting for you" and "Answer with:", and changed the tests and the golden with it. These
