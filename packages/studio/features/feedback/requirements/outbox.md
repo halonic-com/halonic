@@ -8,9 +8,9 @@ When Studio is offline or not connected to Paperclip as feedback is sent, the Fe
 shall keep it, with its screenshot, and say whether it waits to be online or to be connected. When
 the connection comes back, the feature shall send the waiting feedback oldest first, stop at the
 first that finds no connection, and report each task it created. When Paperclip refuses a waiting
-feedback three times, the feature shall stop trying and report it with Paperclip's reason. When 50
-feedbacks are waiting, the feature shall keep no more and say so. Feedback kept while waiting
-feedback is being sent shall never be lost.
+feedback three times, the feature shall stop trying and report it with Paperclip's reason. The
+cap on how much waits is `feedback.outbox-cap`. Feedback kept while waiting feedback is being sent
+shall never be lost.
 
 ## Examples
 

@@ -22,12 +22,19 @@ export {
 export { feedbackWords } from "./feedback-words.ts";
 export { type InAppFeedbackParts, startInAppFeedback } from "./in-app/in-app-feedback.tsx";
 export {
+  type FeedbackDatabases,
+  feedbackDatabase,
+  IndexedDbFeedbackStore,
+} from "./indexed-db-store.ts";
+export {
   FeedbackOutbox,
   type FeedbackSender,
   type FeedbackStore,
   type FlushReport,
   maxRefusals,
   maxWaiting,
+  maxWaitingBytes,
+  type OutboxParts,
   type SendOutcome,
   type SubmitOutcome,
   type WaitingFeedback,
