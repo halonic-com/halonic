@@ -1,0 +1,42 @@
+# Decision: the front bot texts back in short lines, labelled as the assistant
+
+- Task: HAL-19588
+- Approval: https://paperclip.halonic.com/HAL/issues/HAL-19588 (board direction on HAL-10, 26 Nov: short, varied, texting-style replies over several messages, shown as an assistant and not as the board; Julian's security review of #6515 on HAL-19588 signs the grounding change)
+- Kind: internal
+
+## What changes
+
+`paperclip.front-bot-first-reply` posts each line of a reply as its own
+comment, starting with `*Assistant:* ` instead of `*Automatic note:* `, with a
+short typing pause (0.7 seconds plus 35 ms per character, at most 2.5 seconds)
+before each line after the first. Once the chat's agent answers, no further
+line is posted.
+
+`paperclip.front-bot-grounding` checks every line and rejects the whole reply
+when one line fails, so a reply is never posted in part. The length limit is
+now 12 words or 100 characters per line and at most 3 lines, instead of 30
+words or 240 characters for the whole reply. A bare acknowledgement such as
+"On it" is no longer rejected, since the board asked for exactly that. All the
+other reasons stay; "starts by answering yes or no" now also covers yeah, yup,
+yea, nah and sure, and the result words now include their "-ing" forms
+(merging, deploying, restarting and the like).
+
+`paperclip.front-bot-own-comments` treats a comment with no author that starts
+with `*Assistant:* ` as the bot's, and still recognises the older
+`*Automatic note:* ` comments.
+
+New must-fail cases cover the short style. No test is skipped or deleted, and
+no requirement is retired.
+
+## Why
+
+The board found the single long notes generic and samey, and wants replies
+that react to the message like someone texting, split over several short
+messages. The plugin SDK can't post as Chief, so the label marks the lines as
+the assistant's until the client shows them as such.
+
+## Covers
+
+- paperclip.front-bot-first-reply
+- paperclip.front-bot-grounding
+- paperclip.front-bot-own-comments

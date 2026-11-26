@@ -40,7 +40,9 @@ verifies("paperclip.front-bot-first-reply", () => {
       await harness.bot.onCommentCreated(commentCreated(harness.message.id));
       return onlyRecord(harness.logs)["latencyMs"];
     };
-    expect(await latencyOf("On it\nLooking into the docs links now")).toBe(await latencyOf("On it"));
+    expect(await latencyOf("On it\nLooking into the docs links now")).toBe(
+      await latencyOf("On it"),
+    );
   });
 
   test("a pause is 0.7 s and a bit per character, at most 2.5 s", () => {

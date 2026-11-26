@@ -271,11 +271,7 @@ async function callAndPost(
       ? called("rejected", "agent_answered")
       : called("failed", "post_failed");
   }
-  const record = called(
-    "posted",
-    lines.unsaved ? "note_unsaved" : undefined,
-    lines.firstPostedAt,
-  );
+  const record = called("posted", lines.unsaved ? "note_unsaved" : undefined, lines.firstPostedAt);
   await writeMetrics(ctx, { "front_bot.latency_ms": record.latencyMs }, { companyId });
   return record;
 }
