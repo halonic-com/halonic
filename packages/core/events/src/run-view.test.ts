@@ -184,7 +184,34 @@ verifies("events.run-view", () => {
         input: {},
       }),
     );
-    expect(limit).toMatchObject({ waitsFor: "limit", limit: "plan.runs", asks: [] });
+    expect(limit).toMatchObject({ waitsFor: "limit", limit: "plan.runs" });
+  });
+
+  it("offers the one answer a run waiting at a plan limit takes, continue", () => {
+    const events = log({
+      type: "run.limit-waiting",
+      state: "reply",
+      error: "plan stop",
+      cause: { kind: "limit_reached", code: "plan.runs" },
+      until: "T9",
+      input: { refused: hidden },
+    });
+    const view = viewOf(events);
+    expect(view.asks).toEqual([
+      {
+        answer: {
+          handle: "h-question",
+          kind: "question",
+          payloadSchema: { type: "choice", choices: [runViewWords.continue] },
+        },
+        title: runViewWords.limitWaiting,
+        body: "",
+      },
+    ]);
+    expect(JSON.stringify(view)).not.toContain(hidden);
+    expect(waitingPointsOf(events, acmeMarks)).toEqual([
+      { kind: "question", state: "reply", events: ["continue"] },
+    ]);
   });
 
   it("shows a received event only when it answers what the run waits for", () => {
