@@ -240,6 +240,29 @@ verifies("remote.phone-saved-messaging", () => {
     expect(saved.cleared).toEqual([desktop, laptop]);
   });
 
+  it("a write queued before Forget leaves nothing saved after it", async () => {
+    const { tunnel, router, saved } = setUp(paired(laptop, "Tim's laptop"));
+    await router.start();
+    const write = saved.write.bind(saved);
+    let finishWrite = (): void => undefined;
+    saved.write = (computer, text) =>
+      new Promise((resolve) => {
+        finishWrite = () => resolve(write(computer, text));
+      });
+    const messaging = router.savedOf(laptop);
+    if (messaging === undefined) throw new Error("The router has no saved store.");
+    const writing = messaging.sawInbox([]);
+    const shown = tunnel.computers.get(laptop);
+    if (shown === undefined) throw new Error("The laptop isn't listed.");
+    await router.forget(shown);
+    finishWrite();
+    await writing;
+    await vi.waitFor(() => expect(saved.cleared).toEqual([laptop]));
+    await messaging.sawInbox([]);
+    expect(saved.texts.has(laptop)).toBe(false);
+    expect(router.savedOf(laptop)).not.toBe(messaging);
+  });
+
   it("Can't confirm keeps what the phone saved", async () => {
     const { tunnel, router, saved } = setUp(paired(laptop, "Tim's laptop"));
     await router.start();

@@ -124,6 +124,7 @@ mod runs;
 mod sandbox_backup;
 mod sandbox_elevate;
 mod sandbox_wsl_setup;
+mod saved_messaging;
 mod secrets;
 mod server_session;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
@@ -409,6 +410,9 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             phone_tunnel::phone_tunnel_watch,
             phone_tunnel::tunnel_send,
             phone_tunnel::tunnel_end_session,
+            saved_messaging::phone_saved_read,
+            saved_messaging::phone_saved_write,
+            saved_messaging::phone_saved_clear,
             phone_nearby::phone_nearby_browse,
             phone_nearby::phone_nearby_stop,
             phone_screens::phone_open_settings,

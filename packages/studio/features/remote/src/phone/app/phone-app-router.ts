@@ -11,7 +11,7 @@ import type {
   PhoneTunnel,
 } from "../phone-tunnel.ts";
 import type { PhoneRemote } from "../remote-view.ts";
-import type { SavedDataStore } from "../saved-messaging.ts";
+import { type SavedDataStore, SavedMessaging } from "../saved-messaging.ts";
 import { type FirstReach, FirstReaches } from "./first-reaches.ts";
 
 /** The sheet over a computer's screen: the header label's status sheet, or Check this connection. */
@@ -84,6 +84,7 @@ export class PhoneAppRouter {
   #computers: readonly ListedComputer[] | KeysUnavailable | undefined;
   readonly #statuses = new Map<ComputerId, PhoneStatus>();
   readonly #held = new Map<ComputerId, HeldComputer>();
+  readonly #saved = new Map<ComputerId, SavedMessaging>();
   readonly #reaches: FirstReaches;
   readonly #listeners = new Set<() => void>();
   #forgotten: ListedComputer | undefined;
@@ -142,6 +143,18 @@ export class PhoneAppRouter {
   /** The gateway client of a computer whose screen opened, until it is removed or forgotten. */
   remoteOf(computer: ComputerId): PhoneRemote | undefined {
     return this.#held.get(computer);
+  }
+
+  /**
+   * What the phone saved of a computer's Inbox and Messenger, one instance per computer until it
+   * is forgotten or removed; `undefined` without a store.
+   */
+  savedOf(computer: ComputerId): SavedMessaging | undefined {
+    const store = this.#options.saved;
+    if (store === undefined) return undefined;
+    const kept = this.#saved.get(computer) ?? new SavedMessaging(store, computer);
+    this.#saved.set(computer, kept);
+    return kept;
   }
 
   /** An agent's row was tapped: its run detail shows in place of the Agents list. */
@@ -328,11 +341,14 @@ export class PhoneAppRouter {
     );
   }
 
-  /** Deletes what the phone saved of `computer`, as on Forget and Removed. */
+  /**
+   * Deletes what the phone saved of `computer`, as on Forget and Removed: through its
+   * `SavedMessaging`, so a write still queued can't bring the text back after the clear.
+   */
   #clearSaved(computer: ComputerId): void {
-    this.#options.saved
-      ?.clear(computer)
-      .catch(() => this.#options.report("clearing the saved data was refused"));
+    const saved = this.savedOf(computer);
+    this.#saved.delete(computer);
+    saved?.forget().catch(() => this.#options.report("clearing the saved data was refused"));
   }
 
   async #list(): Promise<readonly ListedComputer[] | KeysUnavailable> {

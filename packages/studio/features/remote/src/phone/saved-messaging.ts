@@ -85,6 +85,7 @@ export class SavedMessaging {
   private readonly clock: () => Date;
   private saved: SavedMessagingData = empty;
   private writing: Promise<void> = Promise.resolve();
+  private forgotten = false;
 
   constructor(store: SavedDataStore, computer: ComputerId, clock: () => Date = () => new Date()) {
     this.store = store;
@@ -163,13 +164,18 @@ export class SavedMessaging {
     return this.save({ ...this.saved, drafts }, false);
   }
 
-  /** Deletes everything saved, as on Forget and Removed. */
+  /**
+   * Deletes everything saved, as on Forget and Removed, after any write still queued. Nothing is
+   * saved again through this instance afterwards.
+   */
   forget(): Promise<void> {
+    this.forgotten = true;
     this.saved = empty;
     return this.queue(() => this.store.clear(this.computer));
   }
 
   private save(data: SavedMessagingData, seen = true): Promise<void> {
+    if (this.forgotten) return Promise.resolve();
     const dated = seen ? { ...data, asOf: this.clock().toISOString() } : data;
     const { kept, text } = withinCap(dated);
     this.saved = kept;

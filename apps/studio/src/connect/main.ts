@@ -8,6 +8,7 @@ import { tauriNearbyComputers } from "./tauri-nearby-computers.ts";
 import { tauriOwnerCheckAvailable } from "./tauri-owner-check.ts";
 import { type PhoneScreens, tauriPhoneScreens } from "./tauri-phone-screens.ts";
 import { tauriPhoneTunnel } from "./tauri-phone-tunnel.ts";
+import { tauriSavedDataStore } from "./tauri-saved-data-store.ts";
 
 /**
  * Outside the app, for example while working on the page in a browser,
@@ -42,7 +43,10 @@ void startPage({
     : { computerTunnel: (computer: ComputerId) => tunnel.computerTunnel(computer) }),
   ...(internals === undefined
     ? {}
-    : { ownerCheckAvailable: tauriOwnerCheckAvailable(internals, report) }),
+    : {
+        ownerCheckAvailable: tauriOwnerCheckAvailable(internals, report),
+        saved: tauriSavedDataStore(internals, report),
+      }),
   bridge: internals === undefined ? outsideTheApp : tauriBridge(internals, window),
   store: localAddressStore(localStorage),
   changeAddress: location.hash === "#change-address" || location.hash === "#page-not-shown",

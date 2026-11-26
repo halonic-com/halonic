@@ -1,6 +1,7 @@
 //! The served page and the phone tunnel (HAL-15157 and HAL-15177; H1 and
 //! L3 on HAL-15181, B7 items 8 and 9 of the D7 design on HAL-15159): only
-//! the phone's own page may call the `phone_*` and `tunnel_*` commands, on
+//! the phone's own page may call the `phone_*` and `tunnel_*` commands (the
+//! saved Inbox and Messenger's `phone_saved_*` too, HAL-19026), on
 //! Android only, and the tunnel's events, statuses, sessions and host
 //! messages alike, reach only the app's own page, never the Studio a
 //! computer serves into the same window.
@@ -18,7 +19,7 @@ use super::{CONNECT_PAGE, SERVED_PAGE, app_window, invoke};
 use crate::navigation::{ConfirmedAddress, on_navigation};
 use crate::phone_tunnel_events::{TunnelEvent, end_page_watch, tell, watch, watching};
 
-const COMMANDS: [&str; 10] = [
+const COMMANDS: [&str; 13] = [
     "phone_pair_start",
     "phone_pair_wait",
     "phone_pair_cancel",
@@ -29,6 +30,9 @@ const COMMANDS: [&str; 10] = [
     "phone_tunnel_watch",
     "tunnel_send",
     "tunnel_end_session",
+    "phone_saved_read",
+    "phone_saved_write",
+    "phone_saved_clear",
 ];
 
 /// The app's own page on this platform, which the window opens.
