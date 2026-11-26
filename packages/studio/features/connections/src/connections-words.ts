@@ -173,6 +173,12 @@ function unknownState(state: never): never {
 export const disconnectTitle = (label: string): string => `Disconnect ${label}?`;
 export const DISCONNECT_TEXT =
   "Halonic revokes its key in Paperclip and deletes the key and the cache from this computer. Your cards, tasks and chats stay in Paperclip.";
+/**
+ * The Disconnect confirmation while this computer holds no key for the connection: the engine has
+ * no key to revoke, so it promises no revoke (Sofia, HAL-19120).
+ */
+export const DISCONNECT_NO_KEY_TEXT =
+  "Halonic deletes the cache from this computer. This computer holds no key for it, so nothing is revoked: revoke the key in Paperclip if you no longer need it. Your cards, tasks and chats stay in Paperclip.";
 
 /** What a screen reader hears once a sign-in connected and the dialog closed by itself. */
 export const connectedLine = (label: string): string => `Connected ${label}.`;
@@ -180,6 +186,8 @@ export const connectedLine = (label: string): string => `Connected ${label}.`;
 /** After Disconnect, when Paperclip revoked the key. */
 export const disconnectedRevoked = (label: string): string =>
   `Disconnected ${label}. Its key is revoked in Paperclip and deleted from this computer.`;
+/** After Disconnect of a connection this computer held no key for: nothing was revoked or kept valid here (HAL-19120). */
+export const disconnectedNoKey = (label: string): string => `Disconnected ${label}.`;
 /** After Disconnect, when the revoke failed: a bold first sentence, then the rest. */
 export function disconnectedStillValid(label: string, validUntil: string): Ending {
   return {

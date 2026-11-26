@@ -142,6 +142,27 @@ verifies("connections.connection-row", () => {
     );
   });
 
+  it("promises no revoke when this computer holds no key, and says only that it disconnected", async () => {
+    const noKey: AgentConnection = { ...connected, state: { kind: "no-key" } };
+    // The engine holds no key for it here, so it revokes nothing (HAL-19120).
+    const fake = new FakeAgentConnections({
+      connections: [noKey],
+      disconnect: { revoked: false, validUntil: "2026-12-24T12:00:00.000Z" },
+    });
+    const { view, announced } = await showSection(fake);
+    await press(button("Disconnect", rowOf(view, "Paperclip · Halonic")));
+    expect(dialog()?.textContent).toContain(
+      "Halonic deletes the cache from this computer. This computer holds no key for it, so nothing is revoked: revoke the key in Paperclip if you no longer need it. Your cards, tasks and chats stay in Paperclip.",
+    );
+    expect(dialog()?.textContent).not.toContain("Halonic revokes its key");
+    await press(button("Disconnect", inDialog()));
+    expect(fake.disconnects).toEqual(["paperclip:halonic"]);
+    expect(announced).toEqual(["Disconnected Paperclip · Halonic."]);
+    expect(view.textContent).toContain("Disconnected Paperclip · Halonic.");
+    expect(view.textContent).not.toContain("still valid");
+    expect(view.textContent).not.toContain("Its key is revoked");
+  });
+
   it("disconnects nothing when the person cancels", async () => {
     const fake = new FakeAgentConnections({ connections: [connected] });
     const { view } = await showSection(fake);
@@ -234,6 +255,24 @@ verifies("connections.connection-row", () => {
       const id = button("Disconnect", rowOf(view, label))?.getAttribute("aria-describedby");
       expect(id && document.getElementById(id)?.textContent).toBe(label);
     }
+  });
+  it("names the row each Sign in belongs to", async () => {
+    const noKeyHere: AgentConnection = { ...connected, state: { kind: "no-key" } };
+    const noKeyAcme: AgentConnection = { ...signedOut, state: { kind: "no-key" } };
+    const fake = new FakeAgentConnections({ connections: [noKeyHere, noKeyAcme] });
+    const { view } = await showSection(fake);
+    const signIns = [...view.querySelectorAll("button")].filter(
+      (found) => found.textContent?.trim() === "Sign in",
+    );
+    expect(signIns).toHaveLength(2);
+    const descriptions = signIns.map((signIn) =>
+      (signIn.getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .map((id) => document.getElementById(id)?.textContent ?? "")
+        .join(" "),
+    );
+    expect(descriptions[0]).toContain("Paperclip · Halonic");
+    expect(descriptions[1]).toContain("Paperclip · Acme");
   });
 });
 

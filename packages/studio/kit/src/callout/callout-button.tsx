@@ -28,6 +28,8 @@ export function CalloutButton({
   readonly describedBy: string | undefined;
 }) {
   const focused = action.focus === true;
+  // The action's own describer goes first: it says whose action this is, the Callout's words why.
+  const description = [action.describedBy, describedBy].filter((id) => id !== undefined).join(" ");
   const [busy, setBusy] = useState(false);
   const done = useDoneLabel(action.label, action.doneLabel);
 
@@ -54,7 +56,7 @@ export function CalloutButton({
       busyLabel={action.busyLabel}
       onClick={run}
       {...(focused ? { ref: focusOnMount } : {})}
-      {...(describedBy === undefined ? {} : { "aria-describedby": describedBy })}
+      {...(description === "" ? {} : { "aria-describedby": description })}
       {...trigger}
     >
       <span className={labelClasses}>
