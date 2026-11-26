@@ -56,13 +56,13 @@ sudo -u halonic-engine mkdir -m 0700 /srv/halonic-engine/workspace
 
 Pick a `main` commit whose `ci-ok` is green, then install as the service user.
 The install fetches the Node version the repo pins, so the service needs no
-network at start:
+network at start. The home folder is `0700`, so you can't `cd` into it; every
+command names the checkout instead:
 
 ```sh
-cd /srv/halonic-engine/halonic
-sudo -u halonic-engine git fetch origin main
-sudo -u halonic-engine git checkout --detach <commit>
-sudo -u halonic-engine pnpm install --frozen-lockfile
+sudo -u halonic-engine git -C /srv/halonic-engine/halonic fetch origin main
+sudo -u halonic-engine git -C /srv/halonic-engine/halonic checkout --detach <commit>
+sudo -u halonic-engine pnpm --dir /srv/halonic-engine/halonic install --frozen-lockfile
 echo "$(date -u +%FT%TZ) <commit>" | sudo -u halonic-engine tee -a /srv/halonic-engine/deployed.log
 ```
 
@@ -73,7 +73,7 @@ The steps below run the CLI as the service user, from the checkout. To save
 typing, define this for your shell session:
 
 ```sh
-engine() { sudo -u halonic-engine -H --chdir=/srv/halonic-engine/halonic pnpm exec node apps/cli/bin/halonic.js "$@"; }
+engine() { sudo -u halonic-engine -H sh -c 'cd /srv/halonic-engine/halonic && exec pnpm exec node apps/cli/bin/halonic.js "$@"' engine "$@"; }
 ```
 
 ### 4. Set the sign-in password
@@ -269,10 +269,9 @@ stores (`server.paperclip-key-store`).
 ## Deploy a new commit
 
 ```sh
-cd /srv/halonic-engine/halonic
-sudo -u halonic-engine git fetch origin main
-sudo -u halonic-engine git checkout --detach <new commit>
-sudo -u halonic-engine pnpm install --frozen-lockfile
+sudo -u halonic-engine git -C /srv/halonic-engine/halonic fetch origin main
+sudo -u halonic-engine git -C /srv/halonic-engine/halonic checkout --detach <new commit>
+sudo -u halonic-engine pnpm --dir /srv/halonic-engine/halonic install --frozen-lockfile
 echo "$(date -u +%FT%TZ) <new commit>" | sudo -u halonic-engine tee -a /srv/halonic-engine/deployed.log
 sudo systemctl restart halonic-engine
 ```
@@ -285,9 +284,8 @@ Go back to the commit before the current one in `deployed.log`:
 
 ```sh
 tail -n 2 /srv/halonic-engine/deployed.log
-cd /srv/halonic-engine/halonic
-sudo -u halonic-engine git checkout --detach <previous commit>
-sudo -u halonic-engine pnpm install --frozen-lockfile
+sudo -u halonic-engine git -C /srv/halonic-engine/halonic checkout --detach <previous commit>
+sudo -u halonic-engine pnpm --dir /srv/halonic-engine/halonic install --frozen-lockfile
 echo "$(date -u +%FT%TZ) <previous commit> (rollback)" | sudo -u halonic-engine tee -a /srv/halonic-engine/deployed.log
 sudo systemctl restart halonic-engine
 ```
