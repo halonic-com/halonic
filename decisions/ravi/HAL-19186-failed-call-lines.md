@@ -2,6 +2,7 @@
 
 - Approval: the plan is HAL-19172 rev 1 (Liam's OK, 26 Nov), the wording is Chief's team decision on HAL-19275 (26 Nov), the task is HAL-19186, and its reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:QTVFPoSJTS7w9ylAaeRoUUhQFz8YgY72xelOCUBxJrZGgBlHJNtTpbBRFjDlUGgH/K1G5RGYpz4HzpyjbdPICw==
 - Task: HAL-19186
 
 ## What changes
