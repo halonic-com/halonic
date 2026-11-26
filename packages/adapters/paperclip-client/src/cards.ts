@@ -1,5 +1,6 @@
 import type {
   InboxAnswer,
+  InboxClosedReason,
   InboxItem,
   InboxItemKind,
   InboxItemOption,
@@ -33,8 +34,19 @@ export interface AnswerRequest {
   body: Readonly<Record<string, unknown>>;
 }
 
-/** Card states that are an answer; cancelled, expired and failed cards aren't shown. */
+/** Card states that are an answer. */
 const answeredStates: ReadonlySet<string> = new Set(["accepted", "rejected", "answered"]);
+
+/**
+ * Card states that ended without an answer, and how the port says each
+ * (`paperclip-client.closed-items`). A failed card ended without a decision too, so for the
+ * person it reads as cancelled (Liam on HAL-19496).
+ */
+const closedReasons: ReadonlyMap<string, InboxClosedReason> = new Map([
+  ["cancelled", "cancelled"],
+  ["failed", "cancelled"],
+  ["expired", "expired"],
+]);
 
 /**
  * The badge each card kind gets (requirement `paperclip-client.item-kinds`, HAL-19491). A card
@@ -152,8 +164,40 @@ export function answeredState(
 }
 
 /**
- * A card on task `task` as an inbox item, or `undefined` when it isn't the
- * person's to answer: addressed to an agent, or cancelled, expired or failed.
+ * A resolved card's state when it ended without an answer, from its reason, when it ended
+ * and, only when Paperclip names one, who ended it.
+ */
+export function closedState(
+  context: MapContext,
+  record: JsonRecord,
+  reason: InboxClosedReason,
+): InboxItemState {
+  const agentId = text(record, "resolvedByAgentId");
+  const userId = text(record, "resolvedByUserId") ?? text(record, "decidedByUserId");
+  const closedAt =
+    text(record, "resolvedAt") ?? text(record, "updatedAt") ?? timeOf(record, "createdAt");
+  if (agentId === undefined && userId === undefined) {
+    return { kind: "closed", reason, closedAt };
+  }
+  return { kind: "closed", reason, closedAt, by: authorOf(context, agentId, userId) };
+}
+
+/** A card's state from its Paperclip status; `undefined` for a status Halonic doesn't know. */
+function cardState(
+  context: MapContext,
+  record: JsonRecord,
+  answer: () => InboxAnswer,
+): InboxItemState | undefined {
+  const status = text(record, "status") ?? "";
+  if (status === "pending") return { kind: "open" };
+  if (answeredStates.has(status)) return answeredState(context, record, answer());
+  const reason = closedReasons.get(status);
+  return reason === undefined ? undefined : closedState(context, record, reason);
+}
+
+/**
+ * A card on task `task` as an inbox item, or `undefined` when it isn't the person's to answer:
+ * addressed to an agent, or in a status Halonic doesn't know.
  */
 export function cardToItem(
   context: MapContext,
@@ -166,12 +210,15 @@ export function cardToItem(
   if (id === undefined || text(record, "addresseeAgentId") !== undefined) {
     return undefined;
   }
-  if (status !== "pending" && !answeredStates.has(status)) {
-    return undefined;
-  }
   const payload = asRecord(field(record, "payload"));
   const result = asRecord(field(record, "result"));
   const questions = questionsOf(kind, record, payload, result);
+  const state = cardState(context, record, () =>
+    answerOf(kind, status, result, questions !== undefined),
+  );
+  if (state === undefined) {
+    return undefined;
+  }
   return {
     id: context.ids.make("card", task, id),
     source: context.ids.source(),
@@ -186,10 +233,7 @@ export function cardToItem(
     createdAt: timeOf(record, "createdAt"),
     // The Inbox adds the files of the card's task (`card-files.ts`).
     attachments: [],
-    state:
-      status === "pending"
-        ? { kind: "open" }
-        : answeredState(context, record, answerOf(kind, status, result, questions !== undefined)),
+    state,
   };
 }
 
@@ -333,7 +377,9 @@ export function approvalToItem(
   // The type comes from Paperclip and says what approving does (hire an agent, change a budget).
   // The title and summary come from the agent that asks, so they never stand in for the type.
   const type = text(record, "type");
-  const decided = decidedOptions.get(text(record, "status") ?? "");
+  const status = text(record, "status") ?? "";
+  const decided = decidedOptions.get(status);
+  const closed = closedReasons.get(status);
   const note = text(record, "decisionNote");
   return {
     id: context.ids.make("approval", id),
@@ -347,15 +393,30 @@ export function approvalToItem(
     createdAt: timeOf(record, "createdAt"),
     // The Inbox adds the files of the card's task (`card-files.ts`).
     attachments: [],
-    state:
-      decided === undefined
-        ? { kind: "open" }
-        : answeredState(context, record, {
-            kind: "option",
-            option: decided,
-            ...(note === undefined ? {} : { note }),
-          }),
+    state: approvalState(context, record, { decided, closed, note }),
   };
+}
+
+/** An approval's state: answered with the option it was decided with, closed, or else open. */
+function approvalState(
+  context: MapContext,
+  record: JsonRecord,
+  ended: {
+    decided?: string | undefined;
+    closed?: InboxClosedReason | undefined;
+    note?: string | undefined;
+  },
+): InboxItemState {
+  const { decided, closed, note } = ended;
+  if (decided !== undefined) {
+    const answer: InboxAnswer = {
+      kind: "option",
+      option: decided,
+      ...(note === undefined ? {} : { note }),
+    };
+    return answeredState(context, record, answer);
+  }
+  return closed === undefined ? { kind: "open" } : closedState(context, record, closed);
 }
 
 const approvalRequests: ReadonlyMap<string, AnswerRequest["name"]> = new Map([
