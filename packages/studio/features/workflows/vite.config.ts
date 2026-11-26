@@ -31,6 +31,7 @@ export default defineConfig({
         "allow-address": `${import.meta.dirname}/e2e/pages/allow-address.html`,
         "spend-and-seats": `${import.meta.dirname}/e2e/pages/spend-and-seats.html`,
         "pull-requests": `${import.meta.dirname}/e2e/pages/pull-requests.html`,
+        "update-button": `${import.meta.dirname}/e2e/pages/update-button.html`,
       },
     },
   },

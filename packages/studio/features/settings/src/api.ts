@@ -291,3 +291,9 @@ export { SandboxSetupFlow } from "./sandbox-choice/ui/sandbox-setup-flow.tsx";
  */
 export const loadAgentSandboxSection = () => import("./agent-sandbox/agent-sandbox-section.tsx");
 export const loadFormatsSection = () => import("./formats/formats-section.tsx");
+
+/**
+ * Load the title bar's **Update** button and its dialog, for the CI screenshots, which draw them
+ * over a made-up updater. The app never calls it: the feature registers the button itself.
+ */
+export const loadUpdateButton = () => import("./updater/update-button.tsx");

@@ -100,6 +100,14 @@ month's usage used up, and a step that needs more agent time than is left. The s
 that nothing scrolls sideways on the 390 px phone. The page draws the card through `PlanLimitCard`
 in the Inbox feature's `api.ts`.
 
+## The Update button
+
+`update-button-<light|dark>.png` is the title bar's right end with **Update**, and
+`update-dialog-<signature|failed>-<light|dark>.png` the Update available dialog opened from it when
+the update's signature was refused or its download failed (HAL-19575). The strip stands in for the
+title bar; the button and the dialog are the settings feature's own, over a made-up updater, and
+load through `loadUpdateButton` in its `api.ts`.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a
