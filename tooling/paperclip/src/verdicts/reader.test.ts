@@ -196,14 +196,35 @@ verifies("paperclip.verdicts-reader", () => {
         createdAt: "2026-11-26T10:00:00.000Z",
         updatedAt: "2026-11-26T10:00:00.000Z",
       };
-      expect(readVerdict(stored, repo, 7)).toMatchObject({ id: "entity-1", verdict: "approved" });
-      expect(readVerdict({ ...stored, updatedAt: "2026-11-26T11:00:00.000Z" }, repo, 7)).toBe(
-        undefined,
-      );
-      expect(readVerdict(stored, repo, 8)).toBe(undefined);
-      expect(readVerdict({ ...stored, data: { ...stored.data, head: "abc1234" } }, repo, 7)).toBe(
-        undefined,
-      );
+      expect(readVerdict(stored, repo, 7, "acme")).toMatchObject({
+        id: "entity-1",
+        verdict: "approved",
+      });
+      expect(
+        readVerdict({ ...stored, updatedAt: "2026-11-26T11:00:00.000Z" }, repo, 7, "acme"),
+      ).toBe(undefined);
+      expect(readVerdict(stored, repo, 8, "acme")).toBe(undefined);
+      expect(
+        readVerdict({ ...stored, data: { ...stored.data, head: "abc1234" } }, repo, 7, "acme"),
+      ).toBe(undefined);
+    });
+
+    test("only records of the reader's own company are read, in the store and entity by entity", async () => {
+      const harness = createTestHarness({ manifest, config: {} });
+      const acme = entityVerdicts(harness.ctx.entities, "acme");
+      const other = entityVerdicts(harness.ctx.entities, "other");
+      await other.append(record("liam", "approved"));
+      expect(await acme.list(repo, 7)).toEqual([]);
+      const [stored] = await harness.ctx.entities.list({
+        entityType: verdictEntityType(repo, 7),
+        scopeKind: "company",
+        scopeId: "other",
+      });
+      expect(stored).toBeDefined();
+      if (stored === undefined) return;
+      expect(readVerdict(stored, repo, 7, "other")).toMatchObject({ reviewer: "liam" });
+      expect(readVerdict(stored, repo, 7, "acme")).toBe(undefined);
+      expect(readVerdict({ ...stored, scopeKind: "instance" }, repo, 7, "other")).toBe(undefined);
     });
   });
 });

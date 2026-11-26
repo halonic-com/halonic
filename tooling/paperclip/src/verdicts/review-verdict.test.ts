@@ -72,7 +72,13 @@ function fakeDeps(
     pull: async () => ({ ...pullFacts, ...options.pull }),
     taskComments: async (identifier) =>
       identifier === "HAL-1"
-        ? [{ authorAgentId: "agent-elena", body: "Ready for review: halonic#6385." }]
+        ? [
+            {
+              authorAgentId: "agent-elena",
+              origin: "comment",
+              body: "Ready for review: halonic#6385.",
+            },
+          ]
         : [],
     agents: async () => agents,
     store: entityVerdicts(harness.ctx.entities, "acme"),
@@ -163,7 +169,9 @@ verifies("paperclip.review-verdict", () => {
     });
 
     test("applies the HAL-14809 rules: no own pull request, Julian only within his limits", async () => {
-      const liamComment = async () => [{ authorAgentId: "agent-liam", body: "halonic#6385" }];
+      const liamComment = async () => [
+        { authorAgentId: "agent-liam", origin: "comment", body: "halonic#6385" },
+      ];
       const own = fakeDeps({
         pull: { branch: "liam/HAL-1-name" },
         deps: { taskComments: liamComment },
@@ -213,6 +221,20 @@ verifies("paperclip.review-verdict", () => {
       );
       const { line } = await reviewVerdict(julian.deps, call("withdrawn"));
       expect(line).toBe(`Julian: change request withdrawn on head \`${head}\``);
+    });
+
+    test("a failed post after the record says it was recorded, so nobody records it twice", async () => {
+      const { deps } = fakeDeps({
+        deps: {
+          postAsCaller: async () => {
+            throw new Error("Paperclip timed out.");
+          },
+        },
+      });
+      const refused = reviewVerdict(deps, call("approved"));
+      await expect(refused).rejects.toThrow(`Recorded: Liam: approved on head \`${head}\``);
+      await expect(refused).rejects.toThrow("don't record it again.");
+      expect(await deps.store.list(repo, 6385)).toHaveLength(1);
     });
   });
 

@@ -164,6 +164,27 @@ async function ruleRefusal(
   return undefined;
 }
 
+/** Posts the stored record's line on the task as the reviewer, and returns the line. */
+async function postLine(
+  deps: VerdictDeps,
+  task: VerdictTask,
+  record: VerdictRecord,
+): Promise<string> {
+  const line = verdictLine(record);
+  try {
+    await deps.postAsCaller(
+      task.id,
+      `${line}\n\nRecorded with review_verdict (record \`${record.id}\`).`,
+    );
+  } catch (error) {
+    // The record exists, so saying nothing was recorded would invite a second verdict.
+    throw new ToolInputError(
+      `Recorded: ${line} (record ${record.id}), but posting it on ${task.identifier} failed: ${(error as Error).message} Post that line on the task yourself; don't record it again.`,
+    );
+  }
+  return line;
+}
+
 /** Records one verdict after every check, then posts its line on the task as the reviewer. */
 export async function reviewVerdict(deps: VerdictDeps, call: VerdictCall): Promise<VerdictOutcome> {
   const { caller } = deps;
@@ -227,10 +248,6 @@ export async function reviewVerdict(deps: VerdictDeps, call: VerdictCall): Promi
     runId: caller.runId,
     task: task.identifier,
   });
-  const line = verdictLine(record);
-  await deps.postAsCaller(
-    task.id,
-    `${line}\n\nRecorded with review_verdict (record \`${record.id}\`).`,
-  );
+  const line = await postLine(deps, task, record);
   return { record, line, task: task.identifier };
 }

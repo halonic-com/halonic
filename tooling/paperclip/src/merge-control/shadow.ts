@@ -7,6 +7,7 @@ import {
   type PullTrack,
   trackPulls,
 } from "./shadow-reasons.ts";
+import { importedToday, type VerdictChecks, verdictDiffLines } from "./shadow-verdicts.ts";
 import type { ActionCost, MergeAction } from "./state.ts";
 
 /**
@@ -68,6 +69,8 @@ export interface ShadowDay {
   readonly notes?: Readonly<Record<string, NoteSeen>>;
   /** The day's checks of the rule "needs a Paperclip copy with a full-SHA match" (HAL-19324). */
   readonly copies?: CopyChecks;
+  /** The day's comparisons of the recorded verdicts with the gate (HAL-19481). */
+  readonly verdicts?: VerdictChecks;
 }
 
 /** A new day with nothing in it. */
@@ -223,6 +226,10 @@ export interface ShadowDiff {
   readonly cost: ActionCost;
   /** The pull requests the rule "needs a Paperclip copy with a full-SHA match" would refuse; none is. */
   readonly needsCopy: readonly ShadowLine[];
+  /** The pull requests where the recorded verdicts and the gate's approval rules disagree; none is refused. */
+  readonly verdictsDisagree: readonly ShadowLine[];
+  /** The records imported from the approvals' Paperclip copies that day. */
+  readonly imported: number;
 }
 
 const byTime = (a: ShadowLine, b: ShadowLine) => a.at.localeCompare(b.at);
@@ -277,6 +284,8 @@ export function shadowDiff(day: ShadowDay): ShadowDiff {
     lateAgreed: lateAgreed.sort(byTime),
     differing: differing.sort(byTime),
     needsCopy: needsCopyLines(day.copies).sort(byTime),
+    verdictsDisagree: verdictDiffLines(day.verdicts).sort(byTime),
+    imported: importedToday(day.verdicts),
     cost: {
       groupsCancelled: costs.reduce((sum, cost) => sum + cost.groupsCancelled, 0),
       runnerMinutes: costs.reduce((sum, cost) => sum + cost.runnerMinutes, 0),
@@ -307,6 +316,21 @@ function lines(title: string, items: readonly ShadowLine[], side = ""): string[]
   return ["", `**${title}** (${items.length})`, ...list];
 }
 
+/** The recorded verdicts' part of the daily comment, left out before any was compared. */
+function verdictsText(diff: ShadowDiff): string[] {
+  const imported =
+    diff.imported === 0
+      ? []
+      : ["", `Imported ${diff.imported} approvals from their Paperclip copies.`];
+  return [
+    ...imported,
+    ...lines(
+      "Recorded verdicts disagree with the gate: shadow only, nothing refused",
+      diff.verdictsDisagree,
+    ),
+  ];
+}
+
 /**
  * The daily comment, Markdown: numbers, keys, times and reasons, no GitHub
  * text. A reason is merge control's own gate or wait text, or the kind of
@@ -324,5 +348,6 @@ export function shadowDiffText(diff: ShadowDiff): string {
       "Needs a Paperclip copy with a full-SHA match: would refuse, nothing refused",
       diff.needsCopy,
     ),
+    ...verdictsText(diff),
   ].join("\n");
 }

@@ -46,6 +46,18 @@ export async function runHolds(
   task: VerdictTask,
   caller: VerdictCaller,
 ): Promise<string | undefined> {
+  // The read-only running-runs check comes first: `assertCheckoutOwner` can hand a free or stale
+  // checkout to the calling run, so it must never run for a task the run isn't working on.
+  const subtree = await ctx.issues.getSubtree(task.id, companyId, {
+    includeRoot: true,
+    includeActiveRuns: true,
+  });
+  const running = (subtree.activeRuns?.[task.id] ?? []).some(
+    (run) => run.id === caller.runId && run.status === "running",
+  );
+  if (!running) {
+    return `your run isn't one of ${task.identifier}'s running runs.`;
+  }
   const notYours = `your run doesn't hold ${task.identifier}: it must be in progress with you, checked out by this run`;
   try {
     const owner = await ctx.issues.assertCheckoutOwner({
@@ -60,14 +72,7 @@ export async function runHolds(
   } catch (error) {
     return `${notYours} (${(error as Error).message}).`;
   }
-  const subtree = await ctx.issues.getSubtree(task.id, companyId, {
-    includeRoot: true,
-    includeActiveRuns: true,
-  });
-  const running = (subtree.activeRuns?.[task.id] ?? []).some(
-    (run) => run.id === caller.runId && run.status === "running",
-  );
-  return running ? undefined : `your run isn't one of ${task.identifier}'s running runs.`;
+  return undefined;
 }
 
 /** The tool's reads and writes for one call, and the repositories it may name. */
@@ -77,8 +82,13 @@ async function depsFor(
 ): Promise<{ deps: VerdictDeps; repos: readonly string[] }> {
   const { companyId } = runCtx;
   const reviewer = verdictReviewerOf(await ctx.config.get(companyId), runCtx.agentId);
-  const caller =
-    reviewer === undefined ? undefined : { reviewer, agentId: runCtx.agentId, runId: runCtx.runId };
+  if (reviewer === undefined) {
+    // Refused before any read: the GitHub token isn't even resolved for an agent the settings don't name.
+    throw new ToolInputError(
+      "only the reviewers' agents the plugin's settings name record verdicts.",
+    );
+  }
+  const caller = { reviewer, agentId: runCtx.agentId, runId: runCtx.runId };
   const github = await companyGitHub(ctx, companyId);
   const copies = paperclipCopies(ctx, companyId);
   const deps: VerdictDeps = {
@@ -132,8 +142,10 @@ async function recordVerdict(
     if (error instanceof ToolInputError) {
       throw error;
     }
+    // A timeout can come after the record was stored, so this can't say nothing was recorded.
+    // Calling again is safe: a second record of the same verdict judges the same.
     throw new ToolInputError(
-      `${(error as Error).message} Without the verdict line on the task, nothing was recorded.`,
+      `${(error as Error).message} If the verdict line isn't on the task, call review_verdict again: recording the same verdict twice changes nothing.`,
     );
   }
 }

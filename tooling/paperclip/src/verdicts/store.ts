@@ -35,7 +35,7 @@ export function entityVerdicts(
   return {
     async append(draft) {
       const stored = await entities.upsert(verdictEntity(draft, companyId, randomUUID()));
-      const record = readVerdict(stored, draft.repo, draft.pr);
+      const record = readVerdict(stored, draft.repo, draft.pr, companyId);
       if (record === undefined) {
         throw new Error("Paperclip stored the verdict in a shape the reader doesn't accept.");
       }
@@ -57,7 +57,7 @@ export function entityVerdicts(
         }
       }
       return found
-        .flatMap((entity) => readVerdict(entity, repo, pr) ?? [])
+        .flatMap((entity) => readVerdict(entity, repo, pr, companyId) ?? [])
         .sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id));
     },
   };

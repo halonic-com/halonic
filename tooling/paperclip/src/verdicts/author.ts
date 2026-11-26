@@ -15,7 +15,7 @@ import { branchOwner } from "../pr-watcher/decide.ts";
 /** A task comment, as the author check reads it. */
 export interface AuthorComment {
   readonly authorAgentId: string | null;
-  /** `fast_response` for the short receipts Paperclip posts in an agent's name. */
+  /** `comment` for a comment the agent wrote; `fast_response` and any other origin don't count. */
   readonly origin?: string | null | undefined;
   readonly body: string;
 }
@@ -73,7 +73,7 @@ export function authorOf(facts: AuthorFacts): AuthorOf {
   const named = facts.comments.some(
     (comment) =>
       comment.authorAgentId === agent.id &&
-      comment.origin !== "fast_response" &&
+      comment.origin === "comment" &&
       namesPull(comment.body, facts.repo, facts.pr),
   );
   if (!named) {

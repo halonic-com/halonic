@@ -22,20 +22,29 @@ export const reviewVerdictConfigProperties = {
   },
 } as const;
 
+/** The agent id of each reviewer the settings name, by lower-case name; empty when they name none. */
+export function verdictReviewerIds(
+  config: Readonly<Record<string, unknown>>,
+): Record<string, string> {
+  const named = config["verdictReviewers"];
+  if (typeof named !== "object" || named === null) {
+    return {};
+  }
+  const known = Object.keys(reviewVerdictConfigProperties.verdictReviewers.properties);
+  return Object.fromEntries(
+    Object.entries(named).filter(
+      (entry): entry is [string, string] =>
+        known.includes(entry[0]) && typeof entry[1] === "string" && entry[1] !== "",
+    ),
+  );
+}
+
 /** The reviewer the settings name for this agent id, or undefined when they name none. */
 export function verdictReviewerOf(
   config: Readonly<Record<string, unknown>>,
   agentId: string,
 ): string | undefined {
-  const named = config["verdictReviewers"];
-  if (typeof named !== "object" || named === null) {
-    return undefined;
-  }
-  const known = Object.keys(reviewVerdictConfigProperties.verdictReviewers.properties);
-  const found = Object.entries(named).find(
-    ([reviewer, id]) => known.includes(reviewer) && typeof id === "string" && id === agentId,
-  );
-  return found?.[0];
+  return Object.entries(verdictReviewerIds(config)).find(([, id]) => id === agentId)?.[0];
 }
 
 /** The `review_verdict` tool. */

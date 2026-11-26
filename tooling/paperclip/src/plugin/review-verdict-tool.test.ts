@@ -67,6 +67,19 @@ verifies("paperclip.review-verdict", () => {
         "your run isn't one of HAL-1's running runs.",
       );
     });
+
+    test("never asks for the checkout, which can move it, for a task the run isn't running on", async () => {
+      const ctx = issues(new Error("assertCheckoutOwner must not be called"), []);
+      let asked = false;
+      ctx.issues.assertCheckoutOwner = async () => {
+        asked = true;
+        throw new Error("assertCheckoutOwner must not be called");
+      };
+      expect(await runHolds(ctx, "acme", task, caller)).toBe(
+        "your run isn't one of HAL-1's running runs.",
+      );
+      expect(asked).toBe(false);
+    });
   });
 
   test("only the agent ids the settings name are reviewers, under a known reviewer's name", () => {
@@ -80,7 +93,8 @@ verifies("paperclip.review-verdict", () => {
   });
 
   test("the tool refuses every call while no reviewer is named", async () => {
-    const harness = createTestHarness({ manifest, config: {} });
+    const githubToken = { type: "secret_ref", secretId: "token-ref" };
+    const harness = createTestHarness({ manifest, config: { githubToken } });
     const { plugin } = await import("./worker.ts");
     await plugin.definition.setup(harness.ctx);
     const answer = await harness.executeTool("review_verdict", {
@@ -89,6 +103,10 @@ verifies("paperclip.review-verdict", () => {
       verdict: "approved",
       head: "a".repeat(40),
     });
-    expect(answer).toMatchObject({ error: expect.stringMatching(/^review_verdict: /) });
+    expect(answer).toMatchObject({
+      error: expect.stringContaining(
+        "only the reviewers' agents the plugin's settings name record verdicts.",
+      ),
+    });
   });
 });

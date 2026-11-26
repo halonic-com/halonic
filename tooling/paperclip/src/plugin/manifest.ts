@@ -157,8 +157,9 @@ export const manifest: PaperclipPluginManifestV1 = {
     // the plugin keeps nothing in its own schema. src/worker-agents/tables.ts names every column.
     "database.namespace.migrate",
     "database.namespace.read",
-    // review_verdict (HAL-19481): only to check that the calling run holds the task it names,
-    // never to check a task out for anyone else (src/plugin/review-verdict-tool.ts).
+    // review_verdict (HAL-19481): only to check that the calling run holds the task it names
+    // (src/plugin/review-verdict-tool.ts). The check can also hand a free or stale checkout to
+    // the calling run, so the tool asks it only after the run is among the task's running runs.
     "issues.checkout",
   ],
   entrypoints: { worker: "dist/worker.js", ui: "dist/ui" },

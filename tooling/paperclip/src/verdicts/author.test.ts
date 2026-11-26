@@ -16,7 +16,13 @@ const facts: AuthorFacts = {
   openedBy: "halonic-dev",
   teamLogin: "halonic-dev",
   agents,
-  comments: [{ authorAgentId: "agent-elena", body: "Ready: halonic#6385, head `abc1234`." }],
+  comments: [
+    {
+      authorAgentId: "agent-elena",
+      origin: "comment",
+      body: "Ready: halonic#6385, head `abc1234`.",
+    },
+  ],
 };
 
 verifies("paperclip.review-verdict", () => {
@@ -28,7 +34,7 @@ verifies("paperclip.review-verdict", () => {
     test("the prefix alone never decides: someone else's comment, or a receipt, doesn't count", () => {
       const byLiam = {
         ...facts,
-        comments: [{ authorAgentId: "agent-liam", body: "halonic#6385" }],
+        comments: [{ authorAgentId: "agent-liam", origin: "comment", body: "halonic#6385" }],
       };
       expect(authorOf(byLiam)).toEqual({
         refusal:
@@ -39,9 +45,14 @@ verifies("paperclip.review-verdict", () => {
         comments: [{ authorAgentId: "agent-elena", origin: "fast_response", body: "halonic#6385" }],
       };
       expect("refusal" in authorOf(receipt)).toBe(true);
+      const unknownOrigin = {
+        ...facts,
+        comments: [{ authorAgentId: "agent-elena", origin: "system_note", body: "halonic#6385" }],
+      };
+      expect("refusal" in authorOf(unknownOrigin)).toBe(true);
       const otherPull = {
         ...facts,
-        comments: [{ authorAgentId: "agent-elena", body: "halonic#63850" }],
+        comments: [{ authorAgentId: "agent-elena", origin: "comment", body: "halonic#63850" }],
       };
       expect("refusal" in authorOf(otherPull)).toBe(true);
     });
