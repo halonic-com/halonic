@@ -92,6 +92,14 @@ verifies("agents.configuration.alias-line", () => {
     expect(test.textContent).toContain("test · Test model / echo · Built-in test model, no cost");
   });
 
+  it("describes the picker, so a screen reader hears the provider and price on it", async () => {
+    const { select } = await openModel("smart", fakeModels());
+    const described = document.getElementById(select.getAttribute("aria-describedby") ?? "");
+    expect(described?.textContent).toBe(
+      "smart · Anthropic / claude-sonnet-5-5 · €3.00 in, €15.00 out per million tokens",
+    );
+  });
+
   it("follows the pick", async () => {
     const { page, select } = await openModel("smart");
     await act(async () => {

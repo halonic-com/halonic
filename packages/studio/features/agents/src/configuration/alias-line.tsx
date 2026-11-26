@@ -16,11 +16,12 @@ export interface AliasLineProps {
 /**
  * The line under the Model page's picker (UX 2.5, microcopy 8.5): "**smart** · Anthropic /
  * claude-sonnet-5-5 · €3.00 in, €15.00 out per million tokens". The alias name opens its tab on
- * Models; without a price the line ends with **Add a price**, which opens it at the price.
+ * Models; without a price the line ends with **Add a price**, which opens it at the price. It is
+ * the picker's Field hint, so the picker is described by it; the Field's line gives the size.
  */
 export function AliasLine({ alias, summary, openAlias }: AliasLineProps) {
   return (
-    <p className="text-caption text-fg-muted">
+    <span className="text-fg-muted">
       {openAlias === undefined ? (
         <strong className="font-medium text-fg">{alias}</strong>
       ) : (
@@ -37,7 +38,7 @@ export function AliasLine({ alias, summary, openAlias }: AliasLineProps) {
         cost={summary.cost}
         addPrice={openAlias && (() => openAlias(alias, { focusPrice: true }))}
       />
-    </p>
+    </span>
   );
 }
 

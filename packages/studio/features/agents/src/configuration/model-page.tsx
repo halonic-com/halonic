@@ -92,34 +92,29 @@ export function ModelPage({
   // `provider/model` name is fine as it is; an alias the hub doesn't have gets an error under it.
   const options: SelectOption[] = aliases.map((alias) => ({ value: alias, label: alias }));
   if (model !== "" && !aliases.includes(model)) options.push({ value: model, label: model });
+  // The alias line is the picker's hint, so a screen reader hears it on the picker.
+  const aliasLine = summary && <AliasLine alias={model} summary={summary} openAlias={openAlias} />;
   return (
     <div className="flex flex-col gap-6">
       <ReviewMark agent={settings} field="model">
-        <div className="flex flex-col gap-1">
-          <Field
-            label={words.model}
-            hint={aliases.length === 0 ? words.noAliases : undefined}
-            error={modelCheck(model, aliases)}
-          >
-            <Select
-              ref={picker}
-              options={options}
-              value={model}
-              placeholder={
-                defaultModel === undefined
-                  ? words.chooseModel
-                  : words.workspaceDefault(defaultModel)
-              }
-              onChange={(next) => {
-                setModel(next);
-                void save({ model: next });
-              }}
-            />
-          </Field>
-          {summary !== undefined && (
-            <AliasLine alias={model} summary={summary} openAlias={openAlias} />
-          )}
-        </div>
+        <Field
+          label={words.model}
+          hint={aliases.length === 0 ? words.noAliases : aliasLine}
+          error={modelCheck(model, aliases)}
+        >
+          <Select
+            ref={picker}
+            options={options}
+            value={model}
+            placeholder={
+              defaultModel === undefined ? words.chooseModel : words.workspaceDefault(defaultModel)
+            }
+            onChange={(next) => {
+              setModel(next);
+              void save({ model: next });
+            }}
+          />
+        </Field>
       </ReviewMark>
       <ReviewMark agent={settings} field="maxSteps">
         <Field
