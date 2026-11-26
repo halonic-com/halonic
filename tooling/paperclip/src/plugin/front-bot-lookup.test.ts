@@ -235,7 +235,7 @@ verifies("paperclip.front-bot-lookups", () => {
   describe("must-fail: a bare PR number is read only when the company watches one repository", () => {
     /** The PR status source on settings that watch `repos`, with a GitHub that records each request. */
     function source(repos: readonly string[]) {
-      const fetch = vi.fn(async () => {
+      const fetch = vi.fn(async (_url: string, _init?: RequestInit): Promise<Response> => {
         throw new Error("offline");
       });
       const ctx = {
