@@ -1,6 +1,7 @@
 import type { Tool } from "@halonicjs/format";
 import type { ActionCall, ActionHandler } from "../handlers.ts";
 import type { AgentRecord, ToolResult } from "../host.ts";
+import { listAgents } from "./list-limit.ts";
 
 /**
  * The `paperclip.budgets` action (plan HAL-17450, step 5, read-only): each
@@ -116,16 +117,16 @@ function rowLine(row: BudgetRow): string {
 }
 
 async function budgetsAnswer(call: ActionCall): Promise<ToolResult> {
-  const { paperclip, companyId, tool } = call;
-  const agents = await paperclip.agents.list({ companyId, limit: 500 });
-  const rows = compareBudgets(workspaceBudgets(tool), agents);
+  const agents = await listAgents(call);
+  const rows = compareBudgets(workspaceBudgets(call.tool), agents.items);
   const differ = rows.filter((row) => row.match !== "same").length;
   return {
     content: [
       `Monthly budgets, workspace against Paperclip: ${rows.length} agents, ${differ} differ. This only reads: changing a budget needs the board's yes.`,
+      ...(agents.limitNote === null ? [] : [agents.limitNote]),
       ...rows.map(rowLine),
     ].join("\n"),
-    data: { agents: rows, differ },
+    data: { agents: rows, differ, agentListCut: agents.limitNote !== null },
   };
 }
 

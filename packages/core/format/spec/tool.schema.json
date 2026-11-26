@@ -781,6 +781,55 @@
           "properties": {
             "run": {
               "type": "string",
+              "const": "paperclip.seat-rules"
+            },
+            "with": {
+              "type": "object",
+              "properties": {
+                "agents": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+                  },
+                  "additionalProperties": {
+                    "type": "object",
+                    "properties": {
+                      "seat": {
+                        "default": "shared",
+                        "type": "string",
+                        "enum": [
+                          "shared",
+                          "pinned",
+                          "own-seat"
+                        ]
+                      },
+                      "paidApi": {
+                        "type": "string",
+                        "const": "never"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "agents"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "run",
+            "with"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "run": {
+              "type": "string",
               "const": "paperclip.template"
             },
             "with": {

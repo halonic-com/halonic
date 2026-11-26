@@ -153,6 +153,7 @@ verifies("format.tool-actions", () => {
       "paperclip.task paperclip-api",
       "paperclip.failed-runs paperclip-api",
       "paperclip.budgets paperclip-api",
+      "paperclip.seat-rules paperclip-api",
       "paperclip.template ",
       "paperclip.comment paperclip-api",
       "paperclip.next-step paperclip-api",

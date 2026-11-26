@@ -61,6 +61,36 @@ const agentBudgets = s
   );
 
 /**
+ * The kinds of seat rule a workspace may give an agent (HAL-18962):
+ * `shared` (the default: the seats plugin places it), `pinned` (never moved)
+ * and `own-seat` (a seat to itself). Only the kind: which seat, the Admin
+ * seat and anything else that names a seat stay in the seats plugin's
+ * board-only settings, so a workspace file can't hold a seat name, an email
+ * or a connection id.
+ */
+export const SEAT_RULE_KINDS = ["shared", "pinned", "own-seat"] as const;
+
+const seatRuleKind = s.enum(SEAT_RULE_KINDS, {
+  error: `write only the kind of rule: ${SEAT_RULE_KINDS.join(", ")}. Seat names, emails and connection ids stay in the seats plugin's board-only settings`,
+});
+
+/** One agent's seat rule. `paidApi: never` says it may never fall back to a paid API key. */
+const agentSeatRule = s
+  .object({
+    seat: seatRuleKind.default("shared"),
+    paidApi: s.literal("never", { error: "write 'never', or leave paidApi out" }).optional(),
+  })
+  .strict();
+
+/** Each agent's seat rule, by url key. */
+const agentSeatRules = s
+  .record(agentUrlKey, agentSeatRule)
+  .refine(
+    (rules) => Object.keys(rules).length <= MAX_BUDGET_AGENTS,
+    `name at most ${MAX_BUDGET_AGENTS} agents`,
+  );
+
+/**
  * Whether a writing action writes (`write`) or only answers what it would
  * write (`dry-run`, the default). Only the tool file sets it, never the
  * agent's call: a new writing tool starts in dry run for one pass.
@@ -221,6 +251,14 @@ export const TOOL_ACTIONS = {
     keys: ["paperclip-api"],
     parameters: none,
     settings: s.object({ agents: agentBudgets }).strict(),
+  },
+  "paperclip.seat-rules": {
+    about:
+      "Lists each agent's seat rule as the workspace states it: shared, pinned or a seat of its own, and whether it may use a paid API. Changes nothing.",
+    writes: false,
+    keys: ["paperclip-api"],
+    parameters: none,
+    settings: s.object({ agents: agentSeatRules }).strict(),
   },
   "paperclip.template": {
     about:

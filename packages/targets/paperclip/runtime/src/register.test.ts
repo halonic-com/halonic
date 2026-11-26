@@ -158,6 +158,7 @@ verifies("runtime.tools", () => {
         "paperclip.task",
         "paperclip.failed-runs",
         "paperclip.budgets",
+        "paperclip.seat-rules",
         "paperclip.template",
         "paperclip.comment",
         "paperclip.next-step",
