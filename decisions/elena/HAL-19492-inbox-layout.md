@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-19492
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:ACLNMPbmcSY99LO1pIPP4BMPIiK5q1U+c8zNDnyJIpUqCU2Y43uoIisvlKtc8K2x2c4tgp77ITGktb1aSy6uCw==
 
 `kit.list` said every List draws its rows in one box with lines between them, with a medium-weight
 title and the `surface-subtle` hover, and that the current row, "such as the Inbox's open item",
