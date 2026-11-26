@@ -196,6 +196,8 @@ verifies("connections.engine-row", () => {
       expect(root.textContent).toContain(
         "Switched to this computer. The pairing is still valid on the server.",
       );
+      // Neither this visit nor the host knows the name it paired as.
+      expect(root.textContent).toContain("Remove Halonic Studio with halonic serve devices");
     });
 
     it("names this computer as it was paired when the pairing is still valid", async () => {
