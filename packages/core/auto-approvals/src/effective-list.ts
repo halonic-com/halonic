@@ -57,10 +57,10 @@ export type EffectiveNeverListRead =
 
 /**
  * The never-list in force at `clock.now()`, from owner-written revisions
- * only. The newest of them must read
- * cleanly, or the whole list fails closed. An older revision that doesn't
- * read adds nothing: the revision before it still counts on its own 24 hours,
- * so fixing a typo can't speed up a removal.
+ * only. The newest of them must read cleanly, or the whole list fails closed.
+ * An older revision that doesn't read is left out entirely, for content and
+ * for timing: each revision stays in force until 24 hours after the next
+ * readable one, so a broken revision in between can't speed up a removal.
  *
  * @param revisions - the document's revisions, in any order
  * @param workspaceId - the Paperclip company id Studio is connected to
@@ -71,34 +71,44 @@ export function effectiveNeverList(
   workspaceId: string,
   clock: Clock,
 ): EffectiveNeverListRead {
-  const ownerRevisions = revisions.filter((revision) => revision.ownerWritten);
-  const inForce = revisionsInForce(ownerRevisions, clock.now().getTime());
-  const newest = inForce.at(-1);
+  const byTime = revisions.filter((revision) => revision.ownerWritten).sort(oldestFirst);
+  const newest = byTime.at(-1);
   if (newest === undefined) return { ok: false, reason: "never_list.missing" };
   const newestRead = readNeverList(newest.text, workspaceId);
   if (!newestRead.ok) return newestRead;
 
+  const readable = byTime.flatMap((revision) => {
+    const read = revision === newest ? newestRead : readNeverList(revision.text, workspaceId);
+    return read.ok ? [{ writtenAt: revision.writtenAt, list: read.list }] : [];
+  });
   const entries: NeverListEntry[] = [...seedEntries];
   const holds: Hold[] = [];
-  for (const revision of inForce) {
-    const read = revision === newest ? newestRead : readNeverList(revision.text, workspaceId);
-    if (!read.ok) continue;
-    entries.push(...read.list.entries.filter((entry) => !entries.some(sameEntry(entry))));
-    holds.push(...read.list.holds);
+  for (const { list } of inForce(readable, clock.now().getTime())) {
+    entries.push(...list.entries.filter((entry) => !entries.some(sameEntry(entry))));
+    holds.push(...list.holds);
   }
   return { ok: true, list: { entries, holds } };
+}
+
+/**
+ * Oldest first. Revisions written in the same millisecond are ordered by
+ * their text, so the result never depends on the order Paperclip lists them.
+ */
+function oldestFirst(a: NeverListRevision, b: NeverListRevision): number {
+  const byTime = a.writtenAt.getTime() - b.writtenAt.getTime();
+  if (byTime !== 0) return byTime;
+  if (a.text === b.text) return 0;
+  return a.text < b.text ? -1 : 1;
 }
 
 /**
  * The newest revision, and every older one replaced less than
  * {@link loosenDelayMs} ago. A revision dated in the future also counts:
  * taking in more entries can only block more.
+ *
+ * @param byTime - readable revisions, oldest first
  */
-function revisionsInForce(
-  revisions: readonly NeverListRevision[],
-  now: number,
-): NeverListRevision[] {
-  const byTime = [...revisions].sort((a, b) => a.writtenAt.getTime() - b.writtenAt.getTime());
+function inForce<T extends { readonly writtenAt: Date }>(byTime: readonly T[], now: number): T[] {
   return byTime.filter((_, index) => {
     const replacedBy = byTime[index + 1];
     return replacedBy === undefined || now - replacedBy.writtenAt.getTime() < loosenDelayMs;

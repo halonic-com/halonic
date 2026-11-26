@@ -6,7 +6,8 @@ import { isHiddenCharacter } from "@halonicjs/std";
 
 /**
  * A text in a form where lookalikes compare equal: hidden characters
- * (zero-width and control characters) removed, Unicode NFKC, then lower case.
+ * (zero-width, control and other default-ignorable characters, such as
+ * variation selectors) removed, Unicode NFKC, then lower case.
  * NFKC folds full-width and mathematical letter forms into plain ones; it
  * does not fold letters of other scripts that only look alike.
  *
@@ -17,10 +18,15 @@ export function normaliseClaim(text: string): string {
   return withoutHidden(withoutHidden(text).normalize("NFKC")).toLowerCase();
 }
 
+/** Characters Unicode says a renderer may show as nothing. */
+const defaultIgnorable = /\p{Default_Ignorable_Code_Point}/u;
+
 function withoutHidden(text: string): string {
   let kept = "";
   for (const character of text) {
-    if (!isHiddenCharacter(character.codePointAt(0) ?? 0)) kept += character;
+    const hidden =
+      isHiddenCharacter(character.codePointAt(0) ?? 0) || defaultIgnorable.test(character);
+    if (!hidden) kept += character;
   }
   return kept;
 }

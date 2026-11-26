@@ -13,6 +13,7 @@ export type NotEligibleReason =
   | "card.unknown_type"
   | "card.unknown_source"
   | "card.touched"
+  | "card.path_class"
   | "card.untyped"
   | "never_list.entry"
   | "never_list.hold"
@@ -41,6 +42,10 @@ export function checkEligibility(
   if (!isKnown(approvalTypes, card.approvalType)) return notEligible("card.unknown_type");
   if (card.approvalSource === "other") return notEligible("card.unknown_source");
   if (!card.untouched) return notEligible("card.touched");
+  // Every class but `ordinary` blocks, also one no never-list entry names.
+  if (card.pathClasses.some((pathClass) => pathClass !== "ordinary")) {
+    return notEligible("card.path_class");
+  }
   if (neverList.entries.some((entry) => entry.kind !== "keyword" && blocks(card, entry))) {
     return notEligible("never_list.entry");
   }

@@ -5,7 +5,14 @@
 
 import { canonicalJson, contentDigest, type Sha256 } from "@halonicjs/std";
 import { stringsIn } from "./claims.ts";
-import { type ApprovalSource, approvalSources, isKnown, type PathClass } from "./vocabulary.ts";
+import {
+  type ApprovalSource,
+  type ApprovalType,
+  approvalSources,
+  approvalTypes,
+  isKnown,
+  type PathClass,
+} from "./vocabulary.ts";
 
 /** The approval kinds a rule may name. v1 has none: each comes with its own board card. */
 export type ApprovalKind = "untyped";
@@ -45,14 +52,16 @@ export interface ApprovalRecord {
 /** One activity entry Paperclip's own routes wrote for the approval. */
 export interface ActivityEntry {
   readonly action: string;
-  readonly actorType: "agent" | "user" | "system";
+  /** `agent`, `user` or `system` today; any other value fails closed. */
+  readonly actorType: string;
   readonly actorId: string;
   readonly createdAt: string;
 }
 
 /** A comment on the approval. Its body is a claim. */
 export interface ApprovalComment {
-  readonly authorType: "agent" | "user";
+  /** `agent` or `user` today; any other value counts as touched. */
+  readonly authorType: string;
   readonly body: string;
 }
 
@@ -87,8 +96,11 @@ export interface ApprovalCard {
   readonly workspaceId: string;
   readonly kind: ApprovalKind;
   readonly untypedBecause: readonly UntypedReason[];
-  /** A claim; used only to block. */
-  readonly approvalType: string;
+  /**
+   * A claim; used only to block. Only a known type is kept: anything else is
+   * `other`, so an agent's text never reaches the card.
+   */
+  readonly approvalType: ApprovalType | "other";
   /**
    * Where the approval came from, read from the payload; used only to block.
    * Only a known source is kept: anything else is `other`, so an agent's text
@@ -135,21 +147,22 @@ export async function toCard(read: ApprovalRead, digest: Sha256): Promise<CardRe
   if (approval.companyId !== read.workspaceId) return { ok: false, reason: "card.wrong_workspace" };
   const created = read.activity.filter((entry) => entry.action === "approval.created");
   const createdEntry = created[0];
-  if (created.length !== 1 || createdEntry === undefined || createdEntry.actorType === "system") {
+  const requesterKind = createdEntry?.actorType;
+  if (created.length !== 1 || createdEntry === undefined || !isRequesterKind(requesterKind)) {
     return { ok: false, reason: "card.no_created_entry" };
   }
-  const payloadText = canonicalPayload(approval.payload);
-  if (payloadText === undefined) return { ok: false, reason: "card.unreadable_payload" };
+  const payload = readPayload(read);
+  if (payload === undefined) return { ok: false, reason: "card.unreadable_payload" };
 
-  const requester = { kind: createdEntry.actorType, id: createdEntry.actorId };
-  const payloadHash = await contentDigest(payloadText, digest);
+  const requester = { kind: requesterKind, id: createdEntry.actorId };
+  const payloadHash = await contentDigest(payload.text, digest);
   const { sources } = read;
   const card: ApprovalCard = {
     approvalId: approval.id,
     workspaceId: read.workspaceId,
     kind: "untyped",
     untypedBecause: untypedReasons(approval, requester),
-    approvalType: approval.type,
+    approvalType: isKnown(approvalTypes, approval.type) ? approval.type : "other",
     approvalSource: sourceOf(approval.payload),
     target: { type: "none" },
     version: payloadHash,
@@ -170,7 +183,7 @@ export async function toCard(read: ApprovalRead, digest: Sha256): Promise<CardRe
       linkedIssues: sources.linkedIssues,
     },
   };
-  return { ok: true, card, claims: claimsOf(read) };
+  return { ok: true, card, claims: payload.claims };
 }
 
 function untypedReasons(
@@ -193,7 +206,7 @@ function isUntouched(read: ApprovalRead): boolean {
     approval.decidedByUserId === null &&
     approval.updatedAt === approval.createdAt &&
     read.activity.every((entry) => entry.action === "approval.created") &&
-    read.comments.every((comment) => comment.authorType !== "user")
+    read.comments.every((comment) => comment.authorType === "agent")
   );
 }
 
@@ -208,9 +221,15 @@ function sourceOf(payload: unknown): ApprovalSource | "other" | null {
   return isKnown(approvalSources, payload.source) ? payload.source : "other";
 }
 
-function canonicalPayload(payload: unknown): string | undefined {
+/** Only an agent or a person can ask; `system` or an unknown actor type gets no card. */
+function isRequesterKind(actorType: string | undefined): actorType is "agent" | "user" {
+  return actorType === "agent" || actorType === "user";
+}
+
+/** The payload's canonical text and every claim, both walked inside one `try`. */
+function readPayload(read: ApprovalRead): { text: string; claims: string[] } | undefined {
   try {
-    return canonicalJson(payload ?? null);
+    return { text: canonicalJson(read.approval.payload ?? null), claims: claimsOf(read) };
   } catch {
     // Not plain JSON data: there is nothing a card could pin.
     return undefined;

@@ -186,13 +186,31 @@ verifies("auto-approvals.never-list", () => {
     });
 
     it("can't speed up a removal by writing a broken revision in between", () => {
+      // R1 has the keyword, R2 doesn't read, R3 drops the keyword 23 hours after R2.
+      const r3At = removedAt + 23 * 60 * minute;
       const revisions = [
         { text: withKeyword, writtenAt: new Date(removedAt - minute), ownerWritten: true },
         { text: "entries: [", writtenAt: new Date(removedAt), ownerWritten: true },
-        { text: emptyList, writtenAt: new Date(removedAt + minute), ownerWritten: true },
+        { text: emptyList, writtenAt: new Date(r3At), ownerWritten: true },
       ];
-      const read = effectiveNeverList(revisions, workspaceId, clockAt(removedAt + 2 * minute));
-      expect(read.ok && read.list.entries).toContainEqual({ kind: "keyword", value: "payee" });
+      const at = (time: number) => effectiveNeverList(revisions, workspaceId, clockAt(time));
+      const keyword = { kind: "keyword", value: "payee" };
+
+      const justBefore = at(r3At + loosenDelayMs - minute);
+      expect(justBefore.ok && justBefore.list.entries).toContainEqual(keyword);
+      const onTheDot = at(r3At + loosenDelayMs);
+      expect(onTheDot.ok && onTheDot.list.entries).not.toContainEqual(keyword);
+    });
+
+    it("reads revisions written at the same time the same way, in any order", () => {
+      const revisions = [
+        { text: withKeyword, writtenAt: new Date(removedAt), ownerWritten: true },
+        { text: emptyList, writtenAt: new Date(removedAt), ownerWritten: true },
+      ];
+      const later = clockAt(removedAt + 2 * loosenDelayMs);
+      expect(effectiveNeverList(revisions, workspaceId, later)).toEqual(
+        effectiveNeverList([...revisions].reverse(), workspaceId, later),
+      );
     });
 
     it("ignores a revision no owner wrote, for content and for timing", () => {
@@ -225,6 +243,8 @@ verifies("auto-approvals.never-list", () => {
       ["full-width", "ＳＥＣＲＥＴ"],
       ["mathematical bold", "𝐬𝐞𝐜𝐫𝐞𝐭"],
       ["split by a zero-width space", "se\u200bcret"],
+      ["split by a variation selector", "se\ufe0fcret"],
+      ["split by a combining grapheme joiner", "se\u034fcret"],
       ["circled", "ⓢⓔⓒⓡⓔⓣ"],
     ])("catches a %s keyword", (_, written) => {
       expect(findKeyword([`please rotate the ${written} today`], ["secret"])).toBe("secret");

@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { type ApprovalRead, type ApprovalRecord, type CardRead, toCard } from "./card.ts";
 import { type EffectiveNeverList, effectiveNeverList, seedEntries } from "./effective-list.ts";
 import { checkEligibility, type Eligibility } from "./eligibility.ts";
+import type { PathClass } from "./vocabulary.ts";
 
 const digest = {
   sha256: async (data: Uint8Array) => new Uint8Array(createHash("sha256").update(data).digest()),
@@ -42,6 +43,10 @@ function approvalRead(
     sources: { approval: source, activity: source, comments: source, linkedIssues: source },
     ...more,
   };
+}
+
+function createdBy(actorType: string) {
+  return { action: "approval.created", actorType, actorId: "agent-a", createdAt };
 }
 
 async function cardOf(read: ApprovalRead): Promise<Extract<CardRead, { ok: true }>> {
@@ -87,6 +92,21 @@ verifies("auto-approvals.card", () => {
       ["for another workspace", approvalRead({ companyId: "other" }), "card.wrong_workspace"],
       ["without a created entry", approvalRead({}, { activity: [] }), "card.no_created_entry"],
       [
+        "with two created entries",
+        approvalRead({}, { activity: [createdBy("agent"), createdBy("agent")] }),
+        "card.no_created_entry",
+      ],
+      [
+        "created by the system",
+        approvalRead({}, { activity: [createdBy("system")] }),
+        "card.no_created_entry",
+      ],
+      [
+        "created by an actor type Studio doesn't know",
+        approvalRead({}, { activity: [createdBy("plugin")] }),
+        "card.no_created_entry",
+      ],
+      [
         "with an unreadable payload",
         approvalRead({ payload: { n: Number.NaN } }),
         "card.unreadable_payload",
@@ -96,11 +116,16 @@ verifies("auto-approvals.card", () => {
     });
   });
 
-  describe("the card's source", () => {
+  describe("the card's source and type", () => {
     it("keeps only a known source, so an agent's text never reaches the card", async () => {
       const hostile = approvalRead({ payload: { source: "x".repeat(10_000) } });
       const card = await toCard(hostile, digest);
       expect(card.ok && card.card.approvalSource).toBe("other");
+    });
+
+    it("keeps only a known type, so an agent's text never reaches the card", async () => {
+      const { card } = await cardOf(approvalRead({ type: "y".repeat(10_000) }));
+      expect(card.approvalType).toBe("other");
     });
   });
 
@@ -133,7 +158,27 @@ verifies("auto-approvals.card", () => {
           },
         ),
       ],
+      [
+        "was edited, with nothing else to show it",
+        approvalRead({ updatedAt: "2026-11-26T09:05:00.000Z" }),
+      ],
+      [
+        "has activity Studio doesn't know, with nothing else to show it",
+        approvalRead(
+          {},
+          {
+            activity: [
+              createdBy("agent"),
+              { action: "approval.updated", actorType: "agent", actorId: "agent-a", createdAt },
+            ],
+          },
+        ),
+      ],
       ["has a user comment", approvalRead({}, { comments: [{ authorType: "user", body: "ok?" }] })],
+      [
+        "has a comment by an author type Studio doesn't know",
+        approvalRead({}, { comments: [{ authorType: "plugin", body: "ok?" }] }),
+      ],
       ["was decided", approvalRead({ decidedByUserId: "user-1" })],
     ])("finds an approval that %s not eligible", async (_, read) => {
       expect(await eligibilityOf(read)).toEqual({ eligible: false, reason: "card.touched" });
@@ -176,10 +221,19 @@ verifies("auto-approvals.card", () => {
       [
         "a security path",
         approvalRead({}, { pathClasses: ["ordinary", "security"] }),
-        "never_list.entry",
+        "card.path_class",
       ],
     ])("blocks %s", async (_, read, reason) => {
       expect(await eligibilityOf(read)).toEqual({ eligible: false, reason });
+    });
+
+    it("blocks a path class that no never-list entry names", async () => {
+      const unknownClass = "infra" as PathClass;
+      const read = approvalRead({}, { pathClasses: ["ordinary", unknownClass] });
+      expect(await eligibilityOf(read, { entries: [], holds: [] })).toEqual({
+        eligible: false,
+        reason: "card.path_class",
+      });
     });
 
     it("blocks the kinds a hold covers", async () => {
