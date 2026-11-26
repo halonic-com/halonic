@@ -91,9 +91,30 @@ function importProblem(node: ts.Node): string | undefined {
   return undefined;
 }
 
-/** Whether `node` names `Date` or `Math`, whose members are checked one by one. */
-function isGuardedGlobal(node: ts.Expression): boolean {
-  return ts.isIdentifier(node) && (node.text === "Date" || node.text === "Math");
+/** Why a use of `Math` isn't pure, or undefined for a named member other than `random`. */
+function mathProblem(node: ts.Identifier): string | undefined {
+  const parent = node.parent;
+  if (!ts.isPropertyAccessExpression(parent) || parent.expression !== node) {
+    // An alias or a destructuring (`const M = Math`, `const { random } = Math`)
+    // or a computed member hides which member is used, so it can't be checked.
+    return "uses Math other than by a named member, which can hide Math.random";
+  }
+  return parent.name.text === "random" ? "reads randomness with Math.random" : undefined;
+}
+
+/** Keys that reach a value's constructor or prototype, and from there `Function`. */
+const prototypeKeys = new Set(["constructor", "__proto__"]);
+
+/** Whether `node` reads `.constructor` or `.__proto__`, by name or by a string key. */
+function reachesPrototype(node: ts.Node): boolean {
+  if (ts.isPropertyAccessExpression(node)) {
+    return prototypeKeys.has(node.name.text);
+  }
+  if (ts.isElementAccessExpression(node)) {
+    const key = node.argumentExpression;
+    return ts.isStringLiteralLike(key) && prototypeKeys.has(key.text);
+  }
+  return false;
 }
 
 /** Why one node's use of code, a clock, randomness or I/O isn't pure, or undefined. Imports are `importProblem`'s. */
@@ -104,8 +125,8 @@ function useProblem(node: ts.Node): string | undefined {
   if (ts.isMetaProperty(node)) {
     return "reads import.meta";
   }
-  if (ts.isElementAccessExpression(node) && isGuardedGlobal(node.expression)) {
-    return "reaches a member of Date or Math by a computed name";
+  if (reachesPrototype(node)) {
+    return "reaches a constructor or prototype, a way to Function";
   }
   if (!ts.isIdentifier(node) || isNameOnly(node)) {
     return undefined;
@@ -113,8 +134,8 @@ function useProblem(node: ts.Node): string | undefined {
   if (node.text === "Date") {
     return dateProblem(node);
   }
-  if (node.text === "Math" && ts.isPropertyAccessExpression(node.parent)) {
-    return node.parent.name.text === "random" ? "reads randomness with Math.random" : undefined;
+  if (node.text === "Math") {
+    return mathProblem(node);
   }
   return forbiddenGlobals.has(node.text) ? `names ${node.text}` : undefined;
 }

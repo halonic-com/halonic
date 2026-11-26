@@ -69,6 +69,10 @@ verifies("paperclip.signal-pr-watcher", () => {
       'const reach = globalThis["fe" + "tch"];',
       "const at = import.meta.url;",
       'const dice = Math["ran" + "dom"]();',
+      "const M = Math;",
+      "const { random } = Math;",
+      'const make = (() => 0).constructor("return 1");',
+      'const proto = row["__proto__"];',
     ];
     expect(impurities("bad.ts", impure.join("\n")).map((line) => line.split(" ")[0])).toEqual([
       "1:1",
@@ -84,6 +88,10 @@ verifies("paperclip.signal-pr-watcher", () => {
       "11:15",
       "12:12",
       "13:14",
+      "14:11",
+      "15:20",
+      "16:14",
+      "17:15",
     ]);
     const pure = [
       'import type { Memory } from "./types.ts";',
