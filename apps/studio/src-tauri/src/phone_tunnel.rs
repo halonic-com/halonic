@@ -241,8 +241,8 @@ mod android {
     use halonic_device_keys::{ComputerId, PairedComputers};
     use halonic_owner_check::Decision;
     use halonic_phone_tunnel::{
-        LocalNetwork, LocalNetworkAnswer, Options, OwnerAnswer, PageStatus, PhoneAnswer,
-        PhoneTunnel, TunnelHost, confirm_with, phone_name,
+        AwayAnswer, LocalNetwork, LocalNetworkAnswer, Options, OwnerAnswer, PageStatus,
+        PhoneAnswer, PhoneTunnel, TunnelHost, confirm_with, phone_name, times_away_with,
     };
     use halonic_tunnel::{Dialer, PhoneDetails, Platform};
     use serde::Deserialize;
@@ -335,6 +335,13 @@ mod android {
                 // the answer isn't sent (Julian's condition 2, HAL-15212).
                 let check = self.app.try_state::<AndroidOwnerCheck<R>>();
                 confirm_with(check.as_deref(), decision).await
+            })
+        }
+
+        fn times_away(&self) -> AwayAnswer<'_> {
+            Box::pin(async move {
+                let check = self.app.try_state::<AndroidOwnerCheck<R>>();
+                times_away_with(check.as_deref()).await
             })
         }
 

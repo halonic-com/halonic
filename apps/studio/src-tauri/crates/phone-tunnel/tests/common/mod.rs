@@ -18,8 +18,9 @@ use futures_util::{SinkExt, StreamExt};
 use halonic_device_keys::{ComputerId, FakeWrapper, PairedComputers, WrappedFileStore};
 use halonic_owner_check::{Decision, FakeOwnerCheck};
 use halonic_phone_tunnel::{
-    ConnectOutcome, LocalNetwork, LocalNetworkAnswer, Options, OwnerAnswer, PageStatus,
+    AwayAnswer, ConnectOutcome, LocalNetwork, LocalNetworkAnswer, Options, OwnerAnswer, PageStatus,
     PairingOutcome, PairingStart, PairingStep, PhoneAnswer, PhoneTunnel, TunnelHost, confirm_with,
+    times_away_with,
 };
 use halonic_tunnel::{
     Backoff, Dialer, FrameKind, PairingOptions, PhoneDetails, PhoneOptions, Platform, Timeouts,
@@ -116,6 +117,10 @@ impl TunnelHost for Recorder {
 
     fn confirm_owner(&self, decision: Decision) -> OwnerAnswer<'_> {
         Box::pin(confirm_with(self.owner.as_ref(), decision))
+    }
+
+    fn times_away(&self) -> AwayAnswer<'_> {
+        Box::pin(times_away_with(self.owner.as_ref()))
     }
 
     fn status_changed(&self, computer: &ComputerId, status: &PageStatus) {

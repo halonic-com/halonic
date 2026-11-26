@@ -8,6 +8,15 @@ pub enum Decision {
     Answer,
 }
 
+impl Decision {
+    /// Whether the phone's PIN, pattern or password passes the prompt next
+    /// to a strong biometric: for an inbox answer only (board option P3,
+    /// HAL-17509). An approval asks for a strong biometric alone.
+    pub fn accepts_device_credential(self) -> bool {
+        self == Self::Answer
+    }
+}
+
 /// The words Android's prompt shows. They are fixed here, one set per
 /// [`Decision`], so neither the page nor the host can make the prompt say
 /// something other than what is being answered. The verb is the one on the

@@ -1,9 +1,11 @@
 //! The phone's owner check (HAL-15194, board decision 4b): the Android
 //! adapter of `halonic-owner-check`. Android's own BiometricPrompt, strong
 //! biometrics only, through the Kotlin `OwnerCheckPlugin`; no plugin from
-//! outside. The shell keeps it as state, and the phone tunnel asks it
-//! before it seals each answer to an approval, so a page that skipped its
-//! own check still can't answer.
+//! outside. For an inbox answer it takes the phone's PIN, pattern or
+//! password too (board option P3). The shell keeps it as state, and the
+//! phone tunnel asks it before it seals each answer to an approval, and
+//! each inbox answer no pass of the last 5 minutes covers, so a page that
+//! skipped its own check still can't answer.
 //!
 //! No capability grants the plugin's commands, so no page can call them or
 //! pick the prompt's words; only the shell does, from Rust, with the words
@@ -25,10 +27,14 @@ const CONFIRM_TIMEOUT: Duration = Duration::from_secs(120);
 pub struct AndroidOwnerCheck<R: Runtime>(PluginHandle<R>);
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct PromptRequest {
     title: &'static str,
     description: &'static str,
     cancel: &'static str,
+    /// The PIN, pattern or password passes too; decided here from the
+    /// decision, never by a page.
+    allow_device_credential: bool,
 }
 
 #[derive(Deserialize)]
@@ -39,6 +45,12 @@ struct Status {
 #[derive(Deserialize)]
 struct Answer {
     answer: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Away {
+    times_away: u64,
 }
 
 impl<R: Runtime> OwnerCheck for AndroidOwnerCheck<R> {
@@ -59,6 +71,7 @@ impl<R: Runtime> OwnerCheck for AndroidOwnerCheck<R> {
             title: words.title,
             description: words.description,
             cancel: words.cancel,
+            allow_device_credential: decision.accepts_device_credential(),
         };
         let asking = self
             .0
@@ -73,6 +86,15 @@ impl<R: Runtime> OwnerCheck for AndroidOwnerCheck<R> {
                 Confirmation::Cancelled
             }
         }
+    }
+
+    async fn times_away(&self) -> Option<u64> {
+        // A failed call reads as "can't tell", which keeps no pass.
+        self.0
+            .run_mobile_plugin_async::<Away>("ownerCheckAway", ())
+            .await
+            .ok()
+            .map(|away| away.times_away)
     }
 }
 

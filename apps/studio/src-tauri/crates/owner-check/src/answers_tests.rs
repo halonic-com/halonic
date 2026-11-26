@@ -107,3 +107,10 @@ fn owner_check_prompt_sends_an_answer_through_halonic() {
     assert_eq!(answer.title, "Confirm it's you");
     assert_eq!(answer.cancel, "Cancel");
 }
+
+#[test]
+fn owner_check_takes_the_phone_s_pin_for_an_inbox_answer_only() {
+    assert!(Decision::Answer.accepts_device_credential());
+    assert!(!Decision::Approve.accepts_device_credential());
+    assert!(!Decision::Deny.accepts_device_credential());
+}

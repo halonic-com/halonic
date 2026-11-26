@@ -7,6 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use halonic_device_keys::{ComputerId, DeviceKeyStore, PairedComputers};
 use halonic_tunnel::{Dialer, Endpoint, PairingOptions, PhoneOptions};
 
+use crate::answer_confirm::AnswerWindow;
 use crate::answers::{ComputerView, ComputersAnswer, ForgetOutcome, Problem};
 use crate::connections::Connections;
 use crate::host::{LocalNetwork, TunnelHost, needs_local_network};
@@ -46,6 +47,8 @@ pub struct PhoneTunnel<S: DeviceKeyStore + 'static> {
     /// generation. Shared with the connections, which number each new
     /// session from it.
     pub(crate) generations: Arc<AtomicU64>,
+    /// The last owner check passed for an inbox answer, in memory only.
+    pub(crate) answer_window: AnswerWindow,
     serials: AtomicU64,
 }
 
@@ -66,6 +69,7 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
             pairing: Mutex::new(None),
             connections: Arc::new(Connections::default()),
             generations: Arc::new(AtomicU64::new(0)),
+            answer_window: AnswerWindow::default(),
             serials: AtomicU64::new(0),
         }
     }

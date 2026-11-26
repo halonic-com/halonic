@@ -32,6 +32,9 @@ pub type PhoneAnswer<'a> = Pin<Box<dyn Future<Output = PhoneDetails> + Send + 'a
 /// The owner check's answer, still to come.
 pub type OwnerAnswer<'a> = Pin<Box<dyn Future<Output = Confirmation> + Send + 'a>>;
 
+/// How many times the app has left the screen, still to come.
+pub type AwayAnswer<'a> = Pin<Box<dyn Future<Output = Option<u64>> + Send + 'a>>;
+
 /// The app around the service: the shell on the phone, a recording fake in
 /// the tests.
 pub trait TunnelHost: Send + Sync + 'static {
@@ -50,6 +53,13 @@ pub trait TunnelHost: Send + Sync + 'static {
     /// (board decision 4b). Only [`Confirmation::Confirmed`] lets it out;
     /// a phone without an owner check answers with [`confirm_with`]`(None, ..)`.
     fn confirm_owner(&self, decision: Decision) -> OwnerAnswer<'_>;
+
+    /// How many times the app has left the screen since it started (the
+    /// background, a screen lock), from the owner check; `None` when it
+    /// can't tell. A pass for an inbox answer covers the next one only while
+    /// this stays the same (requirement `phone-answer-confirm`). A phone
+    /// without an owner check answers with [`times_away_with`]`(None)`.
+    fn times_away(&self) -> AwayAnswer<'_>;
 
     /// A paired computer's status changed. The shell passes it on to the
     /// app's own page only (H1 on HAL-15181).
@@ -78,6 +88,15 @@ pub async fn confirm_with<O: OwnerCheck>(check: Option<&O>, decision: Decision) 
     match check {
         Some(check) => check.confirm(decision).await,
         None => Confirmation::Unavailable(Availability::Unavailable),
+    }
+}
+
+/// How many times the app has left the screen, as `check` counts them, or
+/// `None` when there is no check, so a pass is never kept without one.
+pub async fn times_away_with<O: OwnerCheck>(check: Option<&O>) -> Option<u64> {
+    match check {
+        Some(check) => check.times_away().await,
+        None => None,
     }
 }
 

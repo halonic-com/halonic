@@ -3,7 +3,10 @@
 //! `phone-tunnel-messages`). There is no queue and no retry: a message
 //! that can't go out now is refused, and the page decides what to do. An
 //! answer to an approval goes out only after the owner check passed for
-//! it (board decision 4b, HAL-15194).
+//! it (board decision 4b, HAL-15194); an answer to an inbox item, after a
+//! pass in the last 5 minutes (requirement `phone-answer-confirm`).
+
+use std::time::Instant;
 
 use halonic_device_keys::{ComputerId, DeviceKeyStore};
 
@@ -15,8 +18,8 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
     /// it. Refuses, and sends nothing, when that isn't the session open on
     /// the computer's connection (a reconnect, another computer, a
     /// disconnect, Removed or Forget all end it), when the message fails
-    /// [`check_message`], or when it answers an approval and the owner
-    /// check didn't pass for its decision. A refusal leaves the session
+    /// [`check_message`], or when it answers an approval or an inbox item
+    /// and the owner check didn't pass for it. A refusal leaves the session
     /// open.
     pub async fn send(
         &self,
@@ -32,7 +35,11 @@ impl<S: DeviceKeyStore + 'static> PhoneTunnel<S> {
         if let CheckedMessage::Answer(decision) = check_message(text)? {
             // The prompt may stay open for a while; the session it was for
             // may end meanwhile, and then the send below refuses it.
-            if !self.host.confirm_owner(decision).await.is_confirmed() {
+            let confirmation = self
+                .answer_window
+                .confirm(&*self.host, decision, Instant::now())
+                .await;
+            if !confirmation.is_confirmed() {
                 return Err(SendRefusal::NotConfirmed);
             }
         }
