@@ -1,5 +1,6 @@
 import type { InboxAnswer, InboxItem, InboxItemOption, InboxItemState } from "@halonicjs/ports";
 import { fieldLines, oneLine, section } from "./approval-text.ts";
+import { approvalWords } from "./approval-words.ts";
 import { boardRequestWords as words } from "./board-request-words.ts";
 import type { AnswerRequest } from "./cards.ts";
 import { asRecord, field, type JsonRecord, text } from "./json.ts";
@@ -11,6 +12,8 @@ import { authorOf, type MapContext, timeOf } from "./map.ts";
 
 const approve: InboxItemOption = { id: "approve", label: words.approve };
 const reject: InboxItemOption = { id: "reject", label: words.reject };
+// A proposal's reason goes to the agent, so its Reject asks why, but never requires it (HAL-19018).
+const rejectProposal: InboxItemOption = { ...reject, noteLabel: approvalWords.rejectReason };
 
 /** `blocks` as Markdown: the title first, then each non-empty block. */
 function question(title: string, blocks: readonly string[]): string {
@@ -75,7 +78,7 @@ export function secretProposalToItem(
     source: context.ids.source(),
     from: authorOf(context, text(record, "proposedByAgentId"), undefined),
     question: proposalQuestion(record),
-    options: canApprove ? [approve, reject] : [reject],
+    options: canApprove ? [approve, rejectProposal] : [rejectProposal],
     ...(task === undefined ? {} : { work: context.ids.make("task", task) }),
     // A secret changes what an agent can reach.
     risk: "risky",
