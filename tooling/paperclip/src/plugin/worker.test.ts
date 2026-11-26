@@ -16,6 +16,7 @@ verifies("paperclip.pr-watcher-plugin", () => {
       expect.objectContaining({ jobKey: "merge-control", schedule: "* * * * *" }),
       expect.objectContaining({ jobKey: "merger-wake", schedule: "* * * * *" }),
       expect.objectContaining({ jobKey: "precheck-wake", schedule: "* * * * *" }),
+      expect.objectContaining({ jobKey: "seat-move", schedule: "* * * * *" }),
     ]);
     // Without a token set, the job skips the company and touches nothing.
     await harness.runJob("pr-watch");

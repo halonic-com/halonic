@@ -1210,6 +1210,33 @@ bundle in `ui/`, the migrations and the folder's own `package.json`, which the b
 (Settings → Plugins). It isn't installed, and no seat's sign-in moves into
 it, until HAL-16015 is done.
 
+## Seat mover (`seat-move`)
+
+The Seat Keeper's seat moves, as code (HAL-19354, `src/seat-mover/`). Every
+minute, unless `seatMover.mode` is `off`, the job reads the seat readings plugin's
+`seats` data (the plugin named in `seatMover.readingsPlugin`), the AI connections, where each agent sits
+(`runtimeConfig.aiConnection`) and, from `heartbeat_runs`, the runs parked for
+a seat that never started and the `provider_quota` failures of the last hour.
+
+An agent leaves its seat at the 5-hour stop (80%, 70% for a reviewer), the
+weekly stop (88%), after a `provider_quota` failure on the seat since its
+reading, with runs parked on it, on an excluded seat or the paid API, beside a
+reviewer, or as a heavy agent past the limit. Every target passes the board's
+checklist (`src/seat-mover/checklist.ts`): (a) week below 88% unless the seat is
+on the reset-fill list or its weekly reset is under 24 hours away; (b) reviewers
+alone, on the seat with the most 5-hour room, and nobody joins them; (c) at
+most two heavy agents a seat; (d) never an excluded seat (Admin, and the board
+adds its own); (e) never the paid API; (f) never a seat at its 5-hour stop. An
+agent no seat may take stays, and the board task hears of it once.
+
+- `shadow` (the default): logs the plan and comments it on `seatMover.logTask`
+  when it changes; moves nobody.
+- `act`: sends each agent's whole `runtimeConfig` with only `aiConnection`
+  changed, re-reads it and puts `heartbeat` back if it changed, then releases
+  runs still parked on seats their agents left (cancel, resolve the recovery
+  hold as restored, wake the task once). Each batch is one comment on the log
+  task. Needs `paperclipApiUrl` and a **board** key in `paperclipApiKey`.
+
 ## Merge control
 
 The `merge-control` job (ADR `docs/adr/2026-11-24-merge-controller-is-tested-code.md`)
