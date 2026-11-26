@@ -1,11 +1,17 @@
 import { CloseIcon, decidedAt, EmptyState, leave } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
-import { type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useRef } from "react";
+import {
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { type ActivityView, minutesBetween } from "../activity.ts";
 import { endedJustNow } from "../activity-today.ts";
 import { activityWords } from "../activity-words.ts";
-import { chatAgent } from "../chat-name.ts";
-import type { ConversationRow } from "../messenger.ts";
+import { BackToChannel, useChannelFocus } from "./activity-channel.tsx";
 import { EarlierRuns, NextTasks } from "./activity-lists.tsx";
 import { arriveFromEnd } from "./activity-motion.ts";
 import { ActivitySkeleton, PullRequests, Section, Status, TaskCard } from "./activity-parts.tsx";
@@ -39,29 +45,35 @@ const placeClass: Record<PanelPlace, string> = {
  * dot is still; only the chat's working line moves. Beside the chat it fades in, as an opened chat
  * does (motion 1); a sheet comes in from the end and fades out as it closes, and **Esc** closes it;
  * a place has **‹ Chief** to go back (`messenger.activity-widths`). A sheet or a place takes the
- * focus as it opens, since it covers the button that opened it.
+ * focus as it opens, since it covers the button that opened it. In a channel, an agent's view has
+ * **‹ Channel** to go back to the channel's agents (`messenger.activity-channel`).
  */
 export function ActivityPanel({
-  row,
-  activity,
-  now,
-  words,
+  name,
+  chat,
+  shows,
   place = "beside",
   onClose,
+  onBack,
+  children,
 }: {
-  readonly row: ConversationRow;
-  readonly activity: ActivityRead;
-  readonly now: Date;
-  readonly words: EngineWords;
+  /** Whose activity the panel shows: "Chief's activity". */
+  readonly name: string;
+  /** The chat's name, for a place's way back to it: "‹ Chief". */
+  readonly chat: string;
+  /** What the body shows; when it changes, the body cross-fades to it. */
+  readonly shows: string | undefined;
   readonly place?: PanelPlace;
   readonly onClose: () => void;
+  /** Back from an agent's view to the channel's agents; none outside a channel. */
+  readonly onBack?: (() => void) | undefined;
+  readonly children: ReactNode;
 }) {
-  const name = chatAgent(row)?.name ?? row.conversation.title;
   const aside = useRef<HTMLElement>(null);
   const close = usePanelMotion(aside, place, onClose);
-  // When a run starts or ends, the body cross-fades to the new view.
   const body = useRef<HTMLDivElement>(null);
-  useFadeIn(body, activity.view?.kind);
+  useFadeIn(body, shows);
+  useChannelFocus(body, onBack !== undefined);
   const onKeyDown = (event: KeyboardEvent) => {
     if (place !== "sheet" || event.key !== "Escape") return;
     event.preventDefault();
@@ -75,9 +87,10 @@ export function ActivityPanel({
       onKeyDown={onKeyDown}
       className={`flex flex-col bg-app-panel ${placeClass[place]}`}
     >
-      <PanelHeader name={name} place={place} onClose={close} />
+      <PanelHeader name={name} chat={chat} place={place} onClose={close} />
       <div ref={body} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
-        <ActivityBody name={name} activity={activity} now={now} words={words} />
+        {onBack === undefined ? null : <BackToChannel onBack={onBack} />}
+        {children}
       </div>
     </aside>
   );
@@ -112,10 +125,12 @@ function usePanelMotion(
 /** "Chief's activity", with **×** to close it, or on a narrow window **‹ Chief** to go back. */
 function PanelHeader({
   name,
+  chat,
   place,
   onClose,
 }: {
   readonly name: string;
+  readonly chat: string;
   readonly place: PanelPlace;
   readonly onClose: () => void;
 }) {
@@ -125,12 +140,12 @@ function PanelHeader({
         <button
           type="button"
           data-closes
-          aria-label={activityWords.backTo(name)}
+          aria-label={activityWords.backTo(chat)}
           onClick={onClose}
           className="rounded-sm px-1 text-small text-fg-muted hover:text-fg"
         >
           <span aria-hidden="true">‹ </span>
-          <bdi>{name}</bdi>
+          <bdi>{chat}</bdi>
         </button>
       ) : null}
       <h2 id={`${activityPanelId}-title`} className="flex-1 truncate text-body-strong">
@@ -151,7 +166,8 @@ function PanelHeader({
   );
 }
 
-function ActivityBody({
+/** One agent's activity: its status, task or last run, pull requests, Next and Earlier today. */
+export function ActivityBody({
   name,
   activity,
   now,

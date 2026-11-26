@@ -1,13 +1,17 @@
-import type { PullRequestList, TeamRuns, WorkItem } from "@halonicjs/ports";
+import type { MessagingId, PullRequestList, TeamRuns, WorkItem } from "@halonicjs/ports";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type ActivityView, activityView } from "../activity.ts";
 import { type EarlierRun, earlierToday, type NextTask, nextFor } from "../activity-today.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 
-/** What one read of the activity brought. */
-interface Reads {
-  readonly runs: readonly TeamRuns[];
-  readonly pulls: readonly PullRequestList[];
+/** What the reads of the activity brought: none yet, or the newest runs, pull requests and work. */
+export interface ActivityReads {
+  readonly read:
+    | { readonly runs: readonly TeamRuns[]; readonly pulls: readonly PullRequestList[] }
+    | undefined;
+  readonly work: readonly WorkItem[];
+  readonly failure: unknown;
+  readonly readNow: () => void;
 }
 
 /** How often the panel reads while open, and while closed for the header button's dot. */
@@ -37,9 +41,21 @@ export function useActivity(
   row: ConversationRow,
   open: boolean,
 ): ActivityRead {
+  const reads = useActivityReads(messenger, row.conversation.agent, open);
+  return activityFor(reads, row, messenger.now());
+}
+
+/**
+ * Reads the activity of `agent`, or of every agent when none is given (a channel's agents), as
+ * `useActivity` says.
+ */
+export function useActivityReads(
+  messenger: Messenger,
+  agent: MessagingId | undefined,
+  open: boolean,
+): ActivityReads {
   const activity = messenger.activity;
-  const agent = row.conversation.agent;
-  const [read, setRead] = useState<Reads | undefined>(undefined);
+  const [read, setRead] = useState<ActivityReads["read"]>(undefined);
   const [work, setWork] = useState<readonly WorkItem[]>([]);
   const [failure, setFailure] = useState<unknown>(undefined);
   // Counts the reads, so an answer that lands after a newer read's never shows.
@@ -49,7 +65,8 @@ export function useActivity(
     reads.current += 1;
     const thisRead = reads.current;
     const since = startOfToday(messenger.now()).toISOString();
-    Promise.all([activity.runs({ agent, since }), activity.pullRequests()]).then(
+    const runs = activity.runs(agent === undefined ? { since } : { agent, since });
+    Promise.all([runs, activity.pullRequests()]).then(
       ([runs, pulls]) => {
         if (thisRead !== reads.current) return;
         setRead({ runs, pulls });
@@ -76,9 +93,15 @@ export function useActivity(
     const every = setInterval(readNow, open ? readEveryMs.open : readEveryMs.closed);
     return () => clearInterval(every);
   }, [readNow, open]);
+  return { read, work, failure, readNow };
+}
 
+/** What the panel shows of `row`'s agent from the reads. */
+export function activityFor(reads: ActivityReads, row: ConversationRow, now: Date): ActivityRead {
+  const { read, work, failure, readNow } = reads;
+  const agent = row.conversation.agent;
   if (read === undefined) return { view: undefined, earlier: [], next: [], failure, read: readNow };
-  const view = activityView(row, read.runs, read.pulls, messenger.now());
+  const view = activityView(row, read.runs, read.pulls, now);
   const shown = view.kind === "idle" ? undefined : view.task;
   return {
     view,
