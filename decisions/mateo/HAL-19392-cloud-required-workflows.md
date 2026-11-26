@@ -3,6 +3,7 @@
 - Task: HAL-19392
 - Approval: HAL-19392 asked for this fix (Tomas, with Mateo as the merge-queue fallback); Julian reviews it and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:agqSEjG/lZCq5bitX/j9YY1qi/cwYcmJ8CRISRP5Zq3kwApAVNu6mFc0BRqAdwVUFWjIlw7eTZInut21j8rpBw==
 
 ## What changes
 
