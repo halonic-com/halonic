@@ -2,7 +2,7 @@
 
 - Task: HAL-17518
 - Approval: Liam approved the plan on HAL-20151 (PR 3-2: `pnpm discover` writes the shell's route list); this changes the guard's own paths, so Liam and Julian sign as the two guardians
-- Kind: internal
+- Kind: user-visible
 
 ## What changes
 
