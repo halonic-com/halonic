@@ -5582,9 +5582,15 @@ importers:
         specifier: workspace:*
         version: link:../../core/std
     devDependencies:
+      '@halonicjs/adapter-paperclip-client':
+        specifier: workspace:*
+        version: link:../../adapters/paperclip-client
       '@halonicjs/adapter-remote-gateway':
         specifier: workspace:*
         version: link:../../adapters/remote-gateway
+      '@halonicjs/app-agent-host':
+        specifier: workspace:*
+        version: link:../../../apps/agent-host
       '@halonicjs/studio-feature-remote':
         specifier: workspace:*
         version: link:../../studio/features/remote
