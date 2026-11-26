@@ -217,6 +217,43 @@ verifies("action-steppers.paperclip-sign-in-run", () => {
         result: `Signed in as Acme Board. ${signInRunWords.revoked}`,
       });
       expect(run.current().serviceSignIn).toBeUndefined();
+      // The first step's line keeps the code once the test key's panel is gone.
+      expect(outcomes(run)[0]).toEqual({ kind: "succeeded", result: "Code acme-code-1" });
+    });
+
+    it("revokes a kept test key when the stepper closes before step 4, so a resumed test can start", async () => {
+      const { open, fake } = signInRunOf();
+      const run = await open();
+      await runStep(run, 1);
+      await runStep(run, 2);
+      run.actions.runStep(3);
+      fake.approve("sign-in-1");
+      await run.idle();
+      expect(fake.keychain.has("acme")).toBe(true);
+      await run.close();
+      expect(fake.keychain.size).toBe(0);
+      const ref = {
+        service: "paperclip",
+        connection: "acme",
+        host: "paperclip.acme.example",
+      } as const;
+      expect(await fake.whoAmI(ref)).toBeUndefined();
+      const resumed = await open();
+      await runStep(resumed, 1);
+      expect(outcomes(resumed)[0]).toEqual({ kind: "succeeded", result: "Code acme-code-2" });
+    });
+
+    it("says so when the stepper closes and the kept test key can't be revoked", async () => {
+      const { open, fake } = signInRunOf({
+        signIn: scripted({ revoke: { outcome: "unreachable" } }),
+      });
+      const run = await open();
+      await runStep(run, 1);
+      await runStep(run, 2);
+      run.actions.runStep(3);
+      fake.approve("sign-in-1");
+      await run.idle();
+      await expect(run.close()).rejects.toThrow(signInRunWords.revokeLeft.unreachable);
     });
 
     it("keeps the key of a sign-in that isn't a test, and only says who it is", async () => {

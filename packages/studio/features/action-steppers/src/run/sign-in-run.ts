@@ -66,6 +66,8 @@ export class SignInRun {
   readonly #test: boolean;
   readonly #now: () => Date;
   #live: Live | undefined;
+  /** The started sign-in's code, which the first part's line still shows once a test key is revoked. */
+  #code = "";
   #account: string | undefined;
   /** Ends the wait for an approval when the stepper closes. */
   #closing: AbortController | undefined;
@@ -95,7 +97,7 @@ export class SignInRun {
   outcome(phase: SignInPhase, recorded: StepOutcome): StepOutcome {
     if (this.#done.has(phase)) {
       const signedInAs = this.#account === undefined ? undefined : `Signed in as ${this.#account}.`;
-      if (phase === "start") return { kind: "succeeded", result: `Code ${this.#live?.code}` };
+      if (phase === "start") return { kind: "succeeded", result: `Code ${this.#code}` };
       const revoked = phase === "test" && this.#test ? ` ${signInRunWords.revoked}` : "";
       return {
         kind: "succeeded",
@@ -123,11 +125,23 @@ export class SignInRun {
     }
   }
 
-  /** Stops waiting and cancels a sign-in whose key isn't kept, when the stepper closes (6.7). */
+  /**
+   * Stops waiting and cancels a sign-in whose key isn't kept, when the stepper
+   * closes (6.7). A test key kept but not yet tested is revoked too: a resumed
+   * test would refuse to start while it is still in the keychain.
+   */
   async close(): Promise<void> {
     this.#closing?.abort();
     const live = this.#live;
-    if (live !== undefined && !live.kept) await this.#service.signIn.cancel(live.signInId);
+    if (live === undefined) return;
+    if (!live.kept) {
+      await this.#service.signIn.cancel(live.signInId);
+      return;
+    }
+    if (!this.#test || this.#done.has("test")) return;
+    this.#live = undefined;
+    const revoke = await this.#service.signIn.revokeTest(live.signInId);
+    if (revoke.outcome !== "revoked") throw new Error(signInRunWords.revokeLeft[revoke.outcome]);
   }
 
   async #start(): Promise<readonly SignInPhase[]> {
@@ -138,6 +152,7 @@ export class SignInRun {
     const { signInId, code, approvalUrl } = started;
     const deadline = Math.min(Date.parse(started.expiresAt), startedAt + signInLimitMs);
     this.#live = { signInId, code, approvalUrl, deadline, kept: false };
+    this.#code = code;
     this.#done.add("start");
     return [];
   }
@@ -212,6 +227,7 @@ export class SignInRun {
   async #reset(): Promise<void> {
     const live = this.#live;
     this.#live = undefined;
+    this.#code = "";
     this.#account = undefined;
     this.#done.clear();
     if (live !== undefined && !live.kept) await this.#service.signIn.cancel(live.signInId);

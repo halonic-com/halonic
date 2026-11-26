@@ -110,16 +110,21 @@ export class HostServiceSignIn implements ServiceSignIn {
     const result = await started.challenge.result;
     signal.removeEventListener("abort", cancel);
     if (signal.aborted) {
+      this.#started.delete(signInId);
       // Closed after the keychain write: the key goes again, revoked and deleted.
       if (result.outcome === "connected") await this.#forget(started);
       return { outcome: "cancelled" };
     }
-    return this.#endOf(started, result);
+    const end = this.#endOf(started, result);
+    // Only a kept test key is needed again, by `revokeTest`; every other sign-in has ended.
+    if (end.outcome !== "signed-in" || !started.test) this.#started.delete(signInId);
+    return end;
   }
 
   async cancel(signInId: string): Promise<void> {
     const started = this.#started.get(signInId);
     if (started === undefined) return;
+    this.#started.delete(signInId);
     await started.challenge.cancel();
     // An approval the cancel came too late for still leaves no key.
     if ((await started.challenge.result).outcome === "connected") await this.#forget(started);
