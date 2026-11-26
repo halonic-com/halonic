@@ -7,6 +7,7 @@ import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
 import type { MessagingPoller } from "./messaging-poller.ts";
+import type { ReplyWatch } from "./reply-watch.ts";
 import { serverEngineMessage } from "./server-engine.ts";
 import type { WorkspaceMessaging } from "./workspace-messaging.ts";
 
@@ -48,6 +49,8 @@ const disconnectBody = s
 export interface MessagingRouteDeps {
   messaging: DesktopMessaging;
   poller: MessagingPoller;
+  /** The conversations a send waits on, which make the poller read every 5 seconds. */
+  replies: ReplyWatch;
   /** Where the host writes what failed; never a key. */
   log: (text: string) => void;
 }
@@ -65,7 +68,8 @@ type ReadBody = Infer<typeof readBody>;
  *   takes (an answer it doesn't is refused with `bad-answer`), and
  *   `POST /v1/messaging/send` with `{ conversation, body }` answer
  *   `{ result }`: the source answers or refuses, and offline nothing is kept
- *   to send later.
+ *   to send later. A message sent makes the poller read every 5 seconds
+ *   while its conversation waits for the agent (`agent-host.paperclip-polling`).
  * - `POST /v1/messaging/attachment` with `{ attachment }` answers
  *   `{ result }`: the bytes as base64url with their type, or why they were
  *   refused (offline, the cache may not hold them).
@@ -144,9 +148,14 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
             : await messaging.messaging.answer(body.item, answer),
       };
     }),
-    inWorkspace("/v1/messaging/send", sendBody, async (messaging, body) => ({
-      result: await messaging.messaging.send(body.conversation, body.body),
-    })),
+    inWorkspace("/v1/messaging/send", sendBody, async (messaging, body) => {
+      const result = await messaging.messaging.send(body.conversation, body.body);
+      if (result.outcome === "sent") {
+        deps.replies.watch(messaging.messaging, body.conversation);
+        await deps.poller.expectReply();
+      }
+      return { result };
+    }),
     inWorkspace("/v1/messaging/attachment", attachmentBody, async (messaging, body) => ({
       result: attachmentAnswer(await messaging.messaging.readAttachment(body.attachment)),
     })),

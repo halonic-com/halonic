@@ -237,3 +237,25 @@ verifies("agent-host.agent-messaging-offline", () => {
     expect(sent).toEqual({ outcome: "refused", reason: "offline" });
   });
 });
+
+verifies("agent-host.paperclip-polling", () => {
+  it("reads Paperclip 5 seconds after a message sent through the host, while the chat waits for Ada", async () => {
+    const on = await started();
+    await connect(on);
+    const [chat] = await on.studio.listConversations();
+    const chatReads = () =>
+      on.paperclip.seen.filter((request) =>
+        request.url.endsWith(`/companies/${acme.company}/chats`),
+      ).length;
+
+    const sent = await on.studio.send(chat?.id ?? "", "Ship it");
+    const before = chatReads();
+    await on.wait(4_999);
+    const early = chatReads();
+    await on.wait(1);
+
+    expect(sent).toMatchObject({ outcome: "sent" });
+    expect(early).toBe(before);
+    expect(chatReads()).toBeGreaterThan(before);
+  });
+});

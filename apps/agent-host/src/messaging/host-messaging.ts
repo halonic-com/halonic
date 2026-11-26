@@ -26,6 +26,7 @@ import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
 import { MessagingPoller } from "./messaging-poller.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
 import { paperclipFeedback } from "./paperclip-provider.ts";
+import { ReplyWatch } from "./reply-watch.ts";
 import { ServerPairings } from "./server-engine.ts";
 
 /** The host's agent messaging: its routes, and what stops it. */
@@ -112,10 +113,15 @@ export function hostMessaging(
       reportError: (error) => report({ provider: "scheduler", action: "poll", error }),
     },
   );
+  const replies = new ReplyWatch({
+    clock: systemClock,
+    report: (error) => report({ provider: "messaging", action: "watch replies", error }),
+  });
   const poller = new MessagingPoller({
     scheduler,
     clock: systemClock,
     poll: () => messaging.refresh(),
+    waiting: () => replies.waiting(),
   });
   const signIn = hostSignIn(keys, messaging, scheduler, poller);
   const usesServer = (workspace: string) => messaging.usesServer(workspace);
@@ -132,7 +138,7 @@ export function hostMessaging(
         log,
         usesServer,
       }),
-      ...messagingRoutes({ messaging, poller, log }),
+      ...messagingRoutes({ messaging, poller, replies, log }),
       ...paperclipSignInRoutes({ signIn, workspaceRoots, log, usesServer }),
       ...feedback,
     ],
