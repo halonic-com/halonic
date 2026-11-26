@@ -33,7 +33,7 @@
         "compression": "lzma"
       },
       "webviewInstallMode": {
-        "type": "downloadBootstrapper",
+        "type": "embedBootstrapper",
         "silent": true
       }
     }
