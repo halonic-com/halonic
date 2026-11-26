@@ -26,13 +26,36 @@ export interface DesktopMessagingOptions
 export class DesktopMessaging {
   readonly #options: DesktopMessagingOptions;
   readonly #workspaces = new Map<string, WorkspaceMessaging>();
+  /** The workspace Studio last asked for, which a paired phone reads. */
+  #lastAsked: string | undefined;
 
   constructor(options: DesktopMessagingOptions) {
     this.#options = options;
   }
 
-  /** The messaging of `folder`, or `undefined` when it isn't the real path of a workspace the launcher named. */
+  /**
+   * The messaging of `folder`, or `undefined` when it isn't the real path of
+   * a workspace the launcher named. It becomes the workspace a paired phone
+   * reads ({@link lastAsked}).
+   */
   async of(folder: string): Promise<WorkspaceMessaging | undefined> {
+    const messaging = await this.#find(folder);
+    if (messaging !== undefined) this.#lastAsked = messaging.workspace;
+    return messaging;
+  }
+
+  /**
+   * The messaging a paired phone reads (`agent-host.phone-workspace`): the
+   * workspace Studio last asked for, or the first one the launcher named
+   * before Studio asks; `undefined` when the launcher named none. Asking
+   * here changes nothing: only Studio picks the workspace.
+   */
+  lastAsked(): Promise<WorkspaceMessaging | undefined> {
+    const folder = this.#lastAsked ?? this.#options.workspaceRoots[0];
+    return folder === undefined ? Promise.resolve(undefined) : this.#find(folder);
+  }
+
+  async #find(folder: string): Promise<WorkspaceMessaging | undefined> {
     const workspace = await namedWorkspace(this.#options.workspaceRoots, folder);
     if (workspace === undefined) return undefined;
     const known = this.#workspaces.get(workspace);
