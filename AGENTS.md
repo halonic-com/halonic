@@ -197,7 +197,8 @@ Stacks stay short, so a closed pull request never strands work above it:
     except `packages/core/`, `packages/host/`, `packages/testing/spec/`, `tooling/config/`, the
     Merger's rules, the review verdicts (`tooling/paperclip/src/verdicts/`,
     `plugin/review-verdict-tool*`), plugin manifests, root files and root dot-folders (this file
-    and `CLAUDE.md` among them; `.changeset/` stays routine), `.gitattributes`, the legal files,
+    and `CLAUDE.md` among them; `.changeset/` stays routine), any `.mcp.json` and `.claude`
+    folder in every folder, `.gitattributes`, the legal files,
     security tests and docs, and a public interface (an entry point a package exports, such as
     `src/index.ts` or `src/api.ts`, or its `exports`). A renamed file counts by its old path too;
   - the second reviewer approves the rest outside the maintainer's paths, up to 1500 changed lines

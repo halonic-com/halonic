@@ -141,6 +141,11 @@ verifies("paperclip.routine-review", () => {
     "tooling/paperclip/src/seats/plugin/manifest.ts",
     ".claude/settings.json",
     ".mcp.json",
+    "apps/cli/.mcp.json",
+    "apps/cli/.claude/settings.json",
+    "packages/studio/shell/.claude/commands/review.md",
+    "apps/cli/.claude",
+    "apps/cli/.claude/\nsettings.json",
     ".npmrc",
     ".pnpmfile.cjs",
     "packages/adapters/fs-node/src/sandbox/fence.test.ts",
@@ -154,6 +159,8 @@ verifies("paperclip.routine-review", () => {
     ".changeset/inbox-label.md",
     "apps/cli/src/messages/sandbox.ts",
     "apps/cli/src/plugin/load.ts",
+    "packages/adapters/harness-claude-code/src/claude/settings.ts",
+    "apps/cli/src/mcp.json.ts",
   ])("%s stays routine", (file) => {
     expect(routineRefusal(pullOf([file]))).toBeNull();
   });
