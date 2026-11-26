@@ -8,7 +8,7 @@ use halonic_git_guard::OpenedFolders;
 use halonic_profile::{Platform, ProfileFolder};
 use halonic_workspace_files::{Fence, WorkspaceFolder, WriteLocks};
 
-use super::{FileFolder, Making, chats_root, made_for, private_for, review_root};
+use super::{FileFolder, Making, chats_root, made_for};
 
 /// A folder of its own for one test, with two workspaces and a profile,
 /// removed when the test ends.
@@ -205,6 +205,7 @@ fn chats_of_one_workspace_are_not_reached_through_another() {
 #[cfg(unix)]
 #[test]
 fn chats_and_review_folders_and_files_are_private_to_the_user() {
+    use super::{private_for, review_root};
     use std::os::unix::fs::PermissionsExt;
     let mode = |path: &Path| {
         std::fs::metadata(path)
