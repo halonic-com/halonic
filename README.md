@@ -70,7 +70,7 @@ not in PowerShell or Command Prompt. Check your Node.js first with
 `node --version`: it must say v26.12 or later.
 
 ```sh
-npm install -g halonic
+npm i -g halonic
 halonic --version
 ```
 

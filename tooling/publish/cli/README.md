@@ -24,7 +24,7 @@ gives you an older version. On Windows, run all of this inside
 PowerShell or Command Prompt.
 
 ```sh
-npm install -g halonic
+npm i -g halonic
 halonic --version
 ```
 
