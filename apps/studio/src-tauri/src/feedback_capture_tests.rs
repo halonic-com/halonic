@@ -8,8 +8,8 @@ use tauri::test::{MockRuntime, mock_builder};
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{App, Manager, Webview, WebviewUrl};
 
-use super::held::{Held, SelectedBox, still_bytes};
-use super::{FeedbackCapture, crop, end, select, start};
+use super::held::{CallerState, Held, SelectedBox, UNAVAILABLE_WINDOW, still_bytes};
+use super::{FEEDBACK_WINDOW, FeedbackCapture, crop, end, select, start};
 
 /// A 4 × 2 still whose pixels count up from 0.
 fn still() -> Still {
@@ -214,13 +214,44 @@ fn only_a_studio_window_selects_and_only_while_a_still_is_held() {
 }
 
 #[test]
+fn a_window_captures_only_while_focused_visible_and_not_minimised() {
+    let in_front = CallerState {
+        focused: true,
+        visible: true,
+        minimized: false,
+    };
+    assert!(in_front.may_capture());
+    for refused in [
+        CallerState {
+            focused: false,
+            ..in_front
+        },
+        CallerState {
+            visible: false,
+            ..in_front
+        },
+        CallerState {
+            minimized: true,
+            ..in_front
+        },
+        CallerState::default(),
+    ] {
+        assert!(!refused.may_capture(), "{refused:?}");
+    }
+}
+
+#[test]
 fn only_a_focused_studio_window_starts_a_capture() {
-    let app = app_with(&["main", "other"]);
-    let other = app.get_webview_window("other").expect("the window is open");
-    assert_eq!(
-        tauri::async_runtime::block_on(start(other)).err(),
-        Some("not_a_studio_window")
-    );
+    let others = ["other", "ask", FEEDBACK_WINDOW, UNAVAILABLE_WINDOW];
+    let app = app_with(&[&["main"][..], &others[..]].concat());
+    for label in others {
+        let window = app.get_webview_window(label).expect("the window is open");
+        assert_eq!(
+            tauri::async_runtime::block_on(start(window)).err(),
+            Some("not_a_studio_window"),
+            "{label}"
+        );
+    }
     // The mock runtime's windows are never focused, as a window behind
     // another app isn't.
     let main = app.get_webview_window("main").expect("the window is open");

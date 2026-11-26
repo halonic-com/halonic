@@ -2,7 +2,7 @@
 //! The shortcut is heard only by the focused one of Studio's own windows, never
 //! system-wide: the focused window's page asks `plugin:feedback|start`, which takes one
 //! still of that window's own area, in memory, never in a file, and only
-//! while that window is focused, so a page script in a window behind
+//! while that window is focused, visible and not minimised, so a page script in a window behind
 //! another app can't capture what covers it. The page
 //! then draws its see-through selection overlay over the live app and
 //! hands the box to `plugin:feedback|select`; the Send feedback window
@@ -26,8 +26,8 @@ mod held;
 #[path = "feedback_shortcut.rs"]
 mod shortcut;
 use held::{
-    Capturing, Held, OpenWindows, Press, STILL_LIFETIME, SelectedBox, UNAVAILABLE_WINDOW,
-    still_bytes,
+    CallerState, Capturing, Held, OpenWindows, Press, STILL_LIFETIME, SelectedBox,
+    UNAVAILABLE_WINDOW, still_bytes,
 };
 
 /// The Send feedback window's label.
@@ -82,9 +82,9 @@ pub struct Started {
 /// A press of the feedback shortcut in one of Studio's own windows. Brings the Send
 /// feedback window forward when it is open (`send_open`); otherwise takes
 /// one still of that window's own area and holds it. Refused as
-/// `not_focused` unless the calling window is focused: the still is the
-/// screen under the window, so a window behind another app would capture
-/// that app. Refused as `busy` while a still is being taken, and as
+/// `not_focused` unless the calling window is focused, visible and not
+/// minimised: the still is the screen under the window, so a window behind
+/// another app would capture that app. Refused as `busy` while a still is being taken, and as
 /// `unavailable` (after opening the window that says so) where no still
 /// can be taken. Async, because Windows can't open a window from a command
 /// on the main thread.
@@ -93,7 +93,7 @@ pub async fn start<R: Runtime>(window: WebviewWindow<R>) -> Result<Started, &'st
     if !studio_window(window.label()) {
         return Err("not_a_studio_window");
     }
-    if !window.is_focused().unwrap_or(false) {
+    if !caller_state(&window).may_capture() {
         return Err("not_focused");
     }
     let app = window.app_handle().clone();
@@ -137,6 +137,16 @@ pub async fn start<R: Runtime>(window: WebviewWindow<R>) -> Result<Started, &'st
                 }
             }
         }
+    }
+}
+
+/// The calling window's state; one the system can't tell counts against
+/// capturing.
+fn caller_state<R: Runtime>(window: &WebviewWindow<R>) -> CallerState {
+    CallerState {
+        focused: window.is_focused().unwrap_or(false),
+        visible: window.is_visible().unwrap_or(false),
+        minimized: window.is_minimized().unwrap_or(true),
     }
 }
 

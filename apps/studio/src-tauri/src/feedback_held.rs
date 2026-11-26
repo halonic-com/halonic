@@ -40,6 +40,24 @@ pub struct Held {
     send_feedback_closing: bool,
 }
 
+/// The state of the window that asks for a still.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct CallerState {
+    pub focused: bool,
+    pub visible: bool,
+    pub minimized: bool,
+}
+
+impl CallerState {
+    /// Whether the window may take a still of its own area: only while it
+    /// is focused, visible and not minimised. The still is the screen under
+    /// the window, so a window behind another app, hidden or minimised would
+    /// capture whatever covers that area instead.
+    pub fn may_capture(self) -> bool {
+        self.focused && self.visible && !self.minimized
+    }
+}
+
 /// Which of the feedback's windows are open when the shortcut is pressed.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct OpenWindows {
