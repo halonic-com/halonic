@@ -3,6 +3,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -12,6 +13,7 @@ import { routeOf } from "../computers-words.ts";
 import type { ReachRoute } from "../connection-check.ts";
 import { ConnectionCheckSheet } from "../connection-check-sheet.tsx";
 import { CantReachPanel, ReachingLine } from "../first-reach.tsx";
+import { type PhoneInboxItems, usePhoneInbox } from "../inbox/use-phone-inbox.ts";
 import type { PhoneState } from "../phone-status.ts";
 import type { PairedComputer, PhoneStatus } from "../phone-tunnel.ts";
 import { PromptBox } from "../prompt-box.tsx";
@@ -21,7 +23,7 @@ import { StaleBanner } from "../stale-banner.tsx";
 import { StandingScreen } from "../standing-screen.tsx";
 import { PhoneStatusHeader } from "../status-header.tsx";
 import { StatusSheet, type StatusSheetOf } from "../status-sheet.tsx";
-import { type ComputerTab, ComputerViews } from "./computer-tabs.tsx";
+import { type ComputerTab, ComputerTabs, ComputerViews } from "./computer-tabs.tsx";
 import type { ComputerSheet, PhoneAppRouter } from "./phone-app-router.ts";
 
 /** What the phone does outside the page: Android's settings for Halonic, and Tailscale. */
@@ -34,9 +36,10 @@ export interface PhoneOutside {
  * One paired computer (`s-m1` to `s-m9`): the header label, the stale banner while the phone
  * can't reach it, the status sheet the label opens, and Removed or Can't confirm in place of the
  * body. Until the computer first answers, the body is the first reach's waiting line or its
- * give-up, which open Check this connection (first-run-progress 6). After that it is the
- * tab bar: the Inbox, or "Update Halonic on…" in its place while that computer speaks only
- * version 3, and the agents from its gateway client with the prompt box docked under them; a tapped
+ * give-up, which open Check this connection (first-run-progress 6). After that it is the picked
+ * view over the tab bar at the foot (p02a): the Inbox, or "Update Halonic on…" in its place while
+ * that computer speaks only version 3, or the agents from its gateway client with the prompt box
+ * docked under them. The screen reads the Inbox, so the tab bar counts its cards; a tapped
  * agent's run detail shows in place of the whole screen. The computer's name is the screen's h1
  * on every state, hidden while the label shows; focus goes to it when the screen opens, and back
  * to the agent's row when its run detail closes (C48).
@@ -68,6 +71,8 @@ export function ComputerScreen({
   const tryAgain = () => router.tryAgain(computer.id);
   const closeRun = useCallback(() => router.closeRun(), [router]);
   const [tab, setTab] = useState<ComputerTab>("inbox");
+  const viewsId = useId();
+  const inbox = useComputerInbox(remote, view);
   const onOpen = (shown: PhoneState) => {
     if (shown !== "removed" && shown !== "cantConfirm") return router.openSheet();
     // Removed and Can't confirm have no sheet: the label moves focus to the screen's heading.
@@ -128,20 +133,23 @@ export function ComputerScreen({
               banner={banner}
               remote={remote}
               view={view}
+              inbox={inbox}
               tab={tab}
-              onTab={setTab}
+              viewsId={viewsId}
               onOpenSettings={outside.onOpenSettings}
             />
           </div>
-          {tab === "agents" ? (
-            <DockedPrompt
-              router={router}
-              computer={computer}
-              state={state}
-              remote={remote}
-              view={view}
-            />
-          ) : null}
+          <ComputerFoot
+            router={router}
+            computer={computer}
+            state={state}
+            remote={remote}
+            view={view}
+            inbox={inbox}
+            tab={tab}
+            viewsId={viewsId}
+            onTab={setTab}
+          />
         </>
       )}
       {sheetOf === undefined ? null : (
@@ -215,7 +223,7 @@ function CheckSheet({
 
 /**
  * Removed or Can't confirm in place of the body; until the first answer, the waiting line or
- * its give-up; else the tab bar, under the stale banner while the phone can't reach the computer.
+ * its give-up; else the picked view, under the stale banner while the phone can't reach the computer.
  */
 function ComputerBody({
   router,
@@ -224,8 +232,9 @@ function ComputerBody({
   banner,
   remote,
   view,
+  inbox,
   tab,
-  onTab,
+  viewsId,
   onOpenSettings,
 }: {
   readonly router: PhoneAppRouter;
@@ -234,8 +243,10 @@ function ComputerBody({
   readonly banner: ReactNode;
   readonly remote: PhoneRemote | undefined;
   readonly view: RemoteView | undefined;
+  readonly inbox: PhoneInboxItems;
   readonly tab: ComputerTab;
-  readonly onTab: (tab: ComputerTab) => void;
+  /** The id of the element that shows the picked view, which the tab bar's tabs control. */
+  readonly viewsId: string;
   readonly onOpenSettings: () => void;
 }) {
   if (state === "removed" || state === "cantConfirm") {
@@ -276,41 +287,65 @@ function ComputerBody({
   return (
     <>
       {banner}
-      <ComputerViews
-        router={router}
-        computer={computer.name}
-        remote={remote}
-        view={view}
-        tab={tab}
-        onTab={onTab}
-        onOpenSettings={onOpenSettings}
-      />
+      <div id={viewsId} className="flex flex-1 flex-col gap-4">
+        <ComputerViews
+          router={router}
+          computer={computer.name}
+          remote={remote}
+          view={view}
+          inbox={inbox}
+          tab={tab}
+          onOpenSettings={onOpenSettings}
+        />
+      </div>
     </>
   );
 }
 
-/** The prompt box docked under the Agents list, once the agents show. */
-function DockedPrompt({
+/**
+ * The foot of the screen once the agents show: the prompt box docked under the Agents list, then
+ * the tab bar (p02a).
+ */
+function ComputerFoot({
   router,
   computer,
   state,
   remote,
   view,
+  inbox,
+  tab,
+  viewsId,
+  onTab,
 }: {
   readonly router: PhoneAppRouter;
   readonly computer: PairedComputer;
   readonly state: PhoneState | undefined;
   readonly remote: PhoneRemote | undefined;
   readonly view: RemoteView | undefined;
+  readonly inbox: PhoneInboxItems;
+  readonly tab: ComputerTab;
+  readonly viewsId: string;
+  readonly onTab: (tab: ComputerTab) => void;
 }) {
   if (remote === undefined || view === undefined) return null;
   if (shownFirstReach(router, computer, state)) return null;
   return (
-    <PromptBox
-      view={view}
-      agent={undefined}
-      onSend={(sessionId, text) => remote.prompt(sessionId, text)}
-    />
+    <>
+      {tab === "agents" ? (
+        <PromptBox
+          view={view}
+          agent={undefined}
+          onSend={(sessionId, text) => remote.prompt(sessionId, text)}
+        />
+      ) : null}
+      <ComputerTabs
+        computer={computer.name}
+        inbox={inbox}
+        selected={tab}
+        controls={viewsId}
+        onSelect={onTab}
+      />
+    </>
   );
 }
 
@@ -333,6 +368,18 @@ function shownFirstReach(
 function agentCounts(view: RemoteView): { readonly running: number; readonly waiting: number } {
   const count = (state: string) => view.sessions.filter((each) => each.state === state).length;
   return { running: count("running"), waiting: count("waiting") };
+}
+
+/**
+ * The computer's open Inbox cards, read while its view is live, so the tab bar counts them on
+ * every tab; none while it speaks only version 3, which has no Inbox.
+ */
+function useComputerInbox(
+  remote: PhoneRemote | undefined,
+  view: RemoteView | undefined,
+): PhoneInboxItems {
+  const messaging = view?.olderComputer === true ? undefined : remote?.messaging;
+  return usePhoneInbox(messaging, view?.canAnswer === true);
 }
 
 const noRemote = (): (() => void) => () => undefined;

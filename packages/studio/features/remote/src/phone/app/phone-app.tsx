@@ -80,7 +80,9 @@ function PhoneScreen(props: PhoneAppProps & { readonly view: PhoneAppView }) {
       const computer = computers.find((listed) => listed.id === screen.computer);
       if (computer === undefined || computer.standing === "unreadable") return null;
       return (
+        // Keyed by computer, so nothing read from one computer (its Inbox) shows on the next.
         <ComputerScreen
+          key={computer.id}
           router={router}
           computer={computer}
           status={view.statuses.get(computer.id)}
