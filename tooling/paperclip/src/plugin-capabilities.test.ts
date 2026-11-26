@@ -35,7 +35,7 @@ const plugins: readonly PluginUnderTest[] = [
     manifest: agentToolsManifest,
     buildOptions: workerBuildOptions,
     // The chief line creates a missing thread without `issues.create`; adding a write
-    // capability is Liam's call (HAL-19468 follow-up), so it stays listed here until then.
+    // capability is Liam's call (HAL-19471), so it stays listed here until then.
     knownGaps: ["issues.create"],
   },
   {
