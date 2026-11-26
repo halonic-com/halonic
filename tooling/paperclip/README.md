@@ -825,6 +825,9 @@ front of each name. A metric that doesn't save is logged and changes nothing.
   `agent`, `mode`): `tools.gh_redirected` (see gh guard above).
 - **Each state packet asked for** (tag `companyId`): `state_packet.built` or
   `state_packet.none` (see State packet in monitor wakes below).
+- **Each monitor wake the wake gate measures** (tag `companyId`):
+  `wake_gate.would_skip`, `wake_gate.would_run` or `wake_gate.undecided`
+  (see Wake gate below).
 
 ## GitHub snapshot
 
@@ -929,6 +932,28 @@ the run gets that state in its prompt and can decide on its first turn.
   task has no such pull request, the snapshot or a kept line can't be read, a
   GitHub read fails, the lines alone are over the cap, or the build takes
   longer than 8 seconds.
+
+### Wake gate (measure only)
+
+HAL-18985, lever 6 of the token plan on HAL-18938: many monitor wakes only
+read state and hand off again. The gate works out from the same pull request
+lines whether a wake had anything to do. For now it only measures: it logs and
+counts its verdict, and the run always starts. Requirement `paperclip.wake-gate`.
+
+- **Where:** on the same `state-packet` data key, after the packet is answered,
+  so it never delays the run (`src/plugin/wake-gate-data.ts`, rules in
+  `src/wake-gate/`). Only `issue_monitor_due` wakes.
+- **Setting:** `wakeGate`, `off` by default; `measure` logs and counts.
+- **Would skip** only when every pull request of the task waits on someone
+  else (green and waiting for a review, the merge or the queue, or `ci-ok`
+  still running on the head or the merge commit) and the newest comment, if
+  any, is the assignee's own. A draft, a conflict, a red or missing `ci-ok`,
+  a closed or landed pull request, or a newer comment from anyone else: would run.
+- **Log line:** `Wake gate (measure only): would skip HAL-41: acme/rockets#41
+  waits for the merge queue`, with the task's id in the log's fields, so the
+  48-hour log can be set against what each run then did.
+- **Switching it on** needs the server patch to skip the run on a `skip`
+  answer; that is a later step, after the 48 hours.
 
 ## Fast-track rules
 

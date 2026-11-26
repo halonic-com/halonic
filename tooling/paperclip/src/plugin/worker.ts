@@ -36,6 +36,7 @@ import { registerTaskTools } from "./task-tools.ts";
 import { thinSpecCheck } from "./thin-spec-check.ts";
 import { registerTools } from "./tools.ts";
 import { registerTrialResults } from "./trial-results.ts";
+import { measureWakeGate } from "./wake-gate-data.ts";
 import {
   handleWorkerAgentsRequest,
   registerWorkerAgentsData,
@@ -141,7 +142,7 @@ export const plugin = definePlugin({
     registerNextStepTools(ctx, undefined, readyStep(ctx));
     registerPrWriteTools(ctx);
     registerTrialResults(ctx);
-    registerStatePacket(ctx);
+    registerStatePacket(ctx, (params) => measureWakeGate(ctx, params));
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
   },
   async onApiRequest(input) {

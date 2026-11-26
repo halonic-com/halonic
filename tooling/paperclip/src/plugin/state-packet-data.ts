@@ -103,7 +103,18 @@ export async function answerStatePacket(
   return answer;
 }
 
-/** Registers the data key. */
-export function registerStatePacket(ctx: StatePacketApi): void {
-  ctx.data.register(statePacketDataKey, (params) => answerStatePacket(ctx, params));
+/**
+ * Registers the data key. The wake gate measures each wake after the packet
+ * is answered (HAL-18985), so it reads the lines the packet just kept and
+ * never delays the run.
+ */
+export function registerStatePacket(
+  ctx: StatePacketApi,
+  measure: (params: Record<string, unknown>) => Promise<unknown> = () => Promise.resolve(),
+): void {
+  ctx.data.register(statePacketDataKey, async (params) => {
+    const answer = await answerStatePacket(ctx, params);
+    void measure(params);
+    return answer;
+  });
 }

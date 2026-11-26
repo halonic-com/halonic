@@ -11,4 +11,12 @@ export const statePacketConfigProperties = {
       "On: before a monitor wake's run starts on a task with a pull request on an <agent>/HAL-<n>-<words> branch, the run gets a short packet with its pull requests' status and the task's 3 newest comments. Needs the server patch from HAL-18684. Off: no packet, the wake is as before.",
     default: false,
   },
+  wakeGate: {
+    type: "string",
+    enum: ["off", "measure"],
+    title: "Wake gate for monitor wakes",
+    description:
+      "measure: on each monitor wake of a task with a pull request on an <agent>/HAL-<n>-<words> branch, log and count whether the run would have been skipped because every pull request waits on someone else and nobody else commented (HAL-18985). The wake always starts. off: nothing is logged.",
+    default: "off",
+  },
 } as const;

@@ -115,7 +115,7 @@ async function lineFor(
   found: TaskPull,
   snapshot: Snapshot,
   companyId: string,
-  deps: PacketDeps,
+  deps: LineDeps,
   reader: () => Promise<PullReader>,
   now: Date,
 ): Promise<PullLine> {
@@ -136,26 +136,32 @@ function newest(comments: readonly PacketComment[]): PacketComment[] {
     .slice(0, newestComments);
 }
 
-async function build(request: PacketRequest, deps: PacketDeps): Promise<PacketAnswer> {
-  const { companyId, issueId } = request;
-  if (request.wakeReason !== monitorWakeReason) {
-    return { packet: null, reason: `not a monitor wake (${request.wakeReason})` };
-  }
-  if (!(await deps.enabled(companyId))) {
-    return { packet: null, reason: "the statePacket setting is off" };
-  }
-  const task = await deps.taskIdentifier(issueId, companyId);
-  if (task === undefined) {
-    return { packet: null, reason: "task not found" };
-  }
+/** What reading a task's pull request lines needs. */
+export type LineDeps = Pick<PacketDeps, "snapshot" | "fresh" | "github" | "now">;
+
+/** The task's pull request lines, or the reason there are none. */
+export type TaskLines =
+  | { readonly lines: readonly PullLine[] }
+  | { readonly lines: null; readonly reason: string };
+
+/**
+ * The lines of `task`'s pull requests on `<agent>/HAL-<n>-<words>` branches:
+ * the known ones while fresh, the rest read again from GitHub and kept.
+ * Shared by the packet and the wake gate (HAL-18985).
+ */
+export async function taskLines(
+  companyId: string,
+  task: string,
+  deps: LineDeps,
+): Promise<TaskLines> {
   const snapshot = await deps.snapshot(companyId);
   if (snapshot === undefined) {
-    return { packet: null, reason: "no GitHub snapshot yet" };
+    return { lines: null, reason: "no GitHub snapshot yet" };
   }
   const found = taskPulls(snapshot, task);
   if (found.length === 0) {
     return {
-      packet: null,
+      lines: null,
       reason: `${task} has no pull request on an <agent>/${task}-<words> branch`,
     };
   }
@@ -169,15 +175,34 @@ async function build(request: PacketRequest, deps: PacketDeps): Promise<PacketAn
   const lines = await Promise.all(
     found.map((pull) => lineFor(pull, snapshot, companyId, deps, reader, now)),
   );
+  return { lines };
+}
+
+async function build(request: PacketRequest, deps: PacketDeps): Promise<PacketAnswer> {
+  const { companyId, issueId } = request;
+  if (request.wakeReason !== monitorWakeReason) {
+    return { packet: null, reason: `not a monitor wake (${request.wakeReason})` };
+  }
+  if (!(await deps.enabled(companyId))) {
+    return { packet: null, reason: "the statePacket setting is off" };
+  }
+  const task = await deps.taskIdentifier(issueId, companyId);
+  if (task === undefined) {
+    return { packet: null, reason: "task not found" };
+  }
+  const read = await taskLines(companyId, task, deps);
+  if (read.lines === null) {
+    return { packet: null, reason: read.reason };
+  }
   const comments = newest(await deps.comments(issueId, companyId));
-  const packet = packetText(task, now.toISOString(), lines, comments);
+  const packet = packetText(task, deps.now().toISOString(), read.lines, comments);
   return packet === undefined
     ? { packet: null, reason: "its pull request lines alone are over the cap" }
     : { packet };
 }
 
 /** Rejects once `ms` have passed. */
-function timeout(ms: number): Promise<never> {
+export function timeout(ms: number): Promise<never> {
   return new Promise((_, reject) => {
     setTimeout(() => reject(new Error(`took longer than ${ms / 1000} s`)), ms).unref?.();
   });
