@@ -89,6 +89,9 @@ as each Settings step, opens the demo again from there. Steps 21 and 22 are Try 
 they come straight after Settings so they find step 1's chat in that reopened demo. The Build chat
 has no step: the desktop app doesn't load the Assistant feature. Step 23 opens the other places
 (HAL-18870) last, so its page visits come after Try it has read the chat.
+The app opens at 800 × 600, a narrow window
+where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step
+sizes the window to 1280 × 800 first and gives it its size back afterwards (HAL-19048).
 
 Each step names, in its file, the requirement ids it checks (`requirements`), and the results table
 shows them in its Requirements column. The package's tests fail when a step names none, or an id
