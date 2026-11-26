@@ -163,6 +163,7 @@ export {
   llmProviderContract,
   type MakeLlmProvider,
 } from "./llm-provider.ts";
+export { offPatternMessagingIds } from "./messaging-ids.ts";
 export { meterContract } from "./meter.ts";
 export {
   acmeMembers,
