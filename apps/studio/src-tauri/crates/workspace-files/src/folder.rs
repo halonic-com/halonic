@@ -311,16 +311,21 @@ fn matches_expected(current: Option<&str>, expected: &str) -> bool {
 
 /// Creates one folder, private to the user (`700` on systems with modes)
 /// when `private`.
+#[cfg(unix)]
 fn create_folder(folder: &Path, private: bool) -> io::Result<()> {
+    use std::os::unix::fs::DirBuilderExt;
     let mut builder = fs::DirBuilder::new();
-    #[cfg(unix)]
     if private {
-        use std::os::unix::fs::DirBuilderExt;
         builder.mode(0o700);
     }
-    #[cfg(not(unix))]
-    let _ = private;
     builder.create(folder)
+}
+
+/// Creates one folder; on Windows the profile folder's own permissions
+/// protect what is in it.
+#[cfg(not(unix))]
+fn create_folder(folder: &Path, _private: bool) -> io::Result<()> {
+    fs::create_dir(folder)
 }
 
 /// Creates `file`, which must not exist yet, with `text`, flushed to disk.
