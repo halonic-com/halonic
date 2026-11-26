@@ -247,6 +247,35 @@ fn open_windows_content_is_written_with_its_window_and_comes_back_at_start() {
 }
 
 #[test]
+fn open_windows_a_content_change_writes_the_windows_last_noted() {
+    let recorded = [window("main", true, None), window("inbox", false, None)];
+    let mut set = OpenSet::from_recorded(&recorded);
+    set.set_content("main", Some("workspace".to_owned()))
+        .expect("kept");
+    // Nothing noted yet in this run: the list is still the last quit's.
+    assert_eq!(set.contents_changed(), None);
+    set.note(&[("main", true), ("messenger", false)]);
+    assert_eq!(
+        set.contents_changed(),
+        None,
+        "the note already wrote the content"
+    );
+    set.set_content("messenger", Some("chat-1".to_owned()))
+        .expect("kept");
+    assert_eq!(
+        set.contents_changed(),
+        Some(vec![
+            window("main", true, Some("workspace")),
+            window("messenger", false, Some("chat-1")),
+        ])
+    );
+    assert_eq!(set.contents_changed(), None, "nothing changed since");
+    set.quit(&[("main", true)]);
+    set.set_content("main", None).expect("forgotten");
+    assert_eq!(set.contents_changed(), None, "quitting writes no more");
+}
+
+#[test]
 fn open_windows_reopen_once_per_run() {
     let recorded = [window("main", true, None)];
     let mut set = OpenSet::from_recorded(&recorded);
@@ -260,6 +289,27 @@ fn open_windows_the_switch_is_on_unless_saved_off() {
     assert!(reopens(Some(&json!(true))));
     assert!(reopens(Some(&json!("off"))));
     assert!(!reopens(Some(&json!(false))));
+}
+
+#[test]
+fn open_windows_the_switch_is_a_key_studio_can_save() {
+    // Host settings keys are lowercase words with dashes, split by dots
+    // (`isHostSettingKey` in `@halonicjs/ports`): Settings can't save any
+    // other, so the shell would never see the switch off.
+    let words: Vec<&str> = SETTING.split('.').collect();
+    assert!(words.len() >= 2, "{SETTING}");
+    for word in words {
+        assert!(
+            word.starts_with(|c: char| c.is_ascii_lowercase()),
+            "{SETTING}"
+        );
+        assert!(
+            word.chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-'),
+            "{SETTING}"
+        );
+        assert!(!word.ends_with('-') && !word.contains("--"), "{SETTING}");
+    }
 }
 
 #[test]
