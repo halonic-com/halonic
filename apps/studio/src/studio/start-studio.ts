@@ -34,6 +34,7 @@ import { isAskBoxWindow, startAskBox } from "./start-ask-box.ts";
 import { feedbackWindowOf, startFeedbackWindow } from "./start-feedback-window.ts";
 import { focusedAppOf, startFocusedApp } from "./start-focused-app.ts";
 import { watchStart } from "./start-watch.ts";
+import { keepStudioWorkspace } from "./studio-window-content.ts";
 
 export { openFolder } from "./open-folder.ts";
 export { servedServices } from "./served-studio.ts";
@@ -207,7 +208,12 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
       settleDrafts: () => leaveFocusedField(page.element.ownerDocument),
     }),
   );
+  const keepingContent = keepStudioWorkspace(ipc, switcher).catch((error: unknown) => {
+    console.error("Studio's window won't reopen on what it shows:", error);
+    return () => {};
+  });
   const stopped = once(async () => {
+    (await keepingContent)();
     stopRegion();
     resources.stop();
     start.stop();

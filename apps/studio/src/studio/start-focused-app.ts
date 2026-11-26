@@ -14,6 +14,7 @@ import type { DeviceMemory } from "./device-memory.ts";
 import { focusedFrameColour, followFrameColour } from "./frame-colour.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
+import { readWindowContent, type WindowContent, WindowContentKeeper } from "./window-content.ts";
 import { windowLabelOf } from "./window-label.ts";
 
 /** What a focused app's window is started with, besides its page. */
@@ -44,7 +45,8 @@ export function focusedAppOf(
 
 /**
  * Starts a focused app's window (`studio.focused-app-window`): only that app, on the approved
- * frame, for the workspace Studio last had open, opened as a Recent row opens it. With no
+ * frame, for the workspace it showed before, or else the one Studio last had open, opened as a
+ * Recent row opens it (`studio.window-content`). With no
  * workspace in Recent, or one that can't be opened, the window says to open Halonic, its button
  * brings Studio's window forward, and the reason it couldn't open goes to the console. It never opens the workspace's engine for routines:
  * Studio's window does, and engine locks are held per window. Quick ask's box starts through
@@ -60,14 +62,17 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
     storage: page.storage ?? noStorage,
     platform: parts.platform,
   };
-  const last = device.recent.list()[0];
+  const keeper = new WindowContentKeeper(ipc);
   let mounted: MountedFocusedWindow | undefined;
-  const opening =
-    last === undefined
-      ? Promise.resolve(undefined)
-      : openLast(ipc, last.location, (location) =>
-          openFolder(shell, page.window, location, display, device),
-        );
+  const opening = readWindowContent(ipc).then(async (content) => {
+    const location = locationToOpen(device.recent.list(), content);
+    if (location === undefined) return undefined;
+    const opened = await openLast(ipc, location, (at) =>
+      openFolder(shell, page.window, at, display, device),
+    );
+    if (opened !== undefined) await keeper.keep({ workspace: location });
+    return opened;
+  });
   const shown = opening.then((opened) => {
     mounted = mountFocusedWindow(page.element, {
       shell,
@@ -88,6 +93,18 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
       await opened?.dispose();
     },
   };
+}
+
+/**
+ * The workspace a focused app's window opens (`studio.window-content`): the one it showed, while
+ * it is still in Recent, else the first in Recent, the one Studio last had open.
+ */
+export function locationToOpen(
+  recent: readonly { readonly location: string }[],
+  content: WindowContent,
+): string | undefined {
+  const kept = recent.find((remembered) => remembered.location === content.workspace);
+  return (kept ?? recent[0])?.location;
 }
 
 /** Brings Studio's window forward through the shell; a window that can't show says why in the console. */
