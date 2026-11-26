@@ -1,7 +1,7 @@
 import { createToastStore } from "@halonicjs/studio-kit";
 import type { StudioWorkspace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import { RecentWorkspaces } from "./recent-workspaces.ts";
 import { folderName, type OpenedWorkspace, WorkspaceSwitcher } from "./workspace-switcher.ts";
 
@@ -27,12 +27,15 @@ function setup() {
   });
   const opens: string[] = [];
   const disposed: string[] = [];
+  const tabsDisposed: string[] = [];
   const switcher = new WorkspaceSwitcher({
     pickFolder: async () => "/work/beta",
     openFolder: async (location): Promise<OpenedWorkspace> => {
       opens.push(location);
       if (location === "/work/acme") await acmeHeld;
-      const workspace = { dispose: vi.fn() } as unknown as StudioWorkspace;
+      const workspace = {
+        dispose: () => tabsDisposed.push(location),
+      } as unknown as StudioWorkspace;
       const dispose = async () => {
         disposed.push(location);
       };
@@ -41,7 +44,7 @@ function setup() {
     recent: new RecentWorkspaces(memoryStorage()),
     toasts: createToastStore(),
   });
-  return { switcher, release, opens, disposed };
+  return { switcher, release, opens, disposed, tabsDisposed };
 }
 
 verifies("workspace.reopen-gives-way", () => {
@@ -58,7 +61,7 @@ verifies("workspace.reopen-gives-way", () => {
   });
 
   it("opens the folder picked while it reopens, and never shows the reopened one", async () => {
-    const { switcher, release, disposed } = setup();
+    const { switcher, release, disposed, tabsDisposed } = setup();
     const reopened = switcher.reopenOnStart("/work/acme");
 
     expect(await switcher.pickAndOpen()).toBeUndefined();
@@ -69,6 +72,23 @@ verifies("workspace.reopen-gives-way", () => {
 
     expect(switcher.open.all.map((slot) => slot.location)).toEqual(["/work/beta"]);
     expect(disposed).toEqual(["/work/acme"]);
+    expect(tabsDisposed).toEqual(["/work/acme"]);
+  });
+
+  it("takes a dropped reopen back when the person asks for its folder, so it opens once", async () => {
+    const { switcher, release, opens, disposed } = setup();
+    const reopened = switcher.reopenOnStart("/work/acme");
+    await switcher.pickAndOpen();
+
+    const opened = switcher.openLocation("/work/acme");
+    expect(switcher.reopening).toBe("/work/acme");
+    release();
+
+    expect(await opened).toBeUndefined();
+    await reopened;
+    expect(opens).toEqual(["/work/acme", "/work/beta"]);
+    expect(disposed).toEqual([]);
+    expect(switcher.open.shown?.location).toBe("/work/acme");
   });
 
   it("opens another Recent row while it reopens, rather than ignoring the press", async () => {

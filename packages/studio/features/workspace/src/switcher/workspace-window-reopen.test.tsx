@@ -36,6 +36,8 @@ verifies("workspace.reopen-gives-way", () => {
       reopened = switcher.reopenOnStart("/work/acme");
     });
     expect(recentRow("acme")?.getAttribute("aria-busy")).toBe("true");
+    // The step it waits on: this window has no start of Halonic to wait for, so the reading step.
+    expect(recentRow("acme")?.textContent).toContain("Reading the workspace…");
 
     await act(async () => button("Open folder")?.click());
     expect(recentRow("acme")?.getAttribute("aria-busy")).toBeNull();

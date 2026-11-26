@@ -61,3 +61,13 @@ export function folderName(location: string): string {
   const parts = location.split(/[\\/]/).filter((part) => part !== "");
   return parts.at(-1) ?? location;
 }
+
+/**
+ * Lets an opened workspace go: stops its saving and its tabs, then its services. Every close goes
+ * through here, a dropped reopen's included, so none keeps a listener or a scheduler behind.
+ */
+export async function closeOpened(opened: OpenedWorkspace): Promise<void> {
+  opened.saving?.dispose();
+  opened.workspace.dispose();
+  await opened.dispose();
+}

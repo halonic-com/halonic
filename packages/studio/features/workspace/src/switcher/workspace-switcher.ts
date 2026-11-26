@@ -7,10 +7,11 @@ import {
 import { openOnSupportReply } from "../sample/demo-start.ts";
 import { showCantOpenToast } from "./cant-open-toast.ts";
 import { OpenWorkspaces } from "./open-workspaces.ts";
-import type {
-  CloseRequest,
-  OpenedWorkspace,
-  WorkspaceSwitcherOptions,
+import {
+  type CloseRequest,
+  closeOpened,
+  type OpenedWorkspace,
+  type WorkspaceSwitcherOptions,
 } from "./opened-workspace.ts";
 import type { RecentWorkspaces } from "./recent-workspaces.ts";
 import { StartReopen } from "./start-reopen.ts";
@@ -313,9 +314,7 @@ export class WorkspaceSwitcher {
       this.#openedToasts.delete(location);
       this.#options.toasts.close(toast);
     }
-    closed.value.saving?.dispose();
-    closed.value.workspace.dispose();
-    await closed.value.dispose();
+    await closeOpened(closed.value);
   }
 
   #setCloseRequest(request: CloseRequest | undefined): void {
@@ -414,6 +413,8 @@ export class WorkspaceSwitcher {
     asSample = false,
     wanted: () => boolean = () => true,
   ): Promise<WelcomeOpenProblem | undefined> {
+    // A dropped reopen shows nothing, not even a folder the person opened since.
+    if (!wanted()) return undefined;
     if (this.open.find(location) !== undefined) {
       if (asSample) this.recent.markSample(location);
       this.open.show(location);
@@ -428,7 +429,7 @@ export class WorkspaceSwitcher {
     }
     if (!wanted()) {
       // A folder the person opened meanwhile won: this one closes again, never shown.
-      await opened.dispose();
+      await closeOpened(opened);
       return undefined;
     }
     // Before the workspace is added, which tells whoever draws it.

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: req-workspace `workspace.switcher.open-beside` (HAL-110), flow-workspace 2.2, microcopy 4.1; HAL-1291
 
-When the user picks a folder, from the Welcome screen's **Open folder** or the workspace menu's **Open a folder…**, or picks a Recent row, the workspace switcher shall open the workspace in that folder beside the open ones, show it, remember it in Recent and show the toast "Opened *name*". If that folder is already open, then it shall show it instead of opening it twice. While a folder is opening, the switcher shall ignore other requests to open one.
+When the user picks a folder, from the Welcome screen's **Open folder** or the workspace menu's **Open a folder…**, or picks a Recent row, the workspace switcher shall open the workspace in that folder beside the open ones, show it, remember it in Recent and show the toast "Opened *name*". If that folder is already open, then it shall show it instead of opening it twice. While a folder the person asked for is opening, the switcher shall ignore other requests to open one; the window's own reopen at start gives way instead (`workspace.reopen-gives-way`).
 
 ## Examples
 

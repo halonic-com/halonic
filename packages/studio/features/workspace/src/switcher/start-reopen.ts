@@ -21,6 +21,8 @@ interface Reopening {
 export class StartReopen {
   readonly #onChange: () => void;
   #current: Reopening | undefined;
+  /** Every reopen that hasn't ended, dropped ones included, so a later open can take one back. */
+  readonly #running = new Set<Reopening>();
 
   /** `onChange` is called whenever {@link location} changes. */
   constructor(onChange: () => void) {
@@ -44,24 +46,31 @@ export class StartReopen {
       return Promise.resolve(undefined);
     }
     const reopening: Reopening = { location, dropped: false, done: Promise.resolve(undefined) };
+    this.#running.add(reopening);
     this.#set(reopening);
     reopening.done = open(() => !reopening.dropped).finally(() => {
+      this.#running.delete(reopening);
       if (this.#current === reopening) this.#set(undefined);
     });
     return reopening.done;
   }
 
   /**
-   * For a person's open of `location`: the reopen's end, with why it couldn't open, when it reopens
-   * that folder; else `undefined`, having dropped any reopen, so the person's open goes ahead now.
+   * For a person's open of `location`: the reopen's end, with why it couldn't open, when a reopen
+   * of that folder hasn't ended, taking it back if an earlier open dropped it, so the folder never
+   * opens twice at once; else `undefined`, having dropped any reopen, so the person's open goes
+   * ahead now.
    */
   join(location: string): Promise<WelcomeOpenProblem | undefined> | undefined {
-    const reopening = this.#current;
-    if (reopening === undefined) return undefined;
-    if (reopening.location === location) return reopening.done;
-    reopening.dropped = true;
-    this.#set(undefined);
-    return undefined;
+    const same = [...this.#running].find((reopening) => reopening.location === location);
+    if (this.#current !== undefined && this.#current !== same) this.#current.dropped = true;
+    if (same === undefined) {
+      if (this.#current !== undefined) this.#set(undefined);
+      return undefined;
+    }
+    same.dropped = false;
+    if (this.#current !== same) this.#set(same);
+    return same.done;
   }
 
   #set(reopening: Reopening | undefined): void {
