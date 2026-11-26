@@ -4,6 +4,7 @@
 - Approval: part 2 of the server engine runbook (HAL-18504, plan HAL-17512 section 7). `tooling/check/src/lib/affected-tests.ts` is a guard trust root, so this note needs both guardians: Liam (CTO) and Julian (security reviewer)
 - Kind: user-visible
 - Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3cDvVfEWDgZY1R49am+VDOlJPq+xR6En6WhKmB/0UoqJFQWKXrNZi5a44NUh894flt6RpQQi9McEJ95A+xOOAA==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:e1DJrwHcsyGxCKE7V51+dzffjUmLP4Nlhxwk/c5lt2aFQYMNQIPHO/KzmMMTEJsigqvIvOsKT7jQIHq0s2HoBA==
 
 ## What changes
 
