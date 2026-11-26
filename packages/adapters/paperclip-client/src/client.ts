@@ -32,8 +32,8 @@ import { PaperclipConversations } from "./conversations.ts";
 import { PaperclipFullAnswers } from "./full-answers.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
-import { asRecords, type JsonRecord, text } from "./json.ts";
-import { type MapContext, newestFirst, toAgent, toMessage, workOf } from "./map.ts";
+import { asRecords, type JsonRecord } from "./json.ts";
+import { agentNamesOf, type MapContext, newestFirst, toAgent, toMessage, workOf } from "./map.ts";
 import { PaperclipReactions } from "./reactions.ts";
 import { PaperclipReader } from "./reader.ts";
 import { type RefreshLists, RefreshReads } from "./refresh-reads.ts";
@@ -152,13 +152,7 @@ export class PaperclipMessaging implements AgentMessaging {
     const records = asRecords(
       await this.#reader.read("listAgents", { path: { company: this.#company } }),
     );
-    this.#agentNames = new Map(
-      records.flatMap((record) => {
-        const id = text(record, "id");
-        const name = text(record, "name");
-        return id === undefined || name === undefined ? [] : [[id, name] as const];
-      }),
-    );
+    this.#agentNames = agentNamesOf(records);
     const context = this.#context();
     return records.flatMap((record) => toAgent(context, record) ?? []);
   }

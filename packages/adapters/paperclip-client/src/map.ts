@@ -165,3 +165,14 @@ export function workOf(context: MapContext, tasks: readonly JsonRecord[]): WorkI
   const work = tasks.flatMap((record) => toWork(context, record) ?? []);
   return newestFirst(work, (item) => item.updatedAt);
 }
+
+/** Each agent's name by its Paperclip ID, from the agent list; a record without both is left out. */
+export function agentNamesOf(records: readonly JsonRecord[]): Map<string, string> {
+  return new Map(
+    records.flatMap((record) => {
+      const id = text(record, "id");
+      const name = text(record, "name");
+      return id === undefined || name === undefined ? [] : [[id, name] as const];
+    }),
+  );
+}

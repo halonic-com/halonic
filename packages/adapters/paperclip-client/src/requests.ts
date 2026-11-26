@@ -1,3 +1,5 @@
+import { type BodyRule, fitsBodyRule } from "./request-bodies.ts";
+
 /**
  * The whole list of requests the Paperclip provider may make
  * (`agent-host.paperclip-key`, ADR 2026-11-24 agent messaging). A board key can do
@@ -259,26 +261,6 @@ export const paperclipRequests = {
 } as const satisfies Record<string, RequestRule>;
 
 /**
- * What a write's body must be: an object with exactly `fields`, every field
- * a non-empty string (or `null` for one listed in `nullable`, or a list of
- * exactly one safe ID for one listed in `idLists`), its `status` field set to
- * `status` and each `pinned` field set to its value.
- */
-interface BodyRule {
-  fields: readonly string[];
-  status?: string;
-  pinned?: Readonly<Record<string, string>>;
-  nullable?: readonly string[];
-  idLists?: readonly string[];
-  /** Fields that must be a whole number from 1 to Paperclip's limit, such as a budget in cents. */
-  integers?: readonly string[];
-  /** Fields whose text must start with the given prefix and go on after it. */
-  prefixed?: Readonly<Record<string, string>>;
-  /** Fields that must be `true` or `false`, such as whether a reaction is added. */
-  booleans?: readonly string[];
-}
-
-/**
  * One row of the fixed list. A row sends a JSON body, a file, or neither, never both, and a
  * WebSocket upgrade sends neither: the `never` members make any other mix a type error.
  */
@@ -329,9 +311,6 @@ const segmentRules: Readonly<Record<string, RegExp>> = {
   // And so are budget incidents (HAL-18921).
   incident: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
 };
-
-/** The largest amount Paperclip's resolve route takes: its column is a 32-bit integer. */
-const largestAmount = 2_147_483_647;
 
 /** Whether `value` may fill segment `:segment`: safe, and passing the segment's own rule. */
 export function fitsSegment(segment: string, value: string): boolean {
@@ -414,30 +393,7 @@ export function matchesRequest(name: PaperclipRequestName, method: string, path:
  */
 export function fitsBody(name: PaperclipRequestName, body: unknown): boolean {
   const rule: BodyRule | undefined = (paperclipRequests[name] as RequestRule).body;
-  if (rule === undefined) {
-    return true;
-  }
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return false;
-  }
-  const fields = new Map<string, unknown>(Object.entries(body));
-  const onlyRuleFields =
-    fields.size === rule.fields.length && rule.fields.every((field) => fields.has(field));
-  const allText = [...fields].every(([field, value]) => fieldFits(rule, field, value));
-  const allPrefixed = Object.entries(rule.prefixed ?? {}).every(([field, prefix]) => {
-    const value = fields.get(field);
-    return typeof value === "string" && value.startsWith(prefix) && value.length > prefix.length;
-  });
-  const pinned = Object.entries({
-    ...(rule.status === undefined ? {} : { status: rule.status }),
-    ...rule.pinned,
-  });
-  return (
-    onlyRuleFields &&
-    allText &&
-    allPrefixed &&
-    pinned.every(([field, value]) => fields.get(field) === value)
-  );
+  return rule === undefined || fitsBodyRule(rule, body);
 }
 
 /** Whether row `name` is a WebSocket upgrade, which only the transport's socket path sends. */
@@ -448,33 +404,6 @@ export function isUpgrade(name: PaperclipRequestName): boolean {
 /** Row `name`'s upload rule, or `undefined` for a row that sends no file. */
 export function uploadRule(name: PaperclipRequestName): UploadRule | undefined {
   return (paperclipRequests[name] as RequestRule).upload;
-}
-
-/** Whether one field's value fits `rule`: one-ID list, whole number, or text (or an allowed `null`). */
-function fieldFits(rule: BodyRule, field: string, value: unknown): boolean {
-  if (rule.idLists?.includes(field) === true) {
-    return isOneIdList(value);
-  }
-  if (rule.booleans?.includes(field) === true) {
-    return typeof value === "boolean";
-  }
-  if (rule.integers?.includes(field) === true) {
-    return Number.isSafeInteger(value) && Number(value) >= 1 && Number(value) <= largestAmount;
-  }
-  return (
-    (typeof value === "string" && value !== "") ||
-    (value === null && rule.nullable?.includes(field) === true)
-  );
-}
-
-/** Whether `value` is a list of exactly one ID that is a safe segment, such as one label. */
-function isOneIdList(value: unknown): boolean {
-  return (
-    Array.isArray(value) &&
-    value.length === 1 &&
-    typeof value[0] === "string" &&
-    isSafeSegment(value[0])
-  );
 }
 
 /**
