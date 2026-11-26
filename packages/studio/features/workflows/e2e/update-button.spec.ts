@@ -31,6 +31,8 @@ for (const scheme of ["light", "dark"] as const) {
       await page.screenshot({
         path: `test-results/screenshots/update-dialog-${state.name}-${scheme}.png`,
         fullPage: true,
+        // The kit Dialog fades in: without this the shot catches it half drawn (plugins spec too).
+        animations: "disabled",
       });
     });
   }
