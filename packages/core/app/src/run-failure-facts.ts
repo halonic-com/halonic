@@ -14,6 +14,7 @@ import { type ProxyFailure, proxyFailureOf } from "./run-failure-proxy.ts";
 import type { SecretsFileUnreadableFailure } from "./run-failure-secrets-file.ts";
 import { setupFailureOf } from "./run-failure-setup.ts";
 import { type StartFailure, startFailureOf } from "./run-failure-start.ts";
+import { type PlanStop, planStopOf } from "./run-plan-stop.ts";
 
 /** What both key failures name: the provider, the secret that holds its key, and the model or alias that uses it. */
 interface KeyFacts {
@@ -46,7 +47,7 @@ const modelFirstAnswerMs = 5 * 60_000;
  *   is too long (HAL-13862) or an answer that isn't the JSON its step asks
  *   for (HAL-14301), and `harness-unavailable` is `error` (HAL-6451);
  * - a `budget` stop a meter made, with a `plan.` cause, is `error` with
- *   `causeKnown` until its own facts follow (HAL-16571, HAL-16574);
+ *   `causeKnown` and the stop's own facts in `plan` (HAL-16571, HAL-14163);
  * - `instructions-not-trusted` is `error` when the log doesn't name the agent,
  *   as for a parallel branch or a log from before the engine named it;
  * - `cancelled` isn't a failure, so {@link runFailureOf} gives it none.
@@ -180,6 +181,8 @@ export type RunFailure =
       readonly message?: string;
       /** The engine knows the cause, such as a full disk, so a bug report wouldn't help (HAL-6451). */
       readonly causeKnown?: true;
+      /** A meter's plan stop, when its code and detail read (requirement `app.run-plan-stop`). */
+      readonly plan?: PlanStop;
     }
   | { readonly reason: "internal" };
 
@@ -298,12 +301,13 @@ function untrustedFailure(failed: RunFailedFacts): RunFailure {
 /**
  * `budget` with the stop's figures; a monthly budget resets on the first of the next month (UTC).
  * A meter's `plan.` stop keeps the engine's message, which says what was reached, with its cause
- * known, so no line asks for a bug report. Its own facts, worded from its code and detail, wait
- * for the first host that gives a meter (requirement `app.run-failure-plan-stop`).
+ * known, so no line asks for a bug report, and the stop's own facts for a screen to word
+ * (requirements `app.run-failure-plan-stop` and `app.run-plan-stop`).
  */
 function budgetFailure(failed: RunFailedFacts): RunFailure {
   if (isMeterStop(failed.cause)) {
-    return { ...generalFailure(failed), causeKnown: true };
+    const plan = planStopOf(failed.cause);
+    return { ...generalFailure(failed), causeKnown: true, ...(plan === undefined ? {} : { plan }) };
   }
   const stop = budgetStopOf(failed.cause, failed.error);
   if (stop === undefined) {
