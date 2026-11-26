@@ -94,16 +94,22 @@ verifies("agent-host.agent-messaging-cache", () => {
   it("leaves no local copy when a poll that was reading Paperclip ends after Disconnect", async () => {
     const on = await synced();
     let release = () => {};
-    // The poll's last read: every other list is read by then, so only this one stands between
-    // the poll and its save.
-    const path = `/api/companies/${acme.company}/live-runs`;
+    let arrived = () => {};
+    const reading = new Promise<void>((resolve) => {
+      arrived = resolve;
+    });
     const until = new Promise<void>((resolve) => {
       release = resolve;
     });
-    on.paperclip.hold = { path, until };
-    const before = on.paperclip.seen.length;
+    // The poll's last read: every other list is read by then, so only this one stands between
+    // the poll and its save.
+    on.paperclip.hold = { path: `/api/companies/${acme.company}/live-runs`, arrived, until };
     const polling = on.wait(30_000);
-    await reached(() => on.paperclip.seen.slice(before).some((seen) => seen.url.endsWith(path)));
+    const first = await Promise.race([
+      reading.then(() => "held read started"),
+      polling.then(() => "poll ended"),
+    ]);
+    expect(first).toBe("held read started");
 
     await on.paperclipKey.disconnect({ workspace: on.workspace, connection: "halonic" });
     release();
@@ -112,12 +118,3 @@ verifies("agent-host.agent-messaging-cache", () => {
     expect(await syncFilesIn(on)).toEqual([]);
   });
 });
-
-/** Waits, a macrotask at a time and at most a few hundred, until `done` holds: no timer, no sleep. */
-async function reached(done: () => boolean): Promise<void> {
-  for (let turn = 0; turn < 500; turn += 1) {
-    if (done()) return;
-    await new Promise<void>((resolve) => setImmediate(resolve));
-  }
-  throw new Error("the poll never reached Paperclip");
-}
