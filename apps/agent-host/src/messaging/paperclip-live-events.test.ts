@@ -1,3 +1,4 @@
+import { serverPairingSecretName } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { acme, type Desktop, startDesktop, testKey } from "./desktop-messaging.test-helper.ts";
@@ -144,6 +145,25 @@ verifies("agent-host.paperclip-live-events", () => {
       await on.wait(60_000);
 
       expect(on.sockets.opened).toHaveLength(1);
+    });
+
+    it("switching the workspace to a server closes its socket, and leaving the server opens a new one", async () => {
+      const on = await connectedWithEvents();
+      const { key } = await on.setting.read(on.workspace);
+      await on.keychain.set(serverPairingSecretName(key), on.server.token);
+      await on.setting.useServer(on.workspace, on.server.address);
+
+      await on.messaging.switchEngine(on.workspace);
+      await settle();
+      await on.wait(60_000);
+      expect(on.sockets.opened).toHaveLength(1);
+      expect(on.sockets.opened[0]?.closed).toBe(true);
+
+      await on.setting.useThisComputer(on.workspace);
+      await on.messaging.leaveServer(on.workspace);
+
+      expect(on.sockets.opened).toHaveLength(2);
+      expect(on.sockets.opened[1]?.closed).toBe(false);
     });
   });
 });

@@ -16,13 +16,7 @@ export {
   reconnectResetAfterMs,
   reconnectWaits,
 } from "./live-events-keeper.ts";
-export {
-  combinedState,
-  eventsBatchMs,
-  LiveSync,
-  type LiveSyncOptions,
-  liveSyncTimers,
-} from "./live-sync.ts";
+export { eventsBatchMs, LiveSync, type LiveSyncOptions } from "./live-sync.ts";
 export { type EventsState, type PollRates, pollRates } from "./poll-rates.ts";
 export {
   StoredAgentMessaging,
