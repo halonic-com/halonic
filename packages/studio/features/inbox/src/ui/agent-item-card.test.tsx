@@ -165,20 +165,78 @@ verifies("inbox.option-note", () => {
     return found;
   }
 
-  it("keeps Request changes off until its note is written, and says why with the field's label", async () => {
-    const { root } = await approvalCard();
+  async function press(root: HTMLElement, name: string) {
+    await act(async () => button(root, name).click());
+  }
+
+  it("shows no field until Request changes is pressed, then the field focused", async () => {
+    const { root, sent } = await approvalCard();
+    expect(root.querySelector("textarea")).toBeNull();
+    expect([...root.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "Approve",
+      "Reject",
+      "Request changes",
+    ]);
+
+    await press(root, "Request changes");
     const field = root.querySelector("textarea");
     expect(field?.labels?.[0]?.textContent).toBe("What should change?");
+    expect(document.activeElement).toBe(field);
+    expect([...root.querySelectorAll("button")].map((b) => b.textContent)).toEqual([
+      "Request changes",
+      "Cancel",
+    ]);
+    expect(sent).toEqual([]);
+  });
+
+  it("keeps Request changes off until its note is written, and says why with the field's label", async () => {
+    const { root } = await approvalCard();
+    await press(root, "Request changes");
     expect(button(root, "Request changes").getAttribute("aria-disabled")).toBe("true");
     expect(description(button(root, "Request changes"))).toBe("What should change?");
+  });
+
+  it("brings the buttons back and sends nothing on Cancel", async () => {
+    const { root, sent } = await approvalCard();
+    await press(root, "Request changes");
+    await type(root, "Lower the budget");
+    await press(root, "Cancel");
+    expect(root.querySelector("textarea")).toBeNull();
     expect(button(root, "Approve").getAttribute("aria-disabled")).not.toBe("true");
+    expect(document.activeElement).toBe(button(root, "Request changes"));
+    expect(sent).toEqual([]);
+  });
+
+  it("closes the field on Escape, as Cancel does", async () => {
+    const { root, sent } = await approvalCard();
+    await press(root, "Request changes");
+    const field = root.querySelector("textarea") as HTMLTextAreaElement;
+    await act(async () => {
+      field.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(root.querySelector("textarea")).toBeNull();
+    expect(sent).toEqual([]);
   });
 
   it("sends the note written under Request changes with the option", async () => {
     const { root, sent } = await approvalCard();
+    await press(root, "Request changes");
     await type(root, "Lower the budget");
     expect(button(root, "Request changes").getAttribute("aria-disabled")).not.toBe("true");
-    await act(async () => button(root, "Request changes").click());
+    await press(root, "Request changes");
     expect(sent).toEqual([{ kind: "option", option: "request-changes", note: "Lower the budget" }]);
+  });
+
+  it("writes the note and Your answer in the kit's field box", async () => {
+    const { root } = await approvalCard();
+    await press(root, "Request changes");
+    expect(root.querySelector("textarea")?.parentElement?.className).toContain(
+      "border-border-control",
+    );
+
+    const question = await questionCard();
+    expect(question.querySelector("textarea")?.parentElement?.className).toContain(
+      "border-border-control",
+    );
   });
 });

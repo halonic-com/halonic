@@ -10,7 +10,15 @@ import type {
   MessagingSource,
   WorkItem,
 } from "@halonicjs/ports";
-import { Avatar, Button, Callout, QuestionForm, waitingSince } from "@halonicjs/studio-kit";
+import {
+  Avatar,
+  Button,
+  Callout,
+  Field,
+  QuestionForm,
+  TextArea,
+  waitingSince,
+} from "@halonicjs/studio-kit";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   agentItemTitle,
@@ -110,8 +118,7 @@ export function AgentItemCard({
   const down = decided === null ? sourceDownLine(source, now()) : null;
   const reason = decided ?? down;
   const unavailable = reason === null ? undefined : { reason: reasonId };
-  const busy = (chosen: InboxAnswer) =>
-    sent.kind === "sending" && JSON.stringify(sent.answer) === JSON.stringify(chosen);
+  const busy = (chosen: InboxAnswer) => sent.kind === "sending" && sameChoice(sent.answer, chosen);
   const since = item.state.kind === "open" ? waitingSince(new Date(item.createdAt), now()) : null;
   const label = source?.label;
 
@@ -234,6 +241,17 @@ function Asker({
   );
 }
 
+/**
+ * Whether two answers are the same choice: an option is the same option whatever its note says, so
+ * its button stays busy while the note is edited during the send.
+ */
+function sameChoice(sending: InboxAnswer, chosen: InboxAnswer): boolean {
+  if (sending.kind === "option" && chosen.kind === "option") {
+    return sending.option === chosen.option;
+  }
+  return JSON.stringify(sending) === JSON.stringify(chosen);
+}
+
 function sentAfter(result: AnswerResult, chosen: InboxAnswer): Sent {
   switch (result.outcome) {
     case "answered":
@@ -351,21 +369,13 @@ export const emptyAnswerHint = "Write an answer to send it.";
 
 /** A question with no options takes a written answer. */
 function ReplyField({ value, onChange, unavailable, busy, onSend }: ReplyFieldProps) {
-  const fieldId = useId();
   const hintId = useId();
   const empty = value.trim() === "";
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor={fieldId} className="text-small text-fg-muted">
-        Your answer
-      </label>
-      <textarea
-        id={fieldId}
-        value={value}
-        rows={3}
-        onChange={(event) => onChange(event.target.value)}
-        className="focus-ring rounded-sm border border-border bg-surface px-3 py-2 text-body text-fg"
-      />
+      <Field label="Your answer">
+        <TextArea value={value} minRows={3} onChange={(event) => onChange(event.target.value)} />
+      </Field>
       <div className="flex flex-wrap items-center gap-3">
         <Button
           variant="primary"
