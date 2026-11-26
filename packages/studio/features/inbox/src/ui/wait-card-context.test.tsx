@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { RunEvent, RunSummary } from "@halonicjs/events";
-import { RunsList, type RunsSource } from "@halonicjs/studio-feature-runs/api";
+import { DamagedRunLog, RunsList, type RunsSource } from "@halonicjs/studio-feature-runs/api";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, Suspense } from "react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -12,6 +12,7 @@ import { render, renderSuspending, unmountAll } from "../test-support/render.tsx
 import { InboxView } from "./inbox-page.tsx";
 import { NeedsYouView } from "./needs-you-card.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
+import { useStartInput } from "./use-start-input.ts";
 import { button, openCard, press, reviewItem } from "./wait-card.test-helper.tsx";
 
 afterEach(unmountAll);
@@ -51,12 +52,15 @@ const log: RunEvent[] = [
   },
 ];
 
-/** A Runs source with `r2` of Support reply, whose provider `mock` is the test model. */
-function runsSource(): RunsSource {
+/**
+ * A Runs source with `r2` of Support reply, whose provider `mock` is the test model; `readLog`
+ * reads its log, by default `log`.
+ */
+function runsSource(readLog: () => Promise<RunEvent[]> = async () => log): RunsSource {
   const summaries: readonly RunSummary[] = [review];
   return {
     list: async () => summaries.map((summary) => ({ summary })),
-    log: async () => log,
+    log: readLog,
     workflow: () => ({
       name: "Support reply",
       stepDescription: (stateId) => (stateId === "review" ? description : undefined),
@@ -103,6 +107,8 @@ verifies("inbox.wait-context", () => {
       const meta = card?.querySelector("p");
       expect(meta?.textContent).toBe("Support reply · Sample answers");
       expect(title?.textContent).toBe("Approve this reply?");
+      // The title takes focus, so it names the meta line for a screen reader to read with it.
+      expect(title?.getAttribute("aria-describedby")).toBe(meta?.id);
       const quote = card?.querySelector("blockquote");
       const box = card === null || card === undefined ? null : draftBox(card);
       expect(quote?.textContent).toContain(mail);
@@ -147,6 +153,30 @@ verifies("inbox.wait-context", () => {
       expect(draftBox(root)?.textContent).toContain(note);
       expect(root.querySelector("blockquote")).toBeNull();
     });
+
+    it("leaves the draft out of a box when the step's description isn't known", () => {
+      // As in the served Studio for now: the closing words may be in the draft, so no box holds them.
+      const { root } = openCard({
+        item: reviewItem({
+          waitingFor: { title: "Approve this reply?", body: `${reply}\n\n${note}` },
+        }),
+      });
+      expect(draftBox(root)?.className).toBe("text-body");
+      expect(root.querySelector("h2")?.hasAttribute("aria-describedby")).toBe(false);
+    });
+  });
+
+  it("quotes the email from a damaged log, which still gives its start", async () => {
+    const source = runsSource(async () => {
+      throw new DamagedRunLog(3, log);
+    });
+    const item = reviewItem();
+    function Quote() {
+      return <p>{useStartInput(source, item, "mail")}</p>;
+    }
+    const root = render(<Quote />);
+    await settled();
+    expect(root.textContent).toBe(mail);
   });
 
   it("starts Needs you's row on Home with the same meta line", async () => {

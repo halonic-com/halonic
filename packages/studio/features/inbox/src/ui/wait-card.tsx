@@ -44,7 +44,7 @@ import {
   wasRefusedUntrusted,
 } from "./card-parts.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
-import { Caption, MetaLine, WaitBody } from "./wait-card-parts.tsx";
+import { Caption, MetaLine, showsMetaLine, WaitBody } from "./wait-card-parts.tsx";
 import {
   showsUntrusted,
   type TrustReview,
@@ -170,6 +170,8 @@ export function WaitCard(props: WaitCardProps) {
   const live = state.kind !== "answered" && !stale;
   const openRun = props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId);
   const { draft, note } = waitParts(item.body, props.description);
+  const metaId = useId();
+  const sample = props.sample === true;
 
   async function answer(event: string) {
     if (!guard.allows() || state.kind !== "open") return;
@@ -198,7 +200,7 @@ export function WaitCard(props: WaitCardProps) {
   const card = (
     <section ref={section} aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
-        <MetaLine workflow={props.workflow} sample={props.sample === true} />
+        <MetaLine id={metaId} workflow={props.workflow} sample={sample} />
         <CardHeader
           titleId={titleId}
           // Filled in from the run's context, so it can hold model output: mark what's hidden.
@@ -207,8 +209,14 @@ export function WaitCard(props: WaitCardProps) {
           since={live ? waitingSince(new Date(item.since), now()) : null}
           startedBy={props.startedBy}
           onOpenRun={openRun}
+          describedBy={showsMetaLine(props.workflow, sample) ? metaId : undefined}
         />
-        <WaitBody quote={props.quote} draft={draft} live={live} />
+        <WaitBody
+          quote={props.quote}
+          draft={draft}
+          live={live}
+          framed={props.description !== undefined}
+        />
         {item.movesOnAt === null || !live ? null : (
           <p className="text-small text-fg-muted">{movesOnLine(new Date(item.movesOnAt))}</p>
         )}
