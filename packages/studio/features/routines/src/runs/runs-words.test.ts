@@ -88,8 +88,8 @@ it("says queued times for one and for many", () => {
 });
 
 it("says when a run started", () => {
-  expect(runTime(at(10, 3, 9, 5), now)).toBe("09:05");
-  expect(runTime(at(10, 2, 9, 5), now)).toBe("yesterday");
-  expect(runTime(at(10, 1, 8, 12), now)).toBe("Sun 08:12");
-  expect(runTime(at(9, 20, 8), now)).toBe("20 Oct");
+  expect(runTime(at(10, 3, 9, 5), now, "en-GB")).toBe("09:05");
+  expect(runTime(at(10, 2, 9, 5), now, "en-GB")).toBe("Yesterday");
+  expect(runTime(at(10, 1, 8, 12), now, "en-GB")).toBe("Sun");
+  expect(runTime(at(9, 20, 8), now, "en-GB")).toBe("20 Oct");
 });

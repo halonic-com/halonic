@@ -1,3 +1,4 @@
+import { shortTime } from "@halonicjs/studio-kit";
 import { withFullStop } from "@halonicjs/studio-shell";
 import type { RoutineRun, RoutineRunStart, RoutineSkip, RoutineSkipReason } from "../api.ts";
 
@@ -188,15 +189,12 @@ export function queuedSentence(
     : `${when}: ${queued.count} times waiting to start, one after another`;
 }
 
-/** When a run started, for its row: "09:05" today, "yesterday", "Thu 08:12" this week, then the date. */
-export function runTime(iso: string, now: Date): string {
-  const moment = new Date(iso);
-  const ago = daysAgo(moment, now);
-  if (ago <= 0) return clock(moment);
-  if (ago === 1) return "yesterday";
-  if (ago < 7) return `${days[moment.getDay()]} ${clock(moment)}`;
-  const date = `${moment.getDate()} ${months[moment.getMonth()]}`;
-  return moment.getFullYear() === now.getFullYear() ? date : `${date} ${moment.getFullYear()}`;
+/**
+ * When a run started, for its row's name: the kit's short time (`kit.time-stamp`), as the row
+ * shows it, so "09:05" today, "Yesterday", "Thu" this week, then the date, in `locale`'s way.
+ */
+export function runTime(iso: string, now: Date, locale?: string): string {
+  return shortTime(new Date(iso), now, locale);
 }
 
 /** A time for the empty line: "Fri 6 Nov at 07:30". */

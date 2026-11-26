@@ -31,12 +31,16 @@ export function fullTime(at: Date, locale?: string): string {
   return format(at, locale, { dateStyle: "full", timeStyle: "short" });
 }
 
-/** Each formatter by locale and options: a long list asks for the same few on every render. */
+/**
+ * Each formatter by locale, options and time zone: a long list asks for the same few on every
+ * render. A formatter keeps the zone it was made in, so a computer that moves to another zone
+ * gets new ones, and its times keep agreeing with "Yesterday" and the weekday.
+ */
 const formatters = new Map<string, Intl.DateTimeFormat>();
 
 function format(at: Date, locale: string | undefined, options: Intl.DateTimeFormatOptions): string {
   const english = englishFor(locale);
-  const key = `${english} ${JSON.stringify(options)}`;
+  const key = `${english} ${zoneKey(at)} ${JSON.stringify(options)}`;
   let formatter = formatters.get(key);
   if (formatter === undefined) {
     formatter = new Intl.DateTimeFormat(english, options);
@@ -69,6 +73,15 @@ function englishOfRegion(locale: string | undefined): string {
   // Intl resolves a region it has no English data for to plain "en", which is US English.
   const resolved = new Intl.DateTimeFormat(english).resolvedOptions().locale;
   return resolved === english ? english : fallbackEnglish;
+}
+
+/**
+ * The local time zone, as cheaply as it can be told apart: its offsets in January and July of
+ * `at`'s year, which differ between zones that differ in summer time too.
+ */
+function zoneKey(at: Date): string {
+  const year = at.getFullYear();
+  return `${new Date(year, 0, 1).getTimezoneOffset()}/${new Date(year, 6, 1).getTimezoneOffset()}`;
 }
 
 /** The English a region without English data reads in (HAL-19540). */

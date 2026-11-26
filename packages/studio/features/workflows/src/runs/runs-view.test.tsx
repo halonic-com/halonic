@@ -72,6 +72,23 @@ verifies("workflows.runs.runs-view", () => {
     expect(seeAll).toHaveBeenCalledOnce();
   });
 
+  it("ends a row with the kit's short time of its start, with the full date on hover", async () => {
+    const yesterday = new Date(2026, 10, 8, 9, 0);
+    const { source } = memoryRuns([
+      runSummary({
+        id: "run_a_01done",
+        status: "completed",
+        state: null,
+        startedAt: yesterday.toISOString(),
+      }),
+    ]);
+    const page = await show(<Connected source={source} />);
+
+    const time = page.querySelector("li time");
+    expect(time?.textContent).toBe("Yesterday");
+    expect(time?.getAttribute("dateTime")).toBe(yesterday.toISOString());
+  });
+
   it("says there are no runs yet", async () => {
     const page = await show(<Connected source={memoryRuns().source} />);
 

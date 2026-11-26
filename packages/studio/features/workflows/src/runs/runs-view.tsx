@@ -4,6 +4,7 @@ import {
   EmptyState,
   SkeletonBar,
   StatusChip,
+  TimeStamp,
   usePresentation,
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useMemo, useRef } from "react";
@@ -61,10 +62,11 @@ export function RunsView({
   const rowButtons = useRef(new Map<string, HTMLButtonElement>());
   const { hubId, id } = workflow;
   const ready = load.kind === "ready" ? load.runs : undefined;
-  const rows = useMemo(
-    () => (ready ? runRowsOf(ready, { hubId, id }, source, new Date()) : []),
-    [ready, hubId, id, source],
-  );
+  // One clock for the rows and their times, so every row reads against the same moment.
+  const { rows, now } = useMemo(() => {
+    const read = new Date();
+    return { rows: ready ? runRowsOf(ready, { hubId, id }, source, read) : [], now: read };
+  }, [ready, hubId, id, source]);
 
   if (load.kind === "failed") {
     return (
@@ -147,7 +149,7 @@ export function RunsView({
                 </span>
                 <span className="flex min-w-0 flex-1 basis-48 items-center gap-3">
                   <span className="min-w-24 flex-1 truncate">{row.line}</span>
-                  <span className="text-small text-fg-muted">{row.time}</span>
+                  <TimeStamp at={new Date(row.startedAt)} now={now} />
                 </span>
               </button>
             </li>

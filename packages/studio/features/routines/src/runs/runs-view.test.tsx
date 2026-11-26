@@ -125,6 +125,21 @@ verifies("routines.runs.view", () => {
     ]);
   });
 
+  it("ends a run row with the kit's short time, and names it the same way", async () => {
+    const yesterday = new Date(2026, 10, 2, 9, 5);
+    const runs = [run("9hv3bw", { startedAt: yesterday.toISOString() })];
+    const page = await openRuns(
+      hostWith(async () => ({ runs, skips: [] })),
+      () => {},
+    );
+
+    const row = page.querySelector("li button");
+    expect(row?.querySelector("time")?.textContent).toBe("Yesterday");
+    expect(row?.getAttribute("aria-label")).toBe(
+      "Run 9hv3bw, done. Started: On schedule, Yesterday.",
+    );
+  });
+
   it("stacks a run row in two lines on a phone", async () => {
     const runs = { runs: [run("a1b2")], skips: [] };
     const page = await show(
