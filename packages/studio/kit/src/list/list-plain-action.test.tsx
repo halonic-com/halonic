@@ -60,13 +60,18 @@ verifies("kit.list-plain-action", () => {
     expect(container.querySelector('tr[data-row-id="notes"]')?.className).toContain("relative");
   });
 
-  it("hides the action and takes no clicks until the row is hovered or has focus", () => {
+  it("hides the action and takes no clicks until the row is hovered or has keyboard focus", () => {
     const { action } = renderPlain([notes(() => undefined)]);
     const classes = action("notes").className.split(" ");
     expect(classes).toEqual(expect.arrayContaining(["opacity-0", "pointer-events-none"]));
     expect(classes).toEqual(
-      expect.arrayContaining(["group-hover:opacity-100", "group-focus-within:opacity-100"]),
+      expect.arrayContaining(["group-hover:opacity-100", "group-has-[:focus-visible]:opacity-100"]),
     );
+    // Not on any focus: a click leaves focus on the button, and it would stay on a row without its fill.
+    expect(classes).not.toContain("group-focus-within:opacity-100");
+    // The row takes its fill on keyboard focus too, so the action never sits on a bare row.
+    const fill = action("notes").closest("tr")?.querySelector('[role="gridcell"]')?.className;
+    expect(fill?.split(" ")).toContain("group-has-[:focus-visible]:bg-surface-muted");
     // It covers the trailing part with the row's hover fill.
     expect(classes).toEqual(expect.arrayContaining(["absolute", "bg-surface-muted"]));
   });
@@ -92,9 +97,35 @@ verifies("kit.list-plain-action", () => {
     };
     const { cell } = renderPlain([late]);
     const dot = cell("digest").querySelector("[data-unread]");
-    const column = dot?.parentElement;
+    const column = dot?.closest('[data-part="end-column"]');
     expect(column?.textContent).toBe("Latenew");
-    expect(column?.className).toContain("flex-col");
+    // The chip at the top, on the title's first line; the dot at the bottom, on the meta line.
+    expect(column?.className.split(" ")).toEqual(
+      expect.arrayContaining(["flex-col", "justify-between"]),
+    );
+    expect(dot?.parentElement?.className.split(" ")).toContain("h-5");
+    // The column stretches to the text's height: it shares a box with the text, not the row.
+    expect(column?.parentElement?.firstElementChild?.textContent).toBe(
+      "Send the weekly digest?Weekly digest · run 0b44e1",
+    );
     expect(cell("digest").querySelectorAll("[data-unread]")).toHaveLength(1);
+  });
+
+  it("hides a row's chip while its action shows, so no edge of it shows round the action", () => {
+    const late = (hoverAction?: ListRow["hoverAction"]): ListRow => ({
+      id: "digest",
+      title: "Send the weekly digest?",
+      trailing: <StatusChip tone="warning">Late</StatusChip>,
+      ...(hoverAction === undefined ? {} : { hoverAction }),
+    });
+    const chipOf = (row: ListRow) =>
+      renderPlain([row]).cell("digest").querySelector('[data-part="end-column"]')
+        ?.firstElementChild;
+    const action = { label: "Mark as read", onClick: () => undefined };
+    expect(chipOf(late(action))?.className.split(" ")).toEqual(
+      expect.arrayContaining(["group-hover:opacity-0", "group-has-[:focus-visible]:opacity-0"]),
+    );
+    unmountAll();
+    expect(chipOf(late())?.className).not.toContain("opacity-0");
   });
 });

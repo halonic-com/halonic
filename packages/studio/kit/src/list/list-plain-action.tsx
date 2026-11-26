@@ -8,13 +8,15 @@ import type { AnyListRow } from "./list-props.ts";
 
 /**
  * The action sits over the end of the row's first line, where the trailing part or a time is,
- * with the row's hover fill so it covers what's under it, as `PlainRow`'s. The row is `relative`,
- * so the button is placed against the row, while its own cell takes no width. While hidden it
- * takes no clicks, so a tap opens the row; it stays a cell of the grid. An invisible `after:`
- * area makes its target 24px (WCAG 2.5.8).
+ * with the row's hover fill so it covers what's under it, as `PlainRow`'s. It shows while the row
+ * is hovered or has keyboard focus, as the row's fill does (`plainStateClasses`), so it never sits
+ * on a row without its fill: focus left on it by a click doesn't keep it shown (Sofia, HAL-20148).
+ * The row is `relative`, so the button is placed against the row, while its own cell takes no
+ * width. While hidden it takes no clicks, so a tap opens the row; it stays a cell of the grid. An
+ * invisible `after:` area makes its target 24px (WCAG 2.5.8).
  */
 const actionClasses =
-  "absolute end-3 -me-1 top-5 inline-flex min-h-5 items-center rounded-sm bg-surface-muted ps-2 pe-1 text-small text-fg-muted opacity-0 pointer-events-none transition-opacity duration-(--duration-fast) hover:text-fg focus-ring-inset after:absolute after:-inset-y-0.5 after:inset-x-0 after:content-[''] group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100";
+  "absolute end-3 -me-1 top-5 inline-flex min-h-5 items-center rounded-sm bg-surface-muted ps-2 pe-1 text-small text-fg-muted opacity-0 pointer-events-none transition-opacity duration-(--duration-fast) hover:text-fg focus-ring-inset after:absolute after:-inset-y-0.5 after:inset-x-0 after:content-[''] group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100";
 
 /** A row's own classes when its List has a `hoverAction`: the button is placed against the row. */
 export function hoverActionRow(hasHoverAction: boolean): string {

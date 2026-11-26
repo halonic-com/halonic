@@ -22,7 +22,9 @@ function rowParts(row: ListRow, plain: boolean) {
     <List label="Needs you" rows={[row]} onOpen={() => undefined} plain={plain} />,
   );
   const inside = container.querySelector('[role="gridcell"]')?.firstElementChild;
-  const [title, meta] = Array.from(inside?.querySelector(":scope > .flex-col")?.children ?? []);
+  // A plain row with an end column holds its text in a box with that column.
+  const text = inside?.querySelector(":scope > .flex-col, :scope > div > .flex-col");
+  const [title, meta] = Array.from(text?.children ?? []);
   return { cell: container.querySelector('[role="gridcell"]'), inside, title, meta };
 }
 

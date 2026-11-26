@@ -15,12 +15,13 @@ export interface RowStateClasses {
 }
 
 /**
- * The fills of a plain row in each state. The current row keeps `selected-forced`, so forced
+ * The fills of a plain row in each state. Keyboard focus in a row gives it the hover fill, so its
+ * `hoverAction`, shown then too, sits on the fill (HAL-20148). The current row keeps `selected-forced`, so forced
  * colours still outline it, but no accent bar: the fill alone marks it, as in the Messenger.
  */
 export const plainStateClasses = {
   default: {
-    fill: "transition-colors group-hover:bg-surface-muted group-active:bg-surface-muted",
+    fill: "transition-colors group-hover:bg-surface-muted group-active:bg-surface-muted group-has-[:focus-visible]:bg-surface-muted",
     row: "",
     main: "",
   },

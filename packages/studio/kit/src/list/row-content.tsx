@@ -192,19 +192,58 @@ function UnreadLine({
 }
 
 /**
- * The trailing part, and in a `plain` List an unread row's mark under it at the meta line's end,
- * so the marks line up in one column, under the chips and where a time would be (sketch D on
- * HAL-19192).
+ * The trailing part. In a `plain` List it sits on the title's first line and an unread row's mark
+ * on the meta line, at its end, so the marks line up in one column under the chips and where a
+ * time would be (sketch D on HAL-19192). The column stretches to the text's height, so both follow
+ * the text when the title wraps (Sofia, HAL-20148). While the row's `hoverAction` shows, it covers
+ * the chip, which hides so no edge of it shows round the action.
  */
 function EndColumn({ trailing, row, plain }: { readonly trailing: ReactNode } & PlainParts) {
-  if (!plain || row.unread === undefined) {
+  if (!plain) {
     return <span className="flex shrink-0 items-center">{trailing}</span>;
   }
+  const hides =
+    row.hoverAction === undefined
+      ? ""
+      : "group-hover:opacity-0 group-has-[:focus-visible]:opacity-0";
   return (
-    <span className="flex shrink-0 flex-col items-end gap-1.5">
-      {trailing}
-      <UnreadMark unread={row.unread} />
+    <span data-part="end-column" className="flex shrink-0 flex-col items-end justify-between">
+      <span className={`flex ${hides}`}>{trailing}</span>
+      {row.unread === undefined ? null : (
+        <span className="flex h-5 items-center">
+          <UnreadMark unread={row.unread} />
+        </span>
+      )}
     </span>
+  );
+}
+
+/**
+ * In a `plain` List the text and the end column share a box as tall as the text, so the chip sits
+ * on the title's first line and the mark on the meta line; elsewhere the text alone.
+ */
+function TextAndEnd({
+  plain,
+  end,
+  children,
+}: {
+  readonly plain: boolean;
+  readonly end: ReactNode;
+  readonly children: ReactNode;
+}) {
+  if (!plain || end === null) {
+    return (
+      <>
+        {children}
+        {end}
+      </>
+    );
+  }
+  return (
+    <div className="flex min-w-0 flex-1 gap-3">
+      {children}
+      {end}
+    </div>
   );
 }
 
@@ -279,24 +318,28 @@ export function RowContent({
       className={boxClasses({ row, plain, phone, dense, afterCheck, hasMeta: meta !== undefined })}
     >
       <Leading row={row} small={dense && !phone} sidebar={plain} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TitleLine row={row} plain={plain} />
-        <UnreadLine row={row} plain={plain} markBelowTrailing={showTrailingRight}>
-          <MetaLine
-            row={row}
-            text={meta}
-            id={reasonId}
-            chip={trailingBelow ? trailing : undefined}
-            full={plain && row.unread !== undefined}
-            plain={plain}
-          />
-        </UnreadLine>
-        {row.under}
-        {row.actions === undefined || row.actions.length === 0 ? null : (
-          <RowActions actions={row.actions} actionCell={actionCell} />
-        )}
-      </div>
-      {showTrailingRight ? <EndColumn trailing={trailing} row={row} plain={plain} /> : null}
+      <TextAndEnd
+        plain={plain}
+        end={showTrailingRight ? <EndColumn trailing={trailing} row={row} plain={plain} /> : null}
+      >
+        <div className="flex min-w-0 flex-1 flex-col">
+          <TitleLine row={row} plain={plain} />
+          <UnreadLine row={row} plain={plain} markBelowTrailing={showTrailingRight}>
+            <MetaLine
+              row={row}
+              text={meta}
+              id={reasonId}
+              chip={trailingBelow ? trailing : undefined}
+              full={plain && row.unread !== undefined}
+              plain={plain}
+            />
+          </UnreadLine>
+          {row.under}
+          {row.actions === undefined || row.actions.length === 0 ? null : (
+            <RowActions actions={row.actions} actionCell={actionCell} />
+          )}
+        </div>
+      </TextAndEnd>
       {chevron ? (
         <span data-part="row-chevron" className="flex size-icon-md shrink-0 text-fg-subtle">
           <ChevronRightIcon />
