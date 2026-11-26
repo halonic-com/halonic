@@ -39,6 +39,7 @@
     "@halonicjs/studio-services"
   ],
   "toolingUsesCore": [
+    "@halonicjs/tooling-discover",
     "@halonicjs/tooling-paperclip"
   ],
   "extraExports": {
