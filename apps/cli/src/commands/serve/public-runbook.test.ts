@@ -88,6 +88,13 @@ verifies("cli.commands.serve.public-runbook", () => {
     expect(reviews).toBeLessThan(route);
   });
 
+  it("lets the board in with Allow and the desktops with Service Auth, and bypasses nothing", () => {
+    const access = runbook.slice(stepAt("2\\. Put Access"), stepAt("3\\. Limit pairing"));
+    expect(access).toMatch(/\*\*Allow\*\*/u);
+    expect(access).toMatch(/\*\*Service Auth\*\*/u);
+    expect(access).not.toMatch(/\*\*Bypass\*\*/u);
+  });
+
   it("names no real domain in its commands", () => {
     const code = blocks.flatMap((block) => block.lines).join("\n");
     const placeholders = code

@@ -20,7 +20,7 @@ page are in
 | --- | --- |
 | Public name | `engine.<your domain>`, in the same Cloudflare account as Paperclip's |
 | Unit override | `/etc/systemd/system/halonic-engine.service.d/public.conf`: `serve --public-origin` |
-| Access application | `engine.<your domain>`, every path, the same policy as Paperclip |
+| Access application | `engine.<your domain>`, every path: Paperclip's policy plus a service token per desktop |
 | Rate-limiting rule | `POST /api/pair` and `POST /api/devices/code` on `engine.<your domain>` |
 | Tunnel route | `engine.<your domain>`, path `^/api/`, to `http://127.0.0.1:4747` |
 
@@ -32,9 +32,11 @@ makes the name resolve, comes only after both reviews.
 
 - Part 1 is done, and its step 7 checks pass.
 - The deployed commit logs every finished request to the journal, as
-  `<method> <path> <status>`, with no query, header or body.
-- The paired desktop's way through Access is decided. Until it is, a desktop
-  can't pair through the public name. Step 2 says where it goes.
+  `<method> <path> <status>`, with no query, header or body
+  ([`cli.commands.serve.request-log`](../../apps/cli/src/commands/serve/requirements/request-log.md)).
+- The board's desktop runs a build whose pairing dialog has the "Access client
+  ID" and "Access client secret" fields. Without them the desktop can't get
+  past Access, so it can't pair through the public name.
 
 ## 1. Serve at the public name
 
@@ -83,15 +85,26 @@ In Cloudflare Zero Trust, under Access, Applications, add a self-hosted
 application:
 
 - Domain: `engine.<your domain>`, with no path, so it covers every path.
-- Policies: the same as Paperclip's main application, so only the board's
-  identities get in.
+- Policies, two of them:
+  1. **Allow**, with the same rules as Paperclip's main application, so only
+     the board's identities get in with a browser.
+  2. **Service Auth**, including the service tokens of the board's desktops
+     (made below). A desktop calls the server with no browser, so this is its
+     way through.
 - Add no bypass policy for `/api/*`. On Paperclip's name the API bypasses
   Access because the desktop engine calls it; here `/api/*` is the whole name,
   so a bypass would leave nothing behind Access.
 
-The paired desktop needs its own way through this application, because it
-calls the server with no browser. That is decided separately; add it to the
-policies here once it is.
+Then make one service token per desktop, under Access, Service auth, Service
+tokens. Name it after the desktop, and copy its client ID and client secret
+straight into that desktop's pairing dialog in step 6; Cloudflare shows the
+secret only once. Keep the token nowhere else: no file, note or task. The
+desktop stores both in its keychain and sends them only to
+`https://engine.<your domain>`.
+
+To cut one desktop off, revoke its token here: Access refuses it before the
+server sees the request. When a token is rotated, enter the new pair in the
+same server setting on that desktop; it doesn't need to pair again.
 
 ## 3. Limit pairing at Cloudflare
 
@@ -162,7 +175,8 @@ In a browser signed in to Access:
 On the server:
 
 6. Make a pairing code with `engine serve pair` (the `engine` helper from part
-   1) and pair the board's desktop. The journal shows a `POST /api/pair` line
+   1) and pair the board's desktop through `https://engine.<your domain>`,
+   with its service token in the pairing dialog. The journal shows a `POST /api/pair` line
    with status `200`, and neither the code nor the token:
 
    ```sh
