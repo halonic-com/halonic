@@ -51,6 +51,8 @@ export class FakePaperclip {
    * answer empty lists, so a whole poll works and fills the local copy (`agent-host.paperclip-sync`).
    */
   servesInbox = false;
+  /** When set, a request to `path` waits for `until` after it is seen: a read held open. */
+  hold: { path: string; until: Promise<void> } | undefined;
 
   /**
    * When set, every object in every answer also carries fields no app may
@@ -77,6 +79,7 @@ export class FakePaperclip {
       method: request.method,
       authorization: request.headers.get("authorization"),
     });
+    if (new URL(request.url).pathname === this.hold?.path) await this.hold.until;
     if (this.refusesKey) return json({ error: "Unauthorized" }, 401);
     const path = new URL(request.url).pathname;
     if (path === `/api/companies/${acme.company}/agents`) {

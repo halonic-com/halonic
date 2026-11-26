@@ -21,8 +21,10 @@ to send later.
 ## Tests
 
 No test was weakened, skipped or deleted. `paperclip-sync.test.ts` in `apps/agent-host` checks
-that Disconnect deletes the local copy's files. The desktop test helper's fake Paperclip gets an
-opt-in `servesInbox` switch, off by default, so the existing tests see the same answers as before.
+that Disconnect deletes the local copy's files, also when a poll that was still reading Paperclip
+ends after Disconnect (it fails without the fix that closes the held copy first). The desktop test
+helper's fake Paperclip gets two opt-in switches, both off by default, so the existing tests see
+the same answers as before: `servesInbox`, and `hold`, which holds one route's answer open.
 
 ## Covers
 

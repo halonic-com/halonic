@@ -293,12 +293,15 @@ export class WorkspaceMessaging {
   /** Forgets the connection's key, drops its provider and deletes its cache. */
   async #drop(connection: string): Promise<void> {
     const source = paperclipSourceId(connection);
+    const stored = this.#stored.get(connection);
     this.#options.keys.forget({ workspace: this.#options.workspace, connection });
     this.#providers.delete(connection);
     this.#stored.delete(connection);
     this.#teams.delete(connection);
     this.#rejoin();
     await this.#served.clear(source);
+    // Closes the held copy first, so a poll, answer or send still in flight can't write it again.
+    await stored?.clear();
     // Also a copy saved before this start, when no provider holds it.
     await syncFiles(this.#options.cacheFolder, source, this.#options.warn).clear();
     await this.#team.clear(source);
