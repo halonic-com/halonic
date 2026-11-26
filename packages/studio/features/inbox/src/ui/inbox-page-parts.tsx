@@ -1,7 +1,6 @@
-// The Inbox page's layout parts: the list's title and column, a phone's bar over the open item,
-// and the item the decided card's **Next** opens. Kept apart from `InboxView`, which puts them together.
+// The Inbox page's layout parts: the list's title and column, the open item's place, and the item
+// the decided card's **Next** opens. Kept apart from `InboxView`, which puts them together.
 
-import { Button } from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 import type { NextItem } from "./card-parts.tsx";
@@ -42,11 +41,11 @@ export function listPaneClass(onePane: boolean, itemOpen: boolean): string {
 }
 
 /**
- * The open item's column: beside the list, else (one pane at a time) the whole page while an
- * item or an agent's card is open, and gone while none is.
+ * The open item's column, its header over its card: beside the list, else (one pane at a time)
+ * the whole page while an item or an agent's card is open, and gone while none is.
  */
 export function itemPaneClass(onePane: boolean, itemOpen: boolean): string {
-  return `${onePane && !itemOpen ? "hidden" : "flex"} min-w-0 flex-1 justify-center overflow-y-auto`;
+  return `${onePane && !itemOpen ? "hidden" : "flex"} min-w-0 flex-1 flex-col overflow-y-auto`;
 }
 
 /** A row that waits, in list order, with how many items it holds (an agents' bundle holds several). */
@@ -69,33 +68,6 @@ export function placeOf(key: string | undefined, order: readonly WaitingRow[]): 
   const index = order.findIndex((row) => row.key === key);
   if (index === -1) return null;
   return `${needsYouCount(order.slice(0, index)) + 1} of ${needsYouCount(order)}`;
-}
-
-/**
- * The bar over the open item: with one pane at a time, which is pushed like a page (HAL-11945
- * Q12), **Back to Inbox**; and, while the item waits, where it is among what waits ("2 of 6"), on
- * the desktop too (design review HAL-18481, 7).
- */
-export function ItemPageBar({
-  back,
-  place,
-  close,
-}: {
-  readonly back: boolean;
-  readonly place: string | null;
-  readonly close: () => void;
-}) {
-  if (!back && place === null) return null;
-  return (
-    <div className="flex items-center justify-between gap-3 px-2 pt-2">
-      {back ? (
-        <Button variant="ghost" size="touch" onClick={close}>
-          Back to Inbox
-        </Button>
-      ) : null}
-      {place === null ? null : <p className="ms-auto pe-2 text-small text-fg-muted">{place}</p>}
-    </div>
-  );
 }
 
 /**

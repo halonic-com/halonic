@@ -113,9 +113,7 @@ verifies("inbox.list-motion", () => {
       expect(motion.swap).toHaveBeenLastCalledWith(itemPane, expect.any(Function), "in");
       expect(root.querySelector("section h2")).not.toBeNull();
 
-      const back = [...root.querySelectorAll("button")].find(
-        (button) => button.textContent === "Back to Inbox",
-      );
+      const back = root.querySelector<HTMLButtonElement>('button[aria-label="Back to Inbox"]');
       await act(async () => back?.click());
       const listPane = root.querySelector('[data-pane="list"]');
       expect(motion.swap).toHaveBeenLastCalledWith(listPane, expect.any(Function), "back");

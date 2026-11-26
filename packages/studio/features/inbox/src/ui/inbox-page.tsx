@@ -41,7 +41,6 @@ import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
-  ItemPageBar,
   itemPaneClass,
   ListHeader,
   listPaneClass,
@@ -50,6 +49,7 @@ import {
   placeOf,
 } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
+import { ItemHeader, openHeading } from "./item-header.tsx";
 import { type InboxMotion, kitMotion, useGlidingState } from "./list-motion.ts";
 import { failureReason, isSignedOut, loadFailed, openItemWords, StaleLine } from "./load-lines.tsx";
 import { needsYouListed } from "./needs-you-listed.ts";
@@ -290,6 +290,8 @@ export function InboxView({
     sheetOpen: requestSheetOpen,
     announce,
   });
+  const place = placeOf(open?.key ?? agent.openKey, waitingOrder);
+  const heading = openHeading(open, place !== null, agent.heading, now(), runFacts);
   const request = useRequestPane({
     inbox,
     requests,
@@ -391,14 +393,11 @@ export function InboxView({
       </div>
       {request.sheet}
       <div ref={itemPane} data-pane="item" className={itemPaneClass(onePane, anyOpen)}>
-        <div className="flex w-full max-w-190 flex-col">
-          {anyOpen ? (
-            <ItemPageBar
-              back={onePane}
-              place={placeOf(open?.key ?? agent.openKey, waitingOrder)}
-              close={close}
-            />
-          ) : null}
+        {heading === undefined ? null : (
+          <ItemHeader heading={heading} back={onePane} place={place} close={close} />
+        )}
+        {/* Fills the pane under the header, so a card's body scrolls with its answers in sight. */}
+        <div className="mx-auto flex min-h-0 w-full max-w-190 flex-1 flex-col short:min-h-auto">
           {open === null ? (
             agent.card(
               now,

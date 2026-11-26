@@ -91,9 +91,18 @@ export function agentItemMeta(
   source: MessagingSource | undefined,
   now: Date,
 ): string {
+  const waiting = waitingFor(new Date(item.createdAt), now);
+  const asker = agentItemAsker(item, source);
+  return asker === "" ? waiting : `${asker} · ${waiting}`;
+}
+
+/**
+ * Where an item comes from and who asks, the meta line without its wait: "Paperclip · Acme ·
+ * Chief". An answered card's header ends there, since the item no longer waits (HAL-19913).
+ */
+export function agentItemAsker(item: AgentItem, source: MessagingSource | undefined): string {
   const from = item.from.kind === "me" ? [] : [authorName(item.from)];
-  const parts = [...(source === undefined ? [] : [source.label]), ...from];
-  return [...parts, waitingFor(new Date(item.createdAt), now)].join(" · ");
+  return [...(source === undefined ? [] : [source.label]), ...from].join(" · ");
 }
 
 /**

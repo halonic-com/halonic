@@ -74,9 +74,9 @@ async function open(row: HTMLTableRowElement) {
   await settled();
 }
 
-/** The open item's place, "2 of 6", in the bar over it. */
+/** The open item's place, "2 of 6", at the end of the header over it. */
 function place(root: HTMLElement): string | undefined {
-  return root.querySelector('[data-pane="item"] p.ms-auto')?.textContent ?? undefined;
+  return root.querySelector('[data-pane="item"] header > p')?.textContent ?? undefined;
 }
 
 verifies("inbox.row-marks", () => {
@@ -162,18 +162,110 @@ verifies("inbox.agent-asks", () => {
   });
 });
 
+/** The first button labelled `name`; a kit button's text also holds its busy label. */
+function buttonNamed(root: HTMLElement, name: string): HTMLButtonElement | undefined {
+  return [...root.querySelectorAll("button")].find((button) =>
+    button.textContent?.startsWith(name),
+  );
+}
+
+/** Answers the first open card Yes. */
+async function answerFirstCard(root: HTMLElement): Promise<void> {
+  const card = root.querySelector("section") as HTMLElement;
+  await act(async () => {
+    buttonNamed(card, "Yes")?.click();
+  });
+  await settled();
+}
+
+/** The header over the open item. */
+function itemHeader(root: HTMLElement): HTMLElement {
+  const header = root.querySelector<HTMLElement>('[data-pane="item"] header');
+  if (header === null) throw new Error("no header over the open item");
+  return header;
+}
+
 verifies("inbox.header-avatar", () => {
-  it("puts the asker's 40px picture before who asks and the title", async () => {
+  it("heads an agent's item with the asker's 40px picture and its title, and the card has no picture", async () => {
     const { messaging } = acme("Ship 0.2 today?");
     const { root } = await openInbox(fakeRuns([]).runs, messaging);
     await open(rowTitled(root, "Ship 0.2 today?"));
-    const card = root.querySelector("section") as HTMLElement;
-    const picture = card.querySelector('[aria-hidden="true"]') as HTMLElement;
+    const header = itemHeader(root);
+    const picture = header.querySelector('[aria-hidden="true"]') as HTMLElement;
     expect(picture.textContent).toBe("C");
     expect(picture.className.split(" ")).toContain("size-10");
-    const beside = picture.nextElementSibling as HTMLElement;
-    expect(beside.querySelector("p")?.textContent).toBe("Chief · Chief of Staff asks");
-    expect(beside.querySelector("h2")?.textContent).toBe("Ship 0.2 today?");
+    expect(header.querySelector("h2")?.textContent).toBe("Ship 0.2 today?");
+    expect(header.querySelector("h2 + p")?.textContent).toContain("Paperclip · Acme");
+    const card = root.querySelector("section") as HTMLElement;
+    expect(card.querySelector("p")?.textContent).toBe("Chief · Chief of Staff asks");
+    expect(card.querySelector(".size-10")).toBeNull();
+  });
+
+  it("heads one of the Inbox's own items with its mark at 40px, and says its place", async () => {
+    const { root } = await openInbox(fakeRuns([notes, review]).runs);
+    await open(rowTitled(root, "create_note"));
+    const header = itemHeader(root);
+    const mark = header.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(mark.className.split(" ")).toContain("size-10");
+    expect(mark.querySelector("svg rect")).not.toBeNull();
+    expect(header.querySelector("h2")?.textContent).toContain("create_note");
+    expect(place(root)).toBe("1 of 2");
+  });
+
+  it("ends an answered card's line at who asks, with no wait and no place", async () => {
+    const messaging = new FakeAgentMessaging({ now });
+    const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+    const chief = messaging.addAgent(source.id, { name: "Chief", title: "Chief of Staff" });
+    const item = messaging.addInboxItem(source.id, {
+      question: "Ship 0.2 today?",
+      from: { kind: "agent", agent: chief.id, name: "Chief" },
+    });
+    const { root } = await openInbox(fakeRuns([]).runs, messaging);
+    await open(rowTitled(root, "Ship 0.2 today?"));
+    expect(itemHeader(root).querySelector("h2 + p")?.textContent).toContain("Waiting");
+
+    await act(async () => {
+      messaging.answerElsewhere(item.id, { kind: "me" }, { kind: "reply", text: "Tomorrow" });
+    });
+    await settled();
+    expect(itemHeader(root).querySelector("h2")?.textContent).toBe("Ship 0.2 today?");
+    expect(itemHeader(root).querySelector("h2 + p")?.textContent).toBe("Paperclip · Acme · Chief");
+    expect(place(root)).toBeUndefined();
+  });
+
+  it("leads the header with one pane with a back arrow named Back to Inbox, not the words", async () => {
+    const { root } = await openInbox(fakeRuns([notes]).runs, undefined, true);
+    await open(rowTitled(root, "create_note"));
+    const back = itemHeader(root).querySelector('button[aria-label="Back to Inbox"]');
+    expect(back?.querySelector("svg")).not.toBeNull();
+    expect(back?.textContent).toBe("");
+  });
+
+  it("keeps heading a bundle with what still waits once its first card is answered", async () => {
+    const { messaging } = acme("Ship 0.2 today?", "Move the board meeting?");
+    const { root } = await openInbox(fakeRuns([]).runs, messaging);
+    await open(rowTitled(root, "2 cards from Chief"));
+    expect(itemHeader(root).querySelector("h2")?.textContent).toBe("2 cards from Chief");
+
+    await answerFirstCard(root);
+    const header = itemHeader(root);
+    expect(header.querySelector("h2")?.textContent).toBe("Move the board meeting?");
+    expect(header.querySelector("h2 + p")?.textContent).toContain("Waiting");
+    expect(place(root)).toBe("1 of 1");
+  });
+
+  it("drops the wait from an approval's header line once you decide it", async () => {
+    const { root } = await openInbox(fakeRuns([notes, review]).runs);
+    await open(rowTitled(root, "create_note"));
+    expect(itemHeader(root).textContent).toContain("Waiting");
+
+    await act(async () => {
+      buttonNamed(root, "Approve")?.click();
+    });
+    await settled();
+    expect(root.textContent).toContain("Approved by you");
+    expect(itemHeader(root).textContent).not.toContain("Waiting");
+    expect(place(root)).toBeUndefined();
   });
 
   it("keeps the list's rows at the sidebar's 60px", async () => {
