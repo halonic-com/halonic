@@ -46,6 +46,10 @@ hand it in, with the key behind its guard.
   `connection`); and a refused Send, which keeps the window open with **Try again**. The sender
   answers `taken` or `refused` with Paperclip's reason. The crop that couldn't be loaded offers
   **Select again** only where the page gets `selectAgain`.
+- `help/`: **Help › Quick ask ({keys})** and its Ctrl K entry, which show quick ask's box through
+  the app's `AskOpenerService` (`feedback.help-quick-ask`), and `AskKeysTextService`, quick ask's
+  keys as a sentence names them, which the first-run card reads too. Keys that don't work aren't
+  named.
 
 The still and the shortcut's saved value are the shell's (`apps/studio/src-tauri/src/feedback_*.rs`).
 

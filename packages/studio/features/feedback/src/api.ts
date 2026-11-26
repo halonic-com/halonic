@@ -30,3 +30,22 @@ export interface FeedbackSettingsHost {
 /** The desktop app's {@link FeedbackSettingsHost}. */
 export const FeedbackSettingsService: ServiceKey<FeedbackSettingsHost> =
   serviceKey<FeedbackSettingsHost>("feedback.settings");
+
+/**
+ * Quick ask's keys as a sentence names them: "Ctrl+Alt+Space", and "⌥Space" on macOS, as its
+ * menus write them. For whatever tells people the box is there: Help › Quick ask, its Ctrl K
+ * entry and the first-run card's line (`feedback.help-quick-ask`, `first-run.you-did-it-quick-ask`).
+ */
+export interface AskKeysText {
+  /**
+   * The keys now; `undefined` until the shell has said them, and while they don't work (taken,
+   * Wayland or unavailable), so nothing names keys that do nothing.
+   */
+  current(): string | undefined;
+  /** Calls `listener` when the keys change; returns a function that stops the calls. */
+  subscribe(listener: () => void): () => void;
+}
+
+/** The feedback feature's {@link AskKeysText}, in every window; it names keys only in Studio's own. */
+export const AskKeysTextService: ServiceKey<AskKeysText> =
+  serviceKey<AskKeysText>("feedback.ask-keys-text");

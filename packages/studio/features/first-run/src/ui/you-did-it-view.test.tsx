@@ -151,3 +151,65 @@ verifies("first-run.you-did-it", () => {
     expect(close).toHaveBeenCalledOnce();
   });
 });
+
+/** Quick ask's keys as the feedback feature names them, changed with `set`. */
+function askKeysNamed(keys: string | undefined) {
+  let current = keys;
+  const listeners = new Set<() => void>();
+  return {
+    current: () => current,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    set(next: string | undefined) {
+      current = next;
+      for (const listener of [...listeners]) listener();
+    },
+  };
+}
+
+verifies("first-run.you-did-it-quick-ask", () => {
+  it("ends What next? with quick ask's keys while they work", async () => {
+    const askKeys = askKeysNamed("Ctrl+Alt+Space");
+    const root = await render(
+      <YouDidItView
+        item={item}
+        runs={runsWith("ollama", finished())}
+        askKeys={askKeys}
+        close={() => {}}
+        openItem={() => {}}
+      />,
+    );
+    const lines = [...root.querySelectorAll("li")].map((each) => each.textContent);
+    expect(lines.at(-1)).toBe("Ask an agent from any app: Ctrl+Alt+Space");
+
+    await act(async () => askKeys.set("⌥Space"));
+    expect(text(root)).toContain("Ask an agent from any app: ⌥Space");
+  });
+
+  it("leaves the line out while the keys don't work, and without them", async () => {
+    const askKeys = askKeysNamed(undefined);
+    const root = await render(
+      <YouDidItView
+        item={item}
+        runs={runsWith("ollama", finished())}
+        askKeys={askKeys}
+        close={() => {}}
+        openItem={() => {}}
+      />,
+    );
+    expect(text(root)).toContain("What next?");
+    expect(text(root)).not.toContain("Ask an agent from any app");
+
+    const without = await render(
+      <YouDidItView
+        item={item}
+        runs={runsWith("ollama", finished())}
+        close={() => {}}
+        openItem={() => {}}
+      />,
+    );
+    expect(text(without)).not.toContain("Ask an agent from any app");
+  });
+});

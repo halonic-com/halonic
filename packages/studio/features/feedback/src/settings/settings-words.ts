@@ -34,6 +34,14 @@ export function askKeysTakenLine(shortcut: string): string {
   return `${shortcut} is taken by another app. Pick another key.`;
 }
 
+/**
+ * Help's and Ctrl K's entry for the box: "Quick ask (Ctrl+Alt+Space)", and plain "Quick ask" while
+ * its keys don't work, so it never names keys that do nothing (HAL-19400).
+ */
+export function quickAskEntry(keys: string | undefined): string {
+  return keys === undefined ? settingsWords.quickAsk : `${settingsWords.quickAsk} (${keys})`;
+}
+
 /** "Couldn't save "Send feedback" on this computer.", as Settings says a failed save. */
 export function notSavedLine(name: string): string {
   return `Couldn't save "${name}" on this computer.`;
