@@ -28,6 +28,8 @@ export const liamFiles: readonly string[] = [
   "tooling/paperclip/requirements/merge-control-nora-scope.md",
   // Builds the routed pull request (origin, old paths) that decides Nora's scope in pr_status and the watcher.
   "tooling/paperclip/src/pr-tools/manifests.ts",
+  // Decides which pushes keep their approval: the change id `approval.ts` carries approvals by (HAL-19585).
+  "tooling/paperclip/src/pr-watcher/rebase-only.ts",
   // What the live Merger's loader needs from them (HAL-18282).
   "tooling/paperclip/requirements/reviewer-paths-standalone.md",
   // Who covers each role: the routing is a trust root (HAL-17982).
