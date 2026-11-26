@@ -79,10 +79,10 @@ verifies("kit.plain-row-size", () => {
     expect(classesOf(button)).not.toContain("py-2.5");
   });
 
-  it("draws a plain List's row at least 80px high with a 60px avatar, a 15px title, a 14px line", () => {
+  it("draws a plain List's row 80px high with a 60px avatar, a 15px title, a 14px line", () => {
     const { inside, leading, title, meta } = renderListRow(true);
 
-    expect(classesOf(inside)).toEqual(expect.arrayContaining(["min-h-20", "py-2.5"]));
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-20", "py-2.5"]));
     expect(classesOf(leading)).toContain("size-15");
     expect(classesOf(title)).toContain("text-reading");
     expect(classesOf(meta)).toContain("text-body");
@@ -116,10 +116,10 @@ verifies("kit.plain-row-size", () => {
     expect([canvas.width, canvas.height]).toEqual([60, 60]);
   });
 
-  it("keeps a plain List's row at least 80px on a phone, with its 60px avatar", () => {
+  it("keeps a plain List's row 80px on a phone, with its 60px avatar", () => {
     const { inside, leading } = renderListRow(true, true);
 
-    expect(classesOf(inside)).toEqual(expect.arrayContaining(["min-h-20", "py-2.5"]));
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-20", "py-2.5"]));
     expect(classesOf(inside)).not.toContain("min-h-14");
     expect(classesOf(leading)).toContain("size-15");
   });

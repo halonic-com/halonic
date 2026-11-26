@@ -34,10 +34,15 @@ verifies("kit.plain-row-fit", () => {
     expect(classesOf(title)).toEqual(expect.arrayContaining(["line-clamp-2", "leading-5"]));
     expect(classesOf(meta)).not.toContain("line-clamp-2");
     expect(meta?.querySelector("span")?.className).toContain("truncate");
-    // 10px above and below and the text's 60px: the row keeps its 80px, and centres a short title.
-    expect(classesOf(inside)).toEqual(
-      expect.arrayContaining(["min-h-20", "py-2.5", "items-center"]),
-    );
+    // 10px above and below and the text's 60px: exactly 80px, not a minimum, and a short title centred.
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-20", "py-2.5", "items-center"]));
+    expect(classesOf(inside)).not.toContain("min-h-20");
+  });
+
+  it("lets a plain row with a part under its meta line grow rather than clip it", () => {
+    const { inside } = rowParts({ ...refund, under: <span>Two files</span> }, true);
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["min-h-20", "py-2.5"]));
+    expect(classesOf(inside)).not.toContain("h-20");
   });
 
   it("keeps the whole title and line in what screen readers hear", () => {

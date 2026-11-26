@@ -89,6 +89,7 @@ verifies("inbox.proposal-page", () => {
     const title = spanWith(root, "Approve the refund for the Acme order from last week");
     expect(title?.className).toContain("line-clamp-2");
     expect(title?.className).toContain("leading-5");
-    expect(title?.closest('[role="gridcell"]')?.firstElementChild?.className).toContain("min-h-20");
+    const inside = title?.closest('[role="gridcell"]')?.firstElementChild;
+    expect(inside?.className.split(" ")).toContain("h-20");
   });
 });

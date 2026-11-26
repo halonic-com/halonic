@@ -16,19 +16,9 @@ import { Leading, lineFit, MetaLine } from "./row-parts.tsx";
 /**
  * The row's height, from the presentation, the density and whether it has a meta line. A row that
  * wraps, or only wraps its title or meta line, grows past it, so on a desktop it gets padding too, keeping its
- * text off the lines. A `plain` row is a sidebar's: at least 80px with 10px above and below, on a
- * phone too (HAL-19735, `kit.plain-row-size`).
+ * text off the lines. A `plain` row has its own height, `plainHeight`.
  */
-function heightClasses(
-  phone: boolean,
-  dense: boolean,
-  hasMeta: boolean,
-  wrap: boolean,
-  plain: boolean,
-): string {
-  if (plain) {
-    return "min-h-20 py-2.5";
-  }
+function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean, wrap: boolean): string {
   if (phone) {
     return dense ? "min-h-touch py-2" : "min-h-14 py-3";
   }
@@ -37,6 +27,18 @@ function heightClasses(
     return `min-h-control-md touch:min-h-touch ${padding}`;
   }
   return `${hasMeta ? "min-h-14" : "min-h-control-lg touch:min-h-touch"} ${padding}`;
+}
+
+/**
+ * A `plain` row's height: a sidebar's row, exactly 80px with 10px above and below, on a phone too
+ * (HAL-19735, `kit.plain-row-size`). Its title and meta line fit in the 60px between
+ * (`kit.plain-row-fit`), so the height is fixed rather than a minimum: the board's correction on
+ * HAL-10 (HAL-20019). A part under the meta line or text buttons need more room, so such a row
+ * may grow rather than clip them.
+ */
+function plainHeight(row: AnyListRow): string {
+  const grows = row.under !== undefined || (row.actions !== undefined && row.actions.length > 0);
+  return grows ? "min-h-20 py-2.5" : "h-20 py-2.5";
 }
 
 /**
@@ -230,7 +232,7 @@ export function RowContent({
 
   return (
     <div
-      className={`flex items-center gap-3 ${inset(plain, afterCheck)} ${heightClasses(phone, dense, meta !== undefined, wrap, plain)}`}
+      className={`flex items-center gap-3 ${inset(plain, afterCheck)} ${plain ? plainHeight(row) : heightClasses(phone, dense, meta !== undefined, wrap)}`}
     >
       <Leading row={row} small={dense && !phone} sidebar={plain} />
       <div className="flex min-w-0 flex-1 flex-col">
