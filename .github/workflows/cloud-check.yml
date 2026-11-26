@@ -79,13 +79,15 @@ jobs:
 
       # Two tries at most: each starts new containers, and max_instances = 1 makes extra tries queue.
       - name: Run the checks
-        timeout-minutes: 4
+        timeout-minutes: 6
         run: |
+          # A fresh application has no instance to place for a while after deploy (run 45798785736).
+          sleep 90
           # A 404 means the new Worker isn't live everywhere yet: retried, as it starts nothing.
           # Anything else is the one real attempt; the Worker may wait 150 s for the container.
           got_results=false
           for attempt in 1 2 3 4; do
-            code=$(curl --silent --show-error --max-time 180 --output "$RUNNER_TEMP/results.txt" \
+            code=$(curl --silent --show-error --max-time 210 --output "$RUNNER_TEMP/results.txt" \
               --write-out '%{http_code}' -H "x-check-token: $CHECK_TOKEN" "$CHECK_URL/check" || true)
             if [ "$code" = 200 ]; then
               got_results=true

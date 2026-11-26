@@ -28,6 +28,16 @@ const ALLOWED_SITE = "example.com";
  */
 const startWaitMs = 150_000;
 
+/**
+ * Cloudflare's answer while a freshly deployed application has no instance to place yet (run
+ * 45798785736, 500 ms after start). Only this error is retried: the start never ran, so a retry
+ * never holds a second instance.
+ */
+const NO_INSTANCE_YET = "There is no container instance that can be provided";
+
+/** The pause before starting again after {@link NO_INSTANCE_YET}. */
+const noInstanceRetryMs = 10_000;
+
 /** Runs in the container with node: each prints one JSON line `{ pass, detail }`. */
 const PROBES: Record<string, string> = {
   "control: allowed site answers": `fetch("https://${ALLOWED_SITE}/").then(
@@ -69,7 +79,7 @@ export class CheckContainerObject extends RunContainerObject {
     try {
       // `start()` returns before the container is up, and exec() refuses a container that isn't
       // running yet (run 45701542369), so the probes wait for it first.
-      const started = await this.#waitUntilRunning();
+      const started = await this.#waitUntilRunning(runId);
       results.push(started);
       if (!started.pass) {
         return results;
@@ -90,40 +100,73 @@ export class CheckContainerObject extends RunContainerObject {
     await this.begin(setupFor(runId));
     const result = await outcome("destroy() right after start", () => this.end(runId));
     const running = this.ctx.container?.running ?? false;
-    return { ...result, pass: result.pass && !running, detail: `${result.detail}; running ${running}` };
+    return {
+      ...result,
+      pass: result.pass && !running,
+      detail: `${result.detail}; running ${running}`,
+    };
   }
 
   /**
    * Waits up to {@link startWaitMs} for the container to run. Fails if it never does, or if it
-   * exits or errors first: `monitor()` settles then, and its outcome goes in the detail.
+   * exits or errors first: `monitor()` settles then, and its outcome goes in the detail. While
+   * Cloudflare has no instance to place yet, it stops and starts again, within the same wait.
    */
-  async #waitUntilRunning(): Promise<CheckResult> {
+  async #waitUntilRunning(runId: string): Promise<CheckResult> {
     const name = "container running after start";
     const startedAt = Date.now();
-    let stopped: string | null = null;
-    this.ctx.container?.monitor().then(
-      () => {
-        stopped = "exited";
-      },
-      (error: unknown) => {
-        stopped = `failed: ${String(error)}`;
-      },
-    );
+    let retries = 0;
+    let stopped = this.#watchForStop();
     while (Date.now() - startedAt < startWaitMs) {
+      const elapsed = Date.now() - startedAt;
       if (this.ctx.container?.running === true) {
-        return { name, pass: true, detail: `running after ${Date.now() - startedAt} ms` };
+        return { name, pass: true, detail: `running after ${elapsed} ms, ${retries} restart(s)` };
       }
-      if (stopped !== null) {
-        return { name, pass: false, detail: `${stopped} after ${Date.now() - startedAt} ms` };
+      if (stopped.reason?.includes(NO_INSTANCE_YET)) {
+        retries += 1;
+        await this.end(runId);
+        await new Promise((resolve) => setTimeout(resolve, noInstanceRetryMs));
+        await this.begin(setupFor(runId));
+        stopped = this.#watchForStop();
+        continue;
+      }
+      if (stopped.reason !== null) {
+        return {
+          name,
+          pass: false,
+          detail: `${stopped.reason} after ${elapsed} ms, ${retries} restart(s)`,
+        };
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    return { name, pass: false, detail: `not running and not stopped after ${startWaitMs} ms` };
+    return {
+      name,
+      pass: false,
+      detail: `not running after ${startWaitMs} ms, ${retries} restart(s)`,
+    };
+  }
+
+  /** Why the current container stopped, once `monitor()` settles; `null` while it hasn't. */
+  #watchForStop(): { reason: string | null } {
+    const stopped: { reason: string | null } = { reason: null };
+    this.ctx.container?.monitor().then(
+      () => {
+        stopped.reason = "exited";
+      },
+      (error: unknown) => {
+        stopped.reason = `failed: ${String(error)}`;
+      },
+    );
+    return stopped;
   }
 
   async #probe(runId: string, name: string, script: string): Promise<CheckResult> {
     try {
-      const process = await this.exec(runId, { program: "node", args: ["-e", script], cwd: "/workspace" });
+      const process = await this.exec(runId, {
+        program: "node",
+        args: ["-e", script],
+        cwd: "/workspace",
+      });
       const output = process.stdout ? await new Response(process.stdout).text() : "";
       await process.exitCode;
       const parsed = JSON.parse(output.trim().split("\n").pop() ?? "{}") as Partial<CheckResult>;
@@ -173,7 +216,8 @@ export default {
     // Each object's name is its run id, as in the Worker.
     const first = `check-${crypto.randomUUID()}`;
     const second = `check-${crypto.randomUUID()}`;
-    const objectNamed = (name: string) => env.CHECK_CONTAINER.get(env.CHECK_CONTAINER.idFromName(name));
+    const objectNamed = (name: string) =>
+      env.CHECK_CONTAINER.get(env.CHECK_CONTAINER.idFromName(name));
     const results = [
       ...(await objectNamed(first).networkChecks(first)),
       await objectNamed(second).destroyRightAfterStart(second),
