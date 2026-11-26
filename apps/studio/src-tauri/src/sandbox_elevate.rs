@@ -168,7 +168,7 @@ mod tests {
         assert_eq!(capability["local"], true);
         assert_eq!(
             capability["windows"],
-            json!(["main", "inbox", "messenger", "ask"])
+            json!(["main", "inbox", "messenger"])
         );
         assert!(capability.get("remote").is_none(), "{capability}");
         assert!(capability.get("webviews").is_none(), "{capability}");

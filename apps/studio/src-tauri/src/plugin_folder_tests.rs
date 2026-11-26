@@ -187,7 +187,7 @@ fn plugin_folder_commands_sees_the_commands_granted_to_the_local_main_window_onl
     assert_eq!(capability["local"], true);
     assert_eq!(
         capability["windows"],
-        json!(["main", "inbox", "messenger", "ask"])
+        json!(["main", "inbox", "messenger"])
     );
     assert!(capability.get("remote").is_none(), "{capability}");
     assert_eq!(

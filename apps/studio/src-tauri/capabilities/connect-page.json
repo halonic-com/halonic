@@ -5,8 +5,7 @@
   "windows": [
     "main",
     "inbox",
-    "messenger",
-    "ask"
+    "messenger"
   ],
   "permissions": [
     "allow-connect",

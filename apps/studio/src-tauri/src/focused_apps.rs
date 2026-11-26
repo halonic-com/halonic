@@ -299,7 +299,7 @@ mod tests {
         assert_eq!(capability["local"], true);
         assert_eq!(
             capability["windows"],
-            serde_json::json!(["inbox", "messenger", "ask"])
+            serde_json::json!(["inbox", "messenger"])
         );
         assert!(capability.get("remote").is_none());
         assert_eq!(
