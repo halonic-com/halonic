@@ -12,7 +12,6 @@ import {
   handoffKey,
   handoffMessage,
   julianOnlyOnHead,
-  julianRefused,
   type PathReview,
   pullId,
   pushedAfterApproval,
@@ -21,6 +20,7 @@ import {
   type Refused,
   type Reviewer,
   type ReviewerRoute,
+  refusalOf,
   reviewerOf,
   type SinceApproval,
   type SinceApprovals,
@@ -124,7 +124,7 @@ function readsOf(options: ReviewStepOptions, task: WatchedTask, route: ReviewerR
   return { routeOf, sinceOf: once(sinceReader(options, task, routeOf)) };
 }
 
-/** The pull requests whose only approvals on the head are Julian's outside his limits. */
+/** The pull requests whose only approvals on the head are Julian's or Nora's outside their limits. */
 async function refusedOf(
   pulls: readonly PullFacts[],
   memory: Memory,
@@ -132,11 +132,12 @@ async function refusedOf(
 ): Promise<Refused> {
   const suspects = pulls.filter((pull) => julianOnlyOnHead(pull, memory));
   const refused = await Promise.all(
-    suspects.map(async (pull) =>
-      julianRefused(pull, await reads.routeOf(pull)) ? [pullId(pull)] : [],
-    ),
+    suspects.map(async (pull): Promise<[string, string][]> => {
+      const line = refusalOf(pull, await reads.routeOf(pull));
+      return line === null ? [] : [[pullId(pull), line]];
+    }),
   );
-  return new Set(refused.flat());
+  return new Map(refused.flat());
 }
 
 /** The open findings the author answered, by pull request (HAL-18460). */
@@ -327,8 +328,8 @@ async function handOff(
  */
 function mayApply(task: WatchedTask, pulls: readonly PullFacts[]): boolean {
   // Every Julian-only approval counts as refused here, the widest case.
-  const suspects: Refused = new Set(
-    pulls.filter((pull) => julianOnlyOnHead(pull, noMemory)).map(pullId),
+  const suspects: Refused = new Map(
+    pulls.filter((pull) => julianOnlyOnHead(pull, noMemory)).map((pull) => [pullId(pull), ""]),
   );
   // Every finding counts as answered here: whether the author replied is in the comments.
   const anyAnswer: Answers = new Map(

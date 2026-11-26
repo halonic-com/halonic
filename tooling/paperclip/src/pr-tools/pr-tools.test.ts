@@ -67,7 +67,7 @@ verifies("paperclip.pr-tools", () => {
         author: "priya",
         behindBase: 3,
         inQueue: true,
-        reviewer: "julian",
+        reviewer: "nora",
         changedLines: 150,
         approvedOnHead: true,
       });
@@ -137,7 +137,7 @@ verifies("paperclip.pr-tools", () => {
       const before = { [at(mergeBase)]: contents(manifest) };
       const description = { ...manifest, description: "Acme." };
       const published = { ...manifest, publishConfig: { access: "public" } };
-      expect(await routed({ ...before, [at(head)]: contents(description) })).toBe("julian");
+      expect(await routed({ ...before, [at(head)]: contents(description) })).toBe("nora");
       expect(await routed({ ...before, [at(head)]: contents(published) })).toBe("liam");
       expect(await routed(before)).toBe("liam");
     });
@@ -166,7 +166,20 @@ verifies("paperclip.pr-tools", () => {
       const none = routingOf(snapshotWith(undefined));
       expect(none).toBeUndefined();
       expect((await prStatus(pr4588([], ci).get, repo, 4588, none)).reviewer).toBe("liam");
-      expect((await prStatus(pr4588([]).get, repo, 4588, none)).reviewer).toBe("julian");
+      expect((await prStatus(pr4588([]).get, repo, 4588, none)).reviewer).toBe("nora");
+    });
+
+    test("counts Nora's approval on a routine review only, never on her own branch (HAL-19283)", async () => {
+      const nora = ["Nora: approved on head `7651f8c`"];
+      const routine = await prStatus(pr4588(nora).get, repo, 4588);
+      expect(routine.approvedOnHead).toBe(true);
+      const core = await prStatus(pr4588(nora, ["packages/core/app/src/a.ts"]).get, repo, 4588);
+      expect(core.approvedOnHead).toBe(false);
+      expect(core.approvals[0]?.note).toBe(
+        "outside the routine scope (touches packages/core/app/src/a.ts): needs Julian or Liam",
+      );
+      const own = pr4588(nora, undefined, ours, { ref: "nora/HAL-1-x" });
+      expect((await prStatus(own.get, repo, 4588)).approvedOnHead).toBe(false);
     });
 
     test("a routing never widens who may approve: only Liam's or Julian's signature counts (HAL-18296)", async () => {

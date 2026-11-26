@@ -59,6 +59,14 @@ verifies("paperclip.pr-tools-required-workflows", () => {
     ]);
   });
 
+  test("asks cloud only for Built-on label: it has no Guard notes (HAL-19392, cloud#185)", async () => {
+    const cloud = "halonic-com/cloud";
+    const onlyBuiltOn = { checkRuns: [builtOnGreen], workflowRuns: [builtOnRun] };
+    const github = fakeGitHub(requiredAnswers(cloud, 185, head, onlyBuiltOn));
+    expect(await requiredWorkflowsOf(github.get, cloud, 185, head)).toEqual([]);
+    expect(await problems(onlyBuiltOn)).toEqual(["Guard notes has not run"]);
+  });
+
   test("knows the organisation's Guard notes by its job when its workflow run isn't listed", async () => {
     const unlisted = {
       checkRuns: [{ name: noteJob, conclusion: "failure", suite: 9 }, builtOnGreen],

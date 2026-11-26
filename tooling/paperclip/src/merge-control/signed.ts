@@ -5,7 +5,7 @@
  * notes, as in the live Merger's gate (#5758, HAL-17927).
  */
 
-/** A reviewer whose signed line the gate reads. */
+/** A reviewer whose signed line the gate reads; Nora's counts only on a routine review (HAL-19283). */
 export type Reviewer = "Liam" | "Julian" | "Nora";
 
 /** A change request in words (board, 20 Nov 21:25). */

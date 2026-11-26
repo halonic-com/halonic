@@ -1,5 +1,7 @@
 import type { GitHubGet } from "../pr-watcher/github.ts";
-import type { ManifestChange } from "../reviewer-paths.ts";
+import type { ManifestChange, RoutedPull } from "../reviewer-paths.ts";
+import { sensitiveOrigin, writtenByTeam } from "../reviewer-paths-routine.ts";
+import type { PullDetails } from "./pr-status.ts";
 
 /**
  * Reads each changed package `package.json` at the pull request's merge base
@@ -22,6 +24,19 @@ export interface ChangedFile {
 export function linesByFile(files: readonly ChangedFile[]): Record<string, number> {
   return Object.fromEntries(
     files.flatMap((file) => (file.changes === undefined ? [] : [[file.filename, file.changes]])),
+  );
+}
+
+/**
+ * The old path of each renamed file, by its new path; null when GitHub
+ * didn't name it, which routes the pull request to the code reviewer
+ * (`RoutedPull.previousPaths`, HAL-19283).
+ */
+export function previousPathsOf(files: readonly ChangedFile[]): Record<string, string | null> {
+  return Object.fromEntries(
+    files.flatMap((file) =>
+      file.status === "renamed" ? [[file.filename, file.previous_filename ?? null]] : [],
+    ),
   );
 }
 
@@ -91,4 +106,32 @@ async function fileAt(get: GitHubGet, repo: string, path: string, ref: string): 
   }
   const binary = atob(body.content.replace(/\s/g, ""));
   return new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0)));
+}
+
+/**
+ * The pull request as the reviewer path list reads it, from GitHub's REST
+ * answers: the files with renamed files' old paths, the lines, the manifests,
+ * who wrote it and whether its branch or labels make it a security or release
+ * pull request (HAL-19283). `pr_status` and the PR watcher both build it here.
+ */
+export function routedFromRest(
+  pull: PullDetails,
+  repo: string,
+  files: readonly ChangedFile[],
+  manifests: Readonly<Record<string, ManifestChange>>,
+): RoutedPull {
+  const origin = {
+    branch: pull.head.ref,
+    crossRepository: pull.head.repo?.full_name.toLowerCase() !== repo.toLowerCase(),
+    labels: (pull.labels ?? []).map((label) => label.name),
+  };
+  return {
+    files: files.map((file) => file.filename),
+    changedLines: (pull.additions ?? 0) + (pull.deletions ?? 0),
+    sensitive: sensitiveOrigin(origin),
+    manifests,
+    fileLines: linesByFile(files),
+    previousPaths: previousPathsOf(files),
+    ours: writtenByTeam(origin),
+  };
 }

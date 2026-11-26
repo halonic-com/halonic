@@ -122,6 +122,23 @@ verifies("messenger.typing", () => {
   });
 });
 
+verifies("messenger.typing-offline", () => {
+  describe("the typing line while offline", () => {
+    it("goes while Chief's source is offline, though its last read said the run goes on", async () => {
+      const { messaging, source } = chiefsChat({ agentWorking: true });
+      const page = await openMessenger(messaging, [], false, noon);
+      await openChat(page, "Chief");
+      expect(typingLine(page)).toBe("Chief is typing…");
+      await act(async () => messaging.goOffline(source.id));
+      await settle();
+      expect(typingLine(page)).toBeUndefined();
+      await act(async () => messaging.goOnline(source.id));
+      await settle();
+      expect(typingLine(page)).toBe("Chief is typing…");
+    });
+  });
+});
+
 verifies("messenger.read-receipts", () => {
   describe("the ticks", () => {
     it("show one tick for a sent message and two once Chief picked it up", async () => {

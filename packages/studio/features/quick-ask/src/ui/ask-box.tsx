@@ -13,7 +13,8 @@ import type { AskSession } from "../ask-session.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
 import { AgentPicker, type PickerExit } from "./agent-picker.tsx";
 import { BoxFooter, type FooterAnswer } from "./box-footer.tsx";
-import { answerText, ExchangeView } from "./exchange-view.tsx";
+import { ExchangeList } from "./exchange-list.tsx";
+import { answerText } from "./exchange-view.tsx";
 import { type AskBoxModel, type Exchange, useAskBox } from "./use-ask-box.ts";
 
 /** The props of {@link AskBox}. */
@@ -124,11 +125,8 @@ function Ready({
   const [picking, setPicking] = useState(false);
   const text = useRef<HTMLTextAreaElement>(null);
   const ask = useRef<HTMLButtonElement>(null);
-  const list = useRef<HTMLOListElement>(null);
-  const exchanges = model.state.kind === "ready" ? model.state.exchanges : [];
-  useNewestInView(list, exchanges);
   if (model.state.kind !== "ready") return null;
-  const { agent, agents, lastAnswer } = model.state;
+  const { agent, agents, exchanges, lastAnswer } = model.state;
   const name = agent.agent.name;
   const answer = newestAnswer(exchanges.at(-1));
 
@@ -164,19 +162,7 @@ function Ready({
         />
       ) : null}
       {exchanges.length > 0 ? (
-        <ol
-          ref={list}
-          className="flex min-h-0 flex-col gap-3 overflow-y-auto border-t border-border px-3.5 py-3"
-        >
-          {exchanges.map((exchange) => (
-            <ExchangeView
-              key={exchange.id}
-              exchange={exchange}
-              onRetry={model.retry}
-              onOpenChat={onOpenChat}
-            />
-          ))}
-        </ol>
+        <ExchangeList exchanges={exchanges} onRetry={model.retry} onOpenChat={onOpenChat} />
       ) : null}
       <BoxFooter
         answer={answer}
@@ -254,17 +240,6 @@ function QuestionRow({
       </button>
     </div>
   );
-}
-
-/**
- * Scrolls the exchanges to the newest one whenever they change: a question just sent, or its
- * answer arriving, is what the person is looking for.
- */
-function useNewestInView(list: RefObject<HTMLOListElement | null>, exchanges: readonly Exchange[]) {
-  useEffect(() => {
-    const element = list.current;
-    if (element !== null && exchanges.length > 0) element.scrollTop = element.scrollHeight;
-  }, [list, exchanges]);
 }
 
 /** The newest exchange's answer and its chat, once the agent has answered. */

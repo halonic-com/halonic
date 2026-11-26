@@ -8,7 +8,6 @@ import type { ConversationRow, Messenger } from "../messenger.ts";
 interface Reads {
   readonly runs: readonly TeamRuns[];
   readonly pulls: readonly PullRequestList[];
-  readonly work: readonly WorkItem[];
 }
 
 /** How often the panel reads while open, and while closed for the header button's dot. */
@@ -27,9 +26,11 @@ export interface ActivityRead {
 
 /**
  * The open chat's agent's activity (`messenger.activity-panel`): its runs since local midnight,
- * the pull requests and the work it holds, read every 15 seconds while the panel is open and every 30 while it is
- * closed, so the header button's dot stays right. A failed read keeps what was read last. The view
- * is worked out on each render, so a new list read (this chat's `agentWorking`) shows at once.
+ * the pull requests and the work it holds, read every 15 seconds while the panel is open and every
+ * 30 while it is closed, so the header button's dot stays right. A failed read keeps what was read
+ * last. The work is read on its own: when only that read fails, **Next** is empty and the rest
+ * still shows (HAL-18567 review). The view is worked out on each render, so a new list read (this
+ * chat's `agentWorking`) shows at once.
  */
 export function useActivity(
   messenger: Messenger,
@@ -39,6 +40,7 @@ export function useActivity(
   const activity = messenger.activity;
   const agent = row.conversation.agent;
   const [read, setRead] = useState<Reads | undefined>(undefined);
+  const [work, setWork] = useState<readonly WorkItem[]>([]);
   const [failure, setFailure] = useState<unknown>(undefined);
   // Counts the reads, so an answer that lands after a newer read's never shows.
   const reads = useRef(0);
@@ -47,15 +49,24 @@ export function useActivity(
     reads.current += 1;
     const thisRead = reads.current;
     const since = startOfToday(messenger.now()).toISOString();
-    Promise.all([activity.runs({ agent, since }), activity.pullRequests(), messenger.work()]).then(
-      ([runs, pulls, work]) => {
+    Promise.all([activity.runs({ agent, since }), activity.pullRequests()]).then(
+      ([runs, pulls]) => {
         if (thisRead !== reads.current) return;
-        setRead({ runs, pulls, work });
+        setRead({ runs, pulls });
         setFailure(undefined);
       },
       (error: unknown) => {
         console.error("The Messenger couldn't read the agent's activity:", error);
         if (thisRead === reads.current) setFailure(error);
+      },
+    );
+    messenger.work().then(
+      (items) => {
+        if (thisRead === reads.current) setWork(items);
+      },
+      (error: unknown) => {
+        console.error("The Messenger couldn't read the agent's tasks:", error);
+        if (thisRead === reads.current) setWork([]);
       },
     );
   }, [activity, messenger, agent]);
@@ -72,7 +83,7 @@ export function useActivity(
   return {
     view,
     earlier: earlierToday(agent, read.runs, shown?.runId),
-    next: nextFor(agent, read.work, shown?.taskId),
+    next: nextFor(agent, work, shown?.taskId),
     failure,
     read: readNow,
   };

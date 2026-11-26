@@ -207,13 +207,96 @@ fn capability(text: &str) -> Value {
     capability
 }
 
+/// Every capability file in the folder, read as JSON, so a new one is
+/// checked without anyone adding it here.
+fn every_capability() -> Vec<(String, Value)> {
+    let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/capabilities");
+    let mut capabilities: Vec<(String, Value)> = std::fs::read_dir(folder)
+        .expect("the capabilities folder")
+        .map(|entry| {
+            let path = entry.expect("a capability file").path();
+            let text = std::fs::read_to_string(&path).expect("a readable capability");
+            let name = path.display().to_string();
+            let capability = serde_json::from_str(&text)
+                .unwrap_or_else(|error| panic!("{name} isn't JSON: {error}"));
+            (name, capability)
+        })
+        .collect();
+    capabilities.sort_by(|a, b| a.0.cmp(&b.0));
+    capabilities
+}
+
+/// Whether `capability` reaches the box's window: it names `ask` among its
+/// windows or webviews, or a pattern, which could match `ask`.
+fn reaches_the_box(capability: &Value) -> bool {
+    ["windows", "webviews"].iter().any(|field| {
+        capability[*field].as_array().is_some_and(|labels| {
+            labels.iter().any(|label| {
+                let label = label.as_str().unwrap_or("*");
+                label == "ask" || label.contains(['*', '?', '['])
+            })
+        })
+    })
+}
+
+/// A permission's identifier, whether it is named alone or with a scope.
+fn permission_name(permission: &Value) -> String {
+    permission
+        .as_str()
+        .or_else(|| permission["identifier"].as_str())
+        .expect("a permission has an identifier")
+        .to_owned()
+}
+
 #[test]
-fn the_box_may_only_hide_itself_and_only_studio_changes_the_keys() {
-    let window = capability(include_str!(
-        "../capabilities/desktop-quick-ask-window.json"
-    ));
-    assert_eq!(window["windows"], json!(["ask"]));
-    assert_eq!(window["permissions"], json!(["quick-ask:allow-hide"]));
+fn the_box_gets_exactly_the_commands_its_page_calls() {
+    let mut granted = std::collections::BTreeSet::new();
+    let mut reaching = Vec::new();
+    for (name, capability) in every_capability() {
+        if !reaches_the_box(&capability) {
+            continue;
+        }
+        reaching.push(capability["identifier"].clone());
+        let permissions = capability["permissions"].as_array().expect("permissions");
+        granted.extend(permissions.iter().map(permission_name));
+        assert_eq!(capability["local"], true, "{name}");
+        assert!(capability.get("remote").is_none(), "{name}");
+    }
+    assert_eq!(reaching, [json!("desktop-quick-ask-box")]);
+    // studio.ask-box-window: the commands the box's page calls, and no other.
+    let expected: std::collections::BTreeSet<String> = [
+        "allow-agent-host-request",
+        "allow-host-settings-read",
+        "allow-reopen-folder",
+        "allow-show-main-window",
+        "quick-ask:allow-hide",
+        "quick-ask:allow-open-chat",
+    ]
+    .map(str::to_owned)
+    .into();
+    assert_eq!(granted, expected);
+}
+
+#[test]
+fn no_capability_with_keys_trust_or_elevation_reaches_the_box() {
+    let forbidden = [
+        "desktop-secrets",
+        "desktop-trust",
+        "desktop-sandbox-elevate",
+        "desktop-workspace-key",
+    ];
+    let capabilities = every_capability();
+    for identifier in forbidden {
+        let (name, capability) = capabilities
+            .iter()
+            .find(|(_, capability)| capability["identifier"] == identifier)
+            .unwrap_or_else(|| panic!("no capability {identifier}"));
+        assert!(!reaches_the_box(capability), "{name}");
+    }
+}
+
+#[test]
+fn only_studio_changes_the_keys() {
     let keys = capability(include_str!(
         "../capabilities/desktop-quick-ask-shortcut.json"
     ));
@@ -333,11 +416,22 @@ fn an_empty_or_too_long_chat_id_is_refused_and_opens_nothing() {
 /// `studio.src-tauri.quick-ask-open-chat`
 #[test]
 fn only_the_box_may_open_a_chat_and_only_messenger_take_it() {
-    let open = capability(include_str!(
-        "../capabilities/desktop-quick-ask-open-chat.json"
-    ));
-    assert_eq!(open["windows"], json!(["ask"]));
-    assert_eq!(open["permissions"], json!(["quick-ask:allow-open-chat"]));
+    // The box's one capability grants open_chat (HAL-19004), so look at
+    // every capability: only that one may grant it, and only to `ask`.
+    let opening: Vec<_> = every_capability()
+        .into_iter()
+        .filter(|(_, capability)| {
+            capability["permissions"]
+                .as_array()
+                .expect("permissions")
+                .iter()
+                .any(|permission| permission_name(permission) == "quick-ask:allow-open-chat")
+        })
+        .map(|(_, capability)| capability)
+        .collect();
+    assert_eq!(opening.len(), 1);
+    assert_eq!(opening[0]["identifier"], "desktop-quick-ask-box");
+    assert_eq!(opening[0]["windows"], json!(["ask"]));
     let take = capability(include_str!(
         "../capabilities/desktop-quick-ask-take-chat.json"
     ));

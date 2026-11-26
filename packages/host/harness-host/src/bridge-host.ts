@@ -27,6 +27,8 @@ import { type SandboxedAsksPaths, sandboxedAsks } from "./sandboxed-asks.ts";
 /** The agent a bridge serves; the engine's `HarnessAgent` has these and more. */
 export interface BridgeAgent {
   readonly runId: string;
+  /** Which of the run's bridges open at once this is, as the engine opened it; its approvals go by it. */
+  readonly attemptId?: string;
   readonly agentId: string;
   /**
    * The harness the agent's call runs in, so a host that resolves its model
@@ -141,6 +143,7 @@ export class LocalBridgeHost implements HarnessBridgeHost {
   ): Promise<HostedHarnessBridge> {
     const services = await this.#services.servicesFor({
       runId: agent.runId,
+      ...(agent.attemptId === undefined ? {} : { attemptId: agent.attemptId }),
       agentId: agent.agentId,
       harness: agent.harness,
       hubId: agent.hubId,

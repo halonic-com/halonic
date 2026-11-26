@@ -64,6 +64,10 @@ export const configurationWords = {
   addAPrice: "Add a price",
   aliasOnThisComputer: "On this computer, no cost",
   aliasTestModel: "Built-in test model, no cost",
+  /** Microcopy L3: the line's ending for an agent on its program's subscription, with no **Add a price**. */
+  aliasSubscription: (plan: string) => `On your ${plan} subscription, not priced`,
+  /** The subscription each program signs in with, as the sandbox panel names it. */
+  subscriptionPlans: { "claude-code": "Claude", codex: "ChatGPT" },
   /** `maxSteps` counts per step, and Claude Code and Codex don't read it (HAL-12642). */
   turnLimit: "Model call limit",
   turnLimitHint:

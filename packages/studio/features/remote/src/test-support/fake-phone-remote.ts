@@ -49,7 +49,7 @@ export function remoteView(overrides: Partial<RemoteView> = {}): RemoteView {
     canAnswer: true,
     offReason: undefined,
     answersRisky: false,
-    ownerCheckAvailable: true,
+    ownerCheck: "ready",
     updateNeeded: false,
     olderComputer: false,
     ...overrides,

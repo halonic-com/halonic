@@ -13,6 +13,8 @@ export const activityWords = {
   button: "Activity (Ctrl+I)",
   buttonWorking: (name: string) => `${name}'s activity, working`,
   close: "Close activity",
+  /** A narrow window's way back from the panel to the chat: "‹ Chief", named "Back to Chief". */
+  backTo: (name: string) => `Back to ${name}`,
   /** On the chat's working line while the panel is closed. */
   show: "Show activity",
   working: "Working",

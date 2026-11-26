@@ -8,50 +8,76 @@ import { routingOf } from "./routing-load.ts";
 
 /** The routing that names today's people. */
 const today = routingOf(
-  snapshotWith({ roles: { "code-reviewer": "liam", "second-reviewer": "julian" } }),
+  snapshotWith({
+    roles: { "code-reviewer": "liam", "second-reviewer": "julian", "routine-reviewer": "nora" },
+  }),
 );
 
 const manifest = JSON.stringify({ name: "@halonicjs/acme", version: "0.1.0" });
 
 /** The inputs of the `paperclip.reviewer-paths` cases, with the reviewer each gets. */
-const cases: readonly (readonly [RoutedPull, "julian" | "liam"])[] = [
+const cases: readonly (readonly [RoutedPull, "nora" | "julian" | "liam"])[] = [
   [
-    { files: ["packages/studio/features/inbox/src/view.tsx"], changedLines: 120, sensitive: false },
-    "julian",
+    {
+      files: ["packages/studio/features/inbox/src/view.tsx"],
+      changedLines: 120,
+      sensitive: false,
+      ours: true,
+    },
+    "nora",
   ],
-  [{ files: ["package.json"], changedLines: 2, sensitive: false }, "liam"],
-  [{ files: [".github/workflows/ci.yml"], changedLines: 2, sensitive: false }, "liam"],
-  [{ files: ["packages/x/src/sandbox/fence.ts"], changedLines: 2, sensitive: false }, "liam"],
+  [{ files: ["package.json"], changedLines: 2, sensitive: false, ours: true }, "liam"],
+  [{ files: [".github/workflows/ci.yml"], changedLines: 2, sensitive: false, ours: true }, "liam"],
   [
-    { files: ["tooling/paperclip/src/reviewer-paths.ts"], changedLines: 2, sensitive: false },
+    { files: ["packages/x/src/sandbox/fence.ts"], changedLines: 2, sensitive: false, ours: true },
     "liam",
   ],
-  [{ files: ["packages/core/app/src/a.ts"], changedLines: 1501, sensitive: false }, "liam"],
-  [{ files: ["packages/core/app/src/a.ts"], changedLines: 1500, sensitive: false }, "julian"],
+  [
+    {
+      files: ["tooling/paperclip/src/reviewer-paths.ts"],
+      changedLines: 2,
+      sensitive: false,
+      ours: true,
+    },
+    "liam",
+  ],
+  [
+    { files: ["packages/core/app/src/a.ts"], changedLines: 1501, sensitive: false, ours: true },
+    "liam",
+  ],
+  [
+    { files: ["packages/core/app/src/a.ts"], changedLines: 1500, sensitive: false, ours: true },
+    "julian",
+  ],
   [{ files: ["packages/core/app/src/a.ts"], changedLines: 5, sensitive: true }, "liam"],
   [
     {
       files: ["packages/core/app/src/a.test.ts", "docs/a.md"],
       changedLines: 2000,
       sensitive: false,
+      ours: true,
     },
     "julian",
   ],
-  [{ files: ["apps/cli/src/messages/sandbox.ts"], changedLines: 2, sensitive: false }, "julian"],
-  [{ files: ["apps/cli/package.json"], changedLines: 2, sensitive: false }, "liam"],
+  [
+    { files: ["apps/cli/src/messages/sandbox.ts"], changedLines: 2, sensitive: false, ours: true },
+    "nora",
+  ],
+  [{ files: ["apps/cli/package.json"], changedLines: 2, sensitive: false, ours: true }, "liam"],
   [
     {
       files: ["apps/cli/package.json"],
       changedLines: 2,
       sensitive: false,
+      ours: true,
       manifests: {
         "apps/cli/package.json": {
           before: manifest,
-          after: manifest.replace("}", ',"main":"b.js"}'),
+          after: manifest.replace("}", ',"description":"The CLI"}'),
         },
       },
     },
-    "julian",
+    "nora",
   ],
 ];
 
@@ -85,7 +111,7 @@ verifies("paperclip.reviewer-routing", () => {
       expect(reviewerFor(routine, withNora)).toBe("nora");
       expect(reviewerFor(core, withNora)).toBe("kim");
       expect(reviewerFor(routine, routingOf(snapshotWith({ roles })))).toBe("kim");
-      expect(personFor("routine-reviewer", undefined)).toBe("julian");
+      expect(personFor("routine-reviewer", undefined)).toBe("nora");
     });
 
     test("a role the routing leaves out goes to the code reviewer, never to no one", () => {

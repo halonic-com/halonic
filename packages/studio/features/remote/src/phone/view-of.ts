@@ -6,6 +6,7 @@
 import type { GatewaySession } from "@halonicjs/ports";
 import { type PhoneState, phoneStatusLabel } from "./phone-status.ts";
 import {
+  type OwnerCheckHint,
   RECONNECT_TO_ANSWER,
   type RemoteApproval,
   type RemoteSession,
@@ -39,9 +40,9 @@ export interface ClientHolding {
   readonly answersRisky: boolean;
   /**
    * Whether the phone's owner check could ask, checked again after the last
-   * session list arrived. `false` until that check answers.
+   * session list arrived. `unknown` until that check answers.
    */
-  readonly ownerCheckAvailable: boolean;
+  readonly ownerCheck: OwnerCheckHint;
   /** The last connection found the two sides on different message versions. */
   readonly updateNeeded: boolean;
   /** The last `welcome` was version 3's, after the computer refused version 4. */
@@ -61,7 +62,7 @@ export function viewOf(holding: ClientHolding): RemoteView {
     canAnswer: live,
     offReason: live ? undefined : notLiveReason,
     answersRisky: holding.answersRisky,
-    ownerCheckAvailable: holding.ownerCheckAvailable,
+    ownerCheck: holding.ownerCheck,
     updateNeeded: holding.updateNeeded,
     olderComputer: holding.olderComputer,
   };
@@ -121,5 +122,5 @@ type RiskyOnPhone = "on-phone" | "on-computer";
  * computer checks its switch again for every answer.
  */
 function answersRiskyOnPhone(holding: ClientHolding): RiskyOnPhone {
-  return holding.answersRisky && holding.ownerCheckAvailable ? "on-phone" : "on-computer";
+  return holding.answersRisky && holding.ownerCheck === "ready" ? "on-phone" : "on-computer";
 }

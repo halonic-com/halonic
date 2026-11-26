@@ -1,12 +1,10 @@
 import { isHostTooOld } from "@halonicjs/ports";
 import { markHiddenName } from "@halonicjs/std";
-import { sampleAnswersWord } from "@halonicjs/studio-feature-runs/api";
 import {
   Button,
   type ButtonUnavailable,
   type CalloutHandle,
   movesOnLine,
-  StatusChip,
   Tooltip,
   usePresentation,
   waitingSince,
@@ -24,6 +22,7 @@ import {
 import { type AfterAnswer, afterAnswer, type InboxDecisions } from "../decide.ts";
 import type { WaitItem } from "../inbox-items.ts";
 import { answeredText, answerLabel, busyLabel, ownLabel } from "../plain/answer-text.ts";
+import { waitParts } from "../plain/wait-parts.ts";
 import { AnsweredView, type AnsweredViews, claimedView } from "./answered-view.tsx";
 import {
   type BackLink,
@@ -45,7 +44,7 @@ import {
   wasRefusedUntrusted,
 } from "./card-parts.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
-import { PlainValue } from "./plain-value.tsx";
+import { Caption, MetaLine, showsMetaLine, WaitBody } from "./wait-card-parts.tsx";
 import {
   showsUntrusted,
   type TrustReview,
@@ -83,6 +82,18 @@ export interface WaitCardProps extends EngineState {
    */
   readonly sample?: boolean;
   /**
+   * The run's workflow, such as "Support reply": the meta line above the title starts with it,
+   * then the chip on Sample answers (`inbox.wait-context`). Without it the line is the chip alone.
+   */
+  readonly workflow?: string | undefined;
+  /** What the run started with, such as the customer's email, quoted above the draft; none without it. */
+  readonly quote?: string | undefined;
+  /**
+   * The step's description as written, so the step's own closing words, such as "Approving
+   * finishes the run. Nothing is sent.", show by the answers rather than in the draft.
+   */
+  readonly description?: string | undefined;
+  /**
    * The views that may take the card's place once answered (`Inbox.addAnsweredView`), and what
    * they get to close or open with. Without it, or when none claims the answer, the card keeps its
    * decided bar.
@@ -116,9 +127,11 @@ type CardState =
 
 /**
  * The card for a run waiting at a `wait` step (`inbox.wait-card`), such as Acme's "Approve this
- * reply?": the step's first line as its title, the rest as plain text, the timer line if the
- * step has one, and a button per answer the step takes, the first one primary and full width,
- * none red. It has the approval card's 1 s guard, and is replaced in place once answered.
+ * reply?": the run's workflow and model above the step's first line as its title, what the run
+ * started with as a quote, the rest as plain text in its own box, the timer line if the step has
+ * one, and a button per answer the step takes, the first one primary and full width, none red, with
+ * the step's closing words as their caption (`inbox.wait-context`). It has the approval card's 1 s
+ * guard, and is replaced in place once answered.
  */
 export function WaitCard(props: WaitCardProps) {
   const { item, decisions, next, back } = props;
@@ -156,6 +169,9 @@ export function WaitCard(props: WaitCardProps) {
   const section = useRef<HTMLElement>(null);
   const live = state.kind !== "answered" && !stale;
   const openRun = props.onOpenRun === undefined ? undefined : () => props.onOpenRun?.(item.runId);
+  const { draft, note } = waitParts(item.body, props.description);
+  const metaId = useId();
+  const sample = props.sample === true;
 
   async function answer(event: string) {
     if (!guard.allows() || state.kind !== "open") return;
@@ -184,7 +200,7 @@ export function WaitCard(props: WaitCardProps) {
   const card = (
     <section ref={section} aria-labelledby={titleId} className={cardClasses}>
       <div className={cardBodyClasses}>
-        <SampleAnswersChip shown={props.sample === true} />
+        <MetaLine id={metaId} workflow={props.workflow} sample={sample} />
         <CardHeader
           titleId={titleId}
           // Filled in from the run's context, so it can hold model output: mark what's hidden.
@@ -193,16 +209,14 @@ export function WaitCard(props: WaitCardProps) {
           since={live ? waitingSince(new Date(item.since), now()) : null}
           startedBy={props.startedBy}
           onOpenRun={openRun}
+          describedBy={showsMetaLine(props.workflow, sample) ? metaId : undefined}
         />
-        {item.body === "" ? null : (
-          <div
-            className={
-              live ? "text-body" : "rounded-sm border border-dashed border-border p-3 text-fg-muted"
-            }
-          >
-            <PlainValue text={item.body} />
-          </div>
-        )}
+        <WaitBody
+          quote={props.quote}
+          draft={draft}
+          live={live}
+          framed={props.description !== undefined}
+        />
         {item.movesOnAt === null || !live ? null : (
           <p className="text-small text-fg-muted">{movesOnLine(new Date(item.movesOnAt))}</p>
         )}
@@ -233,6 +247,7 @@ export function WaitCard(props: WaitCardProps) {
           onOpenRun={openRun}
           trust={props.trust}
           bar={bar}
+          note={note}
         />
       ) : null}
     </section>
@@ -257,16 +272,6 @@ function withClaimedView(
   );
 }
 
-/** The "Sample answers" chip above the title, on its own line (`runs.sample-chip`). */
-function SampleAnswersChip({ shown }: { readonly shown: boolean }) {
-  if (!shown) return null;
-  return (
-    <span className="flex">
-      <StatusChip tone="outline">{sampleAnswersWord}</StatusChip>
-    </span>
-  );
-}
-
 interface AnswerBarProps {
   readonly accepts: readonly string[];
   readonly labels: Readonly<Record<string, string>>;
@@ -277,6 +282,8 @@ interface AnswerBarProps {
   readonly onOpenRun: (() => void) | undefined;
   readonly trust: TrustReview | undefined;
   readonly bar: RefObject<HTMLDivElement | null>;
+  /** The step's closing words, a caption above the answers; `null` when it has none. */
+  readonly note: string | null;
 }
 
 /**
@@ -299,6 +306,7 @@ function AnswerBar({
   onOpenRun,
   trust,
   bar,
+  note,
 }: AnswerBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
@@ -348,6 +356,7 @@ function AnswerBar({
           state.kind === "open" && state.untrusted ? (trust ?? { review: undefined }) : null
         }
       />
+      <Caption note={note} />
       {first === undefined ? null : answerButton(first, true)}
       {others.length === 0 ? null : (
         <div className="flex gap-2">{others.map((event) => answerButton(event, false))}</div>

@@ -65,3 +65,17 @@ verifies("paperclip.manifest-julian", () => {
     expect(status.approvedOnHead).toBe(true);
   });
 });
+
+verifies("paperclip.manifest-closure", () => {
+  test("pr_status asks only for Julian's approval when the reviewer's already counts", async () => {
+    const status = await prStatus(
+      pull(["Liam: approved on head `7651f8c`"], [manifest]).get,
+      repo,
+      4588,
+    );
+    const next = statusText(status).split("\n").at(-1);
+    expect(next).toBe(
+      `next: get Julian's approval on this head: it changes a plugin manifest (${manifest})`,
+    );
+  });
+});

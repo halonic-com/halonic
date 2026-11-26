@@ -84,7 +84,7 @@ function AnswerView({
     );
   }
   return (
-    <Arriving data-answer="" className="flex max-h-[380px] flex-col gap-2 overflow-y-auto">
+    <Arriving data-answer="" className="flex flex-col gap-2">
       <Replies messages={answer.messages} />
       {answer.kind === "card" ? (
         <div className="flex flex-col items-start gap-2 rounded-md border border-border px-3 py-2">

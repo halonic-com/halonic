@@ -10,6 +10,7 @@ import type {
   InboxItemState,
   InboxQuestion,
   InboxQuestionAnswer,
+  InboxStepperRequest,
   Message,
   MessageWork,
   MessagingAgent,
@@ -30,6 +31,7 @@ export function keptAgent(agent: MessagingAgent): MessagingAgent {
     activity: agent.activity,
   };
   if (agent.title !== undefined) kept.title = agent.title;
+  if (agent.avatar !== undefined) kept.avatar = agent.avatar;
   return kept;
 }
 
@@ -44,6 +46,7 @@ export function keptConversation(conversation: Conversation): Conversation {
     waitingForMe: conversation.waitingForMe,
   };
   if (conversation.members !== undefined) kept.members = [...conversation.members];
+  if (conversation.agentWorking !== undefined) kept.agentWorking = conversation.agentWorking;
   return kept;
 }
 
@@ -59,6 +62,7 @@ export function keptMessage(message: Message): Message {
   };
   if (message.to !== undefined) kept.to = [...message.to];
   if (message.work !== undefined) kept.work = message.work.map(keptMessageWork);
+  if (message.readAt !== undefined) kept.readAt = message.readAt;
   if (message.automatic === true) kept.automatic = true;
   if (message.fullAnswer !== undefined) {
     const { key, title, markdown } = message.fullAnswer;
@@ -80,9 +84,13 @@ export function keptInboxItem(item: InboxItem): InboxItem {
     attachments: item.attachments.map(keptAttachment),
   };
   if (item.questions !== undefined) kept.questions = item.questions.map(keptQuestion);
+  if (item.answerElsewhere !== undefined)
+    kept.answerElsewhere = { link: item.answerElsewhere.link };
   if (item.action !== undefined) kept.action = keptAction(item.action);
+  if (item.stepper !== undefined) kept.stepper = keptStepper(item.stepper);
   if (item.project !== undefined) kept.project = { id: item.project.id, name: item.project.name };
   if (item.work !== undefined) kept.work = item.work;
+  if (item.conversation !== undefined) kept.conversation = item.conversation;
   if (item.risk !== undefined) kept.risk = item.risk;
   if (item.webLink !== undefined)
     kept.webLink = { link: item.webLink.link, site: item.webLink.site };
@@ -118,6 +126,7 @@ function keptMessageWork(line: MessageWork): MessageWork {
   const kept: MessageWork = { agent: line.agent, state: line.state, since: line.since };
   if (line.work !== undefined) kept.work = line.work;
   if (line.passedTo !== undefined) kept.passedTo = line.passedTo;
+  if (line.reason !== undefined) kept.reason = line.reason;
   return kept;
 }
 
@@ -156,13 +165,15 @@ function keptOption(option: InboxItemOption): InboxItemOption {
 }
 
 function keptQuestion(question: InboxQuestion): InboxQuestion {
-  return {
+  const kept: InboxQuestion = {
     id: question.id,
     prompt: question.prompt,
     selection: question.selection,
     options: question.options.map(keptOption),
     required: question.required,
   };
+  if (question.preselected !== undefined) kept.preselected = [...question.preselected];
+  return kept;
 }
 
 function keptQuestionAnswer(answer: InboxQuestionAnswer): InboxQuestionAnswer {
@@ -182,6 +193,20 @@ function keptAction(action: InboxActionRequest): InboxActionRequest {
   return kept;
 }
 
+function keptStepper(stepper: InboxStepperRequest): InboxStepperRequest {
+  return {
+    format: stepper.format,
+    document: stepper.document,
+    revision: stepper.revision,
+    touches: stepper.touches.map((touch) => ({
+      block: touch.block,
+      risk: touch.risk,
+      targets: touch.targets.map(({ service, kind, name }) => ({ service, kind, name })),
+    })),
+    changed: stepper.changed,
+  };
+}
+
 function keptActionResult(answer: ActionResultAnswer): ActionResultAnswer {
   return { kind: "action-result", outcome: answer.outcome, steps: answer.steps.map(keptStep) };
 }
@@ -192,5 +217,6 @@ function keptStep(step: ActionResultStep): ActionResultStep {
   if (step.kept !== undefined) kept.kept = { ...step.kept };
   if (step.failure !== undefined) kept.failure = step.failure;
   if (step.error !== undefined) kept.error = { untrusted: true, text: step.error.text };
+  if (step.byHand === true) kept.byHand = true;
   return kept;
 }

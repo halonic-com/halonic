@@ -320,6 +320,11 @@ export function startLimits() {
       const timer = await scheduler.waitFor("run_1", `start:${phase}:call-1`);
       deadlines.expire(timer);
     },
+    /** Ends the early hedge's `n`th wait between its checkpoints, once it is set. */
+    waitUp: async (n: number) => {
+      const timer = await scheduler.waitFor("run_1", `start:wait:call-1:${n}`);
+      deadlines.expire(timer);
+    },
   };
 }
 

@@ -41,12 +41,13 @@ export function fakeGitHub(...answers: Record<string, unknown>[]) {
   return { get, calls };
 }
 
-/** The agents the fakes know: two authors and two reviewers. */
+/** The agents the fakes know: two authors and three reviewers. */
 export const agents = {
   mateo: "agent-mateo",
   priya: "agent-priya",
   liam: "agent-liam",
   julian: "agent-julian",
+  nora: "agent-nora",
 };
 
 /** An open task, with the pull requests a branch search would find for it. */

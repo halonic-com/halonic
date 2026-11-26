@@ -5,7 +5,7 @@ import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
-import type { AliasSummary } from "../api.ts";
+import type { AgentHarnessId, AliasSummary } from "../api.ts";
 import { memoryAgentsHost } from "../memory-host.ts";
 import { AgentScreen } from "../page/agent-page.tsx";
 import { buttonNamed, show, unmount } from "../test-support.tsx";
@@ -37,11 +37,11 @@ function fakeModels(): Models & { readonly opened: string[] } {
   };
 }
 
-/** Sorter's Model page, on `model`, in a window whose services hold `models`. */
-async function openModel(model: string, models?: Models) {
+/** Sorter's Model page, on `model` and `harness`, in a window whose services hold `models`. */
+async function openModel(model: string, models?: Models, harness: AgentHarnessId = "halonic") {
   const host = memoryAgentsHost({
     hubs: [{ id: "acme", name: "acme" }],
-    agents: [{ hubId: "acme", id: "sorter", name: "Sorter", model }],
+    agents: [{ hubId: "acme", id: "sorter", name: "Sorter", model, harness }],
     modelAliases: Object.keys(summaries),
     aliasSummaries: summaries,
   });
@@ -71,6 +71,18 @@ verifies("agents.configuration.alias-line", () => {
 
     await act(async () => buttonNamed(page, "smart")?.click());
     expect(models.opened).toEqual(["smart"]);
+  });
+
+  it("says a Claude Code or Codex agent runs on its subscription, not priced, with no Add a price", async () => {
+    const { page } = await openModel("smart", fakeModels(), "claude-code");
+    expect(page.textContent).toContain(
+      "smart · Anthropic / claude-sonnet-5-5 · On your Claude subscription, not priced",
+    );
+    expect(page.textContent).not.toContain("per million tokens");
+    unmount();
+    const { page: codex } = await openModel("fast", fakeModels(), "codex");
+    expect(codex.textContent).toContain("On your ChatGPT subscription, not priced");
+    expect(buttonNamed(codex, "Add a price")).toBeUndefined();
   });
 
   it("ends with No price and Add a price, which opens the alias at its price", async () => {

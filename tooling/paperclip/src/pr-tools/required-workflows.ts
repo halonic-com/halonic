@@ -1,4 +1,4 @@
-import { requiredWorkflowProblems } from "../merge-control/checks.ts";
+import { requiredWorkflowProblems, requiredWorkflowsOfRepo } from "../merge-control/checks.ts";
 import type { CheckFact } from "../merge-control/snapshot.ts";
 import { everyPage, type GitHubGet } from "../pr-watcher/github.ts";
 import { requiredJobs } from "../pr-watcher/required-workflows.ts";
@@ -104,12 +104,15 @@ export async function requiredWorkflowsOf(
       run.check_suite_id === undefined ? [] : [[run.check_suite_id, run] as const],
     ),
   );
-  return requiredWorkflowProblems({
-    checks: checkRuns.map((run) => checkFact(run, workflows)),
-    retargetedAt: events.flatMap((event) =>
-      baseChangeEvents.has(event.event ?? "") && event.created_at !== undefined
-        ? [event.created_at]
-        : [],
-    ),
-  });
+  return requiredWorkflowProblems(
+    {
+      checks: checkRuns.map((run) => checkFact(run, workflows)),
+      retargetedAt: events.flatMap((event) =>
+        baseChangeEvents.has(event.event ?? "") && event.created_at !== undefined
+          ? [event.created_at]
+          : [],
+      ),
+    },
+    requiredWorkflowsOfRepo(repo),
+  );
 }

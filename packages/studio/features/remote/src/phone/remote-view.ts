@@ -130,9 +130,9 @@ export interface RemoteView {
   /**
    * Whether the phone's owner check (a screen lock with a fingerprint, face or
    * PIN) could ask, checked again after the last session list. Without it the
-   * phone reads the Inbox but answers nothing. `false` until that check answers.
+   * phone reads the Inbox but answers nothing.
    */
-  readonly ownerCheckAvailable: boolean;
+  readonly ownerCheck: OwnerCheckHint;
   /**
    * Whether the computer and this phone speak different versions of the
    * gateway's messages, from the last connection that got that far. While it
@@ -147,6 +147,14 @@ export interface RemoteView {
    */
   readonly olderComputer: boolean;
 }
+
+/**
+ * What the shell last said of the phone's owner check: `unknown` from each
+ * session list until the check answers, then `ready` or `unavailable`. Answers
+ * that need it stay off until `ready`; only `unavailable` asks for a screen
+ * lock, so a phone that has one never shows that line while the check runs.
+ */
+export type OwnerCheckHint = "unknown" | "ready" | "unavailable";
 
 /** Why the host refused an answer or a prompt and kept the connection. */
 export type RemoteRefusal = (typeof gatewayRefusalCodes)[number];

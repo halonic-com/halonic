@@ -80,6 +80,8 @@ interface CardHeaderProps {
   readonly startedBy?: string | undefined;
   /** Opens the run; leave it out while the Studio has no run page, and the button isn't shown. */
   readonly onOpenRun?: (() => void) | undefined;
+  /** The id of a line above the title that a screen reader reads with it, as it takes focus. */
+  readonly describedBy?: string | undefined;
 }
 
 /**
@@ -105,6 +107,7 @@ export function CardHeader({
   since,
   startedBy,
   onOpenRun,
+  describedBy,
 }: CardHeaderProps) {
   // The title asks for 10rem next to **Open run**. In a narrower card (a phone, or 400 % zoom)
   // the button goes on a line under it, on the right, so the title keeps the whole width.
@@ -115,6 +118,7 @@ export function CardHeader({
           id={titleId}
           ref={heading}
           tabIndex={-1}
+          aria-describedby={describedBy}
           className="focus-ring text-title text-fg wrap-break-word"
         >
           {title}

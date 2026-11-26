@@ -2,7 +2,7 @@ import type { GatewaySession } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { listedSession } from "../test-support/listed-session.ts";
-import { RECONNECT_TO_ANSWER } from "./remote-view.ts";
+import { type OwnerCheckHint, RECONNECT_TO_ANSWER } from "./remote-view.ts";
 import { SentAnswers } from "./sent-answers.ts";
 import { SessionMemory } from "./session-memory.ts";
 import { ANSWER_RISKY_ON_COMPUTER, type ClientHolding, viewOf } from "./view-of.ts";
@@ -38,7 +38,7 @@ function holding(overrides: Partial<ClientHolding> = {}): ClientHolding {
     ]),
     sentAnswers: new SentAnswers(),
     answersRisky: false,
-    ownerCheckAvailable: false,
+    ownerCheck: "unknown",
     updateNeeded: false,
     olderComputer: false,
     ...overrides,
@@ -88,21 +88,23 @@ verifies("remote.phone-remote-answers", () => {
       expect(open?.offReason).toBe(ANSWER_RISKY_ON_COMPUTER);
     });
 
-    it.each<[boolean, boolean, boolean]>([
-      [false, false, true],
-      [true, false, true],
-      [false, true, true],
-      [true, true, false],
+    it.each<[boolean, OwnerCheckHint, boolean]>([
+      [false, "unknown", true],
+      [false, "unavailable", true],
+      [true, "unknown", true],
+      [true, "unavailable", true],
+      [false, "ready", true],
+      [true, "ready", false],
     ])(
       "with the switch %s and the owner check %s, answers a risky one on the computer: %s",
-      (answersRisky, ownerCheckAvailable, onComputer) => {
+      (answersRisky, ownerCheck, onComputer) => {
         const memories = new Map([["s1", asking("a-risky", "2026-11-21T14:01:00.000Z", "risky")]]);
         const view = viewOf(
           holding({
             sessions: [listedSession({ id: "s1" })],
             memories,
             answersRisky,
-            ownerCheckAvailable,
+            ownerCheck,
           }),
         );
         expect(view.openApprovals[0]).toMatchObject({
@@ -121,7 +123,7 @@ verifies("remote.phone-remote-answers", () => {
           sessions: [listedSession({ id: "s1" })],
           memories,
           answersRisky: true,
-          ownerCheckAvailable: true,
+          ownerCheck: "ready",
         }),
       );
       expect(view.openApprovals[0]).toMatchObject({
