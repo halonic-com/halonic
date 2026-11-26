@@ -33,6 +33,9 @@ import { gitHubPrints, type MergerNudge, mergerWake } from "./merger-wake.ts";
 import { registerNextStepTools } from "./next-step-tools.ts";
 import { readyStep, registerPrWriteTools } from "./pr-write-tools.ts";
 import { precheckWaits } from "./precheck-waits.ts";
+import { registerReactTool } from "./react-tool.ts";
+import { reactionsReadRouteKey, reactionsWriteRouteKey } from "./reaction-declarations.ts";
+import { handleReactionsRead, handleReactionsWrite } from "./reactions.ts";
 import { realDeps, registerReadyForReview } from "./ready-for-review.ts";
 import { registerReviewVerdictTool } from "./review-verdict-tool.ts";
 import { scheduledPerCompany } from "./scheduled.ts";
@@ -198,6 +201,7 @@ export const plugin = definePlugin({
     registerNextStepTools(ctx, undefined, readyStep(ctx));
     registerPrWriteTools(ctx);
     registerReviewVerdictTool(ctx);
+    registerReactTool(ctx);
     registerTrialResults(ctx);
     registerStatePacket(ctx, (params) => measureWakeGate(ctx, params));
     registerWorkerAgentsData(ctx, workerAgentsDeps(ctx, databaseWorkerTables(ctx.db)));
@@ -226,6 +230,12 @@ export const plugin = definePlugin({
     }
     if (input.routeKey === githubPullRouteKey) {
       return await handleGitHubPull(input, context);
+    }
+    if (input.routeKey === reactionsReadRouteKey) {
+      return await handleReactionsRead(input, context);
+    }
+    if (input.routeKey === reactionsWriteRouteKey) {
+      return await handleReactionsWrite(input, context, new Date());
     }
     if (input.routeKey === seatResetRouteKey) {
       return await handleSeatReset(input, context, (url, init) => fetch(url, init), new Date());

@@ -455,6 +455,26 @@ run holds, so the disposition guard, the wakes, the monitor rules and the
 answers are the route's own (Liam's decision B on HAL-16988). A refusal
 comes back with the route's status, code and message.
 
+## Messenger reactions
+
+Paperclip's comments have no reactions, so the plugin keeps them
+(HAL-19139, the board's yes on 26 Nov) in its own state, per task
+(namespace `reactions`, key `comments`), until Paperclip has native ones.
+A reaction is never a comment: it wakes nobody and never counts as unread.
+The emoji are 👍 ❤️ 😂 😮 ✅ 👀. Requirements
+`paperclip.messenger-reactions-store` and `paperclip.agent-react-tool`.
+
+- **`GET /api/plugins/halonic.agent-tools/api/reactions/{taskId}?companyId=`**,
+  board only: `{ reactions }` by comment id, each `{ emoji, by: { kind, id }, at }`.
+- **`POST …/reactions/{taskId}?companyId=`** with `{ commentId, emoji, on }`,
+  board only: adds or removes the signed-in person's own reaction on a
+  comment of that task, and answers `{ commentId, reactions }`.
+- **`react(task, comment, emoji)`**, the agents' tool: 👍 (on it, or done)
+  or 👀 (seen, will come back) on a person's message, usually the one that
+  woke the run (`originCommentIds` in the wake). It refuses an agent's
+  message and any other emoji, and a new reaction replaces the agent's last
+  one on that message. A question still gets a written answer.
+
 ## Trial results
 
 **`trial_results(action, …)`** (HAL-17280, option (b) of HAL-17267) lets
