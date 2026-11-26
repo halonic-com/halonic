@@ -9,7 +9,7 @@ The click test shall check Settings › Connections through Studio's windows str
 1. **Account switcher:** the switcher at the sidebar's bottom left opens its menu, "Show Inbox and Messenger for" with Settings › Connections, and that row opens the Connections section with the connection's row.
 2. **Connection row:** the row reads Read-only and Connected, offers no Sign in again, says what its key can do, and its label names the user it is signed in as ("Paperclip · <company> · <user>").
 3. **https only:** Connect Paperclip with `http://paperclip.acme.test` says "Use an https address. Plain http works only for this computer (localhost)." on the field, and the dialog's close button closes it.
-4. **Add another account:** the connected row's Add another account opens its dialog with its lead, Continue starts a sign-in, and once the test Paperclip approves it Settings › Connections lists two connections. The step then disconnects the second one and passes once the section says its key is revoked and that row reads Signed out (Disconnect keeps the workspace's connection file), so step 3's connection is the only connected one, as it was.
+4. **Add another account:** the connected row's Add another account opens its dialog with its lead, Continue starts a sign-in, and once the test Paperclip approves it Settings › Connections lists two connections. The step then disconnects the second one and passes once the section says its key is revoked and that row reads Not connected or Signed out (Disconnect deletes its key but keeps the workspace's connection file), so step 3's connection is the only connected one, as it was.
 
 ## Examples
 
