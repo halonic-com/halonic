@@ -1,7 +1,6 @@
 import {
   type ChatAnswerRequest,
   type ChatSettings,
-  type ChatTool,
   type FileReview,
   type ItemToReview,
   maxTurnLimit,
@@ -13,10 +12,8 @@ import {
 import {
   authoringInstructions,
   authoringSkillPath,
-  buildChatTools,
   builtInAuthoringSkill,
   ownAuthoringSkill,
-  type ShowOutcome,
   sheetHostsNamedIn,
   toolsWhileUntrustedLoaded,
 } from "@halonicjs/assistant";
@@ -35,13 +32,14 @@ import type {
   ChatSummary,
   ModelOption,
 } from "@halonicjs/studio-feature-assistant/api";
-import { EngineNotAnswering, type ItemRef, WorkspaceUntrusted } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { filesOf, type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { acceptedFiles, isAuthoringSkillPath } from "./accepted-files.ts";
-import { answerSiteCard, docsOptionsOf, KeptDocsSites, noDocs, withCallIds } from "./chat-docs.ts";
+import { answerSiteCard, noDocs } from "./chat-docs.ts";
 import { answerWithFailure } from "./chat-failure.ts";
 import { agentOfKind, chatAgentsOf, modelOptionsOf } from "./chat-models.ts";
-import { localIntegrationOf, requestLogReading } from "./chat-request-log.ts";
+import { localIntegrationOf } from "./chat-request-log.ts";
+import { ChatToolSets } from "./chat-tool-sets.ts";
 import { forTheModel } from "./for-the-model.ts";
 import { type KeptChat, KeptChats } from "./kept-chats.ts";
 import {
@@ -69,10 +67,8 @@ export type {
 export class WorkspaceAssistant implements AssistantHost {
   readonly #parts: WorkspaceAssistantParts;
   readonly #chats: KeptChats;
-  readonly #tools = new Map<string, readonly ChatTool[]>();
+  readonly #tools: ChatToolSets;
   readonly #answering = new Set<string>();
-  /** How each answering chat's `show` tool shows an item: the window of the answer's panel. */
-  readonly #shows = new Map<string, NonNullable<AssistantAnswerRequest["show"]>>();
   readonly #listeners = new Set<(change: AssistantChange) => void>();
   readonly #stopReview: () => void;
   readonly #stopEngine: () => void;
@@ -85,8 +81,14 @@ export class WorkspaceAssistant implements AssistantHost {
     this.#chats = new KeptChats({
       store: parts.chats,
       now: parts.now ?? (() => new Date()),
-      onGone: (chatId) => this.#tools.delete(chatId),
+      onGone: (chatId) => this.#tools.forget(chatId),
       onSaveFailed: (error) => console.error("Saving a chat", error),
+    });
+    this.#tools = new ChatToolSets({
+      parts,
+      chats: this.#chats,
+      changed: (chatId) => this.#changed({ kind: "chat", chatId }),
+      personMessages: (chatId) => this.#personMessages(chatId),
     });
     this.askTrust = parts.askTrust;
     const stopListening = parts.review.onDidChange((paths) =>
@@ -169,7 +171,7 @@ export class WorkspaceAssistant implements AssistantHost {
     });
     this.#answering.add(chat.id);
     this.#chats.answering(chat.id, true);
-    if (request.show !== undefined) this.#shows.set(chat.id, request.show);
+    this.#tools.showIn(chat.id, request.show);
     this.#changed({ kind: "chats" });
     try {
       const answer = await this.#answerOn(chat, request, stopper.signal);
@@ -181,7 +183,7 @@ export class WorkspaceAssistant implements AssistantHost {
       stopWatching?.();
       this.#answering.delete(chat.id);
       this.#chats.answering(chat.id, false);
-      this.#shows.delete(chat.id);
+      this.#tools.showIn(chat.id, undefined);
       this.#changed({ kind: "chats" });
     }
   }
@@ -238,8 +240,14 @@ export class WorkspaceAssistant implements AssistantHost {
     return this.#parts.files.read(path);
   }
 
-  accept(target: ReviewTarget): Promise<ReviewOutcome> {
-    return this.#parts.review.accept(target);
+  /**
+   * Accepts, and counts the step as a fix attempt in each chat whose card it covers
+   * (`assistant.build.fix-attempts`). Only Accept counts: Undo and Redo don't come here.
+   */
+  async accept(target: ReviewTarget): Promise<ReviewOutcome> {
+    const outcome = await this.#parts.review.accept(target);
+    if (outcome.status === "done") await this.#tools.accepted(outcome.step);
+    return outcome;
   }
 
   reject(target: ReviewTarget): Promise<ReviewOutcome> {
@@ -381,7 +389,7 @@ export class WorkspaceAssistant implements AssistantHost {
       // The Build chat's model call limit depends on trust, so `#answererOf` picks it.
       return {
         settings: chatSettingsOf(chat.model, loaded, this.#parts.settings),
-        tools: this.#toolsOf(chat.id, aboutLocal),
+        tools: this.#tools.toolsOf(chat.id, aboutLocal),
         offerTools: toolsWhileUntrustedLoaded,
       };
     }
@@ -397,42 +405,6 @@ export class WorkspaceAssistant implements AssistantHost {
       // The file allows up to 200 model calls; a chat answer stops at 64 turns.
       turnLimit: Math.min(file.value.maxSteps, maxTurnLimit),
     };
-  }
-
-  /**
-   * The chat's tools, made once to remember what the model read; `show` uses `#shows`, and
-   * `read_docs` keeps its sites and log with the chat (`studio.assistant-read-docs`).
-   * `read_request_log` is offered only in a chat about a local integration (`aboutLocal`).
-   */
-  #toolsOf(chatId: string, aboutLocal: boolean): readonly ChatTool[] {
-    const { files, review, isTrusted, digest, requestLogs } = this.#parts;
-    let tools = this.#tools.get(chatId);
-    if (tools === undefined) {
-      const show = async (item: ItemRef): Promise<ShowOutcome> =>
-        this.#shows.get(chatId)?.(item) ?? "nowhere";
-      const personMessages = () => this.#personMessages(chatId);
-      const sites = new KeptDocsSites(this.#chats, chatId, () =>
-        this.#changed({ kind: "chat", chatId }),
-      );
-      const reading = this.#parts.docs;
-      const now = this.#parts.now ?? (() => new Date());
-      const messages = async () => (await this.#chats.get(chatId)).messages;
-      const docs = reading === undefined ? undefined : docsOptionsOf(reading, sites, messages, now);
-      const about = async () => (await this.#chats.get(chatId)).about;
-      const requestLog = requestLogs && requestLogReading(files, about, requestLogs);
-      const options = { chatId, files, review, isTrusted, digest, show, personMessages, docs };
-      tools = withCallIds(buildChatTools({ ...options, requestLog }), sites);
-      this.#tools.set(chatId, tools);
-    }
-    // Before trust a turn offers exactly the six authoring tools (`studio.assistant-authoring-turn`),
-    // so `show`, `integration_guide`, `read_docs` and `read_request_log` wait for trust.
-    const afterTrust = ["show", "integration_guide", "read_docs", "read_request_log"];
-    const offered = tools.filter(
-      (tool) => aboutLocal || tool.definition.name !== "read_request_log",
-    );
-    return isTrusted()
-      ? offered
-      : offered.filter((tool) => !afterTrust.includes(tool.definition.name));
   }
 
   /**
