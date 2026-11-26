@@ -107,6 +107,12 @@ pub fn is_app_page(target: &NavigationTarget) -> bool {
     } else {
         target.scheme == "tauri" && target.host == Some("localhost") && target.port.is_none()
     };
+    own_origin && is_app_page_path(target)
+}
+
+/// Whether `target`'s path, query and fragment are those of the app's own
+/// page, on whatever origin: [`is_app_page`] checks the origin.
+pub(crate) fn is_app_page_path(target: &NavigationTarget) -> bool {
     let fragment_allowed = match target.fragment {
         None => true,
         Some(CHANGE_ADDRESS_FRAGMENT | PAGE_NOT_SHOWN_FRAGMENT) => {
@@ -114,7 +120,7 @@ pub fn is_app_page(target: &NavigationTarget) -> bool {
         }
         Some(_) => false,
     };
-    own_origin && target.path == APP_PAGE_PATH && target.query.is_none() && fragment_allowed
+    target.path == APP_PAGE_PATH && target.query.is_none() && fragment_allowed
 }
 
 #[cfg(test)]

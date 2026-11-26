@@ -1,6 +1,6 @@
 //! The navigation guard: links and redirects in the app window go through
-//! it (`halonic_connect::navigation_destination` decides), and every page
-//! that loads is checked again (`halonic_connect::page_may_stay`), because
+//! it (`halonic_connect::navigation_destination_with` decides), and every page
+//! that loads is checked again, with the same answer, because
 //! Android WebView doesn't ask about POST requests. The served Studio has no
 //! capability, so this guard and the confirmed address are all the shell
 //! knows about it.
@@ -8,7 +8,8 @@
 use std::sync::Mutex;
 
 use halonic_connect::{
-    Address, Destination, NavigationTarget, is_app_page, navigation_destination, page_may_stay,
+    Address, Build, Destination, DevServer, NavigationTarget, is_own_page,
+    navigation_destination_with,
 };
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{AppHandle, Manager, Runtime, Url, Webview};
@@ -62,8 +63,7 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
             // A page the guard was never asked about, such as a form sent
             // with POST on Android. It can't be sent again to the browser,
             // so the window goes back to the connect screen.
-            let confirmed = webview.state::<ConfirmedAddress>().get();
-            if !page_may_stay(&target(payload.url()), confirmed.as_ref()) {
+            if destination(webview, &target(payload.url())) != Destination::Stay {
                 back_to_connect(webview);
             }
         })
@@ -77,14 +77,13 @@ pub(crate) fn on_navigation<R: Runtime>(webview: &Webview<R>, url: &Url) -> bool
     if webview.label() == crate::server_session_brief::WINDOW {
         return crate::server_session_brief::on_navigation(webview, url);
     }
-    let confirmed = webview.state::<ConfirmedAddress>().get();
     let going_to = target(url);
-    match navigation_destination(&going_to, confirmed.as_ref()) {
+    match destination(webview, &going_to) {
         Destination::Stay => {
             // Leaving the app's own page for the served Studio: the phone
             // tunnel's events and the computer picker's list stop here,
             // before that page loads (H1 on HAL-15181, HAL-16824).
-            if !is_app_page(&going_to) {
+            if !is_own_page(&going_to, dev_server(webview.app_handle()).as_ref()) {
                 crate::phone_tunnel_events::end_page_watch(webview.app_handle(), webview.label());
                 crate::phone_nearby::end_page(webview.app_handle());
             }
@@ -105,6 +104,22 @@ pub(crate) fn on_navigation<R: Runtime>(webview: &Webview<R>, url: &Url) -> bool
         }
         Destination::Nowhere => false,
     }
+}
+
+/// Where `going_to` goes: the confirmed address and the app's own page stay,
+/// and in a debug build so does the page `tauri dev` serves (HAL-19823).
+fn destination<R: Runtime>(webview: &Webview<R>, going_to: &NavigationTarget) -> Destination {
+    let confirmed = webview.state::<ConfirmedAddress>().get();
+    let dev_server = dev_server(webview.app_handle());
+    navigation_destination_with(going_to, confirmed.as_ref(), dev_server.as_ref())
+}
+
+/// The dev server the window's page comes from under `tauri dev`: the
+/// config's `devUrl`, which the Tauri CLI fills in, and only in a debug
+/// build. A release build has none, whatever the config says.
+pub(crate) fn dev_server<R: Runtime>(app: &AppHandle<R>) -> Option<DevServer> {
+    let dev_url = app.config().build.dev_url.as_ref().map(Url::as_str);
+    DevServer::for_build(dev_url, Build::current())
 }
 
 /// The parts of `url` the navigation checks read.

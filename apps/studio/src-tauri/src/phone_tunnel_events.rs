@@ -20,13 +20,13 @@
 
 use std::sync::{Mutex, PoisonError};
 
-use halonic_connect::is_app_page;
+use halonic_connect::is_own_page;
 use halonic_phone_tunnel::PageStatus;
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager, Runtime, Webview};
 
-use crate::navigation::target;
+use crate::navigation::{dev_server, target};
 
 /// One event on the page's channel, tagged by `kind`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -125,7 +125,11 @@ pub fn watching<R: Runtime>(app: &AppHandle<R>) -> usize {
 }
 
 /// Whether the webview shows the app's own page, the only page the
-/// navigation guard keeps besides the confirmed address.
+/// navigation guard keeps besides the confirmed address (and, in a debug
+/// build, the same page from `tauri dev`'s server).
 pub fn on_app_page<R: Runtime>(webview: &Webview<R>) -> bool {
-    webview.url().is_ok_and(|url| is_app_page(&target(&url)))
+    let dev_server = dev_server(webview.app_handle());
+    webview
+        .url()
+        .is_ok_and(|url| is_own_page(&target(&url), dev_server.as_ref()))
 }
