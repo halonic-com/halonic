@@ -8,13 +8,13 @@ import { unmountAll } from "../test-support/render.tsx";
 afterEach(unmountAll);
 
 /**
- * Acme's Chief, who put "Merge #12?" to the person at 9:00 in his chat, and the channel
+ * Acme's Chief (CTO), who put "Merge #12?" to the person at 9:00 in his chat, and the channel
  * Engineering, where Elena asked "Which hostname?" at 8:30.
  */
 function acme() {
   const messaging = new FakeAgentMessaging();
   const source = messaging.addSource({ label: "Paperclip · Acme" });
-  const chief = messaging.addAgent(source.id, { name: "Chief" });
+  const chief = messaging.addAgent(source.id, { name: "Chief", title: "CTO" });
   const elena = messaging.addAgent(source.id, { name: "Elena" });
   messaging.addConversation(chief.id);
   const channel = messaging.addConversation(chief.id, {
@@ -74,7 +74,9 @@ verifies("messenger.needs-you", () => {
       const [elena, chief] = waitingCards(page);
       expect(elena).toContain("Elena · in Engineering");
       expect(elena).toContain("Which hostname?");
+      // A chat is named by its agent alone, without the title the list row adds.
       expect(chief).toContain("Chief · in Chief");
+      expect(chief).not.toContain("CTO");
       expect(chief).toContain("Merge #12?");
     });
 
@@ -84,6 +86,15 @@ verifies("messenger.needs-you", () => {
       await press(byText(page, "main [data-needs-you-card] button", "Yes"));
       expect(waitingCards(page)).toHaveLength(1);
       expect(entry(page)?.textContent).toBe("Needs you1 1 waiting");
+    });
+
+    it("says nothing is waiting, with no count, once every card is answered", async () => {
+      const page = await openMessenger(acme());
+      await press(entry(page));
+      await press(byText(page, "main [data-needs-you-card] button", "Yes"));
+      await press(byText(page, "main [data-needs-you-card] button", "docs.acme.example"));
+      expect(page.querySelector("main header")?.textContent).toBe("Needs you");
+      expect(byText(page, "main p", "Nothing is waiting for you.")).toBeDefined();
     });
 
     it("opens the chat where a card was asked", async () => {

@@ -1,7 +1,7 @@
 import type { MessagingId } from "@halonicjs/ports";
 import { Avatar, Button, PlaceIcon } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useState } from "react";
-import { chatName } from "../chat-name.ts";
+import { chatAgent } from "../chat-name.ts";
 import { listWords } from "../list-words.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
@@ -104,7 +104,10 @@ export function NeedsYouPanel({
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
           <h2 className="truncate text-body-strong">{words.title}</h2>
-          <p className="text-small text-fg-muted">{words.count(waiting?.length ?? 0)}</p>
+          {/* "0 waiting" would only repeat the empty state below, or show before the read lands. */}
+          {(waiting?.length ?? 0) === 0 ? null : (
+            <p className="text-small text-fg-muted">{words.count(waiting?.length ?? 0)}</p>
+          )}
         </div>
       </header>
       <p role="status" className="sr-only">
@@ -142,7 +145,8 @@ function WaitingItem({
   readonly onAnswered: (option: string) => Promise<void>;
 }) {
   const { card, row, agent } = waiting;
-  const where = chatName(row);
+  // Where by name alone: "Liam · in Liam", not the full "Liam · CTO" of the list row.
+  const where = chatAgent(row)?.name ?? row.conversation.title;
   return (
     <li data-needs-you-card={card.id} className="mx-auto flex w-full max-w-3xl flex-col gap-2">
       <div className="flex items-center gap-2 text-small text-fg-muted">
