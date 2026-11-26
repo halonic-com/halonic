@@ -1,3 +1,4 @@
+import type { MessagingId } from "@halonicjs/ports";
 import { swap } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import {
@@ -13,17 +14,25 @@ import { flushSync } from "react-dom";
 import type { ActivityTask, ActivityView } from "../activity.ts";
 import { activityWords } from "../activity-words.ts";
 import { isChannel } from "../channel.ts";
+import { agentRow, channelAgentLines } from "../channel-activity.ts";
 import { chatAgent } from "../chat-name.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
-import { ActivityPanel, type PanelPlace } from "./activity-panel.tsx";
+import { ChannelAgents } from "./activity-channel.tsx";
+import {
+  ActivityBody,
+  ActivityPanel,
+  activityPanelId,
+  type PanelPlace,
+} from "./activity-panel.tsx";
 import {
   ActivityToggleContext,
   type ActivityWidth,
+  useActivityKey,
   useActivityOpen,
   useActivityWidth,
 } from "./activity-toggle.tsx";
 import { reportMotion } from "./load-states.tsx";
-import { useActivity } from "./use-activity.ts";
+import { type ActivityRead, activityFor, useActivityReads } from "./use-activity.ts";
 
 /** Where the panel goes in each window width (HAL-18558 section 3). */
 const placeIn: Record<ActivityWidth, PanelPlace> = {
@@ -38,7 +47,9 @@ const placeIn: Record<ActivityWidth, PanelPlace> = {
  * beside the chat on a wide window, as a sheet over its right side on a medium one, or instead of
  * it on a narrow one, where the panel and the chat slide in as places do (motion 2). The chat stays
  * mounted while the panel takes its place, so nothing typed is lost. Closing the panel puts focus
- * back on the header button.
+ * back on the header button. **Ctrl+I** opens and closes it as the button and the panel's own
+ * **×** or **‹ Chief** do. In a channel the panel lists the channel's agents, and picking one shows
+ * that agent's view (`messenger.activity-channel`).
  */
 export function ActivityHost({
   messenger,
@@ -55,10 +66,10 @@ export function ActivityHost({
   readonly children: ReactNode;
 }) {
   const [open, toggle] = useActivityOpen(width);
-  const activity = useActivity(messenger, row, open);
+  const shown = useShownAgent(messenger, row, open);
   const name = chatAgent(row)?.name ?? row.conversation.title;
-  const working = activity.view?.kind === "working";
-  const said = useRunAnnouncement(name, activity.view);
+  const working = shown.working;
+  const said = useRunAnnouncement(shown.name, shown.activity?.view);
   const host = useRef<HTMLDivElement>(null);
   const place = placeIn[width];
   const { go, opens } = usePlaceMotion(host, place, toggle);
@@ -71,6 +82,7 @@ export function ActivityHost({
     go("back");
     host.current?.querySelector<HTMLElement>("button[aria-controls][aria-pressed]")?.focus();
   };
+  useCloseKey(host, opens);
   return (
     <ActivityToggleContext value={value}>
       <div ref={host} className="relative flex min-w-0 flex-1">
@@ -80,17 +92,84 @@ export function ActivityHost({
         <div className={open && place === "place" ? "hidden" : "contents"}>{children}</div>
         {open ? (
           <ActivityPanel
-            row={row}
-            activity={activity}
-            now={messenger.now()}
-            words={words}
+            name={shown.name}
+            chat={name}
+            shows={shown.activity === undefined ? "agents" : shown.activity.view?.kind}
             place={place}
             onClose={close}
-          />
+            onBack={shown.back}
+          >
+            <ShownBody shown={shown} now={messenger.now()} words={words} />
+          </ActivityPanel>
         ) : null}
       </div>
     </ActivityToggleContext>
   );
+}
+
+/**
+ * **Ctrl+I**: closes through the panel's own **×** or **‹ Chief**, so it moves and puts focus back
+ * as they do (HAL-18567 review); opens as the header button does.
+ */
+function useCloseKey(host: RefObject<HTMLDivElement | null>, opens: () => void): void {
+  const press = useCallback(() => {
+    const closes = host.current?.querySelector<HTMLElement>(`#${activityPanelId} [data-closes]`);
+    if (closes) closes.click();
+    else opens();
+  }, [host, opens]);
+  useActivityKey(press);
+}
+
+/** The panel's body: the channel's agents, or one agent's activity. */
+function ShownBody({
+  shown,
+  now,
+  words,
+}: {
+  readonly shown: ReturnType<typeof useShownAgent>;
+  readonly now: Date;
+  readonly words: EngineWords;
+}) {
+  if (shown.activity === undefined) {
+    return <ChannelAgents lines={shown.lines} onPick={shown.pick} />;
+  }
+  return <ActivityBody name={shown.name} activity={shown.activity} now={now} words={words} />;
+}
+
+/**
+ * Whose activity the panel shows: a chat's agent; in a channel, its agents' lines until the
+ * person picks one, then that agent, with `back` to the lines. A channel reads every agent's runs
+ * at once. Its header button's dot shows while any of its agents works.
+ */
+function useShownAgent(messenger: Messenger, row: ConversationRow, open: boolean) {
+  const channel = isChannel(row);
+  const reads = useActivityReads(messenger, channel ? undefined : row.conversation.agent, open);
+  const [picked, setPicked] = useState<MessagingId | undefined>(undefined);
+  const now = messenger.now();
+  const pick = useCallback((agent: MessagingId) => setPicked(agent), []);
+  const back = useCallback(() => setPicked(undefined), []);
+  if (!channel) {
+    const activity = activityFor(reads, row, now);
+    const name = chatAgent(row)?.name ?? row.conversation.title;
+    return {
+      name,
+      activity,
+      working: activity.view?.kind === "working",
+      lines: [],
+      pick,
+      back: undefined,
+    };
+  }
+  const lines =
+    reads.read === undefined ? [] : channelAgentLines(row, reads.read.runs, reads.read.pulls, now);
+  const working = lines.some((line) => line.working);
+  const agent = row.agents.find((each) => each.id === picked);
+  if (agent === undefined) {
+    const activity: ActivityRead | undefined = undefined;
+    return { name: row.conversation.title, activity, working, lines, pick, back: undefined };
+  }
+  const activity = activityFor(reads, agentRow(row, agent.id), now);
+  return { name: agent.name, activity, working, lines, pick, back };
 }
 
 /**
@@ -145,8 +224,8 @@ function taskName(task: ActivityTask): string {
 }
 
 /**
- * The chat with its activity panel (`messenger.activity-panel`), where one is offered: a direct
- * chat with an agent host serving the activity. A channel gets its panel later.
+ * The chat with its activity panel (`messenger.activity-panel`), where one is offered: a chat or a
+ * channel, with an agent host serving the activity (`messenger.activity-channel`).
  */
 export function WithActivity({
   messenger,
@@ -160,7 +239,7 @@ export function WithActivity({
   readonly children: ReactNode;
 }) {
   const width = useActivityWidth();
-  if (messenger.activity === undefined || row === undefined || isChannel(row)) {
+  if (messenger.activity === undefined || row === undefined) {
     return children;
   }
   return (

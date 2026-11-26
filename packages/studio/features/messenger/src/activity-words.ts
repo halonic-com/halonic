@@ -18,6 +18,11 @@ export const activityWords = {
   /** On the chat's working line while the panel is closed. */
   show: "Show activity",
   working: "Working",
+  /** A channel's line for an agent at work: "Liam · Working on HAL-18592". */
+  workingOn: (task: string) => `Working on ${task}`,
+  /** An agent's view in a channel's panel goes back to the channel's list: "‹ Channel". */
+  channel: "Channel",
+  backToChannel: "Back to the channel's agents",
   forMinutes: (minutes: number) => `for ${duration(minutes)}`,
   lastActivityNow: "Last activity just now",
   lastActivity: (minutes: number) => `Last activity ${duration(minutes)} ago`,

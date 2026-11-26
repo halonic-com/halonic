@@ -32,8 +32,7 @@ export const ActivityToggleContext = createContext<ActivityToggle | undefined>(u
  * Whether the panel is open. On a wide window it's open by default, then as the person last left
  * it, remembered on this computer; on a medium or narrow one it starts closed, and the choice made
  * there isn't remembered. When the window crosses a width, it starts again as that width starts.
- * It never opens or closes by itself. **Ctrl+I** opens and closes it, except while focus is in a
- * text field, such as the message box or the search.
+ * It never opens or closes by itself; **Ctrl+I** is the host's (`useActivityKey`).
  */
 export function useActivityOpen(width: ActivityWidth): readonly [boolean, () => void] {
   const [open, setOpen] = useState(() => startsOpen(width));
@@ -48,6 +47,14 @@ export function useActivityOpen(width: ActivityWidth): readonly [boolean, () => 
       return !before;
     });
   }, [width]);
+  return [open, toggle];
+}
+
+/**
+ * **Ctrl+I** opens and closes the panel through `press`, the same open and close as the header
+ * button's, except while focus is in a text field, such as the message box or the search.
+ */
+export function useActivityKey(press: () => void): void {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (!event.ctrlKey || event.altKey || event.metaKey || event.key.toLowerCase() !== "i")
@@ -55,15 +62,18 @@ export function useActivityOpen(width: ActivityWidth): readonly [boolean, () => 
       // While the person types, Ctrl+I belongs to the text field (HAL-18567 review).
       if (isTextField(event.target)) return;
       event.preventDefault();
-      toggle();
+      press();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle]);
-  return [open, toggle];
+  }, [press]);
 }
 
-/** Where the panel goes in this window: the kit's narrow width first, then the wide query. */
+/**
+ * Where the panel goes in this window: the kit's narrow width first, then the wide query. The
+ * medium width (900–1199 px) is what lies between them, so it holds only while the kit's narrow
+ * width (`WIDE_MIN_WIDTH`, which `useNarrow` follows) stays at 900 px (HAL-18567 review).
+ */
 export function useActivityWidth(): ActivityWidth {
   const narrow = useNarrow();
   const wide = useWide();
