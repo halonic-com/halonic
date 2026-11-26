@@ -58,6 +58,17 @@ class ShortcutTargetsTest {
   }
 
   @Test
+  fun a_forgotten_pinned_last_chat_becomes_messenger_and_opens_the_messenger_list() {
+    val relabel = ShortcutTargets.forgottenLastChat()
+    assertEquals(ShortcutTargets.LAST_CHAT, relabel.id)
+    assertEquals(ShortcutTargets.MESSENGER, relabel.opens)
+    assertEquals(
+      OpenTarget.Messenger,
+      ShortcutTargets.targetOf(ShortcutTargets.addressOf(relabel.opens), launchReview),
+    )
+  }
+
+  @Test
   fun labels_are_cut_to_10_and_25_characters() {
     val name = "Launch review for the acme website"
     assertEquals("Launch rev", ShortcutTargets.cut(name, ShortcutTargets.SHORT_LABEL))

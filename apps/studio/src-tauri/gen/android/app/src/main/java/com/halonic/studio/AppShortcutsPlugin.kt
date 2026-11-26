@@ -77,7 +77,8 @@ class AppShortcutsPlugin(private val host: Activity) : Plugin(host) {
 
   /**
    * `{computer}`: the phone forgot it, or it removed the phone. The last chat goes when it's on that
-   * computer, and only then. Answers `{forgot}`.
+   * computer, and only then, and a copy pinned to the home screen becomes Messenger
+   * ([relabelPinned]). Answers `{forgot}`.
    */
   @Command
   fun forgetComputer(invoke: Invoke) {
@@ -85,6 +86,7 @@ class AppShortcutsPlugin(private val host: Activity) : Plugin(host) {
     val forgot = computer != null && ShortcutTargets.isOn(storedChat(), computer)
     if (forgot) {
       forgetChat()
+      relabelPinned()
     }
     invoke.resolve(JSObject().put("forgot", forgot))
   }
@@ -141,6 +143,23 @@ class AppShortcutsPlugin(private val host: Activity) : Plugin(host) {
   private fun forgetChat() {
     store().edit().clear().apply()
     ShortcutManagerCompat.removeDynamicShortcuts(host, listOf(ShortcutTargets.LAST_CHAT))
+  }
+
+  /**
+   * The pinned last chat no longer names a forgotten chat: it reads "Messenger" and opens the
+   * Messenger list, label and intent in one update (Sofia, HAL-20178). It isn't disabled, and the
+   * next chat opened takes it over again through [keepChat]. Android ignores this when none is pinned.
+   */
+  private fun relabelPinned() {
+    val forgotten = ShortcutTargets.forgottenLastChat()
+    val words = host.getString(R.string.shortcut_messenger)
+    val shortcut = ShortcutInfoCompat.Builder(host, forgotten.id)
+      .setShortLabel(words)
+      .setLongLabel(words)
+      .setIcon(IconCompat.createWithResource(host, R.drawable.ic_shortcut_messenger))
+      .setIntent(openIntent(forgotten.opens))
+      .build()
+    ShortcutManagerCompat.updateShortcuts(host, listOf(shortcut))
   }
 
   private fun storedChat(): LastChat? {
