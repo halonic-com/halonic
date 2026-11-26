@@ -18,6 +18,8 @@ const snapshot: Snapshot = {
     repo([
       // Waits only for Julian's review: Liam wrote it.
       pull(501, { labels: [] }, { branch: "liam/HAL-501-thing" }),
+      // Waits only for Nora's review: a routine pull request (HAL-19653).
+      pull(504, { labels: [], reviewer: "Nora" }),
       // Red on its head.
       pull(502, { labels: [], ciOk: "failure" }),
       // Red too, but its task waits on a blocker.
@@ -40,7 +42,7 @@ const blockedTask: TaskRow = {
 
 const live: WatchersSettings = {
   dryRun: false,
-  wakeTasks: { Liam: "task-liam-chat", Julian: "task-julian-chat" },
+  wakeTasks: { Liam: "task-liam-chat", Julian: "task-julian-chat", Nora: "task-nora-chat" },
   unhandledTask: "task-chief-chat",
   boardLineTask: "task-board-line",
   handQueueBranches: [],
@@ -82,13 +84,15 @@ verifies("paperclip.merge-watchers-reviewer-wake", () => {
     expect(context.writes.map((write) => [write.kind, write.issueId])).toEqual([
       ["comment", "task-julian-chat"],
       ["wake", "task-julian-chat"],
+      ["comment", "task-nora-chat"],
+      ["wake", "task-nora-chat"],
     ]);
   });
 
   test("reads its settings, dry run unless turned off", () => {
     expect(readWatchersSettings({})).toEqual({
       dryRun: true,
-      wakeTasks: { Liam: "", Julian: "" },
+      wakeTasks: { Liam: "", Julian: "", Nora: "" },
       unhandledTask: "",
       boardLineTask: "",
       handQueueBranches: [],
@@ -98,13 +102,14 @@ verifies("paperclip.merge-watchers-reviewer-wake", () => {
         mergeWatchersDryRun: false,
         liamWakeTask: " a ",
         julianWakeTask: "b",
+        noraWakeTask: "c",
         unhandledTask: 7,
         boardLineTask: " task-board ",
         handQueueBranches: [" board/ ", 3, ""],
       }),
     ).toEqual({
       dryRun: false,
-      wakeTasks: { Liam: "a", Julian: "b" },
+      wakeTasks: { Liam: "a", Julian: "b", Nora: "c" },
       unhandledTask: "",
       boardLineTask: "task-board",
       handQueueBranches: ["board/"],
@@ -118,7 +123,7 @@ verifies("paperclip.merge-watchers-unhandled", () => {
     for (const minutes of [0, 360, 370]) {
       await runAt(context, minutes, {
         ...live,
-        wakeTasks: { Liam: "", Julian: "" },
+        wakeTasks: { Liam: "", Julian: "", Nora: "" },
         dryRun: false,
       });
     }
@@ -139,6 +144,7 @@ verifies("paperclip.merge-watchers-unhandled", () => {
     expect(context.writes).toEqual([]);
     expect(context.logs.map((log) => log.message.split(":")[0])).toEqual([
       "Reviewer wake for Julian (dry run)",
+      "Reviewer wake for Nora (dry run)",
       "UNHANDLED report (dry run)",
     ]);
   });

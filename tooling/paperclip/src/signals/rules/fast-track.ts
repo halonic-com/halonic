@@ -142,11 +142,11 @@ function reviewNotices(subject: Subject, say: Notice, since: Tracked["reviewSinc
   }
   const short = pull.head.slice(0, 7);
   const head12 = pull.head.slice(0, 12);
-  const nudge = `${check.reviewer}, please review now: fast-track, ready for review and not approved on head ${short}.`;
+  const nudge = `${check.reviewer ?? "Reviewer"}, please review now: fast-track, ready for review and not approved on head ${short}.`;
   const notices = [say("review_nudge", head12, ["task"], nudge)];
   const waited = Math.round(minutesSince(since.at, input.now));
   if (waited >= input.settings.reviewEscalateMinutes) {
-    const text = `still not approved on head ${short} ${waited} min after it was ready for review: ${check.reviewer} hasn't reviewed it.`;
+    const text = `still not approved on head ${short} ${waited} min after it was ready for review: ${check.reviewer ?? "the reviewer"} hasn't reviewed it.`;
     notices.push(say("review_escalate", head12, ["board"], text));
   }
   return notices;

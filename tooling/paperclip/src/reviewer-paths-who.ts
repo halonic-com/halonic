@@ -9,6 +9,7 @@
  */
 import type { Routing } from "@halonicjs/format";
 import { type RoutedPull, reviewerFor, reviewerRoleFor } from "./reviewer-paths.ts";
+import { personFor } from "./routing.ts";
 
 /** Who reviews a pull request on `halonic` today (HAL-14809, HAL-19283). */
 export type Reviewer = "nora" | "julian" | "liam";
@@ -19,6 +20,25 @@ export const reviewerNames: Readonly<Record<Reviewer, string>> = {
   julian: "Julian",
   liam: "Liam",
 };
+
+/**
+ * An agent's name as their signed line writes it: today's reviewers from
+ * `reviewerNames`, anyone else a routing names by their url key, capitalised.
+ */
+export function reviewerName(agent: string): string {
+  return Object.hasOwn(reviewerNames, agent)
+    ? reviewerNames[agent as Reviewer]
+    : agent.charAt(0).toUpperCase() + agent.slice(1);
+}
+
+/**
+ * Who takes a review over from a reviewer parked or at a limit (HAL-19203):
+ * Liam's goes to Julian, Julian's to Liam, and Nora's to Julian, who covers
+ * her routine scope.
+ */
+export function stepInReviewer(held: Reviewer): Reviewer {
+  return held === "julian" ? "liam" : "julian";
+}
 
 /** The reviewers whose approval counts only within their limits: Julian's, and Nora's routine scope. */
 export const limitedReviewerNames: readonly string[] = [reviewerNames.julian, reviewerNames.nora];
@@ -63,8 +83,9 @@ export function reviewerOf(author: string | undefined, byPaths: readonly Reviewe
 /**
  * The agent who reviews one pull request: the reviewer by its paths
  * (`reviewerFor`), moved off its author by `reviewerOf`. With a routing, the
- * person it names for the role; the author rule applies only to today's
- * people, since a routing that names someone else already chose them.
+ * person it names for the role, moved off its author the same way: the
+ * second reviewer takes the code reviewer's own and any other role's, the
+ * code reviewer the second reviewer's own.
  *
  * @param pull - the routed pull request (`routedFromRest`)
  * @param author - the agent its branch names (`branchOwner`), or undefined for a fork
@@ -75,8 +96,13 @@ export function reviewerOfPull(
   author: string | undefined,
   routing?: Routing,
 ): string {
-  if (routing !== undefined) {
-    return reviewerFor(pull, routing);
+  if (routing === undefined) {
+    return reviewerOf(author, [reviewerFor(pull)]);
   }
-  return reviewerOf(author, [reviewerFor(pull)]);
+  const routed = reviewerFor(pull, routing);
+  if (author === undefined || routed !== author) {
+    return routed;
+  }
+  const second = personFor("second-reviewer", routing);
+  return author === second ? personFor("code-reviewer", routing) : second;
 }

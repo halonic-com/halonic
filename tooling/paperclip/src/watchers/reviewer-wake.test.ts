@@ -86,6 +86,18 @@ verifies("paperclip.merge-watchers-reviewer-wake", () => {
     ]);
   });
 
+  test("wakes the reviewer the snapshot names: Nora for a routine pull request", () => {
+    const snapshot = snapshotOf(waiting(306, { reviewer: "Nora" }), waiting(307));
+    const [, due] = passes([
+      [snapshot, at(0)],
+      [snapshot, at(61)],
+    ]);
+    expect(due?.map((wake) => [wake.reviewer, wake.pulls.map((listed) => listed.number)])).toEqual([
+      ["Nora", [306]],
+      ["Liam", [307]],
+    ]);
+  });
+
   test("a fast-track pull request wakes after 30 minutes", () => {
     const snapshot = snapshotOf(pull(305));
     const wakes = passes([

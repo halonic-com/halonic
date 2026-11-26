@@ -1,11 +1,13 @@
 import { fastTrackLabel } from "../pr-tools/queue-state.ts";
-import { branchOwner } from "../pr-watcher/decide.ts";
+import { snapshotReviewer } from "../snapshot/reviewers.ts";
 import type { Snapshot, SnapshotPull } from "../snapshot/shape.ts";
 
 /**
  * The reviewer wake (HAL-17938): an open pull request that waits only for its
- * reviewer wakes Liam on his chat task, or Julian on his for a pull request
- * Liam wrote, once per head. It reads only the pass's snapshot. Chief's
+ * reviewer wakes that reviewer on their chat task, once per head: the
+ * reviewer the snapshot names (`snapshotReviewer`, the shared answer of
+ * HAL-19639 since HAL-19653), so a routine one wakes Nora. It reads only the
+ * pass's snapshot. Chief's
  * answers on HAL-17940: the wake comes after 60 minutes on the same head, 30
  * for a `fast-track` one (its review time). HAL-17722's `review_nudge` covers
  * fast-track pull requests too, but only logs, so it wakes nobody yet.
@@ -16,7 +18,8 @@ export const reviewerWakeMinutes = 60;
 /** The same for a `fast-track` pull request. */
 export const fastTrackWakeMinutes = 30;
 
-export type Reviewer = "Liam" | "Julian";
+/** A reviewer by the name their signed line writes, such as `Nora`. */
+export type Reviewer = string;
 
 /** What the wake keeps between passes, per company, by `owner/name#123`. */
 export interface ReviewerWakeState {
@@ -44,9 +47,9 @@ export interface ReviewerWake {
   readonly pulls: readonly WaitingPull[];
 }
 
-/** Julian for a pull request Liam wrote, Liam otherwise. */
-export function wakeReviewerOf(pull: Pick<SnapshotPull, "branch">): Reviewer {
-  return branchOwner(pull.branch) === "liam" ? "Julian" : "Liam";
+/** Who the wake goes to: the reviewer the snapshot names. */
+export function wakeReviewerOf(pull: SnapshotPull): Reviewer {
+  return snapshotReviewer(pull);
 }
 
 /**

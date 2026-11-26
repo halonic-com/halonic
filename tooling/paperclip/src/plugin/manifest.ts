@@ -46,6 +46,15 @@ const monitorPostpone = "issues.monitors.postpone" as PluginCapability;
  */
 const dispositionWrite = "issues.disposition.write" as PluginCapability;
 
+/** The setting for the task a reviewer's wake goes to (`watchers/run.ts`, HAL-19653). */
+function reviewerWakeTask(name: string) {
+  return {
+    type: "string",
+    title: `${name}'s wake task`,
+    description: `The id of the task where a green pull request that waits only for ${name}'s review wakes them (Chat with ${name}). Empty: it only logs.`,
+  } as const;
+}
+
 /**
  * The Agent tools plugin (HAL-15920, phase 1). Its first job is the PR
  * watcher (trigger A1); its tools are `pr_status` (B1) and `queue_state`
@@ -210,18 +219,9 @@ export const manifest: PaperclipPluginManifestV1 = {
           "Only log the reviewer wakes and UNHANDLED reports (HAL-17938). Turn off once the logged ones look right.",
         default: true,
       },
-      liamWakeTask: {
-        type: "string",
-        title: "Liam's wake task",
-        description:
-          "The id of the task where a green pull request that waits only for Liam's review wakes him (Chat with Liam). Empty: it only logs.",
-      },
-      julianWakeTask: {
-        type: "string",
-        title: "Julian's wake task",
-        description:
-          "The id of the task where a pull request Liam wrote that waits only for its review wakes Julian (Chat with Julian). Empty: it only logs.",
-      },
+      liamWakeTask: reviewerWakeTask("Liam"),
+      julianWakeTask: reviewerWakeTask("Julian"),
+      noraWakeTask: reviewerWakeTask("Nora"),
       unhandledTask: {
         type: "string",
         title: "UNHANDLED task",

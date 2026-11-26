@@ -1,4 +1,5 @@
 import { amsterdamTime } from "../amsterdam-time.ts";
+import { reviewerNames, stepInReviewer } from "../reviewer-paths-who.ts";
 import { branchOwner, marker, type PullFacts, short } from "./decide.ts";
 import type { Reviewer, ReviewerRoute } from "./handoff.ts";
 import { readMemory } from "./memory.ts";
@@ -7,9 +8,10 @@ import { waitsForApproval } from "./review-wait.ts";
 import type { Limit, ReviewerLimits } from "./reviewer-limits.ts";
 
 /**
- * The limit-aware review route (board, HAL-19203): a review task Liam or
- * Julian holds while they are parked on a pool wait or at a seat or usage
- * limit goes to the other reviewer at once, instead of waiting for the
+ * The limit-aware review route (board, HAL-19203): a review task a reviewer
+ * holds while they are parked on a pool wait or at a seat or usage limit
+ * goes to the one who steps in for them (`stepInReviewer`: Liam's to Julian,
+ * Julian's to Liam, Nora's to Julian) at once, instead of waiting for the
  * review-wait note. Julian takes it only within his scope (HAL-14809), Liam
  * takes any but his own; when both are limited it stays, with one note per
  * head. Each head moves to each reviewer at most once, so a task can't bounce.
@@ -20,16 +22,14 @@ export type RerouteChoice =
   | { readonly kind: "move"; readonly to: Reviewer }
   | { readonly kind: "stay"; readonly why: "author" | "outside julian" | "both limited" };
 
-function otherOf(reviewer: Reviewer): Reviewer {
-  return reviewer === "liam" ? "julian" : "liam";
-}
+const otherOf = stepInReviewer;
 
 function nameOf(reviewer: Reviewer): string {
-  return reviewer === "liam" ? "Liam" : "Julian";
+  return reviewerNames[reviewer];
 }
 
 /**
- * Who takes over from the limited reviewer `held`: the other one, unless
+ * Who takes over from the limited reviewer `held`: the one who steps in, unless
  * they wrote the pull requests, or it's Julian and they are outside his
  * scope (Liam's own pull requests are always his), or they are limited too.
  */
@@ -118,7 +118,7 @@ export interface RerouteOutcome {
 export const noReroute: RerouteOutcome = { rerouted: false, bothLimited: false };
 
 function heldBy(task: TaskRow, owners: ReadonlyMap<string, string>): Reviewer | undefined {
-  const reviewers: readonly Reviewer[] = ["liam", "julian"];
+  const reviewers = Object.keys(reviewerNames) as Reviewer[];
   return reviewers.find((reviewer) => owners.get(reviewer) === task.assigneeAgentId);
 }
 
@@ -183,7 +183,7 @@ async function noteBothLimited(
 }
 
 /**
- * For a task Liam or Julian holds, not as its author, with no run working on
+ * For a task a reviewer holds, not as its author, with no run working on
  * it and a pull request waiting for approval: moves it to the other reviewer
  * when its holder is limited and the other may take it, or notes once per
  * head that both are limited. The comments are read only when one applies.

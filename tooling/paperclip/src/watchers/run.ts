@@ -36,7 +36,11 @@ import { emptyUnhandled, type UnhandledState, unhandledPass, unhandledText } fro
 export interface WatchersSettings {
   /** Only log what they would write. On unless the board turns it off. */
   readonly dryRun: boolean;
-  /** The task each reviewer is woken on (Chief, HAL-17940: Liam's chat HAL-45, Julian's HAL-44), by id; empty: no write. */
+  /**
+   * The task each reviewer is woken on, by their name (Chief, HAL-17940:
+   * Liam's chat HAL-45, Julian's HAL-44; Nora's since HAL-19653), by id;
+   * empty or missing: no write.
+   */
   readonly wakeTasks: Readonly<Record<Reviewer, string>>;
   /** The task UNHANDLED problems go to (Chief's chat, HAL-10), by id; empty: no write. */
   readonly unhandledTask: string;
@@ -62,7 +66,11 @@ function textList(config: Readonly<Record<string, unknown>>, name: string): stri
 export function readWatchersSettings(config: Readonly<Record<string, unknown>>): WatchersSettings {
   return {
     dryRun: config["mergeWatchersDryRun"] !== false,
-    wakeTasks: { Liam: text(config, "liamWakeTask"), Julian: text(config, "julianWakeTask") },
+    wakeTasks: {
+      Liam: text(config, "liamWakeTask"),
+      Julian: text(config, "julianWakeTask"),
+      Nora: text(config, "noraWakeTask"),
+    },
     unhandledTask: text(config, "unhandledTask"),
     boardLineTask: text(config, "boardLineTask"),
     handQueueBranches: textList(config, "handQueueBranches"),
@@ -251,7 +259,7 @@ export async function runMergeWatchers(ctx: WatchersApi, input: WatchersInput): 
     for (const wake of pass.wakes) {
       const key = wake.pulls.map((pull) => `${pull.number}@${pull.head.slice(0, 7)}`).join(",");
       await post(ctx, companyId, {
-        taskId: settings.wakeTasks[wake.reviewer],
+        taskId: settings.wakeTasks[wake.reviewer] ?? "",
         body: reviewerWakeText(wake),
         key,
         dryRun: settings.dryRun,
