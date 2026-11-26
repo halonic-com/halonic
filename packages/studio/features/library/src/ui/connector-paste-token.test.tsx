@@ -74,7 +74,7 @@ function entryOf(root: HTMLElement, name: string): HTMLInputElement | undefined 
   return input instanceof HTMLInputElement ? input : undefined;
 }
 
-verifies("library.connector-trouble-line", () => {
+verifies("library.connector-paste-token", () => {
   it("offers Paste a new token on a 401, which focuses the token's entry", async () => {
     const root = await openPage(shopOrders("not-accepted", ["shop-key"]));
     expect(root.textContent).toContain(
