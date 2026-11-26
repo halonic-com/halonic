@@ -39,8 +39,16 @@ verifies("kit.plain-row-fit", () => {
     expect(classesOf(inside)).not.toContain("min-h-20");
   });
 
-  it("lets a plain row with a part under its meta line grow rather than clip it", () => {
-    const { inside } = rowParts({ ...refund, under: <span>Two files</span> }, true);
+  it.each<[string, Partial<ListRow>]>([
+    ["a part under its meta line", { under: <span>Two files</span> }],
+    ["text buttons", { actions: [{ label: "Retry", onClick: () => undefined }] }],
+    ["wrap", { wrap: true }],
+    [
+      "an error, whose reason is never cut",
+      { error: { reason: "The run stopped.", chip: "Failed" } },
+    ],
+  ])("lets a plain row with %s grow rather than spill over the next row", (_, extra) => {
+    const { inside } = rowParts({ ...refund, ...extra }, true);
     expect(classesOf(inside)).toEqual(expect.arrayContaining(["min-h-20", "py-2.5"]));
     expect(classesOf(inside)).not.toContain("h-20");
   });

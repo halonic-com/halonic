@@ -270,8 +270,8 @@ interface ListBase<Id extends string> {
   /**
    * Rows as `PlainList`'s, as the Inbox's Needs you (HAL-19192): no box or lines, each row rounded
    * and 4px apart, a regular title, and the muted fill on hover and on the `current` row. Its rows
-   * are a sidebar's bigger ones (HAL-19735): exactly 80px (one with `under` or `actions` may grow),
-   * a 60px avatar, a 15px title over a 14px meta line. It wins over `flush`, on a phone too.
+   * are a sidebar's bigger ones (HAL-19735): exactly 80px (one with `wrap`, an error, `under` or
+   * `actions` may grow), a 60px avatar, a 15px title over a 14px meta line. It wins over `flush`, on a phone too.
    */
   readonly plain?: boolean;
   /**

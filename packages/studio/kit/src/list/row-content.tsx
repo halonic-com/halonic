@@ -6,7 +6,7 @@ import { UnreadMark } from "../plain-list/unread-mark.tsx";
 import { StatusChip } from "../status-chip/status-chip.tsx";
 import type { AnyListRow, ListColumn, ListRowAction } from "./list-props.ts";
 import { RowColumns } from "./row-columns.tsx";
-import { Leading, lineFit, MetaLine } from "./row-parts.tsx";
+import { Leading, lineFit, MetaLine, showsError } from "./row-parts.tsx";
 
 /*
  * The inside of a List row's main cell. Split out of list.tsx, which keeps the cells and their
@@ -33,11 +33,16 @@ function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean, wrap: b
  * A `plain` row's height: a sidebar's row, exactly 80px with 10px above and below, on a phone too
  * (HAL-19735, `kit.plain-row-size`). Its title and meta line fit in the 60px between
  * (`kit.plain-row-fit`), so the height is fixed rather than a minimum: the board's correction on
- * HAL-10 (HAL-20019). A part under the meta line or text buttons need more room, so such a row
- * may grow rather than clip them.
+ * HAL-10 (HAL-20019). A row whose text isn't cut (`wrap`, an error's reason), a part under the
+ * meta line or text buttons may need more room, so such a row grows: in a fixed row they would
+ * spill over the next one.
  */
 function plainHeight(row: AnyListRow): string {
-  const grows = row.under !== undefined || (row.actions !== undefined && row.actions.length > 0);
+  const grows =
+    row.wrap === true ||
+    showsError(row) ||
+    row.under !== undefined ||
+    (row.actions !== undefined && row.actions.length > 0);
   return grows ? "min-h-20 py-2.5" : "h-20 py-2.5";
 }
 
