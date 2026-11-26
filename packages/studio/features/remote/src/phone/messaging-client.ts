@@ -15,11 +15,14 @@ import type {
   GatewayHostMessage,
   GatewayInboxAnswer,
   gatewayMessagingLists,
+  gatewayTeamLists,
   MessagingId,
   SendResult,
+  SpendRange,
 } from "@halonicjs/ports";
 import {
   gatewayMaxAddressees,
+  gatewayMaxIdLength,
   gatewayMaxPromptLength,
   gatewayMaxSearchLength,
 } from "@halonicjs/ports";
@@ -33,6 +36,11 @@ import type { RemoteNotSentReason, RemoteRefusal } from "./remote-view.ts";
 
 /** A list the phone reads whole, a page at a time. */
 export type MessagingList = (typeof gatewayMessagingLists)[number];
+
+/** A team status list a `team-read` names, besides one pull request. */
+export type TeamList = (typeof gatewayTeamLists)[number];
+
+const idPattern = new RegExp(`^[A-Za-z0-9_-]{1,${gatewayMaxIdLength}}$`);
 
 /** One page of a list, a conversation's messages or search hits. */
 export interface MessagingPage {
@@ -56,7 +64,7 @@ export type MessagingOutcome<Value> =
 /** The open session to speak version 4 in; `older` while the computer speaks version 3. */
 export type MessagingSession = () => OpenSession | "older" | undefined;
 
-/** The phone's Inbox and Messenger requests, for the screens to come. */
+/** The phone's Inbox, Messenger and team status requests, for the screens to come. */
 export class MessagingClient {
   private readonly session: MessagingSession;
   private onChanged: ((source: MessagingId) => void) | undefined;
@@ -144,6 +152,36 @@ export class MessagingClient {
     );
   }
 
+  /** Reads a team status list whole: the parts, seats, pull requests or the merge queue. */
+  readTeam(what: Exclude<TeamList, "spend">): Promise<MessagingOutcome<MessagingPage>> {
+    return this.request((id) => ({ type: "team-read", id, what }), teamPageOf(what));
+  }
+
+  /** Reads each source's spend for `range`. */
+  readSpend(range: SpendRange): Promise<MessagingOutcome<MessagingPage>> {
+    return this.request(
+      (id) => ({ type: "team-read", id, what: "spend", range }),
+      teamPageOf("spend"),
+    );
+  }
+
+  /**
+   * Reads one pull request's detail, a `PullRequestDetail`; the host refuses
+   * one it can't find with `not-found`. An id outside the protocol's id rule
+   * isn't sent, since the host would close the session on it.
+   */
+  readPullRequest(pullRequest: MessagingId): Promise<MessagingOutcome<unknown>> {
+    if (!idPattern.test(pullRequest)) return notSent("invalid");
+    const page = teamPageOf("pull-request");
+    return this.request(
+      (id) => ({ type: "team-read", id, what: "pull-request", pullRequest }),
+      (message) => {
+        const items = page(message)?.items;
+        return items?.length === 1 ? items[0] : undefined;
+      },
+    );
+  }
+
   /**
    * Calls `onChanged` with each source the host says changed, on this session
    * and every later version 4 one, until the returned function is called.
@@ -164,8 +202,8 @@ export class MessagingClient {
     if (this.onChanged !== undefined) this.sendWatch();
   }
 
-  /** Acts on a `msg-data`, `msg-result` or `msg-changed`; `false` when it fits nothing the phone asked. */
-  received(message: Extract<GatewayHostMessage, { type: `msg-${string}` }>): boolean {
+  /** Acts on a `msg-data`, `msg-result`, `msg-changed` or `team-data`; `false` when it fits nothing the phone asked. */
+  received(message: Extract<GatewayHostMessage, { type: `msg-${string}` | "team-data" }>): boolean {
     const session = this.session();
     if (session === undefined || session === "older") return false;
     if (message.type === "msg-changed") {
@@ -256,6 +294,14 @@ export class MessagingClient {
 function pageOf(what: string): (message: MessagingAnswer) => MessagingPage | undefined {
   return (message) =>
     message.type === "msg-data" && message.what === what
+      ? { items: message.items, more: message.more }
+      : undefined;
+}
+
+/** The page a `team-data` of `what` holds, and nothing for any other answer. */
+function teamPageOf(what: string): (message: MessagingAnswer) => MessagingPage | undefined {
+  return (message) =>
+    message.type === "team-data" && message.what === what
       ? { items: message.items, more: message.more }
       : undefined;
 }

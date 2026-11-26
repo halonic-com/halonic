@@ -20,11 +20,11 @@ export interface PendingSend {
 /** A host message that answers a request by its `replyTo`. */
 export type MessagingAnswer = Extract<
   GatewayHostMessage,
-  { type: "msg-data" | "msg-result" | "ok" }
+  { type: "msg-data" | "msg-result" | "team-data" | "ok" }
 >;
 
 /**
- * What settles a version 4 Inbox or Messenger request: the host's answer, its
+ * What settles a version 4 Inbox, Messenger or team status request: the host's answer, its
  * refusal, the shell's refusal, or a drop before any of them.
  */
 export type MessagingSettled =

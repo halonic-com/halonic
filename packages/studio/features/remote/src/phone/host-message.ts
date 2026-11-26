@@ -15,6 +15,7 @@ import {
   gatewayMessagingLists,
   gatewayProtocolVersion,
   gatewayRefusalCodes,
+  gatewayTeamLists,
 } from "@halonicjs/ports";
 
 /**
@@ -176,6 +177,17 @@ const isMessagingPage = exactly(
   { more: isMessagingId },
 );
 
+/** A page of team status: each item one `TeamStatus` value, its fields the port's own. */
+const isTeamPage = exactly(
+  {
+    type: oneOf("team-data"),
+    replyTo: isId,
+    what: oneOf(...gatewayTeamLists, "pull-request"),
+    items: listOf(isObject),
+  },
+  { more: isMessagingId },
+);
+
 /** The types only version 4 lists: a version 3 host never sends them. */
 const versionFourTypes = new Set(["msg-data", "msg-result", "msg-changed", "team-data"]);
 
@@ -203,8 +215,7 @@ const hostMessages: Readonly<Record<GatewayHostMessage["type"], readonly Check[]
   "msg-data": [isMessagingPage],
   "msg-result": [message("msg-result", { replyTo: isId, result: isMessagingResult })],
   "msg-changed": [message("msg-changed", { source: isMessagingId })],
-  // The phone asks for no team status yet (G3 on HAL-17511), so it takes none.
-  "team-data": [],
+  "team-data": [isTeamPage],
 };
 
 /**
