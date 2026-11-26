@@ -1,0 +1,25 @@
+# paperclip.merger-wake
+
+- Status: active
+- Since: unreleased
+- Source: HAL-19234 (ci-fasttrack on HAL-18424, 26 Nov: a wake through the Supervisor's credential failed every woken run, and Chief decided not to share the Merger's credential, so the Agent tools plugin wakes the Merger on its own task, as the chief line wakes Chief)
+
+While `mergerWake.enabled` is on and `mergerWake.task` names a task, the Agent tools plugin shall read the open pull requests of its first repository on the read token, at each `merger-wake` job pass (every minute) and 10 seconds after the first of a burst of `POST /chief-line/pr-event` deliveries, and shall compare each pull request's head, base, review decision, check rollup state and labels, and which pull requests are open, with the previous read. When one of them changed, or a delivery carried a signed approval for a pull request of that repository, it shall wake the task's holder through that task with reason `merger_pr_change`, at most once every 45 seconds: a change within 45 seconds of the last wake shall wake once at the 45-second mark. While a run on the task or of its holder is in progress, it shall not wake, and the next pass shall try again. The first read after the plugin starts only takes the baseline. A change in `updatedAt` alone shall wake nobody. If GitHub answers that its rate limit is used up, it shall log one line and read nothing more until GitHub's reset time (15 minutes when GitHub names none, at least one minute). While it is off, it shall read nothing and wake nobody.
+
+## Examples
+
+- Given #6085 is open with head `aaa…`,
+  when the next read shows head `bbb…`,
+  then the Merger's task is woken once, and the log says "woke the Merger for #6085 head".
+- Given a wake at 07:00:00,
+  when #6085's labels change at 07:00:10,
+  then the next wake is at 07:00:45.
+- Given a Merger run is in progress,
+  when #6086 opens,
+  then nobody is woken until a pass finds the run over.
+- Given GitHub's read limit is used up until 07:20 UTC,
+  when passes run each minute until then,
+  then GitHub is not read again before 07:20 and one line is logged.
+- Given a signed approval for #6085 arrives on `pr-event` at 07:00:00,
+  when 10 seconds have passed,
+  then the Merger's task is woken for "#6085 approval".
