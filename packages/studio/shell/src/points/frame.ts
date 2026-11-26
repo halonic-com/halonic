@@ -83,17 +83,35 @@ export interface PhoneBarContribution extends Ordered, ViewRef {
 }
 
 /**
- * Where a settings section's values live, which also decides its group in the settings list:
+ * Where a settings section's values live, which also decides its group in served Studio's and the
+ * phone's settings list:
  * - `workspace`: in the open workspace's files, listed under the workspace's name;
  * - `display`: in the app's profile on this computer (or the browser, when served), such as the theme;
  * - `host`: in the user profile where Halonic runs, never in a workspace file, such as the assistant.
  *
- * `display` and `host` sections share the "On this computer" group.
+ * On a phone in the desktop app, `display` and `host` sections share the "On this computer" group.
  */
 export const settingsScopes = ["workspace", "display", "host"] as const;
 
 /** Where a settings section's values live. */
 export type SettingsScope = (typeof settingsScopes)[number];
+
+/**
+ * What a settings section is about, which decides its group in the desktop app's Settings dialog,
+ * in this order (HAL-19539): `general` (Appearance, Formats), `agents` (Models, Trust, Agent
+ * sandbox), `connections` (account and connections: Connections, Remote), `keyboard`, and `about`,
+ * which comes last. Served Studio and the phone list still group by {@link SettingsScope}.
+ */
+export const settingsGroupNames = [
+  "general",
+  "agents",
+  "connections",
+  "keyboard",
+  "about",
+] as const;
+
+/** What a settings section is about: one of {@link settingsGroupNames}. */
+export type SettingsGroupName = (typeof settingsGroupNames)[number];
 
 /**
  * A section in the settings container, which the shell owns. The container writes the group
@@ -102,6 +120,11 @@ export type SettingsScope = (typeof settingsScopes)[number];
 export interface SettingsSectionContribution extends Ordered, ViewRef {
   readonly title: string;
   readonly scope: SettingsScope;
+  /**
+   * The desktop app's Settings group the section shows in. Required, so a new section never lands
+   * in a place nobody chose.
+   */
+  readonly group: SettingsGroupName;
   /**
    * The section's icon, in the dialog's list and the phone's. A section without one shows the
    * Settings gear on the phone and no icon in the dialog.

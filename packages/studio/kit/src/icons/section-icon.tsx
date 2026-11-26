@@ -10,6 +10,10 @@ export const sectionIconNames = [
   "plugins",
   "remote",
   "server-session",
+  "connections",
+  "notifications",
+  "feedback",
+  "keyboard",
   "about",
 ] as const;
 
@@ -50,6 +54,20 @@ const drawings: Readonly<Record<SectionIconName, SectionDrawing>> = {
   // A server: two stacked units, each with a light, as the machine Run with Claude reaches.
   "server-session": {
     outline: "M5 4h14v7H5zM5 13h14v7H5zM8 7.5h.01M8 16.5h.01M12 7.5h4M12 16.5h4",
+  },
+  // Two chain links, as a connection to another service.
+  connections: {
+    outline:
+      "M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1",
+  },
+  // A bell.
+  notifications: { outline: "M6 16v-5a6 6 0 0112 0v5l2 2H4zM10 20a2 2 0 004 0" },
+  // A megaphone, as speaking up.
+  feedback: { outline: "M4 10v4h3l8 5V5l-8 5zM7 14l1 5h3l-1-4M18 9.5a3.5 3.5 0 010 5" },
+  // A keyboard: a row of keys and the space bar.
+  keyboard: {
+    outline:
+      "M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1zM7 10h.01M11 10h.01M15 10h.01M8 14h8",
   },
   // The info mark.
   about: { outline: "M12 4a8 8 0 110 16 8 8 0 010-16zM12 11v5M12 8v.01" },

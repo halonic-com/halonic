@@ -187,7 +187,12 @@ verifies("shell.page-unreachable", () => {
   ])(
     "says Couldn't load these settings in a Settings section, page $page",
     async ({ page, level }) => {
-      const appearance = { id: "appearance", title: "Appearance", scope: "display" as const };
+      const appearance = {
+        id: "appearance",
+        title: "Appearance",
+        scope: "display" as const,
+        group: "general" as const,
+      };
       let container = document.body;
       await act(async () => {
         container = render(

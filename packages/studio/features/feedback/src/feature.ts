@@ -17,8 +17,10 @@ export const feedbackFeature = defineFeature({
   register(studio) {
     studio.settings.add({
       id: "keyboard",
+      icon: "keyboard",
       title: settingsWords.keyboardTitle,
       scope: "host",
+      group: "keyboard",
       // After Agent sandbox (30) and Remote (35), before Trusted sources (40).
       order: 36,
       phone: false,
@@ -28,8 +30,10 @@ export const feedbackFeature = defineFeature({
     });
     studio.settings.add({
       id: "feedback",
+      icon: "feedback",
       title: settingsWords.feedbackTitle,
       scope: "host",
+      group: "general",
       order: 37,
       phone: false,
       available: feedbackSettingsAvailable,

@@ -88,6 +88,7 @@ function settingsSection(id: string, title: string, state: { readonly drawable: 
     id,
     title,
     scope: "display" as const,
+    group: "general" as const,
     order: 10,
     featureId: id,
     view: "Section",

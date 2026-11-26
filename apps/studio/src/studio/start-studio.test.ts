@@ -350,7 +350,7 @@ const settingsTestTimeout = 3 * settingsWait + 4_000;
 
 verifies("studio.settings", () => {
   it(
-    "opens Settings on Ctrl , with Appearance and a host section under On this computer",
+    "opens Settings on Ctrl , with Appearance and Agent sandbox in its Agents group",
     async () => {
       started = startStudio(
         {
@@ -379,11 +379,9 @@ verifies("studio.settings", () => {
         { timeout: settingsWait },
       );
       const nav = document.querySelector("dialog[open] nav");
-      expect([...(nav?.querySelectorAll("h3") ?? [])].map((h) => h.textContent)).toEqual([
-        "acme, Workspace settings",
-        "On this computer",
-      ]);
-      expect(nav?.textContent).toContain("Agent sandbox");
+      expect(nav?.querySelectorAll("h3")).toHaveLength(0);
+      const agents = nav?.querySelector('[role="group"][aria-label="Agents"]');
+      expect(agents?.textContent).toContain("Agent sandbox");
       expect(nav?.querySelector('[aria-current="page"]')?.textContent).toBe("Appearance");
     },
     settingsTestTimeout,

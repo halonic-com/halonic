@@ -4,7 +4,11 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Announcer } from "../announcer/announcer.ts";
-import type { SettingsScope, SettingsSectionContribution } from "../points/frame.ts";
+import type {
+  SettingsGroupName,
+  SettingsScope,
+  SettingsSectionContribution,
+} from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { fakeShowModal } from "../test-support/fake-show-modal.ts";
@@ -39,17 +43,27 @@ function section(
   title: string,
   scope: SettingsScope,
   order: number,
+  group: SettingsGroupName = "general",
 ): Registered<SettingsSectionContribution> {
   const View = ({ context }: SettingsSectionProps) => (
     <p>{`${title} view for ${context.services.toString()}`}</p>
   );
-  return { id, title, scope, order, view: "View", load: async () => ({ View }), featureId: id };
+  return {
+    id,
+    title,
+    scope,
+    group,
+    order,
+    view: "View",
+    load: async () => ({ View }),
+    featureId: id,
+  };
 }
 
 const appearance = section("appearance", "Appearance", "display", 10);
 const formats = section("formats", "Formats", "display", 20);
-const assistant = section("assistant", "Assistant", "host", 30);
-const models = section("models", "Models", "workspace", 10);
+const assistant = section("assistant", "Assistant", "host", 30, "agents");
+const models = section("models", "Models", "workspace", 10, "agents");
 
 function contextOf(featureId: string): WorkspaceContext {
   return {
@@ -108,10 +122,13 @@ verifies("shell.settings-container", () => {
     expect(dialog?.querySelector("footer")).toBeNull();
     const nav = container.querySelector("nav");
     expect(nav?.getAttribute("aria-label")).toBe("Settings sections");
-    const headings = [...(nav?.querySelectorAll("h3") ?? [])].map((heading) => heading.textContent);
-    expect(headings).toEqual(["Acme, Workspace settings", "On this computer"]);
+    expect(nav?.querySelectorAll("h3")).toHaveLength(0);
+    const groups = [...(nav?.querySelectorAll('[role="group"]') ?? [])].map((group) =>
+      group.getAttribute("aria-label"),
+    );
+    expect(groups).toEqual(["General", "Agents"]);
     const rows = [...(nav?.querySelectorAll("button") ?? [])].map((button) => button.textContent);
-    expect(rows).toEqual(["Models", "Appearance", "Formats", "Assistant"]);
+    expect(rows).toEqual(["Appearance", "Formats", "Models", "Assistant"]);
     expect(row(container, "Appearance").getAttribute("aria-current")).toBe("page");
     expect(container.querySelector("section h3")?.textContent).toBe("Appearance");
     expect(container.textContent).toContain("Appearance view for appearance");

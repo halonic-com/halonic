@@ -83,6 +83,7 @@ export const modelsFeature = defineFeature({
       icon: "models",
       title: "Models",
       scope: "workspace",
+      group: "agents",
       order: 10,
       // The line under the name is the summary the phone's list shows too.
       description: modelsLine,
