@@ -208,12 +208,12 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
       settleDrafts: () => leaveFocusedField(page.element.ownerDocument),
     }),
   );
-  const keepingContent = keepStudioWorkspace(ipc, switcher).catch((error: unknown) => {
+  const keepingContent = keepStudioWorkspace(ipc, switcher);
+  keepingContent.ready.catch((error: unknown) => {
     console.error("Studio's window won't reopen on what it shows:", error);
-    return () => {};
   });
   const stopped = once(async () => {
-    (await keepingContent)();
+    keepingContent.stop();
     stopRegion();
     resources.stop();
     start.stop();
