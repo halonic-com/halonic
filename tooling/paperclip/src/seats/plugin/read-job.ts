@@ -59,20 +59,36 @@ export interface SeatsOwner {
 }
 
 /**
+ * The plugin contexts that already logged that no company lists seats, so a
+ * worker says it once in its life instead of every minute.
+ */
+const loggedNoSeats = new WeakSet<ReadJobApi>();
+
+/**
  * Finds the company whose settings list the seats. The seat folders are on
  * the server, and the stored history has no company column, so one company
  * holds them. If several list seats, only the first is read, so no seat
  * folder is ever read twice, and the job logs it for the board to fix.
+ * If none lists seats, it logs that once per worker, so the jobs that then
+ * do nothing do not stay silent.
  */
 export async function seatsOwner(ctx: ReadJobApi): Promise<SeatsOwner | undefined> {
   const owners: SeatsOwner[] = [];
-  for (const company of await ctx.companies.list()) {
+  const companies = await ctx.companies.list();
+  for (const company of companies) {
     const settings = await companySettings(ctx, company.id);
     if (settings !== undefined && settings.seats.length > 0) {
       owners.push({ companyId: company.id, settings });
     }
   }
   const [first, ...others] = owners;
+  if (first === undefined && !loggedNoSeats.has(ctx)) {
+    loggedNoSeats.add(ctx);
+    ctx.logger.info(
+      "seats: no company's settings list any seats; the seats jobs have nothing to read.",
+      { companies: companies.length },
+    );
+  }
   if (first !== undefined && others.length > 0) {
     ctx.logger.error(
       `seats.read: ${owners.length} companies list seats; only the first is read. Keep the seats in one company's settings.`,
