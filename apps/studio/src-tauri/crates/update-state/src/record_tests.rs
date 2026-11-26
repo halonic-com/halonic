@@ -43,11 +43,12 @@ fn update_state_record_never_takes_a_newer_format_or_garbage() {
 #[test]
 fn update_state_install_that_worked_says_so_once() {
     let mut record = UpdaterRecord::default();
-    record.before_install("0.1.1", "0.1.0");
+    record.before_install("0.1.1", "0.1.0", None);
     let updated = StartOutcome::Updated(JustUpdated {
         from: "0.1.0".to_owned(),
         to: "0.1.1".to_owned(),
         not_carried_over: Vec::new(),
+        notes: None,
     });
     assert_eq!(record.after_start(&version("0.1.1")), updated);
     assert_eq!(record.after_start(&version("0.1.1")), StartOutcome::Nothing);
@@ -55,10 +56,36 @@ fn update_state_install_that_worked_says_so_once() {
 }
 
 #[test]
+fn update_state_notes_of_an_install_come_back_once_after_the_restart() {
+    let mut record = UpdaterRecord::default();
+    record.before_install("0.1.1", "0.1.0", Some("- Update button\u{1b}"));
+    let RecordRead::Read(mut again) = read_record(&record_text(&record)) else {
+        panic!("a record");
+    };
+    let StartOutcome::Updated(updated) = again.after_start(&version("0.1.1")) else {
+        panic!("updated");
+    };
+    assert_eq!(updated.notes.as_deref(), Some("- Update button"));
+    assert_eq!(again.after_start(&version("0.1.1")), StartOutcome::Nothing);
+    let edited = r#"{"format":1,"install":{"target":"0.1.1","from":"0.1.0","failures":0,"pending":true,"notes":"x\u0007y"}}"#;
+    let RecordRead::Read(mut edited) = read_record(edited) else {
+        panic!("a record");
+    };
+    let StartOutcome::Updated(updated) = edited.after_start(&version("0.1.1")) else {
+        panic!("updated");
+    };
+    assert_eq!(
+        updated.notes.as_deref(),
+        Some("xy"),
+        "cleaned again when read"
+    );
+}
+
+#[test]
 fn update_state_install_that_did_not_happen_counts_once_per_try() {
     let mut record = UpdaterRecord::default();
     let old = version("0.1.0");
-    record.before_install("0.1.1", "0.1.0");
+    record.before_install("0.1.1", "0.1.0", None);
     let first = record.after_start(&old);
     assert_eq!(
         first,
@@ -84,7 +111,7 @@ fn update_state_install_that_did_not_happen_counts_once_per_try() {
             attempts: 1
         }
     );
-    record.before_install("0.1.1", "0.1.0");
+    record.before_install("0.1.1", "0.1.0", None);
     assert_eq!(
         record.after_start(&old),
         StartOutcome::DidNotInstall {
@@ -98,7 +125,7 @@ fn update_state_install_that_did_not_happen_counts_once_per_try() {
 #[test]
 fn update_state_proving_a_start_keeps_the_count_of_an_install_that_did_not_happen() {
     let mut record = UpdaterRecord::default();
-    record.before_install("0.1.2", "0.1.1");
+    record.before_install("0.1.2", "0.1.1", None);
     record.after_start(&version("0.1.1"));
     record.after_proved(&version("0.1.1"));
     assert_eq!(
@@ -106,7 +133,7 @@ fn update_state_proving_a_start_keeps_the_count_of_an_install_that_did_not_happe
         Some(1)
     );
     // The version that did install clears its record.
-    record.before_install("0.1.2", "0.1.1");
+    record.before_install("0.1.2", "0.1.1", None);
     record.after_proved(&version("0.1.2"));
     assert_eq!(record.install, None);
 }
@@ -114,13 +141,13 @@ fn update_state_proving_a_start_keeps_the_count_of_an_install_that_did_not_happe
 #[test]
 fn update_state_install_record_clears_on_a_newer_version_installed_by_hand() {
     let mut record = UpdaterRecord::default();
-    record.before_install("0.1.1", "0.1.0");
+    record.before_install("0.1.1", "0.1.0", None);
     assert_eq!(record.after_start(&version("0.1.2")), StartOutcome::Nothing);
     assert_eq!(record.install, None);
     // A new target starts its own count.
-    record.before_install("0.1.1", "0.1.0");
+    record.before_install("0.1.1", "0.1.0", None);
     record.after_start(&version("0.1.0"));
-    record.before_install("0.1.2", "0.1.0");
+    record.before_install("0.1.2", "0.1.0", None);
     assert_eq!(
         record.install.as_ref().map(|install| install.failures),
         Some(0)

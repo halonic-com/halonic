@@ -361,7 +361,9 @@ fn install<R: Runtime>(app: &AppHandle<R>, relaunch: bool) -> Result<(), String>
             return Err("no update is ready".to_owned());
         };
         let current = inner.current.clone();
-        inner.record.before_install(&update.version, &current);
+        inner
+            .record
+            .before_install(&update.version, &current, update.body.as_deref());
         inner.save();
         log_way_back(&inner, &update.version);
         (update, bytes, inner.track())

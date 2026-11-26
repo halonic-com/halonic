@@ -44,11 +44,7 @@ pub struct OfferedNotes {
 /// The notes in `manifest` for an update from `installed` to `offered`:
 /// versions with installed < version ≤ offered, newest first.
 pub fn offered_notes(manifest: &Value, installed: &str, offered: &str) -> OfferedNotes {
-    let notes = manifest
-        .get("notes")
-        .and_then(Value::as_str)
-        .filter(|notes| !notes.trim().is_empty())
-        .map(|notes| capped(notes, MAX_NOTES_CHARS));
+    let notes = kept_notes(manifest.get("notes").and_then(Value::as_str));
     let list = manifest
         .get("halonic")
         .and_then(|halonic| halonic.get("releaseNotes"))
@@ -109,9 +105,26 @@ fn entry(value: &Value) -> Option<(Version, VersionNotes)> {
     // checked, so it could carry any text into the page's headings.
     let notes = VersionNotes {
         version: version.to_string(),
-        notes: notes.to_owned(),
+        notes: plain(notes),
     };
     Some((version, notes))
+}
+
+/// Notes as the shell passes them on and the install record keeps them for
+/// the start after the update (HAL-19364): [`plain`], trimmed, cut to
+/// [`MAX_NOTES_CHARS`]. `None` when nothing is left.
+pub(crate) fn kept_notes(raw: Option<&str>) -> Option<String> {
+    let cleaned = plain(raw?);
+    let trimmed = cleaned.trim();
+    (!trimmed.is_empty()).then(|| capped(trimmed, MAX_NOTES_CHARS))
+}
+
+/// `text` without control characters other than line breaks and tabs: the
+/// manifest isn't signed, and the page shows the notes as they are (HAL-19365).
+fn plain(text: &str) -> String {
+    text.chars()
+        .filter(|character| matches!(character, '\n' | '\t') || !character.is_control())
+        .collect()
 }
 
 /// The first versions that fit [`MAX_NOTES_VERSIONS`] and [`MAX_NOTES_CHARS`]

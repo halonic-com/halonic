@@ -10,6 +10,7 @@ What the Studio shell's updater knows (HAL-1206): the update states it shows the
   - `before_install` and `after_start` (flow 4.6, U7): the target version is written just before the installer runs. At the next start, that version means it worked (the "Updated to" toast, once); an older one counts a failure, once per install; a newer one, installed by hand, clears the record.
   - `count_bad_signature` and `may_download` (flow 4.3, U3): after two bad signatures for one version, Halonic stops downloading it until a newer version appears.
   - `starting_state`: what About Halonic shows at start, before any check.
+  - `before_install` also keeps the offered version's own notes (HAL-19364), and `after_start` passes them in `justUpdated` for the "Updated to" dialog. The notes lose every control character except line breaks and tabs, there and in `offered_notes`, because the manifest isn't signed.
 - `migrate_settings_file` (FS6, failure path 2): before a new version changes a stored settings file, it keeps the old bytes as `<name>.<old version>.bak` next to it (never over a backup already there), then replaces the file through a rename. A migration that changes nothing writes nothing. It answers the settings it couldn't carry over, which the shell puts in `justUpdated.notCarriedOver` for Studio.
 
 The requirement in `requirements/` is a draft until the trace check reads `cargo test` results. Until then, each test's name starts with `update_state_`.

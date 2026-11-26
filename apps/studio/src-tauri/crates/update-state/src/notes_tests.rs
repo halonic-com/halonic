@@ -152,3 +152,24 @@ fn update_notes_puts_the_own_notes_under_the_offered_version_the_list_leaves_out
     assert_eq!(versions(&notes), ["0.4.4", "0.4.3", "0.4.2"]);
     assert_eq!(notes.release_notes[0].notes, "- Own notes.");
 }
+
+#[test]
+fn update_state_notes_keep_lines_and_tabs_and_drop_other_control_characters() {
+    let manifest = json!({
+        "version": "0.4.2",
+        "notes": "- Faster start\r\n- \tUpdate button\u{1b}[31m\u{0}\u{7f}",
+        "halonic": { "releaseNotes": [{ "version": "0.4.2", "notes": "- Listed\u{1b}[2J" }] }
+    });
+    let changes = offered_notes(&manifest, "0.4.1", "0.4.2");
+    assert_eq!(
+        changes.notes.as_deref(),
+        Some("- Faster start\n- \tUpdate button[31m")
+    );
+    assert_eq!(changes.release_notes[0].notes, "- Listed[2J");
+    let markup = json!({ "version": "0.4.2", "notes": "<a href=\"https://x.test\">x</a>" });
+    assert_eq!(
+        offered_notes(&markup, "0.4.1", "0.4.2").notes.as_deref(),
+        Some("<a href=\"https://x.test\">x</a>"),
+        "markup stays text; the page never renders it"
+    );
+}
