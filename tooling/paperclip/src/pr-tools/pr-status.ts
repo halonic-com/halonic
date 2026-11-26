@@ -16,6 +16,7 @@ import {
   reviewerFor,
 } from "../reviewer-paths.ts";
 import type { Routing } from "../routing.ts";
+import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
 import { type ChangedFile, linesByFile, readManifests } from "./manifests.ts";
 import { requiredWorkflowsOf } from "./required-workflows.ts";
@@ -138,12 +139,14 @@ export function branchPath(branch: string): string {
  * Reads one pull request's whole status: about 10 GitHub requests, plus 2 per changed package manifest.
  *
  * @param routing - the active workspace snapshot's routing (`routingOf`), or `undefined` for today's people
+ * @param copies - where each approval's Paperclip copy is read (HAL-19324); without it, no copy is shown
  */
 export async function prStatus(
   get: GitHubGet,
   repo: string,
   number: number,
   routing?: Routing,
+  copies?: CopyReader,
 ): Promise<PrStatus> {
   const pull = (await get(`/repos/${repo}/pulls/${number}`)) as PullDetails;
   const head = pull.head.sha;
@@ -183,7 +186,16 @@ export async function prStatus(
   };
   const rebaseRefusal = julianRebaseRefusal({ files: paths, branch: pull.head.ref });
   // Approvals are judged against the people in code (HAL-14809), never the routing's.
-  const found = approvals(comments, { head, author, reviewer: reviewerFor(routed), rebaseRefusal });
+  const judged = approvals(comments, {
+    head,
+    author,
+    reviewer: reviewerFor(routed),
+    rebaseRefusal,
+  });
+  const found =
+    copies === undefined
+      ? judged
+      : withCopies(judged, await readCopySource(copies, ours ? pull.head.ref : undefined));
   const reviewer = reviewerFor(routed, routing);
   const title = shownTitle(pull);
   return {
@@ -269,17 +281,20 @@ function failingText(facts: HeadFacts): string {
   return ` (failing: ${named.join(", ")}${more})`;
 }
 
+/** One approval: who, on which head, whether it counts and whether its Paperclip copy exists. */
+function approvalText(approval: Approval): string {
+  const marks = [
+    approval.counts ? undefined : "doesn't count",
+    approval.copy === undefined ? undefined : `copy: ${approval.copy}`,
+  ].filter((mark): mark is string => mark !== undefined);
+  const marked = marks.length === 0 ? "" : ` (${marks.join("; ")})`;
+  return `${approval.by} on ${approval.head}${marked}${approval.note ? `: ${approval.note}` : ""}`;
+}
+
 /** Two lines: the head with its `ci-ok` and mergeability, then the merge queue and approvals. */
 export function headFactsText(facts: HeadFacts): [string, string] {
   const signed =
-    facts.approvals.length === 0
-      ? "none"
-      : facts.approvals
-          .map(
-            (a) =>
-              `${a.by} on ${a.head}${a.counts ? "" : " (doesn't count)"}${a.note ? `: ${a.note}` : ""}`,
-          )
-          .join("; ");
+    facts.approvals.length === 0 ? "none" : facts.approvals.map(approvalText).join("; ");
   const behind = facts.behindBase === undefined ? "" : `; behind base by ${facts.behindBase}`;
   return [
     `head ${facts.head.slice(0, 7)}: ci-ok ${facts.ciOk}${failingText(facts)}; mergeable ${facts.mergeable}${behind}`,

@@ -325,7 +325,12 @@ inside the about 15 s the tool bridge gives a call.
   it counts by the HAL-14809 rules, then what the author does next. The
   author says whether a pull request is a security or release one; the
   tool can't tell, so a counting approval from Julian carries that note.
-  About 10 requests.
+  Each approval also says `copy: yes | no | unknown`: whether the
+  reviewer's own Paperclip agent posted the same line with the full
+  40-character head on the task the branch names (`<agent>/HAL-<n>-…`;
+  `unknown` for any other branch). Detection only: the copy never changes
+  whether it counts (HAL-19324). The PR watcher's wake lines show the same.
+  About 10 requests, plus 2 Paperclip reads.
 - **`ci_failures(pr | sha, repo?)`** (HAL-18982, token plan Track B on
   HAL-18938): why CI is red, instead of `gh run view --log` and `gh api`
   log reads. For a pull request's head or a full commit sha it lists the
@@ -1212,6 +1217,10 @@ runs every minute and does nothing while `mergeControl.mode` is `off`, the
 default. Otherwise each pass reads the facts (`src/merge-control/facts.ts`),
 runs `decide`, and in `shadow` mode writes nothing and posts a daily diff with
 the Merger's actions on `mergeControl.diffTask`. `act` needs the board's yes.
+The diff also lists, under "Needs a Paperclip copy with a full-SHA match",
+each pull request whose gate passed without Liam's or Julian's Paperclip copy
+of the approval of its full head (`src/merge-control/shadow-copies.ts`,
+HAL-19324); nothing is refused for it.
 
 It queues open `built-on:paperclip` pull requests. A `built-on:halonic` one
 is queued only when it also has `fast-track` added by a login in

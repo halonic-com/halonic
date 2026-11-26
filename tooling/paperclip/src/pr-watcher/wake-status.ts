@@ -1,3 +1,9 @@
+import {
+  type CopyReader,
+  type CopySource,
+  readCopySource,
+  withCopies,
+} from "../pr-tools/approval-copy.ts";
 import { judgeApprovals } from "../pr-tools/approvals.ts";
 import { headFactsText } from "../pr-tools/pr-status.ts";
 import type { Snapshot } from "../snapshot/shape.ts";
@@ -13,8 +19,45 @@ import { pullKey } from "./facts.ts";
 /** The `pr_status` head lines of an open pull request, or none when it isn't open. */
 export type PullSummary = (pull: { readonly repo: string; readonly number: number }) => string[];
 
-/** Summaries from one pass's snapshot. */
-export function snapshotSummary(snapshot: Snapshot): PullSummary {
+/**
+ * Each approved open pull request's Paperclip copies (HAL-19324), by `pullKey`:
+ * undefined when its branch names no task. Only pull requests with a signed
+ * approval on their head are read. One that couldn't be read is left out and
+ * logged, so its wake lines show no copy rather than a wrong one.
+ */
+export type SnapshotCopies = ReadonlyMap<string, CopySource | undefined>;
+
+/** Reads the copies of the snapshot's approved open pull requests. */
+export async function snapshotCopies(
+  snapshot: Snapshot,
+  reader: CopyReader,
+  log: (line: string) => void,
+): Promise<SnapshotCopies> {
+  const copies = new Map<string, CopySource | undefined>();
+  for (const { repo, pulls } of snapshot.repos) {
+    for (const pull of pulls) {
+      const approved = pull.open?.approvals.some(({ head }) => pull.head.startsWith(head));
+      if (approved !== true) {
+        continue;
+      }
+      const ours = pull.headRepo?.toLowerCase() === repo.toLowerCase();
+      try {
+        copies.set(
+          pullKey({ repo, number: pull.number }),
+          await readCopySource(reader, ours ? pull.branch : undefined),
+        );
+      } catch (error) {
+        log(
+          `PR watcher: couldn't read the approval copies of #${pull.number}: ${(error as Error).message}`,
+        );
+      }
+    }
+  }
+  return copies;
+}
+
+/** Summaries from one pass's snapshot, with the approvals' Paperclip copies when they were read. */
+export function snapshotSummary(snapshot: Snapshot, copies?: SnapshotCopies): PullSummary {
   const pulls = new Map(
     snapshot.repos.flatMap(({ repo, pulls: list }) =>
       list.map((pull) => [pullKey({ repo, number: pull.number }), pull] as const),
@@ -26,6 +69,12 @@ export function snapshotSummary(snapshot: Snapshot): PullSummary {
     if (pull === undefined || open === null || open === undefined) {
       return [];
     }
+    const judged = judgeApprovals(open.approvals, {
+      head: pull.head,
+      author: branchOwner(pull.branch),
+      reviewer: undefined,
+    });
+    const key = pullKey(ref);
     return headFactsText({
       head: pull.head,
       // While it's a draft, `pr_status` reports the light run's `ci-ok`.
@@ -33,11 +82,7 @@ export function snapshotSummary(snapshot: Snapshot): PullSummary {
       mergeable: open.mergeable === "no" ? "conflict" : open.mergeable,
       inQueue: open.inQueue,
       // The snapshot holds no changed files, so Julian's limits stay unchecked.
-      approvals: judgeApprovals(open.approvals, {
-        head: pull.head,
-        author: branchOwner(pull.branch),
-        reviewer: undefined,
-      }),
+      approvals: copies?.has(key) === true ? withCopies(judged, copies.get(key)) : judged,
       // A snapshot saved before the field was added has none.
       failingChecks: open.failingChecks ?? [],
     });

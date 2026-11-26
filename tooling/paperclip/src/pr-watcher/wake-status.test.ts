@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import type { OpenFacts, Snapshot, SnapshotPull } from "../snapshot/shape.ts";
 import type { PullFacts, Reason } from "./decide.ts";
 import { wakeMessage } from "./messages.ts";
-import { snapshotSummary } from "./wake-status.ts";
+import { snapshotCopies, snapshotSummary } from "./wake-status.ts";
 
 const repo = "halonic-com/halonic";
 const head = "7dd0ccf1aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -127,5 +127,63 @@ verifies("paperclip.pr-watcher-wake-status", () => {
     const message = wakeMessage([reason(4485, "merged")], summary);
     expect(message).not.toContain("pr_status");
     expect(message).not.toContain("head 7dd0ccf:");
+  });
+});
+
+verifies("paperclip.pr-tools-approval-copy", () => {
+  test("shows each approval's Paperclip copy in the wake lines, and reads only approved pull requests' tasks", async () => {
+    const read: string[] = [];
+    const copied: Snapshot = {
+      ...snapshot,
+      repos: [
+        {
+          repo,
+          defaultBranch: "main",
+          queue: [],
+          pulls: [
+            pull(4614, {}),
+            pull(4616, { branch: "mateo/no-task" }),
+            pull(4617, { open: { ...open, approvals: [{ by: "Liam", head: "1234567" }] } }),
+          ],
+        },
+      ],
+    };
+    const copies = await snapshotCopies(
+      copied,
+      {
+        taskComments: async (identifier) => {
+          read.push(identifier);
+          return [{ authorAgentId: "agent-liam", body: `Liam: approved on head \`${head}\`` }];
+        },
+        agents: async () => [{ id: "agent-liam", urlKey: "liam" }],
+      },
+      () => undefined,
+    );
+    const lines = snapshotSummary(copied, copies);
+    expect(read).toEqual(["HAL-4614"]);
+    expect(lines({ repo, number: 4614 })[1]).toBe(
+      "merge queue: not queued; approvals: Liam on 1234567 (doesn't count; copy: no): names an older head; Liam on 7dd0ccf (copy: yes)",
+    );
+    expect(lines({ repo, number: 4616 })[1]).toContain("Liam on 7dd0ccf (copy: unknown)");
+    expect(lines({ repo, number: 4617 })[1]).not.toContain("copy:");
+  });
+
+  test("logs a pull request whose copies couldn't be read and shows none for it", async () => {
+    const logged: string[] = [];
+    const copies = await snapshotCopies(
+      snapshot,
+      {
+        taskComments: async () => {
+          throw new Error("Paperclip is down");
+        },
+        agents: async () => [],
+      },
+      (line) => logged.push(line),
+    );
+    expect(snapshotSummary(snapshot, copies)({ repo, number: 4614 })[1]).not.toContain("copy:");
+    expect(logged).toEqual([
+      "PR watcher: couldn't read the approval copies of #4614: Paperclip is down",
+      "PR watcher: couldn't read the approval copies of #4615: Paperclip is down",
+    ]);
   });
 });

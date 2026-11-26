@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import { fakeGitHub, recording } from "../pr-watcher/fakes.test-helper.ts";
 import { snapshotWith } from "../routing.test-helper.ts";
 import { routingOf } from "../routing-load.ts";
+import type { CopyReader } from "./approval-copy.ts";
 import { judgeApprovals, signedApprovals } from "./approvals.ts";
 import { branchPath, prStatus, statusText } from "./pr-status.ts";
 import {
@@ -316,5 +317,61 @@ verifies("paperclip.pr-tools-required-workflows", () => {
     const green = await prStatus(pr4588([]).get, repo, 4588);
     expect(green.requiredWorkflows).toEqual([]);
     expect(statusText(green)).toContain("required workflows: ok");
+  });
+});
+
+/** A Paperclip with Liam's agent and Priya's, and these comments on HAL-14219 only. */
+function copyReader(comments: { authorAgentId: string; body: string }[]) {
+  const read: string[] = [];
+  const reader: CopyReader = {
+    taskComments: async (identifier) => {
+      read.push(identifier);
+      return identifier === "HAL-14219" ? comments : [];
+    },
+    agents: async () => [
+      { id: "agent-liam", urlKey: "liam" },
+      { id: "agent-priya", urlKey: "priya" },
+    ],
+  };
+  return { reader, read };
+}
+
+verifies("paperclip.pr-tools-approval-copy", () => {
+  describe("pr_status: each approval's Paperclip copy", () => {
+    const line = "Liam: approved on head `7651f8c`";
+
+    test("says copy: yes for Liam's own agent's line with the full head on the branch's task", async () => {
+      const { reader } = copyReader([
+        { authorAgentId: "agent-liam", body: `Liam: approved on head \`${head}\`` },
+      ]);
+      const status = await prStatus(pr4588([line]).get, repo, 4588, undefined, reader);
+      expect(status.approvals).toEqual([
+        { by: "Liam", head: "7651f8c", counts: true, copy: "yes" },
+      ]);
+      expect(statusText(status)).toContain("approvals: Liam on 7651f8c (copy: yes)");
+    });
+
+    test("says copy: no for another agent's line or a short head, and still counts the approval", async () => {
+      const { reader } = copyReader([
+        { authorAgentId: "agent-priya", body: `Liam: approved on head \`${head}\`` },
+        { authorAgentId: "agent-liam", body: line },
+      ]);
+      const status = await prStatus(pr4588([line]).get, repo, 4588, undefined, reader);
+      expect(status.approvals.map(({ counts, copy }) => [counts, copy])).toEqual([[true, "no"]]);
+      expect(status.approvedOnHead).toBe(true);
+    });
+
+    test("says copy: unknown on a branch that names no task, without reading Paperclip", async () => {
+      const { reader, read } = copyReader([]);
+      const github = pr4588([line], undefined, ours, { ref: "priya/fix-typo" });
+      const status = await prStatus(github.get, repo, 4588, undefined, reader);
+      expect(status.approvals.map(({ copy }) => copy)).toEqual(["unknown"]);
+      expect(read).toEqual([]);
+    });
+
+    test("shows no copy when no reader is given", async () => {
+      const status = await prStatus(pr4588([line]).get, repo, 4588);
+      expect(status.approvals).toEqual([{ by: "Liam", head: "7651f8c", counts: true }]);
+    });
   });
 });
