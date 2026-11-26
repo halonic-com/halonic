@@ -91,7 +91,8 @@ function shownFolderOf(shown: MainWindowFolders["shown"]): ShownFolder | undefin
  * and then the Send feedback dialog show inside it; Halonic Inbox and Halonic Messenger don't hear
  * it, as they can't send (HAL-19671). The shortcut, the project and the assignee are read from the
  * window's host settings when they're needed, so a change in Settings counts at once. Each
- * feedback goes through `feedback`, and its toasts show in the window's `toasts`. Gives the stop.
+ * feedback goes through `feedback`, and its toasts show in the window's `toasts`; Help and Ctrl K
+ * begin one through `feedback` too (`feedback.help-send-feedback`). Gives the stop.
  */
 export function startWindowFeedback(
   page: { readonly window: object },
@@ -113,7 +114,7 @@ export function startWindowFeedback(
   const read = (setting: (typeof feedbackPrefs)[keyof typeof feedbackPrefs]) =>
     settings?.loaded === true ? settings.get(setting) : setting.fallback;
   const stopSending = feedback.start(window);
-  const stopShortcut = startInAppFeedback({
+  const inApp = startInAppFeedback({
     ipc,
     platform,
     window,
@@ -129,8 +130,9 @@ export function startWindowFeedback(
     toasts,
     connected: feedback,
   });
+  feedback.beginWith(inApp.start);
   return () => {
-    stopShortcut();
+    inApp.stop();
     stopSending();
   };
 }

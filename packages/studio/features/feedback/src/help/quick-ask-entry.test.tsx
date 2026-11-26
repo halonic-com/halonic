@@ -7,62 +7,31 @@ import {
   type AskOpener,
   AskOpenerService,
 } from "@halonicjs/studio-feature-quick-ask/api";
-import {
-  createShell,
-  defineFeature,
-  type KeyboardPlatform,
-  type ServiceKey,
-  StudioWindow,
-  StudioWorkspace,
-} from "@halonicjs/studio-shell";
+import { defineFeature, type KeyboardPlatform } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { feedbackFeature } from "../feature.ts";
+import {
+  closeHelpWindow,
+  helpItems,
+  named,
+  paletteRows,
+  prepareHelpWindow,
+  renderHelpWindow,
+} from "./help-window.test-helper.tsx";
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+beforeEach(prepareHelpWindow);
+afterEach(closeHelpWindow);
 
-const original = { matchMedia: window.matchMedia };
-let mounted: { root: Root; element: HTMLElement } | undefined;
-
-beforeEach(() => {
-  // jsdom has no popovers; the Help menu only needs to open and close.
-  Object.assign(HTMLElement.prototype, {
-    showPopover() {},
-    hidePopover() {},
-    togglePopover() {
-      return true;
-    },
-  });
-  // jsdom has `<dialog>` but no `showModal()`; Ctrl K only needs it to open.
-  Object.assign(HTMLDialogElement.prototype, {
-    showModal(this: HTMLDialogElement) {
-      this.setAttribute("open", "");
-    },
-    close(this: HTMLDialogElement) {
-      this.removeAttribute("open");
-    },
-  });
-  // A wide window: the desktop's sidebar, with its Help row, and Ctrl K.
-  window.matchMedia = ((query: string) =>
-    ({
-      media: query,
-      matches: false,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }) as unknown as MediaQueryList) as typeof window.matchMedia;
-});
-
-afterEach(() => {
-  const done = mounted;
-  mounted = undefined;
-  if (done !== undefined) {
-    act(() => done.root.unmount());
-    done.element.remove();
+/** Lets the lazily loaded views and the services' reads arrive. */
+async function settle() {
+  for (let round = 0; round < 3; round += 1) {
+    await act(async () => {
+      await vi.dynamicImportSettled();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
   }
-  window.matchMedia = original.matchMedia;
-});
+}
 
 /** Quick ask's keys as the shell reads them, saved anew by `setKeys`, which tells subscribers. */
 function askKeys(platform: KeyboardPlatform, read: AskKeys): AskKeysSettings {
@@ -107,85 +76,10 @@ async function renderWindow({
       if (opener !== undefined) studio.services.provide(AskOpenerService, () => opener);
     },
   });
-  const shell = createShell({ features: [appFeature, feedbackFeature] });
-  const provided = new Map<string, unknown>();
-  const services = {
-    provide<Service>(key: ServiceKey<Service>, service: Service): Service {
-      provided.set(key.name, service);
-      return service;
-    },
-    get<Service>(key: ServiceKey<Service>): Service {
-      return provided.get(key.name) as Service;
-    },
-    has: (key: ServiceKey<unknown>) => provided.has(key.name),
-  };
-  shell.services.instantiate(services);
-  const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
-  const element = document.createElement("div");
-  document.body.append(element);
-  const root = createRoot(element);
-  mounted = { root, element };
-  await act(async () =>
-    root.render(
-      <StudioWindow
-        shell={shell}
-        workspace={workspace}
-        host="desktop-app"
-        platform={platform}
-        language="en"
-      />,
-    ),
-  );
+  const page = await renderHelpWindow(appFeature, platform);
   await settle();
-  return { page: element, settings };
+  return { page, settings };
 }
-
-/** Lets the lazily loaded views and the keys' read arrive. */
-async function settle() {
-  for (let round = 0; round < 3; round += 1) {
-    await act(async () => {
-      await vi.dynamicImportSettled();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-  }
-}
-
-/** The Help menu's items, by name; none when the sidebar shows no Help row. */
-function helpItems(page: HTMLElement): HTMLElement[] {
-  const help = [...page.querySelectorAll<HTMLButtonElement>("nav > button")].find(
-    (button) => button.textContent === "Help",
-  );
-  const menu = document.getElementById(help?.getAttribute("popovertarget") ?? "");
-  return [...(menu?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
-}
-
-/** Opens Ctrl K, types "Quick ask", since the palette lists actions only for typed words, and gives its rows. */
-function paletteRows(page: HTMLElement): HTMLElement[] {
-  act(() => {
-    window.dispatchEvent(
-      new KeyboardEvent("keydown", {
-        key: "k",
-        code: "KeyK",
-        ctrlKey: true,
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
-  });
-  act(() => {
-    const field = page.querySelector<HTMLInputElement>('[role="combobox"]');
-    if (field === null) return;
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-      field,
-      "Quick ask",
-    );
-    field.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  return [...page.querySelectorAll<HTMLElement>('[role="option"]')];
-}
-
-const named = (rows: readonly HTMLElement[], name: string) =>
-  rows.find((row) => (row.getAttribute("aria-label") ?? row.textContent)?.startsWith(name));
 
 const opener = () => ({ open: vi.fn(async () => {}) });
 
@@ -205,7 +99,7 @@ verifies("feedback.help-quick-ask", () => {
       const box = opener();
       const { page } = await renderWindow({ opener: box });
 
-      const row = named(paletteRows(page), "Quick ask");
+      const row = named(paletteRows(page, "Quick ask"), "Quick ask");
       expect(row?.textContent).toContain("Quick ask (Ctrl+Alt+Space)");
       await act(async () => row?.click());
       await settle();
@@ -239,14 +133,14 @@ verifies("feedback.help-quick-ask", () => {
       });
 
       expect(named(helpItems(page), "Quick ask")?.textContent).toBe("Quick ask");
-      expect(named(paletteRows(page), "Quick ask")?.textContent).not.toContain("(");
+      expect(named(paletteRows(page, "Quick ask"), "Quick ask")?.textContent).not.toContain("(");
     });
 
     it("show nowhere without the app's opener", async () => {
       const { page } = await renderWindow({});
 
       expect(named(helpItems(page), "Quick ask")).toBeUndefined();
-      expect(named(paletteRows(page), "Quick ask")).toBeUndefined();
+      expect(named(paletteRows(page, "Quick ask"), "Quick ask")).toBeUndefined();
     });
   });
 });

@@ -11,6 +11,8 @@ import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 /** What Settings › Feedback shows of the main window's feedback: what waits, and the connection. */
 export interface FeedbackSettingsFeed extends FeedbackConnected {
   waiting(): Promise<number>;
+  /** Begins a feedback as the window's shortcut does, for Help and Ctrl K. */
+  begin(): void;
 }
 
 /**
@@ -18,7 +20,7 @@ export interface FeedbackSettingsFeed extends FeedbackConnected {
  * (`studio.feedback-settings`), in Studio's own main window only: the shell grants
  * `plugin:feedback|shortcut_set` to no other window, and served Studio has no shell. With the main
  * window's `feedback`, Settings › Feedback counts what waits to be sent and, with the shortcut's
- * row, shows only while Studio is connected to Paperclip.
+ * row, shows only while Studio is connected to Paperclip, and Help and Ctrl K begin a feedback.
  */
 export function provideFeedbackSettings(
   services: ServiceRegistry,
@@ -37,6 +39,7 @@ export function provideFeedbackSettings(
     ...host,
     waiting: () => feedback.waiting(),
     connected: feedback,
+    start: () => feedback.begin(),
   });
 }
 

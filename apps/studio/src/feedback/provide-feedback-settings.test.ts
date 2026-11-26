@@ -57,10 +57,27 @@ verifies("studio.feedback-window", () => {
     provideFeedbackSettings(services, shell(), "main", "windows", {
       ...connected,
       waiting: async () => 3,
+      begin: () => undefined,
     });
 
     const host = services.get(FeedbackSettingsService);
     expect(await host.waiting?.()).toBe(3);
     expect(host.connected?.current()).toBe(false);
+  });
+});
+
+verifies("feedback.help-send-feedback", () => {
+  it("lets Help and Ctrl K begin a feedback in the main window", () => {
+    const services = new ServiceRegistry();
+    const begin = vi.fn();
+    provideFeedbackSettings(services, shell(), "main", "windows", {
+      current: () => true,
+      subscribe: () => () => undefined,
+      waiting: async () => 0,
+      begin,
+    });
+
+    services.get(FeedbackSettingsService).start?.();
+    expect(begin).toHaveBeenCalledTimes(1);
   });
 });

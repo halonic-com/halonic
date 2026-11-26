@@ -47,7 +47,8 @@ export interface MainWindowFeedbackParts {
  * toast in the window. Feedback kept to send later is sent when its folder shows, when the window
  * regains focus and when a connection of the shown folder changes, with "Feedback sent" for each.
  * It says whether Studio is connected to Paperclip: whether a connection of the shown folder holds
- * its key (`feedback.connected-only`).
+ * its key (`feedback.connected-only`), and begins a feedback for Help and Ctrl K
+ * (`feedback.help-send-feedback`).
  */
 export class MainWindowFeedback implements FeedbackConnected {
   readonly #parts: MainWindowFeedbackParts;
@@ -57,6 +58,7 @@ export class MainWindowFeedback implements FeedbackConnected {
   readonly #connectionOf = new Map<string, string>();
   #connected = false;
   #stopConnections: (() => void) | undefined;
+  #begin: (() => void) | undefined;
 
   constructor(parts: MainWindowFeedbackParts) {
     this.#parts = parts;
@@ -77,6 +79,16 @@ export class MainWindowFeedback implements FeedbackConnected {
 
   current(): boolean {
     return this.#connected;
+  }
+
+  /** Sets how a feedback begins in the window, as its shortcut does; until then none begins. */
+  beginWith(begin: () => void): void {
+    this.#begin = begin;
+  }
+
+  /** Begins a feedback as the window's shortcut does, for Help and Ctrl K. */
+  begin(): void {
+    this.#begin?.();
   }
 
   subscribe(listener: () => void): () => void {

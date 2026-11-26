@@ -4,6 +4,11 @@ import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { AskKeysTextService, FeedbackSettingsService } from "./api.ts";
 import { AskKeysWatch } from "./help/ask-keys-watch.ts";
 import { quickAskCommands, quickAskHelpItems } from "./help/quick-ask-entry.ts";
+import {
+  sendFeedbackCommands,
+  sendFeedbackHelpItems,
+  subscribeSendFeedback,
+} from "./help/send-feedback-entry.ts";
 import { settingsWords } from "./settings/settings-words.ts";
 
 /**
@@ -12,6 +17,8 @@ import { settingsWords } from "./settings/settings-words.ts";
  * `feedback.settings-quick-ask`, `feedback.settings-section`). Both show only where the app gives
  * a {@link FeedbackSettingsService}: Studio's own main window. Help › Quick ask and its Ctrl K
  * entry show the box, with its keys, where the app gives an opener (`feedback.help-quick-ask`).
+ * Help › Send feedback and its Ctrl K entry begin a feedback, with the shortcut's keys, while
+ * Studio is connected to Paperclip (`feedback.help-send-feedback`).
  */
 export const feedbackFeature = defineFeature({
   id: "feedback",
@@ -52,13 +59,25 @@ export const feedbackFeature = defineFeature({
     studio.help.add({
       id: "feedback.help",
       order: 15,
-      items: (context) => quickAskHelpItems(context.services),
-      subscribe: (context, listener) =>
-        context.services.get(AskKeysTextService).subscribe(listener),
+      items: (context) => [
+        ...quickAskHelpItems(context.services),
+        ...sendFeedbackHelpItems(context.services),
+      ],
+      subscribe: (context, listener) => {
+        const stopKeys = context.services.get(AskKeysTextService).subscribe(listener);
+        const stopFeedback = subscribeSendFeedback(context.services, listener);
+        return () => {
+          stopKeys();
+          stopFeedback();
+        };
+      },
     });
     studio.commands.addSource({
       id: "feedback.shortcuts",
-      commands: (context) => (context === undefined ? [] : quickAskCommands(context.services)),
+      commands: (context) =>
+        context === undefined
+          ? []
+          : [...quickAskCommands(context.services), ...sendFeedbackCommands(context.services)],
     });
   },
 });
