@@ -95,6 +95,12 @@ verifies("assistant.build.integration-steps", () => {
     );
   });
 
+  it("checks every reply with the kit's `checkReply`, so a changed reply names its field", () => {
+    expect(builtInAuthoringInstructions).toContain(
+      "Check every reply from the service with the kit's `checkReply` and a `z.object(...)` schema",
+    );
+  });
+
   it("stops after two failed fixes and says what's wrong", () => {
     expect(builtInAuthoringInstructions).toContain(
       "If it still fails after two fixes, stop and say what's wrong",

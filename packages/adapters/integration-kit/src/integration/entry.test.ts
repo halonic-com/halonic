@@ -31,6 +31,8 @@ verifies("integration-kit.integration-entry", () => {
     expect(Object.keys(integration).sort()).toEqual([
       "IntegrationRefusedError",
       "IntegrationTimeoutError",
+      "ReplyChangedError",
+      "checkReply",
       "maxIntegrationWaitMs",
       "retryDelayMs",
       "runTool",

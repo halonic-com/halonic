@@ -32,6 +32,15 @@ export type {
   ToolRisk,
 } from "@halonicjs/ports";
 export { maxIntegrationWaitMs } from "@halonicjs/ports";
+export {
+  type ChangedField,
+  checkReply,
+  type ReplyChangedDetail,
+  ReplyChangedError,
+  type ReplyCheck,
+  type ReplyIssue,
+  type ReplySchema,
+} from "./check-reply.ts";
 export { IntegrationRefusedError, IntegrationTimeoutError, type RefusalCode } from "./refused.ts";
 export { retryDelayMs } from "./retry-after.ts";
 export {
