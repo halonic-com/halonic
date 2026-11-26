@@ -88,9 +88,9 @@ function quoted(text: string, limit: number): string {
  */
 export function frontBotUserText(input: FrontBotInput): string {
   const earlier = shownEarlier(input).map(
-      (comment) =>
-        `Comment by ${comment.author} at ${clockTime(comment.at)} UTC:\n${quoted(comment.body, commentLimit)}`,
-    );
+    (comment) =>
+      `Comment by ${comment.author} at ${clockTime(comment.at)} UTC:\n${quoted(comment.body, commentLimit)}`,
+  );
   return [
     `Task title:\n${quoted(input.title, titleLimit)}`,
     earlier.length === 0 ? "Earlier comments: none." : `Earlier comments:\n${earlier.join("\n")}`,

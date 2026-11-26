@@ -65,6 +65,24 @@ verifies("paperclip.front-bot-first-reply", () => {
     expect(onlyRecord(logs)["outcome"]).toBe("skip");
   });
 
+  test("a note that is posted but whose id isn't saved is logged as posted, with its own code", async () => {
+    const example = examples("voice").find((each) => each.expect === "posted") as FrontBotExample;
+    const harness = frontBotHarness({
+      title: example.title,
+      earlier: example.earlier,
+      message: example.message,
+      answers: [{ reply: example.reply }],
+    });
+    const set = harness.ctx.state.set.bind(harness.ctx.state);
+    harness.ctx.state.set = async (key, value) => {
+      if (JSON.stringify(key).includes("notes")) throw new Error("state store down");
+      return set(key, value);
+    };
+    await harness.bot.onCommentCreated(commentCreated(harness.message.id));
+    expect(harness.posted()).toHaveLength(1);
+    expect(onlyRecord(harness.logs)).toMatchObject({ outcome: "posted", reason: "note_unsaved" });
+  });
+
   test("the request goes to the Messages API for Haiku 4.5, with comments quoted as data", async () => {
     const { requests } = await runExample(examples("voice")[0] as FrontBotExample);
     const request = requests[0];
