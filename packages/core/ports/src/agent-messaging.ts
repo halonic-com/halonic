@@ -189,6 +189,14 @@ export interface InboxAnswerElsewhere {
   link: string;
 }
 
+/** The item's own page in its source, which an app may offer to open next to its answer controls. */
+export interface InboxWebLink {
+  /** The `https:` page, such as the task's page in Paperclip. Apps open it, nothing more. */
+  link: string;
+  /** The source's name for the place the link goes, such as "Paperclip", at most 80 characters. */
+  site: string;
+}
+
 /**
  * The person's answer to an inbox item: one of its options or a written reply
  * to a question, for an item with `questions` the options picked for each, or
@@ -240,6 +248,8 @@ export interface InboxItem {
    * (requirement `ports.agent-messaging-answer-elsewhere`).
    */
   answerElsewhere?: InboxAnswerElsewhere;
+  /** The item's page in its source, when it has one (requirement `ports.agent-messaging-web-link`). */
+  webLink?: InboxWebLink;
   /** For an action item, the request: a reviewed definition and its parameters, never a call. */
   action?: InboxActionRequest;
   /**

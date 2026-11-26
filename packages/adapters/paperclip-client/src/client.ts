@@ -43,6 +43,7 @@ import {
   PaperclipTransport,
   type TransportOptions,
 } from "./transport.ts";
+import { PaperclipWebLinks } from "./web-links.ts";
 import { PaperclipWriter } from "./writer.ts";
 
 /** One Paperclip connection, as the engine hands it in. The key stays in memory only. */
@@ -112,7 +113,8 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#namedUserId = options.userId;
     const steppers =
       options.stepperCatalog && new PaperclipSteppers(this.#reader, options.stepperCatalog);
-    this.#inbox = new PaperclipInbox(this.#reader, options.company, steppers);
+    const webLinks = new PaperclipWebLinks(options.address);
+    this.#inbox = new PaperclipInbox(this.#reader, options.company, webLinks, steppers);
     this.#writer = new PaperclipWriter(this.#reader, this.#company, now, steppers);
     this.#channels = new PaperclipChannelSender(this.#reader, options.company, options.userId, now);
     this.#members = new PaperclipChannelMembers(this.#reader, options.company, options.userId);

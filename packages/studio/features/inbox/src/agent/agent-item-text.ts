@@ -104,6 +104,23 @@ export function workLine(work: WorkItem): string {
   return `From ${markHiddenName(work.label)} · ${markHiddenName(work.title)}`;
 }
 
+/** The link to an item's page in its source: "Open in Paperclip". */
+export const openInSite = (site: string): string => `Open in ${site}`;
+
+/**
+ * The one page link an item's card shows (`inbox.agent-card-web-link`), when its source gives a
+ * `webLink`: the place to answer it, when the source names one, else the item's own page.
+ */
+export function agentItemPageLink(
+  item: AgentItem,
+): { readonly href: string; readonly label: string } | undefined {
+  if (item.webLink === undefined) return undefined;
+  return {
+    href: item.answerElsewhere?.link ?? item.webLink.link,
+    label: openInSite(item.webLink.site),
+  };
+}
+
 /** Whether the item has waited a day or more, as a run's item is late. */
 export function isAgentItemLate(item: AgentItem, now: Date): boolean {
   return isLate(new Date(item.createdAt), now);

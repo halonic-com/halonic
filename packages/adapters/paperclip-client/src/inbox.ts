@@ -6,6 +6,7 @@ import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
 import type { PaperclipSteppers } from "./steppers.ts";
+import { companyPrefix, type PaperclipWebLinks, prefixOf, withWebLink } from "./web-links.ts";
 
 /** Task states whose cards may still wait on the person. A closed task's cards can't be answered. */
 export const openTaskStates = "backlog,todo,in_progress,in_review,blocked";
@@ -29,6 +30,8 @@ interface TaskCards {
   updatedAt: string | undefined;
   /** The task's Paperclip project, if it has one; its name is looked up on every list. */
   projectId: string | undefined;
+  /** The task's identifier, such as `ACME-7`, for its page in Paperclip. */
+  identifier: string | undefined;
   items: readonly InboxItem[];
 }
 
@@ -71,14 +74,24 @@ export class PaperclipInbox {
   readonly #company: string;
   readonly #steppers: PaperclipSteppers | undefined;
   readonly #boardRequests: PaperclipBoardRequests;
+  readonly #webLinks: PaperclipWebLinks;
   #cards = new Map<string, TaskCards>();
   /** Each pending approval's first linked task, read once: an approval's links don't change. */
   #approvalTasks = new Map<string, JsonRecord | undefined>();
 
-  /** With `steppers`, a card that pins a stepper request is served as a stepper item. */
-  constructor(reader: PaperclipReader, company: string, steppers?: PaperclipSteppers) {
+  /**
+   * `webLinks` gives cards and approvals their page in Paperclip. With `steppers`, a card that
+   * pins a stepper request is served as a stepper item.
+   */
+  constructor(
+    reader: PaperclipReader,
+    company: string,
+    webLinks: PaperclipWebLinks,
+    steppers?: PaperclipSteppers,
+  ) {
     this.#reader = reader;
     this.#company = company;
+    this.#webLinks = webLinks;
     this.#steppers = steppers;
     this.#boardRequests = new PaperclipBoardRequests(reader, company);
   }
@@ -104,10 +117,11 @@ export class PaperclipInbox {
    */
   async list(context: MapContext, tasks?: readonly JsonRecord[]): Promise<InboxItem[]> {
     const projectOf = await this.#projects(context);
-    const approvals = await this.#approvals(context, projectOf);
+    const open = tasks ?? (await this.openTasks());
+    const approvals = await this.#approvals(context, projectOf, companyPrefix(open));
     const decisions = await this.#decisions(context);
     const boardRequests = await this.#boardRequests.list(context);
-    const read = await this.#allCards(context, projectOf, tasks ?? (await this.openTasks()));
+    const read = await this.#allCards(context, projectOf, open);
     const cards =
       this.#steppers === undefined
         ? read
@@ -136,7 +150,12 @@ export class PaperclipInbox {
     };
   }
 
-  async #approvals(context: MapContext, projectOf: ProjectOf): Promise<InboxItem[]> {
+  /** `prefix` is the company's task prefix, for the page of an approval linked to no task. */
+  async #approvals(
+    context: MapContext,
+    projectOf: ProjectOf,
+    prefix: string | undefined,
+  ): Promise<InboxItem[]> {
     const items: InboxItem[] = [];
     const known = new Map<string, JsonRecord | undefined>();
     for (const record of await this.#approvalRecords()) {
@@ -154,7 +173,9 @@ export class PaperclipInbox {
       );
       if (item !== undefined) {
         // An approval with no task has no project.
-        items.push(withProject(item, projectOf(text(linked, "projectId"))));
+        const linkedPrefix = prefixOf(text(linked, "identifier")) ?? prefix;
+        const webLink = this.#webLinks.approval(linkedPrefix, approval);
+        items.push(withWebLink(withProject(item, projectOf(text(linked, "projectId"))), webLink));
       }
     }
     // Decided approvals drop out, so the cache holds only open ones.
@@ -201,23 +222,23 @@ export class PaperclipInbox {
     tasks: readonly JsonRecord[],
   ): Promise<InboxItem[]> {
     const next = new Map<string, TaskCards>();
-    const changed: { id: string; updatedAt: string | undefined; projectId: string | undefined }[] =
-      [];
+    const changed: (Omit<TaskCards, "items"> & { id: string })[] = [];
     for (const task of tasks) {
       const id = text(task, "id");
       const updatedAt = text(task, "updatedAt");
       const projectId = text(task, "projectId");
+      const identifier = text(task, "identifier");
       if (id === undefined) {
         continue;
       }
       const known = this.#cards.get(id);
       if (known !== undefined && updatedAt !== undefined && known.updatedAt === updatedAt) {
-        next.set(id, { ...known, projectId });
+        next.set(id, { ...known, projectId, identifier });
       } else {
-        changed.push({ id, updatedAt, projectId });
+        changed.push({ id, updatedAt, projectId, identifier });
       }
     }
-    await eachLimited(changed, cardReadsAtOnce, async ({ id, updatedAt, projectId }) => {
+    await eachLimited(changed, cardReadsAtOnce, async ({ id, ...task }) => {
       const items: InboxItem[] = [];
       for (const record of await this.cardsOf(id)) {
         const item = cardToItem(context, id, record);
@@ -227,13 +248,14 @@ export class PaperclipInbox {
           );
         }
       }
-      next.set(id, { updatedAt, projectId, items });
+      next.set(id, { ...task, items });
     });
     // Closed tasks drop out here, so their cards leave the Inbox with them.
     this.#cards = next;
     return [...next.values()].flatMap((entry) => {
       const project = projectOf(entry.projectId);
-      return entry.items.map((item) => withProject(item, project));
+      const webLink = this.#webLinks.task(entry.identifier);
+      return entry.items.map((item) => withWebLink(withProject(item, project), webLink));
     });
   }
 }

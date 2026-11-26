@@ -14,6 +14,7 @@ import {
   Avatar,
   Button,
   Callout,
+  ExternalLink,
   Field,
   QuestionForm,
   TextArea,
@@ -22,6 +23,7 @@ import {
 import { useEffect, useId, useRef, useState } from "react";
 import {
   agentItemBody,
+  agentItemPageLink,
   agentItemTitle,
   answeredLine,
   answerText,
@@ -123,7 +125,7 @@ export function AgentItemCard({
   const label = source?.label;
 
   return (
-    <section aria-labelledby={titleId} className={cardClasses}>
+    <section aria-labelledby={titleId} className={`${cardClasses} shadow-1`}>
       <div className={cardBodyClasses}>
         <Asker from={item.from} agents={agents} />
         <CardHeader
@@ -167,6 +169,7 @@ export function AgentItemCard({
           busy={busy}
           send={(chosen) => void send(chosen)}
         />
+        <PageLink item={item} />
       </div>
     </section>
   );
@@ -221,6 +224,17 @@ function AnswerControls({
   }
   return (
     <OptionButtons options={item.options} unavailable={unavailable} busy={busy} onAnswer={send} />
+  );
+}
+
+/** The item's page in its source, "Open in Paperclip", when the source gives one (`inbox.agent-card-web-link`). */
+function PageLink({ item }: { readonly item: AgentItem }) {
+  const link = agentItemPageLink(item);
+  if (link === undefined) return null;
+  return (
+    <p className="text-small">
+      <ExternalLink href={link.href}>{link.label}</ExternalLink>
+    </p>
   );
 }
 
