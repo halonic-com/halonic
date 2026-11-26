@@ -34,6 +34,7 @@ import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
 import { asRecords, type JsonRecord, text } from "./json.ts";
 import { type MapContext, newestFirst, toAgent, toMessage, toWork } from "./map.ts";
+import { PaperclipReactions } from "./reactions.ts";
 import { PaperclipReader } from "./reader.ts";
 import { type RefreshLists, RefreshReads } from "./refresh-reads.ts";
 import { isSafeSegment } from "./requests.ts";
@@ -466,6 +467,16 @@ export class PaperclipMessaging implements AgentMessaging {
     if (this.#agentNames.size === 0) {
       await this.#agentsRead.run(() => this.#readAgents());
     }
+  }
+
+  /** This connection's message reactions (`paperclip-client.reactions`), named as its messages are. */
+  reactions(): PaperclipReactions {
+    return new PaperclipReactions({
+      reader: this.#reader,
+      company: this.#company,
+      context: () => this.#context(),
+      knowAgents: () => this.#knowAgents(),
+    });
   }
 
   #context(): MapContext {

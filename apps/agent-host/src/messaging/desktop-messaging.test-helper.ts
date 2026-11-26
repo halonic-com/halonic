@@ -73,6 +73,8 @@ export class FakePaperclip {
    * open, which a test knows has started.
    */
   hold: { path: string; arrived: () => void; until: Promise<void> } | undefined;
+  /** What the agent-tools plugin's reactions route answers for task-1; without it, no plugin. */
+  reactions: unknown;
 
   /**
    * When set, every object in every answer also carries fields no app may
@@ -120,6 +122,13 @@ export class FakePaperclip {
     if (path === "/api/cli-auth/revoke-current") return json({ revoked: true });
     if (path === "/api/cli-auth/me" && this.meAnswer !== undefined) return this.meAnswer();
     if (path === "/api/cli-auth/me" && this.me !== undefined) return json(this.me);
+    return this.#pluginAnswer(path);
+  }
+
+  /** The agent-tools plugin's reactions route for task-1 when the test set one; otherwise 404. */
+  #pluginAnswer(path: string): Response {
+    const reactions = path === "/api/plugins/halonic.agent-tools/api/reactions/task-1";
+    if (reactions && this.reactions !== undefined) return json(this.reactions);
     return json({ error: "API route not found" }, 404);
   }
 

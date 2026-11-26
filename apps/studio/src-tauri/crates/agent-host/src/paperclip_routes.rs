@@ -74,6 +74,16 @@ pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
         "POST /v1/messaging/pull-requests",
         route(Method::Post, "/v1/messaging/pull-requests", Answer::Json),
     ),
+    // Message reactions (HAL-19139): a chat's reactions, and the person's own
+    // added or removed; never a message, so they wake no agent.
+    (
+        "POST /v1/messaging/reactions",
+        route(Method::Post, "/v1/messaging/reactions", Answer::Json),
+    ),
+    (
+        "POST /v1/messaging/react",
+        route(Method::Post, "/v1/messaging/react", Answer::Json),
+    ),
     // The server engine's pairing (HAL-18744): the host puts the device token
     // straight into the keychain, so no answer holds it.
     (

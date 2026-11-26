@@ -108,6 +108,14 @@ export const paperclipRequests = {
   // The PR watcher's last pass (HAL-19720): the rule input and the watcher's actions, for
   // the served `pr-watcher` workflow, which reads GitHub and tasks only through Paperclip.
   prWatcherPass: { method: "GET", path: "/api/plugins/halonic.agent-tools/api/pr-watcher/pass" },
+  // Message reactions (`paperclip-client.reactions`, HAL-19139), kept by the same plugin: list a
+  // chat's, and add or remove the person's own, exactly these fields.
+  listReactions: { method: "GET", path: "/api/plugins/halonic.agent-tools/api/reactions/:task" },
+  setReaction: {
+    method: "POST",
+    path: "/api/plugins/halonic.agent-tools/api/reactions/:task",
+    body: { fields: ["commentId", "emoji", "on"], booleans: ["on"] },
+  },
   // Workflow task writes (`paperclip-client.task-writes`, HAL-17975): a routine wakes an
   // agent or closes a task, each with a comment. Both use Paperclip's task update, so
   // each row also pins its body: exactly these fields, and this one status.
@@ -266,6 +274,8 @@ interface BodyRule {
   integers?: readonly string[];
   /** Fields whose text must start with the given prefix and go on after it. */
   prefixed?: Readonly<Record<string, string>>;
+  /** Fields that must be `true` or `false`, such as whether a reaction is added. */
+  booleans?: readonly string[];
 }
 
 /**
@@ -444,6 +454,9 @@ export function uploadRule(name: PaperclipRequestName): UploadRule | undefined {
 function fieldFits(rule: BodyRule, field: string, value: unknown): boolean {
   if (rule.idLists?.includes(field) === true) {
     return isOneIdList(value);
+  }
+  if (rule.booleans?.includes(field) === true) {
+    return typeof value === "boolean";
   }
   if (rule.integers?.includes(field) === true) {
     return Number.isSafeInteger(value) && Number(value) >= 1 && Number(value) <= largestAmount;

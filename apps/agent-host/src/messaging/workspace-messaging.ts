@@ -33,6 +33,7 @@ import {
 import { type JoinedEngine, ServerEngineInUse } from "./server-engine.ts";
 import { syncFiles } from "./sync-files.ts";
 import { TeamStatusHub } from "./team-status-hub.ts";
+import { WorkspaceReactions } from "./workspace-reactions.ts";
 
 /** What one workspace's messaging needs. */
 export interface WorkspaceMessagingOptions {
@@ -185,6 +186,11 @@ export class WorkspaceMessaging {
   get activity(): WorkspaceActivity {
     return this.#team;
   }
+
+  /** Message reactions, through each connected connection; none while the engine is a server. */
+  readonly reactions = new WorkspaceReactions(() =>
+    this.#engine.kind === "this-computer" ? this.#providers : new Map(),
+  );
 
   /**
    * Starts the provider of a connection whose key Studio just handed over,

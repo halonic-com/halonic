@@ -50,6 +50,7 @@ export {
   type IntegrationSignInStatus,
   type IntegrationSignOutResult,
 } from "./integration-sign-in.ts";
+export { AgentHostReactions } from "./message-reactions.ts";
 export {
   AgentHostPaperclipKey,
   type PaperclipConnectionRef,
