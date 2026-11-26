@@ -77,6 +77,7 @@ export type {
   SetupFocus,
   SetupViewProps,
 } from "./setup-source.ts";
+export { PlanLimitCard, type PlanLimitCardProps } from "./ui/plan-limit-card.tsx";
 export { WaitCard, type WaitCardProps } from "./ui/wait-card.tsx";
 
 /** The runs the Inbox reads and answers. The app provides it for each open workspace. */

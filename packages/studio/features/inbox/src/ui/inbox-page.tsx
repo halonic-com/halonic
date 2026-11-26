@@ -1,4 +1,5 @@
 import type { AgentMessaging } from "@halonicjs/ports";
+import { AccountMenuHostService } from "@halonicjs/studio-feature-account-menu/api";
 import {
   ActionCatalogService,
   defaultRequesterPolicy,
@@ -64,6 +65,7 @@ import { useProjectFilter } from "./use-project-filter.tsx";
 import { useRequestPane } from "./use-request-pane.tsx";
 import { useRunFacts } from "./use-run-facts.ts";
 import { useRunReview } from "./use-run-review.ts";
+import { useSeeUsage } from "./use-see-usage.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { useSettleLeftOver } from "./use-settle-left-over.ts";
 import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
@@ -85,6 +87,7 @@ export function InboxPage({ context }: PlaceViewProps) {
   const runs = context.services.find(RunsListService);
   const runFacts = useRunFacts(runs);
   const trust = useTrustReview(context);
+  const seeUsage = useSeeUsage(context.services.find(AccountMenuHostService));
   // Effects run children first, so the view below already listens for the item this opens.
   useRunReview(inbox, runs);
   return (
@@ -108,6 +111,7 @@ export function InboxPage({ context }: PlaceViewProps) {
             openBudget: () => context.runCommand?.(openBudgetCommand),
           })}
       trust={trust}
+      seeUsage={seeUsage}
       {...(openItem && {
         openRun: (hubId: string, runId: string) => openItem({ kind: "run", hub: hubId, id: runId }),
         openPage: openItem,
@@ -170,6 +174,8 @@ export interface InboxViewProps {
   readonly agentMessaging?: AgentMessaging | undefined;
   /** The motions it plays as rows come and go and panes change; tests pass their own. */
   readonly motion?: InboxMotion;
+  /** Opens the customer's usage, for **See usage** on a run at a plan limit; without it there's none. */
+  readonly seeUsage?: (() => void) | undefined;
 }
 
 /**
@@ -217,6 +223,7 @@ export function InboxView({
   requesterPolicy = defaultRequesterPolicy,
   actionSteps = desktopOnlyActionSteps,
   motion = kitMotion,
+  seeUsage,
 }: InboxViewProps) {
   const subscribe = useCallback((listener: () => void) => inbox.subscribe(listener), [inbox]);
   const read = useCallback(() => inbox.state, [inbox]);
@@ -408,6 +415,7 @@ export function InboxView({
               openPage={openPage}
               runFacts={runFacts}
               runsSource={runs?.source}
+              seeUsage={seeUsage}
               announce={announce}
               now={now}
               answering={state.error === undefined}

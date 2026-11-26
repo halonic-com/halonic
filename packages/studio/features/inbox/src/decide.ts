@@ -17,9 +17,11 @@ export interface InboxDecisions {
 
 /** What an answer names: a tool call, or the wait step from the time it started waiting. */
 function sendOptions(item: RunItem): SendOptions {
-  return item.kind === "approval"
-    ? { callId: item.callId }
-    : { wait: { state: item.state, since: item.waitingAt } };
+  if (item.kind === "approval") return { callId: item.callId };
+  // A run at a plan limit takes only `continue`, and the engine keeps the time of its last `wait`
+  // step, not of the limit, so naming the step would refuse it. A late `continue` changes nothing.
+  if (item.limit !== undefined) return {};
+  return { wait: { state: item.state, since: item.waitingAt } };
 }
 
 /**

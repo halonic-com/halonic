@@ -42,10 +42,12 @@ export function rowFor(item: InboxItem, now: Date, facts?: RunFacts): ListRow {
     item.kind === "wait" && item.movesOnAt !== null
       ? ` · ${movesOnMeta(new Date(item.movesOnAt))}`
       : "";
+  // A run at a plan limit waits for its customer, not at a person's step.
+  const personStep = item.kind === "wait" && item.limit === undefined;
   const what =
     facts === undefined
       ? ""
-      : `${facts.workflow} · run ${shortRunId(item.runId)}${item.kind === "wait" ? " · a person step" : ""} · `;
+      : `${facts.workflow} · run ${shortRunId(item.runId)}${personStep ? " · a person step" : ""} · `;
   const row = { id: item.key, title: itemTitle(item), meta: `${what}${waiting}${movesOn}` };
   // Amber says "have a look": a day or more of waiting (the waiting time stays muted).
   return isLate(new Date(item.since), now)

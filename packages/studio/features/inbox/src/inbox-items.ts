@@ -1,4 +1,6 @@
+import { type PlanUnitStop, planRunOf } from "@halonicjs/app/run-failure";
 import type { RunSummary } from "@halonicjs/events";
+import { unitMessage } from "./plain/plan-limit-words.ts";
 import type { ProposalItem } from "./proposal-items.ts";
 
 /** A tool call that waits for your OK, one per call (`RunSummary.approvals`). */
@@ -61,6 +63,12 @@ export interface WaitItem {
   readonly waitingAt: string;
   /** ISO time the step's first timer moves the run on by itself, or `null` without a timer. */
   readonly movesOnAt: string | null;
+  /**
+   * Set when the run waits at a plan limit, not at a `wait` step (`inbox.plan-limit-card`): the
+   * stop it waits at. It takes only `continue`, and its title is C3's, such as "This run stopped:
+   * you've used this month's usage".
+   */
+  readonly limit?: PlanUnitStop;
 }
 
 /** An item a run waits on: it holds the run and the answer goes to the run. */
@@ -164,7 +172,9 @@ function approvalItem(
 }
 
 function waitItem(run: RunSummary, state: string, waitingAt: string): WaitItem {
-  const title = run.waitingFor?.title ?? "";
+  const atLimit = planRunOf(run);
+  const limit = atLimit?.state === "waiting" ? atLimit.stop : undefined;
+  const title = limit === undefined ? (run.waitingFor?.title ?? "") : unitMessage(limit).title;
   return {
     kind: "wait",
     key: `${run.id}:${state}`,
@@ -177,7 +187,9 @@ function waitItem(run: RunSummary, state: string, waitingAt: string): WaitItem {
     answerLabels: run.answerLabels,
     since: waitingAt,
     waitingAt,
-    movesOnAt: run.nextTimer,
+    // A run at a plan limit fails when its timer fires, so it never moves on by itself.
+    movesOnAt: limit === undefined ? run.nextTimer : null,
+    ...(limit === undefined ? {} : { limit }),
   };
 }
 

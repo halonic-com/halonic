@@ -4111,6 +4111,9 @@ importers:
       '@halonicjs/std':
         specifier: workspace:*
         version: link:../../../core/std
+      '@halonicjs/studio-feature-account-menu':
+        specifier: workspace:*
+        version: link:../account-menu
       '@halonicjs/studio-feature-action-steppers':
         specifier: workspace:*
         version: link:../action-steppers
