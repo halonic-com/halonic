@@ -140,7 +140,8 @@ function feedbackFlow(parts: InAppFeedbackParts) {
   };
 
   // The still is the screen under the window, so it is taken only once the dialog is off it. When
-  // the shell gives none, the dialog comes back with the text: the crop is still held.
+  // the shell gives none, the dialog comes back with the text. A capture that failed dropped the
+  // crop, so the dialog then says it couldn't load the screenshot and offers to send the text alone.
   function selectAgain(text: string) {
     layer.close();
     starting = true;

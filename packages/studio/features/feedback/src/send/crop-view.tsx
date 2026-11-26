@@ -69,13 +69,13 @@ export interface PressLineProps {
 
 /**
  * Under the crop: "{App} · {Window title} · {W} × {H}" once the crop is there, keeping its height
- * while it loads, with "Select again" at its right (`feedback.select-again`). A crop that couldn't
- * be loaded offers Select again in its box instead.
+ * while it loads, with "Select again" at its right once the crop loaded (`feedback.select-again`).
+ * A crop that couldn't be loaded offers Select again in its box instead.
  */
 export function PressLine(props: PressLineProps) {
   const { still } = props;
   const ready = still.kind === "ready" ? still.still : undefined;
-  const offered = !props.sending && still.kind !== "failed";
+  const offered = !props.sending && ready !== undefined;
   const selectAgain = offered ? props.onSelectAgain : undefined;
   return (
     // Pulled up to the crop, so the line reads as its caption.

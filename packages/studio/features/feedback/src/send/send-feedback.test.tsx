@@ -349,6 +349,15 @@ verifies("feedback.send-states", () => {
     expect(sendButton().getAttribute("aria-busy")).toBe("true");
   });
 
+  it("hides the Select again under a loaded crop while sending", async () => {
+    await open({ selectAgain: vi.fn(), answers: [() => new Promise(() => undefined)] });
+    expect(findButton("Select again")).toBeDefined();
+    type("Run list jumps");
+    await act(async () => sendButton().click());
+    expect(textField().readOnly).toBe(true);
+    expect(findButton("Select again")).toBeUndefined();
+  });
+
   it("says why Paperclip refused, keeps the text, focuses the Callout and tries again", async () => {
     const refused: SendAnswer = { kind: "refused", reason: "Project not found." };
     const { shell, send } = await open({ answers: [async () => refused] });
@@ -415,6 +424,12 @@ verifies("feedback.select-again", () => {
     act(() => button("Select again").click());
     expect(selectAgain).toHaveBeenCalledWith("Run list jumps");
     expect(ends(shell)).toEqual([]);
+  });
+
+  it("offers Select again only once the crop loaded", async () => {
+    await render({ shell: fakeShell(() => new Promise(() => undefined)), selectAgain: vi.fn() });
+    expect(element.querySelector("[data-feedback-crop]")?.getAttribute("aria-busy")).toBe("true");
+    expect(findButton("Select again")).toBeUndefined();
   });
 
   it("opens with the text Select again kept", async () => {
