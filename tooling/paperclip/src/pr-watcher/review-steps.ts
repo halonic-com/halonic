@@ -1,3 +1,4 @@
+import { reviewerOf } from "../reviewer-paths-who.ts";
 import {
   type Answer,
   type Answers,
@@ -21,7 +22,6 @@ import {
   type Reviewer,
   type ReviewerRoute,
   refusalOf,
-  reviewerOf,
   type SinceApproval,
   type SinceApprovals,
   waitingForReview,

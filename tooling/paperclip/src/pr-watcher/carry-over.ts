@@ -1,4 +1,5 @@
 import { judgeApprovals } from "../pr-tools/approvals.ts";
+import { approvalRole } from "../reviewer-paths-who.ts";
 import { branchOwner, type Memory, marker, type PullFacts, short } from "./decide.ts";
 import type { Reviewer, SinceApproval } from "./handoff.ts";
 
@@ -54,7 +55,7 @@ export function carries(pull: PullFacts, since: SinceApproval, byPaths: Reviewer
   const [judged] = judgeApprovals([{ by: since.by, head: pull.head }], {
     head: pull.head,
     author,
-    reviewer: byPaths === "liam" ? "liam" : "julian",
+    reviewer: approvalRole(byPaths),
     // Nora's approval carries only to a routine review (HAL-19283).
     routineRefusal: byPaths === "nora" ? null : "not a routine review by its paths",
   });

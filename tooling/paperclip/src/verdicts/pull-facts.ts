@@ -2,7 +2,8 @@ import { type ChangedFile, readManifests, routedFromRest } from "../pr-tools/man
 import { branchPath, type PullDetails } from "../pr-tools/pr-status.ts";
 import { everyPage, type GitHubGet } from "../pr-watcher/github.ts";
 import { type CompareFile, changeIdOf } from "../pr-watcher/rebase-only.ts";
-import { reviewerRoleFor, routineRefusal } from "../reviewer-paths.ts";
+import { routineRefusal } from "../reviewer-paths.ts";
+import { pathReviewer } from "../reviewer-paths-who.ts";
 import type { VerdictPullFacts } from "./review-verdict.ts";
 
 /**
@@ -40,7 +41,7 @@ export async function readVerdictPull(
     ownBranch: pull.head.repo?.full_name.toLowerCase() === repo.toLowerCase(),
     openedBy: pull.user?.login ?? "",
     fingerprint: changeIdOf(compare?.files ?? []),
-    reviewer: reviewerRoleFor(routed) === "code-reviewer" ? "liam" : "julian",
+    reviewer: pathReviewer(routed),
     routineRefusal: routineRefusal(routed),
   };
 }
