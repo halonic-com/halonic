@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import { reviewerFor } from "../reviewer-paths.ts";
-import { approvalOf, outsideJulianScope } from "./approval.ts";
+import { approvalOf, outsideJulianScope, outsideRoutineScope } from "./approval.ts";
 import {
   actionsOf,
   ago,
@@ -270,6 +270,16 @@ verifies("paperclip.routine-review", () => {
     expect(reasonsOf({ ...renamed("tooling/paperclip/src/a.ts"), texts: [nora] }).added).toEqual([
       1,
     ]);
+  });
+
+  test("it doesn't count on a pull request the team didn't write, or a sensitive one", () => {
+    const fork = { ...routine, texts: [nora], crossRepository: true };
+    expect(reasonsOf(fork).added).toEqual([]);
+    expect(outsideRoutineScope(pull(1, fork))).toBe("not written by the team");
+    const bot = { ...routine, texts: [nora], branch: "dependabot/npm_and_yarn/acme-1.2.3" };
+    expect(reasonsOf(bot).added).toEqual([]);
+    const trust = { ...routine, texts: [nora], labels: ["area: trust and sandbox"] };
+    expect(outsideRoutineScope(pull(1, trust))).toBe("outside the second reviewer's limits");
   });
 
   test("Nora's change request holds a pull request Julian approved", () => {

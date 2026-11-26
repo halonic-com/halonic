@@ -12,7 +12,6 @@ import {
 import {
   isSecurityPath,
   julianRebaseRefusal,
-  type RoutedPull,
   reviewerFor,
   reviewerRoleFor,
   routedPaths,
@@ -22,7 +21,7 @@ import { manifestFileOf } from "../reviewer-paths-manifest.ts";
 import type { Routing } from "../routing.ts";
 import { type CopyReader, readCopySource, withCopies } from "./approval-copy.ts";
 import { type Approval, approvals, type PullComment } from "./approvals.ts";
-import { type ChangedFile, linesByFile, previousPathsOf, readManifests } from "./manifests.ts";
+import { type ChangedFile, readManifests, routedFromRest } from "./manifests.ts";
 import { requiredWorkflowsOf } from "./required-workflows.ts";
 
 /**
@@ -96,6 +95,7 @@ export interface PullDetails {
     readonly repo?: { readonly full_name: string } | null;
   };
   readonly base: { readonly ref: string; readonly repo?: { readonly private?: boolean } | null };
+  readonly labels?: readonly { readonly name: string }[];
 }
 
 /**
@@ -184,15 +184,8 @@ export async function prStatus(
   // A fork's branch can be named like ours, so it names no author or task.
   const ours = pull.head.repo?.full_name.toLowerCase() === repo.toLowerCase();
   const author = ours ? branchOwner(pull.head.ref) : undefined;
-  // The author says whether it's a security or release pull request; the paths can't tell.
-  const routed: RoutedPull = {
-    files: files.map((file) => file.filename),
-    changedLines,
-    sensitive: false,
-    manifests,
-    fileLines: linesByFile(files),
-    previousPaths: previousPathsOf(files),
-  };
+  // A release branch or the trust label marks a sensitive pull request; otherwise its author says so.
+  const routed = routedFromRest(pull, repo, files, manifests);
   // A renamed file counts by its old path too (HAL-19283).
   const paths = routedPaths(routed);
   const rebaseRefusal = julianRebaseRefusal({ files: paths, branch: pull.head.ref });

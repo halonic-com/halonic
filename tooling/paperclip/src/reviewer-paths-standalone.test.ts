@@ -85,8 +85,8 @@ verifies("paperclip.reviewer-paths-standalone", () => {
       const script = `
         const { reviewerFor } = await import(${JSON.stringify(join(folder, "reviewer-paths.ts"))});
         console.log(JSON.stringify([
-          reviewerFor({ files: ["packages/studio/features/inbox/src/view.tsx"], changedLines: 40, sensitive: false }),
-          reviewerFor({ files: ["pnpm-lock.yaml"], changedLines: 40, sensitive: false }),
+          reviewerFor({ files: ["packages/studio/features/inbox/src/view.tsx"], changedLines: 40, sensitive: false, ours: true }),
+          reviewerFor({ files: ["pnpm-lock.yaml"], changedLines: 40, sensitive: false, ours: true }),
         ]));`;
       const run = spawnSync(process.execPath, ["--input-type=module", "--eval", script], {
         cwd: folder,

@@ -9,6 +9,7 @@ import {
   unknownRename,
 } from "../reviewer-paths.ts";
 import { manifestFileOf } from "../reviewer-paths-manifest.ts";
+import { sensitiveOrigin, writtenByTeam } from "../reviewer-paths-routine.ts";
 import { anySignedApproval, blockWords, fixedWords, signedApproval } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
 
@@ -175,14 +176,19 @@ export function rebaseOnlyAfterLiam(
   });
 }
 
-/** The pull request as the reviewer path list reads it, renamed files' old paths included. */
+/**
+ * The pull request as the reviewer path list reads it: renamed files' old
+ * paths, who wrote it, and whether its branch or labels make it a security
+ * or release one (HAL-19283).
+ */
 function routedOf(pull: GatePull): RoutedPull {
   return {
     files: pull.files,
     changedLines: pull.additions + pull.deletions,
-    sensitive: false,
+    sensitive: sensitiveOrigin(pull),
     ...(pull.manifests === undefined ? {} : { manifests: pull.manifests }),
     ...(pull.previousPaths === undefined ? {} : { previousPaths: pull.previousPaths }),
+    ours: writtenByTeam(pull),
   };
 }
 

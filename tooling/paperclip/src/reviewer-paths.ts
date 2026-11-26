@@ -6,7 +6,7 @@
  */
 import type { Routing } from "@halonicjs/format";
 import { manifestFileOf } from "./reviewer-paths-manifest.ts";
-import { isRoutineExcluded, publicInterfaceIn } from "./reviewer-paths-routine.ts";
+import { isRoutineExcluded, liamWords, publicInterfaceIn } from "./reviewer-paths-routine.ts";
 import { personFor } from "./routing.ts";
 
 /** Exact files only Liam reviews. The root `package.json` counts too. */
@@ -57,15 +57,7 @@ export const liamFolders: readonly string[] = [
   "tooling/paperclip/src/reviewer-paths",
 ];
 
-/** Words that make a code path Liam's; tests, Markdown and wording files don't count. */
-export const liamWords: readonly string[] = [
-  "sandbox",
-  "secret",
-  "sign-in",
-  "oauth",
-  "keychain",
-  "trust",
-];
+export { liamWords };
 
 /**
  * Julian approves at most this many changed lines (HAL-18459); tests,
@@ -290,6 +282,8 @@ export interface RoutedPull {
    * path isn't known, which only the code reviewer may approve (HAL-19283).
    */
   readonly previousPaths?: Readonly<Record<string, string | null>>;
+  /** Whether the team wrote it (`writtenByTeam`); unset or false is never a routine review (HAL-19283). */
+  readonly ours?: boolean;
 }
 
 /** The changed files and renamed files' known old paths: a rename out of a path counts as touching it. */
@@ -400,6 +394,9 @@ function exportsChange(pull: RoutedPull): string | undefined {
 export function routineRefusal(pull: RoutedPull): string | null {
   if (needsCodeReviewer(pull)) {
     return "outside the second reviewer's limits";
+  }
+  if (pull.ours !== true) {
+    return "not written by the team";
   }
   const paths = routedPaths(pull);
   const excluded = paths.find(isRoutineExcluded);

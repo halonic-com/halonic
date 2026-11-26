@@ -10,11 +10,16 @@ import {
   reviewerRoleFor,
   routineRefusal,
 } from "./reviewer-paths.ts";
-import { isPublicInterface, isRoutineExcluded } from "./reviewer-paths-routine.ts";
+import {
+  isPublicInterface,
+  isRoutineExcluded,
+  sensitiveOrigin,
+  writtenByTeam,
+} from "./reviewer-paths-routine.ts";
 
 /** A pull request with these files and this many changed lines, none of them sensitive. */
 function pullOf(files: readonly string[], changedLines = 40): RoutedPull {
-  return { files, changedLines, sensitive: false };
+  return { files, changedLines, sensitive: false, ours: true };
 }
 
 verifies("paperclip.routine-review", () => {
@@ -113,6 +118,52 @@ verifies("paperclip.routine-review", () => {
     const after = before.replace("}}", ',"./web":"./src/web.ts"}}');
     const pull = { ...pullOf([path]), manifests: { [path]: { before, after } } };
     expect(routineRefusal(pull)).toBe(`changes a public interface (${path})`);
+  });
+
+  test.each([
+    "tooling/paperclip/src/merge-control/gate.ts",
+    "tooling/paperclip/src/merge-control/write-client.ts",
+    "tooling/paperclip/src/merge-control/checks.test.ts",
+    "tooling/paperclip/src/plugin/manifest.ts",
+    "tooling/paperclip/src/seats/plugin/manifest.ts",
+    ".claude/settings.json",
+    ".mcp.json",
+    ".npmrc",
+    ".pnpmfile.cjs",
+    "packages/adapters/fs-node/src/sandbox/fence.test.ts",
+    "docs/guides/trust.md",
+  ])("Julian's list on HAL-18424 keeps %s from the routine role", (file) => {
+    expect(isRoutineExcluded(file)).toBe(true);
+    expect(routineRefusal(pullOf([file]))).not.toBeNull();
+  });
+
+  test.each([
+    ".changeset/inbox-label.md",
+    "apps/cli/src/messages/sandbox.ts",
+    "apps/cli/src/plugin/load.ts",
+  ])("%s stays routine", (file) => {
+    expect(routineRefusal(pullOf([file]))).toBeNull();
+  });
+
+  test("a pull request the team didn't write is never routine", () => {
+    const files = ["apps/cli/src/commands/run.ts"];
+    expect(routineRefusal({ files, changedLines: 2, sensitive: false })).toBe(
+      "not written by the team",
+    );
+    expect(reviewerFor({ files, changedLines: 2, sensitive: false, ours: false })).toBe("julian");
+    const ours = { branch: "mateo/HAL-5701-work", crossRepository: false, labels: [] };
+    expect(writtenByTeam(ours)).toBe(true);
+    expect(writtenByTeam({ ...ours, crossRepository: true })).toBe(false);
+    expect(writtenByTeam({ ...ours, branch: "dependabot/npm_and_yarn/acme-1.2.3" })).toBe(false);
+    expect(writtenByTeam({ ...ours, branch: "fix-typo" })).toBe(false);
+  });
+
+  test("a release branch or the trust label makes a pull request sensitive", () => {
+    const plain = { branch: "mateo/HAL-5701-work", crossRepository: false, labels: [] };
+    expect(sensitiveOrigin(plain)).toBe(false);
+    expect(sensitiveOrigin({ ...plain, branch: "changeset-release/main" })).toBe(true);
+    expect(sensitiveOrigin({ ...plain, branch: "release/0.2.0" })).toBe(true);
+    expect(sensitiveOrigin({ ...plain, labels: ["area: trust and sandbox"] })).toBe(true);
   });
 
   test("a renamed file counts by its old path too", () => {

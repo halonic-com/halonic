@@ -33,12 +33,14 @@ function change(edit: Record<string, unknown>): ManifestChange {
 verifies("paperclip.reviewer-paths", () => {
   test("a change outside Liam's paths goes to Julian, or to Nora when it is routine", () => {
     const files = ["packages/studio/features/inbox/src/view.tsx"];
-    expect(reviewerFor({ files, changedLines: 120, sensitive: false })).toBe("nora");
-    expect(reviewerRoleFor({ files, changedLines: 120, sensitive: false })).toBe(
+    expect(reviewerFor({ files, changedLines: 120, sensitive: false, ours: true })).toBe("nora");
+    expect(reviewerRoleFor({ files, changedLines: 120, sensitive: false, ours: true })).toBe(
       "routine-reviewer",
     );
     const core = ["packages/core/app/src/view.ts"];
-    expect(reviewerFor({ files: core, changedLines: 120, sensitive: false })).toBe("julian");
+    expect(reviewerFor({ files: core, changedLines: 120, sensitive: false, ours: true })).toBe(
+      "julian",
+    );
   });
 
   test.each([
@@ -59,14 +61,18 @@ verifies("paperclip.reviewer-paths", () => {
     "packages/core/format/src/snapshot/routing.ts",
   ])("%s is on Liam's paths", (path) => {
     expect(isLiamPath(path)).toBe(true);
-    expect(reviewerFor({ files: [path], changedLines: 10, sensitive: false })).toBe("liam");
+    expect(reviewerFor({ files: [path], changedLines: 10, sensitive: false, ours: true })).toBe(
+      "liam",
+    );
   });
 
   test.each([
     "packages/adapters/paperclip-client/src/requests.ts",
     "packages/adapters/paperclip-client/src/sign-in-requests.ts",
   ])("a change to only the Paperclip provider's request list %s goes to Liam", (file) => {
-    expect(reviewerFor({ files: [file], changedLines: 2, sensitive: false })).toBe("liam");
+    expect(reviewerFor({ files: [file], changedLines: 2, sensitive: false, ours: true })).toBe(
+      "liam",
+    );
   });
 
   test.each([
@@ -82,21 +88,21 @@ verifies("paperclip.reviewer-paths", () => {
 
   test("more than 1500 lines of code, or a security or release change, goes to Liam", () => {
     const files = ["packages/core/app/src/a.ts"];
-    expect(reviewerFor({ files, changedLines: 1400, sensitive: false })).toBe("julian");
-    expect(reviewerFor({ files, changedLines: 1500, sensitive: false })).toBe("julian");
-    expect(reviewerFor({ files, changedLines: 1501, sensitive: false })).toBe("liam");
-    expect(reviewerFor({ files, changedLines: 1600, sensitive: false })).toBe("liam");
+    expect(reviewerFor({ files, changedLines: 1400, sensitive: false, ours: true })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 1500, sensitive: false, ours: true })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 1501, sensitive: false, ours: true })).toBe("liam");
+    expect(reviewerFor({ files, changedLines: 1600, sensitive: false, ours: true })).toBe("liam");
     expect(reviewerFor({ files, changedLines: 5, sensitive: true })).toBe("liam");
   });
 
   test("only tests and Markdown have no line limit", () => {
     const files = ["packages/core/app/src/a.test.ts", "docs/guides/a.md", "apps/cli/test/b.ts"];
-    expect(reviewerFor({ files, changedLines: 2000, sensitive: false })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 2000, sensitive: false, ours: true })).toBe("julian");
   });
 
   test("tests, Markdown and wording don't count toward the 1500 lines", () => {
     const files = ["packages/core/app/src/a.ts", "packages/core/app/src/a.test.ts", "docs/a.md"];
-    const pull = { files, changedLines: 2400, sensitive: false };
+    const pull = { files, changedLines: 2400, sensitive: false, ours: true };
     const fileLines = { [files[0] ?? ""]: 1400, [files[1] ?? ""]: 700, [files[2] ?? ""]: 300 };
     expect(reviewerFor({ ...pull, fileLines })).toBe("julian");
     expect(reviewerFor({ ...pull, fileLines: { ...fileLines, [files[0] ?? ""]: 1600 } })).toBe(
@@ -110,31 +116,35 @@ verifies("paperclip.reviewer-paths", () => {
     "more than 800 lines of code in %s goes to Liam",
     (path) => {
       const files = [path, "packages/core/app/src/a.ts"];
-      const pull = { files, changedLines: 1000, sensitive: false };
+      const pull = { files, changedLines: 1000, sensitive: false, ours: true };
       expect(reviewerFor({ ...pull, fileLines: { [path]: 900, [files[1] ?? ""]: 100 } })).toBe(
         "liam",
       );
       expect(reviewerFor({ ...pull, fileLines: { [path]: 800, [files[1] ?? ""]: 200 } })).toBe(
         "julian",
       );
-      expect(reviewerFor({ files: [path], changedLines: 900, sensitive: false })).toBe("liam");
+      expect(reviewerFor({ files: [path], changedLines: 900, sensitive: false, ours: true })).toBe(
+        "liam",
+      );
     },
   );
 
   test("tests in the kernel or the event types don't count toward its 800 lines", () => {
     const files = ["packages/core/events/src/run-events.test.ts", "packages/core/events/README.md"];
-    expect(reviewerFor({ files, changedLines: 2000, sensitive: false })).toBe("julian");
+    expect(reviewerFor({ files, changedLines: 2000, sensitive: false, ours: true })).toBe("julian");
   });
 
   test("the line limit says why a pull request is too big for Julian", () => {
     const files = ["packages/core/events/src/a.ts"];
-    expect(overLineLimit({ files, changedLines: 1600, sensitive: false })).toBe(
+    expect(overLineLimit({ files, changedLines: 1600, sensitive: false, ours: true })).toBe(
       "1600 changed lines outside tests, Markdown and wording (limit 1500)",
     );
-    expect(overLineLimit({ files, changedLines: 900, sensitive: false })).toBe(
+    expect(overLineLimit({ files, changedLines: 900, sensitive: false, ours: true })).toBe(
       "900 changed lines in the kernel or the event types (limit 800)",
     );
-    expect(overLineLimit({ files, changedLines: 800, sensitive: false })).toBeUndefined();
+    expect(
+      overLineLimit({ files, changedLines: 800, sensitive: false, ours: true }),
+    ).toBeUndefined();
   });
 
   test("a word in a messages/ folder outside the CLI still counts", () => {
@@ -154,13 +164,16 @@ verifies("paperclip.reviewer-paths", () => {
     const files = ["apps/cli/package.json"];
     const manifests = { "apps/cli/package.json": change({ main: "b.js" }) };
     // Within Julian's limits and routine (HAL-19246), so Nora's.
-    expect(reviewerFor({ files, changedLines: 2, sensitive: false, manifests })).toBe("nora");
-    expect(reviewerFor({ files, changedLines: 2, sensitive: false })).toBe("liam");
+    expect(reviewerFor({ files, changedLines: 2, sensitive: false, ours: true, manifests })).toBe(
+      "nora",
+    );
+    expect(reviewerFor({ files, changedLines: 2, sensitive: false, ours: true })).toBe("liam");
     expect(
       reviewerFor({
         files: [...files, "pnpm-lock.yaml"],
         changedLines: 9,
         sensitive: false,
+        ours: true,
         manifests,
       }),
     ).toBe("liam");

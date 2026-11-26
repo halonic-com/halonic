@@ -1,14 +1,8 @@
-import {
-  type ChangedFile,
-  linesByFile,
-  previousPathsOf,
-  readManifests,
-} from "../pr-tools/manifests.ts";
+import { type ChangedFile, readManifests, routedFromRest } from "../pr-tools/manifests.ts";
 import { branchPath, type PullDetails } from "../pr-tools/pr-status.ts";
 import {
   isSecurityPath,
   julianRebaseRefusal,
-  type RoutedPull,
   reviewerFor,
   routedPaths,
   routineRefusal,
@@ -39,14 +33,7 @@ export function gitHubRoute(get: GitHubGet): ReviewerRoute {
       base: compare.merge_base_commit?.sha,
       head,
     });
-    const routed: RoutedPull = {
-      files: files.map((file) => file.filename),
-      changedLines: (pull.additions ?? 0) + (pull.deletions ?? 0),
-      sensitive: false,
-      manifests,
-      fileLines: linesByFile(files),
-      previousPaths: previousPathsOf(files),
-    };
+    const routed = routedFromRest(pull, repo, files, manifests);
     // A renamed file counts by its old path too (HAL-19283).
     const paths = routedPaths(routed);
     return {

@@ -14,7 +14,7 @@ function answers(files: readonly string[]) {
       additions: 30,
       deletions: 10,
       base: { ref: "main" },
-      head: { sha: head, ref: "mateo/HAL-5701-work" },
+      head: { sha: head, ref: "mateo/HAL-5701-work", repo: { full_name: repo } },
     },
     [`/repos/${repo}/pulls/5701/files?per_page=100&page=1`]: files.map((filename) => ({
       filename,

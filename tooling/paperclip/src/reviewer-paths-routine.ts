@@ -9,37 +9,98 @@
 /**
  * Folders the routine reviewer doesn't approve alone: the core building
  * blocks, the host, the spec helper the guard runs on (the board, HAL-18424),
- * and the shared lint, type and test config every package runs on (HAL-19283).
+ * the shared lint, type and test config every package runs on, the agents'
+ * own config, and the Merger's rules, tests included (HAL-19283).
  */
 export const routineExcludedFolders: readonly string[] = [
   "packages/core/",
   "packages/host/",
   "packages/testing/spec/",
   "tooling/config/",
+  "tooling/paperclip/src/merge-control/",
 ];
 
 /**
- * Exact files the routine reviewer doesn't approve alone (HAL-19283): the
- * rules every agent reads, git's file handling, and the legal text that
- * carries the contributor statement.
+ * File names excluded in any folder (HAL-19283): `.gitattributes`, licence
+ * and notice files, and plugin manifests, which declare what a plugin may do.
  */
-export const routineExcludedFiles: readonly string[] = [
-  "AGENTS.md",
-  "CLAUDE.md",
-  "CONTRIBUTING.md",
+const routineExcludedNames =
+  /(^|\/)(\.gitattributes|(LICENSE|LICENCE|NOTICE|COPYING)(\.[a-z]+)?|plugin\/manifest\.[cm]?[jt]sx?|[^/]*plugin\.json)$/i;
+
+/**
+ * Words that make a code path Liam's; tests, Markdown and wording files don't
+ * count for that (`reviewer-paths.ts`). For the routine reviewer they count in
+ * tests and docs too, so she never approves a security test alone (HAL-19283).
+ */
+export const liamWords: readonly string[] = [
+  "sandbox",
+  "secret",
+  "sign-in",
+  "oauth",
+  "keychain",
+  "trust",
 ];
 
-/** File names excluded in any folder: `.gitattributes`, and licence and notice files. */
-const routineExcludedNames =
-  /(^|\/)(\.gitattributes|(LICENSE|LICENCE|NOTICE|COPYING)(\.[a-z]+)?)$/i;
+/** Whether a path names security code, tests and docs included; wording and changeset names don't count. */
+function isSecurityNamed(path: string): boolean {
+  if (
+    path.startsWith(".changeset/") ||
+    path.startsWith("apps/cli/src/messages/") ||
+    /(^|[/-])words\.[jt]sx?$/.test(path)
+  ) {
+    return false;
+  }
+  const lower = path.toLowerCase();
+  return liamWords.some((word) => lower.includes(word));
+}
 
-/** Whether a changed path keeps the pull request from being a routine review. */
+/**
+ * Whether a changed path keeps the pull request from being a routine review:
+ * any file at the root (`AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, `.npmrc`,
+ * `.mcp.json` among them) or in a root dot-folder such as `.claude/` (but a
+ * changeset is routine), the excluded folders and names, and security code
+ * with its tests (HAL-19283).
+ */
 export function isRoutineExcluded(path: string): boolean {
   return (
-    routineExcludedFiles.includes(path) ||
+    !path.includes("/") ||
+    (path.startsWith(".") && !path.startsWith(".changeset/")) ||
     routineExcludedFolders.some((folder) => path.startsWith(folder)) ||
-    routineExcludedNames.test(path)
+    routineExcludedNames.test(path) ||
+    isSecurityNamed(path)
   );
+}
+
+/** What says who wrote a pull request and whether it is a security or release one. */
+export interface PullOrigin {
+  readonly branch: string;
+  /** Whether the branch is in a fork. */
+  readonly crossRepository: boolean;
+  readonly labels: readonly string[];
+}
+
+/** A team branch: `<agent>/HAL-<n>-<words>`, as the PR watcher reads it. */
+const teamBranch = /^[a-z]+\/HAL-\d+(-|$)/i;
+
+/**
+ * Whether the team wrote the pull request (HAL-19283): a team branch in our
+ * own repository. Bots, forks and the board's other branches aren't routine.
+ */
+export function writtenByTeam(origin: PullOrigin): boolean {
+  return !origin.crossRepository && teamBranch.test(origin.branch);
+}
+
+/** Branches that release, and the label that marks trust and sandbox work. */
+const releaseBranch = /^(changeset-release|release)\//;
+const securityLabel = "area: trust and sandbox";
+
+/**
+ * Whether a pull request is a security or release one by what GitHub shows
+ * (HAL-19283): a release branch or the trust and sandbox label. Security by
+ * its paths is the path list's job (`isSecurityPath`).
+ */
+export function sensitiveOrigin(origin: PullOrigin): boolean {
+  return releaseBranch.test(origin.branch) || origin.labels.includes(securityLabel);
 }
 
 /** A package's main entry point or its feature interface: any `src/index.ts` or `src/api.ts`. */
