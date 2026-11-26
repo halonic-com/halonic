@@ -57,7 +57,10 @@ export function requestsChanges(lines: readonly string[], reviewer: Reviewer): b
 /**
  * The signed approval `reviewer` gives in this comment, or null when it
  * gives none: no approval line, quoted or in code, a change request, or
- * more than one approval line (ambiguous).
+ * more than one approval line (ambiguous). A comment that opens with its
+ * approval line, as reviewers write it, is not read for change words: its
+ * findings may say "none blocking" (#6452). The live Merger's gate reads it
+ * the same way (HAL-19629).
  */
 export function signedApproval(body: string, reviewer: Reviewer): SignedApproval | null {
   const lines = plainLines(body);
@@ -67,7 +70,11 @@ export function signedApproval(body: string, reviewer: Reviewer): SignedApproval
     return match === null ? [] : [match];
   });
   const only = matches.length === 1 ? matches[0] : undefined;
-  if (only === undefined || requestsChanges(lines, reviewer)) {
+  if (only === undefined) {
+    return null;
+  }
+  const opensWithIt = lines.find((line) => line.trim() !== "") === only.input;
+  if (!opensWithIt && requestsChanges(lines, reviewer)) {
     return null;
   }
   const rebaseOf = only[3];

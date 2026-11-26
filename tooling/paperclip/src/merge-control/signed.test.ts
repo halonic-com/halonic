@@ -47,6 +47,25 @@ verifies("paperclip.merge-control-signed-approval", () => {
     expect(approved([other])).toBe(false);
   });
 
+  test("a comment that opens with its approval line counts whatever its findings say (#6452)", () => {
+    // Julian's approval of #6452, 26 Nov 08:43 UTC: the live Merger queued it, the shadow didn't.
+    const findings = said(
+      `Julian: approved on head \`${head}\`\n\nChecked: the spread rule.\n\nFindings, none blocking (a follow-up is enough):\n\n- [minor] Spreading can take the last empty seat.`,
+    );
+    expect(approved([findings])).toBe(true);
+    expect(enqueued(pass(snapshot({ pulls: [pull(1, { texts: [findings] })] })))).toEqual([1]);
+
+    // The same words after notes still void it: only the opening line approves for certain.
+    const afterNotes = said(
+      `Checked the spread rule.\nFindings, none blocking.\nJulian: approved on head \`${h7}\``,
+    );
+    expect(approved([afterNotes])).toBe(false);
+    const askedFix = said(
+      `Julian: checked it\nplease fix the seat rule\nJulian: approved on head \`${h7}\``,
+    );
+    expect(approved([askedFix])).toBe(false);
+  });
+
   test("two approval lines in one comment are ambiguous and don't count", () => {
     const twice = said(`Liam: approved on head \`${h7}\`\nLiam: re-approved on head \`${h7}\``);
     expect(approved([twice])).toBe(false);
