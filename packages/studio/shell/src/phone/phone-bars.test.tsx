@@ -135,11 +135,16 @@ verifies("shell.phone-bars", () => {
   });
 
   it("draws the count and the running dot at the icon, hidden from the link's name", () => {
-    const { link } = renderNavigation("home");
+    const { link, container } = renderNavigation("home");
+    // The kit's tab bar draws it (HAL-20106): the shell no longer has a copy of its own.
+    const nav = container.querySelector('nav[aria-label="Places"]') as HTMLElement;
+    expect(nav.className).toContain("border-t border-border");
+    expect(link("Runs").getAttribute("href")).toBe("#runs");
     const count = link("Inbox").querySelector('[aria-hidden="true"].absolute');
     expect(count?.textContent).toContain("3");
     const dot = link("Runs").querySelector('[aria-hidden="true"].absolute');
     expect(dot?.className).toContain("bg-running");
+    expect(dot?.className).toContain("ring-surface");
     expect(link("More").querySelector(".absolute")).toBeNull();
   });
 

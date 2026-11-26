@@ -53,7 +53,8 @@ verifies("kit.phone-tab-bar", () => {
     expect(inbox.querySelector(".bg-halo-tint")).not.toBeNull();
     // The chip is hidden; the name says the count once, after the label.
     expect(inbox.querySelector('span[aria-hidden="true"]')?.textContent).toContain("3");
-    expect(inbox.querySelector(":scope > .sr-only")?.textContent).toBe(", 3 waiting");
+    expect(inbox.getAttribute("aria-label")).toBe("Inbox, 3 waiting");
+    expect(agents.getAttribute("aria-label")).toBe("Agents");
   });
 
   it("calls onSelect with the tapped tab's id", async () => {
@@ -65,5 +66,46 @@ verifies("kit.phone-tab-bar", () => {
   it("shows no count while it is 0", () => {
     const { inbox } = renderBar(0);
     expect(inbox.textContent).toBe("Inbox");
+    expect(inbox.getAttribute("aria-label")).toBe("Inbox");
+  });
+
+  it("draws the running dot, problems after the warning mark, and links that it never follows", async () => {
+    const onSelect = vi.fn();
+    const { container } = render(
+      <PhoneTabBar
+        label="Places"
+        tabs={[
+          {
+            id: "runs",
+            label: "Runs",
+            href: "#runs",
+            icon: () => <svg />,
+            running: { name: "1 running" },
+          },
+          {
+            id: "team",
+            label: "Team",
+            href: "#team",
+            icon: () => <svg />,
+            count: { value: 2, name: "2 problems", tone: "attention" },
+          },
+        ]}
+        selected="team"
+        onSelect={onSelect}
+      />,
+    );
+    const [runs, team] = [...container.querySelectorAll("nav a")];
+    if (runs === undefined || team === undefined) throw new Error("No links.");
+    expect(runs.getAttribute("href")).toBe("#runs");
+    expect(runs.getAttribute("aria-label")).toBe("Runs, 1 running");
+    expect(runs.querySelector('[aria-hidden="true"].absolute')?.className).toContain("bg-running");
+    expect(team.getAttribute("aria-label")).toBe("Team, 2 problems");
+    expect(team.querySelector('[aria-hidden="true"].absolute svg')).not.toBeNull();
+    expect(team.querySelector('[aria-hidden="true"].absolute')?.textContent).toContain("2");
+
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    await act(async () => runs.dispatchEvent(click));
+    expect(click.defaultPrevented).toBe(true);
+    expect(onSelect).toHaveBeenCalledWith("runs");
   });
 });

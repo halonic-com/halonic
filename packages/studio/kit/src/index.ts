@@ -401,6 +401,7 @@ export {
 } from "./tabs/tabs.tsx";
 export { sizeText } from "./text/file-size.ts";
 export { type MarkdownBlock, type MarkdownInline, readMarkdown } from "./text/markdown.ts";
+export { questionBody, questionTitle } from "./text/question-text.ts";
 export { fullTime, shortTime } from "./text/short-time.ts";
 export {
   calendarDay,

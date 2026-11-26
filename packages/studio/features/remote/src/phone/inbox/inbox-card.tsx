@@ -11,6 +11,7 @@ import {
   TickIcon,
   waitingFor,
 } from "@halonicjs/studio-kit";
+import { finalState } from "@halonicjs/studio-kit/settle";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { MessagingClient, MessagingOutcome } from "../messaging-client.ts";
 import { RECONNECT_TO_ANSWER, type RemoteView } from "../remote-view.ts";
@@ -61,7 +62,8 @@ function offOf(item: InboxItem, view: RemoteView): Off {
 
 /**
  * What the card says after its answer: a settled line, with the check mark for the person's own
- * answer or the laptop for one given on the computer, and Next; or a line about the send.
+ * answer or the laptop for one given on the computer, and Next (a card closed without an answer
+ * settles too, on its final state); or a line about the send.
  */
 type Answered =
   | { readonly settled: true; readonly line: string; readonly mark: "chose" | "computer" | "none" }
@@ -84,6 +86,11 @@ function answeredOf(
     }
     const line = inboxWords.answeredBy(result.by.name, result.answeredAt);
     return { settled: true, line, mark: "none" };
+  }
+  if (result.outcome === "closed") {
+    // Closed without an answer: the line the Studio's card ends with (`kit.final-state`).
+    const ended = { kind: "closed", reason: result.reason, closedAt: result.closedAt } as const;
+    return { settled: true, line: finalState(ended).line, mark: "none" };
   }
   if (result.reason === "not-found") return { settled: true, line: inboxWords.gone, mark: "none" };
   return { settled: false, line: ANSWER_RISKY_ON_COMPUTER };

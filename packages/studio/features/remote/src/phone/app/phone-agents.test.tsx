@@ -329,7 +329,7 @@ verifies("remote.phone-inbox-parts", () => {
       first.host({ type: "msg-data", replyTo, what: "inbox", items: [card] });
     });
     expect(text()).toContain("Ship phase 2 now?");
-    expect(document.querySelector("nav")?.textContent).toContain("waiting");
+    expect(document.querySelector("nav button")?.getAttribute("aria-label")).toContain("waiting");
 
     // The laptop removes this phone, and it's forgotten on its Removed screen.
     await step(() => tunnel.push(laptop, { state: "removed" }));
