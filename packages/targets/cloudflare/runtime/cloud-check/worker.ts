@@ -22,8 +22,11 @@ interface CheckResult {
 /** The only site the check's rules allow; the control check must reach it. */
 const ALLOWED_SITE = "example.com";
 
-/** How long the check waits for a started container to report it is running. */
-const startWaitMs = 60_000;
+/**
+ * How long the check waits for a started container to report it is running. Run 45796614041 saw
+ * nothing in 60 s right after the deploy, when Cloudflare may still be placing the new image.
+ */
+const startWaitMs = 150_000;
 
 /** Runs in the container with node: each prints one JSON line `{ pass, detail }`. */
 const PROBES: Record<string, string> = {
@@ -90,17 +93,32 @@ export class CheckContainerObject extends RunContainerObject {
     return { ...result, pass: result.pass && !running, detail: `${result.detail}; running ${running}` };
   }
 
-  /** Waits up to {@link startWaitMs} for the container to run; fails if it never does or exits. */
+  /**
+   * Waits up to {@link startWaitMs} for the container to run. Fails if it never does, or if it
+   * exits or errors first: `monitor()` settles then, and its outcome goes in the detail.
+   */
   async #waitUntilRunning(): Promise<CheckResult> {
     const name = "container running after start";
     const startedAt = Date.now();
+    let stopped: string | null = null;
+    this.ctx.container?.monitor().then(
+      () => {
+        stopped = "exited";
+      },
+      (error: unknown) => {
+        stopped = `failed: ${String(error)}`;
+      },
+    );
     while (Date.now() - startedAt < startWaitMs) {
       if (this.ctx.container?.running === true) {
         return { name, pass: true, detail: `running after ${Date.now() - startedAt} ms` };
       }
+      if (stopped !== null) {
+        return { name, pass: false, detail: `${stopped} after ${Date.now() - startedAt} ms` };
+      }
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    return { name, pass: false, detail: `not running after ${startWaitMs} ms` };
+    return { name, pass: false, detail: `not running and not stopped after ${startWaitMs} ms` };
   }
 
   async #probe(runId: string, name: string, script: string): Promise<CheckResult> {

@@ -81,15 +81,19 @@ jobs:
       - name: Run the checks
         timeout-minutes: 4
         run: |
+          # A 404 means the new Worker isn't live everywhere yet: retried, as it starts nothing.
+          # Anything else is the one real attempt; the Worker may wait 150 s for the container.
           got_results=false
-          for attempt in 1 2; do
-            if curl --fail --silent --show-error --max-time 100 \
-              -H "x-check-token: $CHECK_TOKEN" "$CHECK_URL/check" > "$RUNNER_TEMP/results.txt"; then
+          for attempt in 1 2 3 4; do
+            code=$(curl --silent --show-error --max-time 180 --output "$RUNNER_TEMP/results.txt" \
+              --write-out '%{http_code}' -H "x-check-token: $CHECK_TOKEN" "$CHECK_URL/check" || true)
+            if [ "$code" = 200 ]; then
               got_results=true
               break
             fi
-            echo "Attempt $attempt failed."
-            [ "$attempt" = 1 ] && sleep 20
+            echo "Attempt $attempt: HTTP $code."
+            [ "$code" = 404 ] || break
+            sleep 10
           done
           if [ "$got_results" != true ]; then
             echo "::error::The check Worker gave no results."
