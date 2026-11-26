@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-16437, lever L5b of the Part 1 token plan (HAL-16355): agents check a pushed branch against current `main` before they open or update its pull request, using the precheck service from halonic-com/server#19 (L5a)
 
-When an agent calls the Agent tools plugin's `ready_for_review` tool with a pushed branch and optionally its full commit id, the plugin shall start a check of that branch at the precheck service named in its settings without waiting for it, read the check until it is done or about 6 seconds have passed, so the answer comes before an agent's tool call ends, and answer `PASS`, `FAIL` with the failed steps, or with the service's reason when it stopped the check before any step ran, and the service's summary marked as log output and cut to 4,000 characters, or `RUNNING` with the check's id, which a later call passes instead of the branch to read that check, unless the plugin wakes a task for that check (`paperclip.ready-for-review-wake`); when the service is full, unreachable or answers anything but a check or a refusal, it shall answer `CHECK UNAVAILABLE` tagged with that cause and tell the agent to go on without it, never as an error, except that a read failing after the service took the check answers `RUNNING` with the check's id; it shall refuse without a request a missing branch, `main`, a short commit id or a malformed check id; and it shall save each call with its duration, its verdict and, for a finished check, the check's duration, tagged with the tool and the verdict.
+When an agent calls the Agent tools plugin's `ready_for_review` tool with a pushed branch and optionally its full commit id, the plugin shall start a check of that branch at the precheck service named in its settings without waiting for it, read the check until it is done or about 6 seconds have passed, so the answer comes before an agent's tool call ends, and answer `PASS`, `FAIL` with the failed steps, or with the service's reason when it stopped the check before any step ran, and the service's summary marked as log output and cut to 4,000 characters, or `RUNNING` with the check's id, which a later call passes instead of the branch to read that check, unless the plugin wakes a task for that check (`paperclip.ready-for-review-wake`); when the service is full, unreachable or answers anything but a check or a refusal, it shall answer `CHECK UNAVAILABLE` tagged with that cause and tell the agent to go on without it, never as an error, except that, in the call that started the check, a read failing after the service took the check answers `RUNNING` with the check's id; it shall refuse without a request a missing branch, `main`, a short commit id or a malformed check id; and it shall save each call with its duration, its verdict and, for a finished check, the check's duration, tagged with the tool and the verdict.
 
 ## Examples
 
@@ -23,8 +23,8 @@ When an agent calls the Agent tools plugin's `ready_for_review` tool with a push
 - Given a service that answers `429`, or can't be reached,
   when an agent calls `ready_for_review`,
   then the answer is `CHECK UNAVAILABLE`, with no error, and saves the verdict `unavailable` with its cause (`queue-full`, `timeout`, `unreachable`, `http-5xx`).
-- Given a check the service took, and a later read of it that fails,
-  when an agent calls `ready_for_review`,
+- Given a service that takes a new check, and a read of it in the same call that fails,
+  when an agent calls `ready_for_review` with a branch,
   then the answer is `RUNNING` with the check's id, not `CHECK UNAVAILABLE`.
 - Given a service that refuses the input with `400`,
   when an agent calls `ready_for_review`,
