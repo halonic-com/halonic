@@ -248,13 +248,22 @@ verifies("cli.commands.build.paperclip-plugin", () => {
   describe("the shipped runtime", () => {
     it("says so when the worker isn't built", async () => {
       await expect(
-        shippedPluginRuntime(new URL(`file://${join(folder, "missing", "worker.js")}`)),
+        shippedPluginRuntime(() => new URL(`file://${join(folder, "missing", "worker.js")}`)),
       ).rejects.toThrow("this copy of Halonic has no built plugin runtime.");
+    });
+
+    it("says so, with a fix that fits, when this copy doesn't carry the runtime", async () => {
+      await expect(shippedPluginRuntime(() => undefined)).rejects.toMatchObject({
+        kind: "not_found",
+        fix: "Build the plugin from a clone of https://github.com/halonic-com/halonic: the npm package doesn't include the runtime.",
+      });
     });
 
     it("takes the worker as it is, and its actions and settings from the runtime", async () => {
       await writeFile(join(folder, "worker.js"), "export {};\n");
-      const shipped = await shippedPluginRuntime(new URL(`file://${join(folder, "worker.js")}`));
+      const shipped = await shippedPluginRuntime(
+        () => new URL(`file://${join(folder, "worker.js")}`),
+      );
 
       expect(shipped.worker).toEqual(encodeUtf8("export {};\n"));
       expect(shipped.actions.map((action) => action.name)).toContain("github.pull-request");

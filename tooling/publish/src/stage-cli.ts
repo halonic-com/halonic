@@ -121,6 +121,10 @@ async function bundleCli(cliDirectory: string, directory: string, version: strin
       if (entry.external && !isNodeModule(entry.path)) outside.add(entry.path);
     }
   }
+  // esbuild leaves `import.meta.resolve` as it is and the metafile doesn't list it, so a package
+  // the bundle resolves that way would only fail when the installed CLI runs it (HAL-19380).
+  const bundle = readFileSync(join(directory, "dist/cli/main.js"), "utf8");
+  for (const specifier of resolvedPackages(bundle)) outside.add(specifier);
   if (outside.size > 0) {
     throw new Error(
       `The CLI bundle imports ${[...outside].join(", ")}, which Node doesn't provide. Bundle it or declare it.`,
@@ -143,12 +147,17 @@ function packageFacts(
       `export const halonicVersion = ${JSON.stringify(version)};`,
     ],
     [join(cliDirectory, "src/npm-package.ts"), "export const inNpmPackage = true;"],
+    // The package doesn't ship the Paperclip plugin runtime, so the CLI never resolves it there.
+    [
+      join(cliDirectory, "src/runtime-worker.ts"),
+      "export const runtimeWorkerUrl = () => undefined;",
+    ],
   ]);
   const replaced = new Set<string>();
   const plugin: Plugin = {
     name: "halonic-package-facts",
     setup(pluginBuild) {
-      pluginBuild.onLoad({ filter: /(version|npm-package)\.ts$/ }, (args) => {
+      pluginBuild.onLoad({ filter: /(version|npm-package|runtime-worker)\.ts$/ }, (args) => {
         const contents = replacements.get(args.path);
         if (contents === undefined) return undefined;
         replaced.add(args.path);
@@ -166,6 +175,21 @@ function packageFacts(
     }
   };
   return { plugin, checkAllReplaced };
+}
+
+/**
+ * The specifiers `source` passes to `import.meta.resolve` that aren't Node's own modules. A
+ * specifier that isn't a plain string counts too, as `<computed>`, since the stager can't tell
+ * what it resolves.
+ */
+export function resolvedPackages(source: string): string[] {
+  const found: string[] = [];
+  for (const match of source.matchAll(/import\.meta\.resolve\(\s*(?:(["'])([^"'`]*)\1)?/g)) {
+    const specifier = match[2];
+    if (specifier === undefined) found.push("<computed>");
+    else if (!isNodeModule(specifier)) found.push(specifier);
+  }
+  return found;
 }
 
 function isNodeModule(specifier: string): boolean {
