@@ -5,6 +5,7 @@ import {
   type MouseEvent,
   type RefObject,
   useEffect,
+  useId,
   useRef,
   useState,
 } from "react";
@@ -127,6 +128,7 @@ function Ready({
   const [picking, setPicking] = useState(false);
   const text = useRef<HTMLTextAreaElement>(null);
   const ask = useRef<HTMLButtonElement>(null);
+  const hintId = useId();
   if (model.state.kind !== "ready") return null;
   const { agent, agents, exchanges, lastAnswer } = model.state;
   const name = agent.agent.name;
@@ -151,6 +153,7 @@ function Ready({
         onAgent={() => setPicking((open) => !open)}
         text={text}
         ask={ask}
+        keysId={answer === undefined ? hintId : undefined}
       />
       {picking ? (
         <AgentPicker
@@ -168,6 +171,7 @@ function Ready({
       ) : null}
       <BoxFooter
         answer={answer}
+        hintId={hintId}
         lastAnswer={lastAnswer}
         onOpenChat={onOpenChat}
         onOpenLastAnswer={(opened) => {
@@ -189,6 +193,8 @@ interface QuestionRowProps {
   readonly onAgent: () => void;
   readonly text: RefObject<HTMLTextAreaElement | null>;
   readonly ask: RefObject<HTMLButtonElement | null>;
+  /** The hint row's id while it shows, so the text box says its keys; none once Copy replaces it. */
+  readonly keysId: string | undefined;
 }
 
 /**
@@ -204,6 +210,7 @@ function QuestionRow({
   onAgent,
   text,
   ask,
+  keysId,
 }: QuestionRowProps) {
   const value = model.state.kind === "ready" ? model.state.text : "";
   return (
@@ -214,6 +221,7 @@ function QuestionRow({
         autoFocus
         rows={1}
         aria-label={placeholder}
+        aria-describedby={keysId}
         placeholder={placeholder}
         value={value}
         onChange={(event) => model.type(event.target.value)}

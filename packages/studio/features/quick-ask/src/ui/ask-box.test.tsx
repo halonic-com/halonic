@@ -3,7 +3,17 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AskMemory, memoryStorage } from "../ask-memory.ts";
-import { byText, openBox, press, pressKey, textBox, typeIn } from "../test-support/box-page.tsx";
+import {
+  ask,
+  byText,
+  described,
+  FakeClipboard,
+  openBox,
+  press,
+  pressKey,
+  textBox,
+  typeIn,
+} from "../test-support/box-page.tsx";
 import { agent, chat, FakeMessenger } from "../test-support/fake-messenger.ts";
 import { unmountAll } from "../test-support/render.tsx";
 
@@ -20,6 +30,13 @@ function picker(page: HTMLElement): HTMLInputElement {
   return search;
 }
 
+/** Asks Chief a question, and Chief answers it. */
+async function answered(page: HTMLElement, messenger: FakeMessenger): Promise<void> {
+  await ask(page, "Where are we?");
+  messenger.reply(chief, "With the board.", "2026-11-25T13:41:00.000Z");
+  await act(async () => messenger.change("acme"));
+}
+
 verifies("quick-ask.box", () => {
   describe("the box", () => {
     it("is a dialog labelled Ask an agent, with the focus in the text box and the three keys", async () => {
@@ -32,8 +49,17 @@ verifies("quick-ask.box", () => {
       expect(page.querySelector('button[aria-label="Ask Chief. Change agent."]')).not.toBeNull();
       expect(page.querySelector('button[aria-label="Ask"]')).not.toBeNull();
       expect(page.querySelector("footer")?.textContent).toBe(
-        "Enterask" + "Tabanother agent" + "Escclose",
+        "Enter ask" + " Tab another agent" + " Esc close",
       );
+    });
+
+    it("says its keys to screen readers as the text box's description, until Copy replaces them", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page } = await openBox(messenger);
+
+      expect(described(textBox(page))).toBe("Enter ask Tab another agent Esc close");
+      await answered(page, messenger);
+      expect(textBox(page).hasAttribute("aria-describedby")).toBe(false);
     });
 
     it("starts with the agent asked last and the text not sent", async () => {
@@ -105,6 +131,17 @@ verifies("quick-ask.box", () => {
       expect(textBox(page).placeholder).toBe("Ask Liam anything");
     });
 
+    it("says when no agent matches the text", async () => {
+      const { page } = await openBox(new FakeMessenger([chat(chief), chat(liam)]));
+      await pressKey(textBox(page), "Tab");
+      const status = page.querySelector('[data-agent-picker] [role="status"]');
+
+      expect(status?.textContent).toBe("");
+      await typeIn(picker(page), "zzz");
+      expect(page.querySelectorAll('[role="option"]')).toHaveLength(0);
+      expect(status?.textContent).toBe('No agents match "zzz".');
+    });
+
     it("closes only the picker on Esc, not the box", async () => {
       const { page, window } = await openBox(new FakeMessenger([chat(chief), chat(liam)]));
       await pressKey(textBox(page), "Tab");
@@ -113,6 +150,32 @@ verifies("quick-ask.box", () => {
       expect(page.querySelector("[data-agent-picker]")).toBeNull();
       expect(page.querySelector('[role="dialog"]')).not.toBeNull();
       expect(window.hidden).toBe(0);
+    });
+  });
+
+  describe("Copy", () => {
+    it("copies the answer and tells screen readers it did", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const clipboard = new FakeClipboard();
+      const { page } = await openBox(messenger, memoryStorage(), clipboard);
+      await answered(page, messenger);
+      await press(byText(page, "footer button", "Copy"));
+
+      expect(clipboard.copied).toEqual(["With the board."]);
+      const status = page.querySelector('footer [role="status"]');
+      expect(status?.textContent).toBe("Copied");
+      expect(status?.className).toBe("sr-only");
+    });
+
+    it("says, for everyone, to copy by hand when the clipboard refuses", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page } = await openBox(messenger, memoryStorage(), new FakeClipboard(true));
+      await answered(page, messenger);
+      await press(byText(page, "footer button", "Copy"));
+
+      const status = page.querySelector('footer [role="status"]');
+      expect(status?.textContent).toBe("Couldn't copy. Select the text and copy it yourself.");
+      expect(status?.className).not.toContain("sr-only");
     });
   });
 

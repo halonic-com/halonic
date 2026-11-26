@@ -4,7 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { AskMemory, memoryStorage } from "../ask-memory.ts";
-import { ask, byText, openBox, press } from "../test-support/box-page.tsx";
+import { ask, byText, described, openBox, press } from "../test-support/box-page.tsx";
 import { agent, card, chat, FakeMessenger } from "../test-support/fake-messenger.ts";
 import { unmountAll } from "../test-support/render.tsx";
 
@@ -12,6 +12,13 @@ const chief = agent("Chief");
 const liam = agent("Liam");
 
 afterEach(unmountAll);
+
+/** The name a screen reader gives an element with no label: its text, leaving out what's hidden. */
+function accessibleName(element: Node): string {
+  if (element instanceof HTMLElement && element.getAttribute("aria-hidden") === "true") return "";
+  if (!(element instanceof HTMLElement)) return element.textContent ?? "";
+  return [...element.childNodes].map(accessibleName).join("");
+}
 
 verifies("quick-ask.messenger", () => {
   describe("the answer", () => {
@@ -56,6 +63,17 @@ verifies("quick-ask.messenger", () => {
       await press(answer);
       expect(window.chatsOpened).toEqual(["chat-Chief"]);
     });
+
+    it("describes Answer in Messenger by the card's question, so several cards' buttons differ", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      const { page } = await openBox(messenger);
+      await ask(page, "Shall we ship?");
+      messenger.cardsOf = [card(chief, "Ship 0.2.0 today?", "2026-11-25T13:41:00.000Z")];
+      await act(async () => messenger.change("acme"));
+
+      const button = byText(page, "[data-answer] button", "Answer in Messenger");
+      expect(described(button)).toBe("Ship 0.2.0 today?");
+    });
   });
 
   describe("last answer", () => {
@@ -74,6 +92,8 @@ verifies("quick-ask.messenger", () => {
       const link = byText(page, "footer button", "Last answer");
       expect(link?.textContent).toBe(`Last answer: Liam, ${time} ›`);
       expect(link?.className).toBe(`ml-auto ${standaloneLinkClasses}`);
+      // The chevron is drawn, not read: screen readers hear the words alone.
+      expect(link === undefined ? "" : accessibleName(link)).toBe(`Last answer: Liam, ${time}`);
       await press(link);
       expect(window.chatsOpened).toEqual(["chat-Liam"]);
       expect(new AskMemory(storage).pending()).toBeUndefined();
@@ -97,7 +117,7 @@ verifies("quick-ask.automatic-notes", () => {
       await act(async () => messenger.change("acme"));
 
       expect(page.querySelector("footer")?.textContent).toBe(
-        "Enterask" + "Tabanother agent" + "Escclose",
+        "Enter ask Tab another agent Esc close",
       );
       expect(page.querySelector("[data-answer]")).toBeNull();
 

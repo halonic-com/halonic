@@ -3,6 +3,7 @@
  * buttons, each inside `act` with every settled promise run, so the test looks only after the
  * box's reads have landed.
  */
+import { ClipboardProvider, type WriteClipboard } from "@halonicjs/studio-kit";
 import { act, StrictMode } from "react";
 import type { AskWindow } from "../api.ts";
 import { AskMemory, type AskStorage, memoryStorage } from "../ask-memory.ts";
@@ -37,14 +38,36 @@ export async function settle(): Promise<void> {
   });
 }
 
+/** A clipboard that takes every text, or refuses each one, and keeps what it took. */
+export class FakeClipboard {
+  readonly copied: string[] = [];
+  readonly #refuses: boolean;
+
+  constructor(refuses = false) {
+    this.#refuses = refuses;
+  }
+
+  readonly write: WriteClipboard = async (text) => {
+    if (this.#refuses) return false;
+    this.copied.push(text);
+    return true;
+  };
+}
+
 /** The box, open on `messenger`, after its first reads; strict mode, as Studio renders pages. */
-export async function openBox(messenger: FakeMessenger, storage: AskStorage = memoryStorage()) {
+export async function openBox(
+  messenger: FakeMessenger,
+  storage: AskStorage = memoryStorage(),
+  clipboard = new FakeClipboard(),
+) {
   const window = new FakeAskWindow();
   const closed: number[] = [];
   const session = new AskSession(messenger, new AskMemory(storage));
   const page = render(
     <StrictMode>
-      <AskBox session={session} window={window} onClosed={() => closed.push(1)} />
+      <ClipboardProvider writeClipboard={clipboard.write}>
+        <AskBox session={session} window={window} onClosed={() => closed.push(1)} />
+      </ClipboardProvider>
     </StrictMode>,
   );
   await settle();
@@ -86,6 +109,13 @@ export async function press(element: Element | null | undefined): Promise<void> 
 /** The first element under `selector` whose text holds `text`. */
 export function byText(page: HTMLElement, selector: string, text: string): Element | undefined {
   return [...page.querySelectorAll(selector)].find((each) => each.textContent?.includes(text));
+}
+
+/** The text of what an element's `aria-describedby` points at, with its spaces collapsed. */
+export function described(element: Element | undefined): string {
+  const ids = element?.getAttribute("aria-describedby")?.split(" ") ?? [];
+  const text = ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" ");
+  return text.replace(/\s+/g, " ").trim();
 }
 
 /** Types a question and sends it with Enter. */
