@@ -105,6 +105,11 @@ placeholder (HAL-12286). Every CLI publish before 1.0.0 therefore takes one more
    agent) runs `npm deprecate halonic@1.0.0 "Empty placeholder. Use halonic 0.1.0 or later."`, and the same for
    `halonic@0.0.0-stage`. Leave them published: the deprecation is enough.
 
+Halonic itself never ships as 1.0.0, because that number is the placeholder and npm never publishes a version
+twice (the board, HAL-19109). The first real 1.x is 1.0.1 or 1.1.0. The release workflow's first step refuses a
+tag, a branch or an `apps/studio/package.json` that names 1.0.0, and the `versions` check in `pnpm check` refuses
+the app at 1.0.0 (`.changeset/README.md`).
+
 The merge captain checks steps 2 to 4 before closing the release task. A run that only stages the version moves
 nothing yet: check again after the stage is approved on npmjs.com.
 

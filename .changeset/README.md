@@ -33,6 +33,15 @@ check in `pnpm check` fails when any of them disagree.
 The version starts at `0.1.0`, not `0.0.0`: Tauri derives the Android
 `versionCode` from it and refuses `0.0.0`, which would make the code 0.
 
+The version never becomes `1.0.0` (the board, HAL-19109). On npm,
+`halonic` 1.0.0 is the old placeholder, and npm never publishes a version
+twice. The first real 1.x is `1.0.1` or `1.1.0`, chosen when 1.0 is
+planned. A `major` changeset on 0.x would bump the app to 1.0.0, so the
+`versions` check fails when `apps/studio/package.json` says `1.0.0` (or a
+1.0.0 pre-release): the Version packages pull request fails before any
+release. The release workflow refuses 1.0.0 too. `config.json` is plain
+JSON with no room for a note, so this note is the changeset config's.
+
 Private packages are versioned only when their `package.json` has a
 `version`: the Studio app. Don't add one to other packages. The npm
 packages `tooling/publish` builds, one per layer, carry their version in

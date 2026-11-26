@@ -58,6 +58,8 @@
 #
 # Run it without a tag from the Actions tab (dry_run on), or push a tag
 # that starts with `v`. A tag that contains `-test` is always a dry run.
+# It refuses Halonic 1.0.0 in the tag, the branch or apps/studio/package.json
+# (requirement check.release-refuses-1-0-0).
 
 name: Release
 
@@ -137,6 +139,10 @@ jobs:
             v[0-9]*) ;;
             *) echo "::error::Tag '$tag' must look like v0.1.0"; exit 1 ;;
           esac
+          # Halonic never ships as 1.0.0, the npm placeholder (HAL-19109):
+          # stop before anything is built if the tag, the branch or the
+          # app's package.json names it. Dry runs too.
+          TAG="$tag" node tooling/check/src/cli/release-version.ts
           case "$tag" in *-test*) dry_run=true ;; esac
           version="${tag#v}"
           # The publisher built into the sandbox helper. None means the
