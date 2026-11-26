@@ -29,7 +29,7 @@ export const feedbackFeature = defineFeature({
       title: settingsWords.keyboardTitle,
       scope: "host",
       group: "keyboard",
-      // After Agent sandbox (30) and Remote (35), before Trusted sources (40).
+      // The only section in Keyboard.
       order: 36,
       phone: false,
       available: feedbackSettingsAvailable,

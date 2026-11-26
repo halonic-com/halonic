@@ -35,7 +35,8 @@ export const workspaceFeature = defineFeature({
       title: trustedSourcesText.SECTION_TITLE,
       scope: "host",
       group: "agents",
-      order: 40,
+      // Right after Trust (20), before Agent sandbox (30).
+      order: 25,
       description: (_context, place) =>
         place === "served" ? trustedSourcesText.LEAD_SERVED : trustedSourcesText.LEAD,
       view: "TrustedSourcesSection",

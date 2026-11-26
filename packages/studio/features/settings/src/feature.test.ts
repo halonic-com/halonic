@@ -35,13 +35,22 @@ describe("settingsFeature", () => {
     expect(appearance?.summary?.(context("dark", false))).toBe("Dark theme · characters off");
   });
 
-  it("gives Your server its icon and puts it after Trusted sources (order 40), with an order of its own", () => {
+  it("gives Your server its icon and puts it after Remote (order 35), with an order of its own", () => {
     const host = settingsSectionsFor(true).filter(({ scope }) => scope === "host");
     const serverSession = host.find(({ id }) => id === "server-session");
     expect(serverSession?.icon).toBe("server-session");
-    expect(serverSession?.order).toBeGreaterThan(40);
+    expect(serverSession?.order).toBeGreaterThan(35);
     const orders = host.map(({ order }) => order);
     expect(new Set(orders).size).toBe(orders.length);
+  });
+
+  // The app's test sees only the shown sections; the hidden ones must not tie either, so they
+  // keep their place once shown. Models (10, models feature) shares the Agents group.
+  it("gives no two of its sections in one group the same order, hidden ones included", () => {
+    const sections = settingsSectionsFor(true);
+    const keys = sections.map(({ group, order }) => `${group}:${order}`);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(sections.find(({ id }) => id === "assistant")?.order).not.toBe(10);
   });
 
   it("is registered under its folder name", () => {
