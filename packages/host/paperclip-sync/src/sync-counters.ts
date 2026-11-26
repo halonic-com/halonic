@@ -19,6 +19,12 @@ export const syncLogEveryMs = 15 * 60_000;
 const samplesMax = 20_000;
 
 /**
+ * The most changes of connection kept. The reconnect waits (up to a minute, from 1 second again
+ * only after 5 minutes open) allow about 3,000 in 24 hours, so a flapping socket stays well below.
+ */
+export const connectionChangesMax = 5_000;
+
+/**
  * One call to the provider, as its client times it: the route's template only, such as
  * `issues/:task`, never the address, an ID, the query, a header or the body.
  */
@@ -125,7 +131,13 @@ export class SyncCounters {
     }
     if (state === "connected") this.#everConnected = true;
     this.#connections.push({ at, state });
+    this.#forgetConnectionsBefore(at - syncDiagnosticsWindowMs);
     this.#writeLine();
+  }
+
+  /** How many changes of connection are held in memory: those of the window and the one before it. */
+  get connectionChangesHeld(): number {
+    return this.#connections.length;
   }
 
   /** Writes the summary line when {@link syncLogEveryMs} passed since the last one; the host calls it after each poll. */
@@ -177,10 +189,18 @@ export class SyncCounters {
       const end = this.#connections[index + 1]?.at ?? now;
       spent[change.state] += Math.max(0, end - Math.max(change.at, from));
     });
+    this.#forgetConnectionsBefore(from);
+    return spent;
+  }
+
+  /** Forgets changes of connection before `from`, and the oldest past {@link connectionChangesMax}. */
+  #forgetConnectionsBefore(from: number): void {
     // Only the last change before the window still says how the window started.
     const before = this.#connections.findLastIndex((change) => change.at <= from);
     if (before > 0) this.#connections = this.#connections.slice(before);
-    return spent;
+    if (this.#connections.length > connectionChangesMax) {
+      this.#connections = this.#connections.slice(-connectionChangesMax);
+    }
   }
 
   #writeLine(): void {
