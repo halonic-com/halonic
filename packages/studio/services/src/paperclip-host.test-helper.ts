@@ -71,16 +71,15 @@ export class StandInPaperclipHost {
 
   /** The stand-in board clicks Approve on the newest open sign-in. */
   approve(): void {
-    const open = this.#challenges.findLast((each) => each.status === "pending");
-    if (open === undefined) return;
-    open.status = "approved";
-    this.#working.add(open.key);
+    for (const open of this.#pending()) {
+      open.status = "approved";
+      this.#working.add(open.key);
+    }
   }
 
   /** The newest open sign-in ends without an approval: its time ran out, another company approved, or the board cancelled it. */
   end(status: "expired" | "wrong-company" | "cancelled"): void {
-    const open = this.#challenges.findLast((each) => each.status === "pending");
-    if (open !== undefined) open.status = status;
+    for (const open of this.#pending()) open.status = status;
   }
 
   /** What `GET /api/cli-auth/me` answers with the connection's key, as an HTTP status. */
@@ -95,7 +94,7 @@ export class StandInPaperclipHost {
   }
 
   /** Studio's own `ServiceSignIn`, over this stand-in. */
-  serviceSignIn(report: (error: unknown) => void = rethrowLater): HostServiceSignIn {
+  serviceSignIn(report: (error: unknown) => void): HostServiceSignIn {
     const tokens = {
       get: async (name: string) => this.keychain.get(name) ?? null,
       set: async (name: string, value: string) => {
@@ -174,8 +173,8 @@ export class StandInPaperclipHost {
       return { status };
     if (status !== "approved") return { status: "pending" };
     challenge.status = "handed";
-    const file = this.#setup.connections[challenge.connection];
-    const { address = "", company = "" } = file ?? {};
+    // Only a listed connection file's sign-in is started.
+    const { address, company } = this.#setup.connections[challenge.connection] as SignInConnection;
     return {
       status: "connected",
       connection: challenge.connection,
@@ -212,20 +211,16 @@ export class StandInPaperclipHost {
     return { status: "cancelled" };
   }
 
+  /** The sign-in with an ID this stand-in answered, `challenge-<n>`: the host asks only for those. */
   #find(signInId: string): Challenge {
-    const challenge = this.#challenges.find((each) => each.id === signInId);
-    if (challenge === undefined) throw new Error(`No sign-in ${signInId}.`);
-    return challenge;
+    return this.#challenges[Number(signInId.slice("challenge-".length)) - 1] as Challenge;
+  }
+
+  #pending(): Challenge[] {
+    return this.#challenges.filter((each) => each.status === "pending");
   }
 
   #lastKeyOf(connection: string): string | undefined {
     return this.#challenges.findLast((each) => each.connection === connection)?.key;
   }
-}
-
-/** A failure a test didn't expect: thrown outside the test's own promise, so Vitest still sees it. */
-function rethrowLater(error: unknown): void {
-  queueMicrotask(() => {
-    throw error;
-  });
 }

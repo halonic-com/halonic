@@ -5,10 +5,15 @@ import { describe, expect, it } from "vitest";
 import { isApprovalPage } from "./host-service-sign-in.ts";
 import { revokeCurrent, StandInPaperclipHost } from "./paperclip-host.test-helper.ts";
 
+/** A failure the contract doesn't expect fails the call that reported it. */
+const failOnReport = (error: unknown) => {
+  throw error;
+};
+
 serviceSignInContract("HostServiceSignIn", async (setup) => {
   const host = new StandInPaperclipHost({ ...setup, now: () => setup.now().getTime() });
   return {
-    signIn: host.serviceSignIn(),
+    signIn: host.serviceSignIn(failOnReport),
     approve: () => host.approve(),
     hasKey: (connection) => host.hasKey(connection),
   };

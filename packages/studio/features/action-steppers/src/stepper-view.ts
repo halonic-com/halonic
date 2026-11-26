@@ -160,6 +160,18 @@ export type StepperStage =
     }
   | { readonly kind: "finished" };
 
+/** A service's own sign-in while it lives in this window: its code, countdown and account. */
+export interface ServiceSignInView {
+  /** The short code the approval page shows too, for the user to compare. */
+  readonly code: string;
+  /** When it expires: at most 10 minutes after it started. */
+  readonly expiresAt: Date;
+  /** Whether its key is in the keychain, so the countdown is over. */
+  readonly kept: boolean;
+  /** Whom the key signs in as, once read; `null` before. */
+  readonly account: string | null;
+}
+
 /** One action request as the stepper shows it. */
 export interface StepperView {
   /** The definition's title, filled from the checked parameters: "Approve the deployment of acme/app to release". */
@@ -180,6 +192,8 @@ export interface StepperView {
   /** The service's API is down: the screen says so, and the whole manual guide opens by itself. */
   readonly serviceDown: boolean;
   readonly stage: StepperStage;
+  /** A sign-in step's code and countdown, while one lives in this window. */
+  readonly serviceSignIn?: ServiceSignInView | undefined;
 }
 
 /** What the screen calls back. The owner of the view model does the work and updates the view. */
