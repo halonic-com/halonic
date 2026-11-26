@@ -313,6 +313,7 @@ export function InboxView({
         <StaleLine
           error={state.loaded ? state.error : undefined}
           words={words}
+          age={{ updatedAt: state.updatedAt, now }}
           phone={phone}
           onRetry={() => inbox.refresh()}
         />

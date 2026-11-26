@@ -114,6 +114,20 @@ export const screenText = {
     text: "Nothing is waiting for you.",
     file: "packages/studio/features/inbox/src/ui/needs-you-card.tsx",
   },
+  // The Inbox's lines over a list it couldn't read again: the engine's, a refusal's, or the agents'
+  // (HAL-19190).
+  engineShowingLast: {
+    text: "Showing what it said last.",
+    file: "packages/studio/shell/src/engine/engine-words.ts",
+  },
+  staleInbox: {
+    text: "Showing what was read last.",
+    file: "packages/studio/features/inbox/src/ui/load-lines.tsx",
+  },
+  agentLoadFailed: {
+    text: "Couldn't load the items from your agents.",
+    file: "packages/studio/features/inbox/src/ui/use-agent-items.tsx",
+  },
   search: { text: "Search", file: "packages/studio/shell/src/palette/command-palette.tsx" },
   overview: { text: "Overview", file: "packages/studio/features/overview/src/feature.ts" },
   recap: { text: "Recap", file: "packages/studio/features/overview/src/ui/recap-view.tsx" },

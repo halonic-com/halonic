@@ -93,6 +93,8 @@ export interface InboxState {
    * heading's own error: Needs you and its buttons carry on (HAL-10916).
    */
   readonly doneError: unknown;
+  /** When a load last succeeded in full, so a failed one can say how old the list is. */
+  readonly updatedAt?: Date | undefined;
 }
 
 /**
@@ -153,8 +155,11 @@ export class Inbox {
   /** Notes set aside by item key while their writer goes elsewhere. They are in memory only. */
   readonly #setAside = new Map<string, string>();
 
-  constructor(runs: InboxRuns) {
+  readonly #now: () => Date;
+
+  constructor(runs: InboxRuns, now: () => Date = () => new Date()) {
     this.#runs = runs;
+    this.#now = now;
     this.decisions = this.#answering(inboxDecisions(runs));
     this.#stopWatching = runs.subscribe(() => void this.refresh());
     void this.refresh();
@@ -274,6 +279,7 @@ export class Inbox {
       loaded: true,
       error,
       doneError: done.status === "rejected" ? done.reason : undefined,
+      updatedAt: error === undefined ? this.#now() : this.#state.updatedAt,
     });
   }
 

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { KindedError } from "@halonicjs/std";
 import { NarrowProvider } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
@@ -46,7 +47,7 @@ async function settled(): Promise<void> {
 }
 
 async function openInbox(runs: InboxRuns, messaging?: FakeAgentMessaging, narrow = false) {
-  const inbox = new Inbox(runs);
+  const inbox = new Inbox(runs, now);
   const root = render(
     <NarrowProvider narrow={narrow}>
       <InboxView inbox={inbox} now={now} agentMessaging={messaging} />
@@ -168,7 +169,9 @@ verifies("inbox.stale-callout", () => {
     fake.fail(new Error("fetch failed"));
     await act(() => inbox.refresh());
     const status = root.querySelector('[data-pane="list"] [role="status"]') as HTMLElement;
-    expect(status.textContent).toContain("Showing what it said last.");
+    expect(status.textContent).toBe(
+      "The engine isn't answering. Showing what it said last. Last updated 10:43.",
+    );
 
     fake.answer();
     const list = root.querySelector('[data-pane="list"]') as HTMLElement;
@@ -179,5 +182,20 @@ verifies("inbox.stale-callout", () => {
     await settled();
     expect(status.textContent).toBe("");
     expect(rows(root)).toHaveLength(1);
+  });
+});
+
+verifies("inbox.stale-age", () => {
+  it("gives a refusal's own reason, not that the engine isn't answering, with the list's age", async () => {
+    // HAL-19190: the installed Inbox said the engine isn't answering for any failed load, so the
+    // line hid the real reason.
+    const fake = fakeRuns([notes]);
+    const { root, inbox } = await openInbox(fake.runs);
+    fake.fail(new KindedError("unavailable", "The agent host refused the read."));
+    await act(() => inbox.refresh());
+    const status = root.querySelector('[data-pane="list"] [role="status"]') as HTMLElement;
+    expect(status.textContent).toBe(
+      "The agent host refused the read. Showing what was read last. Last updated 10:43.",
+    );
   });
 });
