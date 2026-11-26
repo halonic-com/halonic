@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { notMeasured, ShadowRunner } from "@halonicjs/auto-approvals";
 import { company } from "./acme-data.test-helper.ts";
 import {
-  everyFake,
   expectCard,
   expectNoLeaks,
   expectShadowGetsOnly,
@@ -20,6 +19,7 @@ import {
   cleanApproval,
   comment,
   first,
+  firstApproval,
   hour,
   MemoryLedgerStore,
   neverListId,
@@ -70,8 +70,9 @@ export const runnerRows: RedTeamRow[] = [
         },
       });
       assert.equal(runReasons(run.store).filter((reason) => reason === "poll.ran").length, polls);
-      assertIncludes(run.reader.counts(), { refused: 0, refusedNotGet: 0 });
-      for (const fake of everyFake) expectShadowGetsOnly(fake);
+      assertIncludes(run.reader.counts(), { refused: 0, refusedNotGet: 0, writesSent: 0 });
+      // The rest of the suite's requests are checked once, after every row (the last test).
+      expectShadowGetsOnly(run.fake);
     },
   },
   {
@@ -191,6 +192,11 @@ export const runnerRows: RedTeamRow[] = [
       await expectCard((world) => {
         first(world).record["payload"] = deep;
       }, "card.unreadable_payload");
+      // A card that stops before it reads the payload still records it unhashed, and goes on.
+      await expectCard((world) => {
+        first(world).record["payload"] = deep;
+        first(world).activity = [activity(firstApproval, "approval.created", "system", "cron")];
+      }, "card.no_created_entry");
       await expectStop((world) => {
         first(world).record["payload"] = { blob: "z".repeat(5 * 1024 * 1024) };
       }, "read.too_large");

@@ -65,7 +65,7 @@ export function shadowDigest(input: ShadowDigestInput): string {
     ...tally(stops.map((entry) => entry.reason)).map(
       ([reason, count]) => `- stopped by ${reason}: ${count}`,
     ),
-    `Calls to Paperclip: ${input.calls.sent} sent (only GETs can pass the guard), writes sent: 0, refused: ${input.calls.refused} (${input.calls.refusedNotGet} of them writes)`,
+    `Calls to Paperclip: ${input.calls.sent} sent (only GETs can pass the guard), writes sent: ${input.calls.writesSent}, refused: ${input.calls.refused} (${input.calls.refusedNotGet} of them writes)`,
     "",
     "Kind untyped:",
     `- approvals seen: ${seen}, evaluations: ${today.length - runEntries.length}`,

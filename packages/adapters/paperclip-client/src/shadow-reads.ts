@@ -170,8 +170,9 @@ export class PaperclipShadowReader implements ShadowSource {
   /** Sends shadow row `name` and gives its body, or throws: nothing else is ever sent. */
   async #read(name: PaperclipRequestName, details: RequestDetails): Promise<unknown> {
     if (!isShadowRequest(name)) {
-      throw this.#counter.refuse(paperclipRequests[name].method, name);
+      throw asShadowReadError(this.#counter.refuse(paperclipRequests[name].method, name));
     }
+    const refusedBefore = this.#counter.counts().refused;
     let answer: PaperclipAnswer;
     try {
       answer = await this.#transport.sendReading(name, details, limitedJson);
@@ -179,6 +180,10 @@ export class PaperclipShadowReader implements ShadowSource {
       throw asShadowReadError(error);
     }
     if (answer.kind === "ok") return answer.body;
+    // The transport reports the guard's refused `fetch` as offline; name the real cause.
+    if (this.#counter.counts().refused > refusedBefore) {
+      throw new ShadowReadError(`The shadow reader refused ${name}.`, "refused", "read.refused");
+    }
     throw new ShadowReadError(
       `Paperclip GET ${name} failed: ${answer.failure}.`,
       answer.failure,

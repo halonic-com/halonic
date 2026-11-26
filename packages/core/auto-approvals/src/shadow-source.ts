@@ -21,6 +21,8 @@ export interface ShadowCallCounts {
   readonly refused: number;
   /** Of those, the attempts with a method other than GET. Must stay 0. */
   readonly refusedNotGet: number;
+  /** Requests other than GET that got past the guard to the network, counted below it. Must stay 0. */
+  readonly writesSent: number;
 }
 
 /**

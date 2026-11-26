@@ -70,7 +70,7 @@ export class MemorySource implements ShadowSource {
   stop = pinned("d-stop", "stop: false\n");
   time: Date | undefined = now;
   failure: unknown;
-  calls: ShadowCallCounts = { sent: 0, refused: 0, refusedNotGet: 0 };
+  calls: ShadowCallCounts = { sent: 0, refused: 0, refusedNotGet: 0, writesSent: 0 };
 
   async pendingApprovals(): Promise<readonly ApprovalRecord[]> {
     this.#maybeFail();

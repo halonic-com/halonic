@@ -126,11 +126,24 @@ verifies("auto-approvals.shadow-runner", () => {
       const store = new MemoryStore();
       const shadow = runner(source, store);
       await shadow.start();
-      source.calls = { sent: 3, refused: 1, refusedNotGet: 1 };
+      source.calls = { sent: 3, refused: 1, refusedNotGet: 1, writesSent: 0 };
       expect((await shadow.poll()).stopped).toBe("guard.refused");
       expect((await shadow.poll()).stopped).toBe("guard.refused");
       expect(reasons(store).at(-1)).toBe("guard.refused");
       expect(shadow.halted()).toBe("guard.refused");
+    });
+
+    it("halts for good when a refusal ends the poll as a failed read", async () => {
+      const source = new MemorySource();
+      const store = new MemoryStore();
+      const shadow = runner(source, store);
+      await shadow.start();
+      // The refused fetch reaches the runner as a read failure, before the poll can finish.
+      source.failure = { shadowReason: "read.refused" };
+      source.calls = { sent: 0, refused: 1, refusedNotGet: 1, writesSent: 0 };
+      expect((await shadow.poll()).stopped).toBe("guard.refused");
+      expect(shadow.halted()).toBe("guard.refused");
+      expect(reasons(store).at(-1)).toBe("guard.refused");
     });
 
     it("halts when the ledger can't take an entry, and evaluates nothing more", async () => {

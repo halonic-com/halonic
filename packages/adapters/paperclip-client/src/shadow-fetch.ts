@@ -36,11 +36,17 @@ export class ShadowCallCounter {
   #sent = 0;
   #refused = 0;
   #refusedNotGet = 0;
+  #writesSent = 0;
   #serverTime: Date | undefined;
 
   /** The counts so far. */
   counts(): ShadowCallCounts {
-    return { sent: this.#sent, refused: this.#refused, refusedNotGet: this.#refusedNotGet };
+    return {
+      sent: this.#sent,
+      refused: this.#refused,
+      refusedNotGet: this.#refusedNotGet,
+      writesSent: this.#writesSent,
+    };
   }
 
   /**
@@ -63,6 +69,7 @@ export class ShadowCallCounter {
    * refuses anything else before `inner` is called (G1).
    */
   guardFetch(inner: typeof fetch): typeof fetch {
+    const network = this.#countWrites(inner);
     return (input, init) => {
       const method = (init?.method ?? "GET").toUpperCase();
       const path = input instanceof URL ? input.pathname : undefined;
@@ -73,11 +80,22 @@ export class ShadowCallCounter {
       }
       this.#sent += 1;
       this.#serverTime = undefined;
-      return inner(input, init).then((response) => {
+      return network(input, init).then((response) => {
         const date = new Date(response.headers.get("date") ?? "");
         this.#serverTime = Number.isNaN(date.getTime()) ? undefined : date;
         return response;
       });
+    };
+  }
+
+  /**
+   * `inner`, counting every request other than GET that reaches it. It sits below the guard, so
+   * the digest's "writes sent" is a measurement that must stay 0, not a promise (G4).
+   */
+  #countWrites(inner: typeof fetch): typeof fetch {
+    return (input, init) => {
+      if ((init?.method ?? "GET").toUpperCase() !== "GET") this.#writesSent += 1;
+      return inner(input, init);
     };
   }
 }

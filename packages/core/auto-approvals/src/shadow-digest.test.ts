@@ -51,7 +51,7 @@ verifies("auto-approvals.shadow-runner", () => {
       const text = shadowDigest({
         day: "2026-11-27",
         entries,
-        calls: { sent: 42, refused: 0, refusedNotGet: 0 },
+        calls: { sent: 42, refused: 0, refusedNotGet: 0, writesSent: 0 },
         documents: {
           neverList: { ...neverList, revisions: [...neverList.revisions, revision] },
           stop: pinned("d-stop", "stop: false\n"),
@@ -96,7 +96,7 @@ verifies("auto-approvals.shadow-runner", () => {
       const text = shadowDigest({
         day: "2026-11-27",
         entries: [],
-        calls: { sent: 0, refused: 0, refusedNotGet: 0 },
+        calls: { sent: 0, refused: 0, refusedNotGet: 0, writesSent: 0 },
         build: "abc1234",
         until: new Date("2026-11-28T00:00:00.000Z"),
       });

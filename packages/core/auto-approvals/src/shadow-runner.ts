@@ -3,7 +3,7 @@
 // It records what a rule would have done and sends nothing: its only
 // Paperclip dependency is the `ShadowSource` port, which can only read.
 
-import type { Clock, Sha256 } from "@halonicjs/std";
+import { type Clock, canonicalJson, type Sha256 } from "@halonicjs/std";
 import { type ApprovalRead, type SourceRef, toCard } from "./card.ts";
 import type { EffectiveNeverList } from "./effective-list.ts";
 import { checkEligibility } from "./eligibility.ts";
@@ -153,8 +153,7 @@ export class ShadowRunner {
     const progress = { pending: 0, evaluated: 0 };
     try {
       await this.#pollNow(progress);
-      if (this.#options.source.counts().refused > 0)
-        throw new PollStop(this.#halt("guard.refused"));
+      if (this.#sourceRefused()) throw new PollStop("guard.refused");
       await this.#append(runEntry(pollRan));
       this.#delayMs = this.#limits.pollIntervalMs;
       return progress;
@@ -163,8 +162,16 @@ export class ShadowRunner {
         return { ...progress, stopped: this.#halt("ledger.write_failed") };
       }
       if (!(problem instanceof PollStop)) throw problem;
-      return { ...progress, stopped: await this.#recordStop(problem.reason) };
+      // A refused request ends the poll with a read failure first, so it is checked on this path
+      // too: whatever the read said, a refusal halts for good.
+      const reason = this.#sourceRefused() ? this.#halt("guard.refused") : problem.reason;
+      return { ...progress, stopped: await this.#recordStop(reason) };
     }
+  }
+
+  /** Whether the source refused any request so far: something tried to send what it may not. */
+  #sourceRefused(): boolean {
+    return this.#options.source.counts().refused > 0;
   }
 
   async #pollNow(progress: { pending: number; evaluated: number }): Promise<void> {
@@ -180,8 +187,7 @@ export class ShadowRunner {
       const reason = await this.#reasonFor(read, list);
       await this.#append({
         approvalId: record.id,
-        // A payload the card can't read can't be hashed either; the reason says so (A41).
-        payload: reason === "card.unreadable_payload" ? null : read.approval.payload,
+        payload: hashablePayload(read.approval.payload),
         comments: read.comments.map((comment) => comment.body),
         outcome: "no_decision",
         reason,
@@ -272,6 +278,20 @@ export class ShadowRunner {
   #halt(reason: HaltReason): HaltReason {
     this.#halted = reason;
     return reason;
+  }
+}
+
+/**
+ * The payload to hash into the ledger, or `null` when it can't be hashed, such as one nested too
+ * deep (A41). That holds whatever the card's reason: a card can stop before it reads the payload.
+ */
+function hashablePayload(payload: unknown): unknown {
+  try {
+    canonicalJson(payload ?? null);
+    return payload;
+  } catch {
+    // The entry still says why the card got no decision; a null hash just means "not hashed".
+    return null;
   }
 }
 

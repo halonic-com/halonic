@@ -10,6 +10,7 @@ import {
   cardReasons,
   hour,
   type MemoryLedgerStore,
+  pinnedIssue,
   runnerFor,
   runReasons,
   t0,
@@ -26,9 +27,6 @@ export interface RedTeamRow {
   readonly check: () => Promise<unknown>;
 }
 
-/** Every fake Paperclip the suite used, for the one recorder of A35. */
-export const everyFake: FakePaperclip[] = [];
-
 /** The digest's day: B0's. */
 export const digestDay = "2026-11-27";
 
@@ -38,7 +36,6 @@ export async function shadowRun(
   options: { polls?: number; between?: (poll: number) => void; store?: MemoryLedgerStore } = {},
 ) {
   const run = runnerFor(world, options.store);
-  everyFake.push(run.fake);
   assert.equal(await run.runner.start(), undefined);
   for (let poll = 0; poll < (options.polls ?? 1); poll += 1) {
     options.between?.(poll);
@@ -126,12 +123,29 @@ function stringsOf(value: unknown, depth = 0): string[] {
   return Object.values(value).flatMap((inner) => stringsOf(inner, depth + 1));
 }
 
-/** Every request `fake` saw is a GET on the shadow list (A35). */
+/**
+ * Every request `fake` saw is a GET on the shadow list, naming the pinned ids (A35): a document
+ * read names the pinned issue, and a company read the connected company.
+ */
 export function expectShadowGetsOnly(fake: FakePaperclip): void {
   for (const request of fake.seen) {
-    const onList = shadowRequestNames.some((name) =>
-      matchesRequest(name, request.method, request.path),
+    const what = `${request.method} ${request.path}`;
+    const name = shadowRequestNames.find((each) =>
+      matchesRequest(each, request.method, request.path),
     );
-    assert.equal(onList && request.method === "GET", true, `${request.method} ${request.path}`);
+    assert.ok(name !== undefined && request.method === "GET", what);
+    if (documentReads.has(name)) {
+      assert.ok(request.path.startsWith(`/api/issues/${pinnedIssue}/documents/`), what);
+    }
+    if (request.path.startsWith("/api/companies/")) {
+      assert.ok(request.path.startsWith(`/api/companies/${company}/`), what);
+    }
   }
 }
+
+const documentReads: ReadonlySet<string> = new Set([
+  "readNeverList",
+  "listNeverListRevisions",
+  "readStopDocument",
+  "listStopDocumentRevisions",
+]);

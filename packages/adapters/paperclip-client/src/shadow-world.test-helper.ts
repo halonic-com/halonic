@@ -5,7 +5,6 @@ import {
   type LedgerStore,
   runEntryId,
   ShadowRunner,
-  type ShadowSource,
 } from "@halonicjs/auto-approvals";
 import { company } from "./acme-data.test-helper.ts";
 import { FakePaperclip, type SeenRequest } from "./fake-paperclip.test-helper.ts";
@@ -245,16 +244,15 @@ export class MemoryLedgerStore implements LedgerStore {
   }
 }
 
+/** Every fake Paperclip the suite made, for the one recorder of A35 that checks them all at the end. */
+export const everyFake: FakePaperclip[] = [];
+
 /**
- * A shadow runner over `world`, through the real reader on a fake Paperclip. `wrap` may put a
- * fault between the reader and the runner (G2.4).
+ * A shadow runner over `world`, through the real reader on a fake Paperclip.
  */
-export function runnerFor(
-  world: World,
-  store = new MemoryLedgerStore(),
-  wrap: (reader: PaperclipShadowReader, fake: FakePaperclip) => ShadowSource = (reader) => reader,
-) {
+export function runnerFor(world: World, store = new MemoryLedgerStore()) {
   const fake = serveWorld(world);
+  everyFake.push(fake);
   const reader = new PaperclipShadowReader({
     address: fake.address,
     key: canaryKey,
@@ -262,7 +260,7 @@ export function runnerFor(
     fetch: fake.fetch,
   });
   const runner = new ShadowRunner({
-    source: wrap(reader, fake),
+    source: reader,
     store,
     digest,
     clock: { now: () => world.laptopTime },
