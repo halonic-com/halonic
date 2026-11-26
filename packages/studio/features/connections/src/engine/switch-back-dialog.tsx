@@ -1,6 +1,7 @@
 import { Dialog } from "@halonicjs/studio-kit";
 import type { ServerEngine, ServerEngineLeft } from "@halonicjs/studio-services";
 import { useRef, useState } from "react";
+import { withCode } from "../connect/connect-steps.tsx";
 import type * as connectWords from "../connections-words.ts";
 import * as words from "../server-engine-words.ts";
 
@@ -61,7 +62,7 @@ export function SwitchBackDialog({
       onConfirm={switchBack}
       onCancel={() => onDone(undefined, false)}
     >
-      <p className="m-0 text-fg">{words.switchBackText(host)}</p>
+      <p className="m-0 text-fg">{withCode(words.switchBackText(host))}</p>
     </Dialog>
   );
 }

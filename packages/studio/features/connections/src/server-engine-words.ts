@@ -103,8 +103,9 @@ export const PAIR_CANCEL_FAILED =
 
 /** Switching back to This computer. */
 export const SWITCH_BACK_TITLE = "Use this computer for messaging?";
+/** The host is between backticks, so the dialog shows it in mono, as the row does. */
 export const switchBackText = (host: string): string =>
-  `Halonic ends this computer's pairing with ${host} and deletes it from the keychain. Inbox and Messenger then use the Paperclip connection on this computer. If there is none, connect Paperclip below. To use the server again, you need a new pairing code.`;
+  `Halonic ends this computer's pairing with \`${host}\` and deletes it from the keychain. Inbox and Messenger then use the Paperclip connection on this computer. If there is none, connect Paperclip below. To use the server again, you need a new pairing code.`;
 export const USE_THIS_COMPUTER = "Use this computer";
 export const SWITCHING = "Switching…";
 export const switchedBack = (host: string): string =>

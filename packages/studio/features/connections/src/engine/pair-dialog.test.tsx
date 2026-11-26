@@ -116,6 +116,8 @@ verifies("connections.server-pair-dialog", () => {
       await enter();
       await nextFrame();
       expect(text()).toContain(error);
+      // A field's error is plain text: a command in it reads without its backticks.
+      expect(text()).not.toContain("`");
     });
 
     it("says when the engine couldn't be asked at all", async () => {
@@ -159,6 +161,15 @@ verifies("connections.server-pair-dialog", () => {
       expect(text()).toContain("Waiting for Allow on the server…");
       expect(text()).toContain("10:00 left");
       expect(text()).toContain("The server sees this computer as Acme laptop.");
+    });
+
+    it("starts focus on the check code, so it's read first", async () => {
+      await openDialog();
+      await enter();
+      await nextFrame();
+      expect(
+        document.activeElement?.querySelector('[role="img"]')?.getAttribute("aria-label"),
+      ).toBe("Check code: 4, F, 7, 2, K, Q");
     });
 
     it("says when it can't reach the server, and goes on waiting", async () => {

@@ -125,6 +125,11 @@ export function PairDialog(props: PairDialogProps) {
   return null;
 }
 
+/** `text` without its backticks: a field's error is plain text, so a command can't be mono there. */
+function plainText(text: string): string {
+  return text.replaceAll("`", "");
+}
+
 /** The error under each field, for the problem P1 shows. */
 function fieldErrors(problem: EnterProblem | undefined) {
   if (problem === undefined || problem.field === "dialog") return {};
@@ -134,10 +139,10 @@ function fieldErrors(problem: EnterProblem | undefined) {
       unreachable: words.SERVER_UNREACHABLE,
       "not-halonic": words.NOT_HALONIC,
     } as const;
-    return { address: byKind[problem.kind] };
+    return { address: plainText(byKind[problem.kind]) };
   }
   if (problem.kind === "too-many") return { code: words.tooManyCodes(problem.minutes) };
-  return { code: problem.kind === "format" ? words.CODE_FORMAT : words.CODE_REFUSED };
+  return { code: plainText(problem.kind === "format" ? words.CODE_FORMAT : words.CODE_REFUSED) };
 }
 
 /** Whether Continue is off for too many wrong codes, read again once a second until it isn't. */
