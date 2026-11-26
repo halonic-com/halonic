@@ -36,7 +36,7 @@ export const connectionsFeature = defineFeature({
       title: SECTION_TITLE,
       scope: "workspace",
       group: "connections",
-      // After Trust (20); first in Account and connections, before Remote (35).
+      // First in Account and connections, before Remote (35).
       order: 30,
       description: SECTION_LINE,
       available: connectionsAvailable,

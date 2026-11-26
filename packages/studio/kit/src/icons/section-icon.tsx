@@ -62,13 +62,13 @@ const drawings: Readonly<Record<SectionIconName, SectionDrawing>> = {
       "M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1",
   },
   // A bell.
-  notifications: { outline: "M6 16v-5a6 6 0 0112 0v5l2 2H4zM10 20a2 2 0 004 0" },
+  notifications: { outline: "M6 15v-5a6 6 0 0112 0v5l2 2H4zM10 19a2 2 0 004 0" },
   // A megaphone, as speaking up.
   feedback: { outline: "M4 10v4h3l8 5V5l-8 5zM7 14l1 5h3l-1-4M18 9.5a3.5 3.5 0 010 5" },
   // A keyboard: a row of keys and the space bar.
   keyboard: {
     outline:
-      "M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1zM7 10h.01M11 10h.01M15 10h.01M8 14h8",
+      "M4 6h16a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V7a1 1 0 011-1zM8 10h.01M12 10h.01M16 10h.01M8 14h8",
   },
   // The power mark, as starting up.
   startup: { outline: "M12 3v8M7.05 6.05a7 7 0 109.9 0" },

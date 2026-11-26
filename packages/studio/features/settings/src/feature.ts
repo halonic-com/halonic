@@ -67,7 +67,8 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       title: "Assistant",
       scope: "host",
       group: "agents",
-      order: 10,
+      // After Models (10), before Trust (20).
+      order: 15,
       description: (_context, place) => assistantText.FIRST_LINE[place],
       summary: assistantSummary,
       view: "AssistantSection",
@@ -79,8 +80,8 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       title: notificationsText.TITLE,
       scope: "host",
       group: "general",
-      // After Formats (20), by its id.
-      order: 20,
+      // After Formats (20).
+      order: 25,
       view: "NotificationsSection",
       load: () => import("./notifications/notifications-section.tsx"),
     },
@@ -90,6 +91,7 @@ export function settingsSectionsFor(showUnfinished: boolean): SettingsSectionCon
       title: "Agent sandbox",
       scope: "host",
       group: "agents",
+      // After Trust (20) and Trusted sources (25).
       order: 30,
       description: sandboxText.FIRST_LINE,
       summary: agentSandboxSummary,
