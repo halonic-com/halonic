@@ -16,8 +16,15 @@ import { type ActiveAccount, chooseSource } from "./active-account.ts";
  * accounts' events but adds one when the pick changes, so Inbox and Messenger read again. Writes,
  * message and attachment reads pass through, because their IDs already belong to one source.
  * A thread two accounts both see appears once, under the active one.
+ *
+ * @param changes - where each reader's changes come from: `inner.changes` unless told otherwise,
+ *   such as a `SharedChanges` over it, so every reader shares one long poll
  */
-export function scopeToAccount(inner: AgentMessaging, active: ActiveAccount): AgentMessaging {
+export function scopeToAccount(
+  inner: AgentMessaging,
+  active: ActiveAccount,
+  changes: () => AsyncIterable<MessagingId> = () => inner.changes(),
+): AgentMessaging {
   const current = async (): Promise<MessagingId | undefined> =>
     chooseSource(await inner.listSources(), active.preferred());
   const only = async <T extends { readonly source: MessagingId }>(
@@ -47,13 +54,13 @@ export function scopeToAccount(inner: AgentMessaging, active: ActiveAccount): Ag
     setMembers: (channel, members, lead) => inner.setMembers(channel, members, lead),
     joinChannel: (channel) => inner.joinChannel(channel),
     leaveChannel: (channel) => inner.leaveChannel(channel),
-    changes: () => scopedChanges(inner, active, current),
+    changes: () => scopedChanges(changes, active, current),
   };
 }
 
 /** The active account's changes, plus one whenever the pick changes. Ends when the reader stops. */
 async function* scopedChanges(
-  inner: AgentMessaging,
+  changes: () => AsyncIterable<MessagingId>,
   active: ActiveAccount,
   current: () => Promise<MessagingId | undefined>,
 ): AsyncGenerator<MessagingId> {
@@ -65,7 +72,7 @@ async function* scopedChanges(
     });
   let arrived = arm();
   const stop = active.subscribe(() => wake());
-  const iterator = inner.changes()[Symbol.asyncIterator]();
+  const iterator = changes()[Symbol.asyncIterator]();
   let next = iterator.next();
   try {
     while (true) {

@@ -5,7 +5,7 @@ import { type PaperclipTeamStatus, paperclipSourceId } from "@halonicjs/adapter-
 import type { PaperclipConnection } from "@halonicjs/format";
 import type { PaperclipConnectionNow, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { type MessagingFailure, MessagingHub } from "@halonicjs/host-agent-messaging-hub";
-import { StoredAgentMessaging } from "@halonicjs/host-paperclip-sync";
+import { StoredAgentMessaging, type SyncCounters } from "@halonicjs/host-paperclip-sync";
 import type {
   AgentMessaging,
   MessagingId,
@@ -51,6 +51,8 @@ export interface WorkspaceMessagingOptions {
   now?: () => Date;
   /** What the workspace's messaging engine setting joins; "This computer" by default. */
   engine?: JoinedEngine;
+  /** Counts every change the local copies apply and every Paperclip call (`agent-host.sync-diagnostics`). */
+  counters?: Pick<SyncCounters, "applied" | "called">;
 }
 
 /** What the Messenger's activity panel reads: each connected source's runs and pull requests. */
@@ -365,7 +367,7 @@ export class WorkspaceMessaging {
    */
   #storedOf(connection: string, provider: PaperclipConnectionProvider): StoredAgentMessaging {
     const source = paperclipSourceId(connection);
-    const { cacheFolder, warn } = this.#options;
+    const { cacheFolder, warn, counters } = this.#options;
     return new StoredAgentMessaging({
       live: provider,
       sync: provider.sync(),
@@ -373,6 +375,7 @@ export class WorkspaceMessaging {
       persistence: syncFiles(cacheFolder, source, warn),
       warn,
       mayRead: () => provider.mayRead(),
+      ...(counters === undefined ? {} : { counters }),
     });
   }
 
@@ -399,9 +402,13 @@ export class WorkspaceMessaging {
     this.#options.report({ provider: "messaging-hub", action, error });
   }
 
-  #network(): Pick<WorkspaceMessagingOptions, "fetch" | "now"> {
-    const { fetch, now } = this.#options;
-    return { ...(fetch === undefined ? {} : { fetch }), ...(now === undefined ? {} : { now }) };
+  #network(): Pick<PaperclipProviderOptions, "fetch" | "now" | "timing"> {
+    const { fetch, now, counters } = this.#options;
+    return {
+      ...(fetch === undefined ? {} : { fetch }),
+      ...(now === undefined ? {} : { now }),
+      ...(counters === undefined ? {} : { timing: (call) => counters.called(call) }),
+    };
   }
 }
 

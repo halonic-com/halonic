@@ -6,6 +6,7 @@ import {
   type SyncCollection,
 } from "@halonicjs/ports";
 import { readStored, storeFormat } from "./stored-collection.ts";
+import type { SyncCounters } from "./sync-counters.ts";
 import type { SyncPersistence } from "./sync-persistence.ts";
 
 /** The most items one collection keeps; the ones a collection lists first are kept. */
@@ -19,6 +20,8 @@ export interface KeptCollectionOptions {
   warn: (message: string) => void;
   /** For tests; {@link keptItemsMax} by default. */
   itemsMax?: number;
+  /** Counts each change applied and how it arrived (`agent-host.sync-diagnostics`); none by default. */
+  counters?: Pick<SyncCounters, "applied">;
 }
 
 /** A write the source accepted, kept until a sync that started after it has landed. */
@@ -71,7 +74,8 @@ export class KeptCollection<Item extends { id: MessagingId }> {
   async sync(): Promise<boolean> {
     await this.#open();
     const startedAt = this.#seq;
-    const batch = await this.#collection.read(this.#change());
+    const change = this.#change();
+    const batch = await this.#collection.read(change);
     if (this.#closed) return false;
     const items = this.#withWritesAfter(startedAt, this.#applied(batch));
     const changed =
@@ -82,6 +86,9 @@ export class KeptCollection<Item extends { id: MessagingId }> {
     this.#asOf = batch.asOf;
     this.#mapping = this.#collection.mapping;
     if (moved) await this.#save();
+    // A whole read is the first load or a catch-up; a read of what changed is a poll.
+    if (changed)
+      this.#options.counters?.applied(change.kind === "all" ? "catch-up" : "poll", batch.asOf);
     return changed;
   }
 
@@ -101,6 +108,7 @@ export class KeptCollection<Item extends { id: MessagingId }> {
     this.#writes.push({ seq: this.#seq, id, change });
     this.#items = items.map((item) => (item.id === id ? change(item) : item));
     await this.#save();
+    this.#options.counters?.applied("write");
     return true;
   }
 

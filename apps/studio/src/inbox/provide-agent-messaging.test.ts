@@ -7,7 +7,8 @@ import {
   AgentActivityService,
   AgentMessagingService,
 } from "@halonicjs/studio-services";
-import { expect, it } from "vitest";
+import { verifies } from "@halonicjs/testing-spec";
+import { expect, it, vi } from "vitest";
 import { provideAgentMessaging } from "./provide-agent-messaging.ts";
 
 /** A host that answers every call with nothing and records each route it was asked. */
@@ -70,4 +71,55 @@ it("provides no activity reads without an agent host", () => {
   provideAgentMessaging(services, undefined, "/work/acme", {});
 
   expect(services.has(AgentActivityService)).toBe(false);
+});
+
+/**
+ * A host whose changes long polls stay open until the test answers them, counting how many are
+ * open at once; it serves one Acme source.
+ */
+function longPollHost() {
+  const waiting: ((sources: string[]) => void)[] = [];
+  const host = { open: 0, mostOpen: 0, waiting };
+  const source = { id: "paperclip:acme", provider: "paperclip", label: "Paperclip · Acme" };
+  const transport: AgentHostTransport = {
+    request: async (route, body) => {
+      if (route === "POST /v1/messaging/read") {
+        return { status: 200, body: { items: [{ ...source, state: { kind: "online" } }] } };
+      }
+      if (route !== "POST /v1/messaging/changes") return { status: 200, body: {} };
+      if ((body as { wait?: boolean }).wait !== true) {
+        return { status: 200, body: { next: 0, sources: [] } };
+      }
+      host.open += 1;
+      host.mostOpen = Math.max(host.mostOpen, host.open);
+      const sources = await new Promise<string[]>((resolve) => waiting.push(resolve));
+      host.open -= 1;
+      return { status: 200, body: { next: 1, sources } };
+    },
+    stream: () => Promise.reject(new Error("No stream route is used here.")),
+  };
+  return { host, transport };
+}
+
+verifies("services.shared-changes", () => {
+  it("opens one changes long poll, not four, with the Inbox, Messenger, overview and notifications listening", async () => {
+    const services = new ServiceRegistry();
+    const { host, transport } = longPollHost();
+    provideAgentMessaging(services, transport, "/work/acme", {});
+    const messaging = services.get(AgentMessagingService);
+    const readers = ["inbox", "messenger", "overview", "notifications"].map(() =>
+      messaging.changes()[Symbol.asyncIterator](),
+    );
+    const reads = readers.map((reader) => reader.next());
+    await vi.waitFor(() => expect(host.waiting).toHaveLength(1));
+
+    host.waiting.shift()?.(["paperclip:acme"]);
+
+    expect(await Promise.all(reads)).toEqual(
+      readers.map(() => ({ done: false, value: "paperclip:acme" })),
+    );
+    expect(host.mostOpen).toBe(1);
+    await Promise.all(readers.map((reader) => reader.return?.()));
+    await services.dispose();
+  });
 });

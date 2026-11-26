@@ -120,4 +120,10 @@ pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
         "POST /v1/messaging/focus",
         route(Method::Post, "/v1/messaging/focus", Answer::Json),
     ),
+    // Settings › Sync diagnostics (HAL-19337): counts and timings only, never
+    // a title, a body, an ID or a query.
+    (
+        "GET /v1/sync/diagnostics",
+        route(Method::Get, "/v1/sync/diagnostics", Answer::Json),
+    ),
 ];

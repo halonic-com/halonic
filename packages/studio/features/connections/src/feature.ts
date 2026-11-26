@@ -2,9 +2,11 @@ import {
   ActiveAccountService,
   AgentConnectionsService,
   ServerEngineService,
+  SyncDiagnosticsService,
 } from "@halonicjs/studio-services";
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { SECTION_LINE, SECTION_TITLE } from "./connections-words.ts";
+import * as diagnosticsWords from "./diagnostics/sync-diagnostics-words.ts";
 
 /** Whether the engine serves connections; without them the section never shows. */
 export function connectionsAvailable(
@@ -12,6 +14,15 @@ export function connectionsAvailable(
   set: (available: boolean) => void,
 ): () => void {
   set(context.services.find(AgentConnectionsService) !== undefined);
+  return () => undefined;
+}
+
+/** Whether the engine keeps sync counters; without them Settings › Sync diagnostics never shows. */
+export function diagnosticsAvailable(
+  context: WorkspaceContext,
+  set: (available: boolean) => void,
+): () => void {
+  set(context.services.find(SyncDiagnosticsService) !== undefined);
   return () => undefined;
 }
 
@@ -23,12 +34,19 @@ export function connectionsAvailable(
  * the sidebar's footer item, the account switcher (`connections.account-switcher`): with more than
  * one account linked, the Inbox and Messenger show the one picked there. Where the host serves
  * `ServerEngineService`, the section starts with the Messaging engine row and its Pair with a
- * server dialog (`connections.engine-row`, `connections.server-pair-dialog`).
+ * server dialog (`connections.engine-row`, `connections.server-pair-dialog`). Next to the section,
+ * Settings › Sync diagnostics shows how the engine kept them up to date
+ * (`connections.sync-diagnostics`).
  */
 export const connectionsFeature = defineFeature({
   id: "connections",
   title: "Connections",
-  wants: [AgentConnectionsService, ActiveAccountService, ServerEngineService],
+  wants: [
+    AgentConnectionsService,
+    ActiveAccountService,
+    ServerEngineService,
+    SyncDiagnosticsService,
+  ],
   register(studio) {
     studio.sidebarFooter.add({
       id: "connections.account-switcher",
@@ -48,6 +66,19 @@ export const connectionsFeature = defineFeature({
       available: connectionsAvailable,
       view: "ConnectionsSection",
       load: () => import("./settings/connections-section.tsx"),
+    });
+    studio.settings.add({
+      id: "sync-diagnostics",
+      icon: "connections",
+      title: diagnosticsWords.SECTION_TITLE,
+      scope: "host",
+      group: "connections",
+      // Right after Connections (30), before Remote (35).
+      order: 31,
+      description: diagnosticsWords.SECTION_LINE,
+      available: diagnosticsAvailable,
+      view: "SyncDiagnosticsSection",
+      load: () => import("./diagnostics/sync-diagnostics-section.tsx"),
     });
   },
 });

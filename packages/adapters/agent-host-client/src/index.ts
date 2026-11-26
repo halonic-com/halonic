@@ -102,6 +102,7 @@ export {
   type ServerPairStart,
   type ServerPairState,
 } from "./server-engine.ts";
+export { AgentHostSyncDiagnostics } from "./sync-diagnostics.ts";
 export {
   AgentHostThisComputer,
   type AgentHostThisComputerOptions,

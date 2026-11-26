@@ -6,6 +6,12 @@ A provider hands over its `MessagingSync` collections, already in `AgentMessagin
 `StoredAgentMessaging` answers agents, conversations, inbox items and work from the store. Writes,
 messages and search still go to the provider. Web-standard APIs only.
 
+`SyncScheduler` decides when the sync polls. `SyncCounters` counts every change the store applies
+by how it arrived (event, poll, catch-up or write), with lags, reconnects, time per connection and
+each provider route's timing, over 24 hours in memory: counts and timings only, never a title, a
+body or an ID (requirement `agent-host.sync-diagnostics`). The agent host answers them at
+`GET /v1/sync/diagnostics`.
+
 - **Layer:** host
 - **Owner:** tomas
 - **Public API:** `@halonicjs/host-paperclip-sync`

@@ -5,7 +5,7 @@ import { NodeScheduler } from "@halonicjs/adapter-scheduler-node";
 import { systemSetTimer } from "@halonicjs/adapter-scheduler-node/node";
 import type { MessagingFailure } from "@halonicjs/host-agent-messaging-hub";
 import { type PaperclipBinding, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
-import { SyncScheduler } from "@halonicjs/host-paperclip-sync";
+import { SyncCounters, SyncScheduler } from "@halonicjs/host-paperclip-sync";
 import type { PhoneMessaging, Scheduler, SecretStore } from "@halonicjs/ports";
 import type { ProfileFolder } from "@halonicjs/profile";
 import { systemClock } from "@halonicjs/std";
@@ -30,6 +30,7 @@ import { ReplyWatch } from "./reply-watch.ts";
 import { ServerPairings } from "./server-engine.ts";
 import { ServerEnginePairing } from "./server-pairing.ts";
 import { serverPairingRoutes } from "./server-pairing-routes.ts";
+import { syncDiagnosticsRoute } from "./sync-diagnostics-route.ts";
 
 /** The host's agent messaging: its routes, and what stops it. */
 export interface HostMessaging {
@@ -45,6 +46,7 @@ export const messagingCacheFolderName = "agent-messaging-cache";
 /**
  * The desktop engine's agent messaging, for the agent host: the key
  * hand-over, Paperclip's sign-in, Studio's messaging routes and Disconnect,
+ * the sync's counters and their diagnostics route (`agent-host.sync-diagnostics`),
  * feedback's sender, and the sync's polls and the sign-ins' time limits on a scheduler of its own. Without a profile folder there is nowhere outside
  * the workspaces for the cache, so only the hand-over and feedback's sender
  * are served and no provider ever starts.
@@ -88,7 +90,9 @@ export function hostMessaging(
     );
   const warn = (message: string) => log(`Agent messaging engine: ${message}\n`);
   const setting = new MessagingEngineSetting({ profile, digest: webCryptoDigest, warn });
+  const counters = new SyncCounters({ clock: systemClock, log });
   const messaging = new DesktopMessaging({
+    counters,
     keys,
     engines: { setting, pairings: new ServerPairings(pairingSecrets), warn },
     cacheRoot: join(profile.root, messagingCacheFolderName),
@@ -121,7 +125,10 @@ export function hostMessaging(
   const sync = new SyncScheduler({
     scheduler,
     clock: systemClock,
-    poll: () => messaging.refresh(),
+    poll: async () => {
+      await messaging.refresh();
+      counters.tick();
+    },
     waiting: () => replies.waiting(),
   });
   const signIn = hostSignIn(keys, messaging, scheduler, sync);
@@ -138,6 +145,7 @@ export function hostMessaging(
         usesServer,
       }),
       ...messagingRoutes({ messaging, sync, replies, log }),
+      syncDiagnosticsRoute(counters),
       ...paperclipSignInRoutes({ signIn, workspaceRoots, log, usesServer }),
       ...feedback,
       ...serverPairingRoutes({

@@ -1,6 +1,7 @@
 import {
   AgentHostActivity,
   AgentHostMessaging,
+  AgentHostSyncDiagnostics,
   type AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
 import { MemoryHostSettingsStore } from "@halonicjs/adapter-memory";
@@ -13,6 +14,8 @@ import {
   AgentActivityService,
   AgentMessagingService,
   HostActiveAccount,
+  SharedChanges,
+  SyncDiagnosticsService,
   scopeToAccount,
 } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
@@ -30,7 +33,8 @@ export const agentMessagingFocusKey: ServiceKey<Disposable> = serviceKey<Disposa
  * Search and the overview with its daily recap read the same one through
  * their own keys. All of them see only the active account's sources.
  * The Messenger's activity panel reads the same host's runs and pull
- * requests through `AgentActivityService`.
+ * requests through `AgentActivityService`, and Settings › Sync diagnostics
+ * its sync counters through `SyncDiagnosticsService`.
  * It also tells the host when the window comes to the front or goes to the
  * back, so the host polls every 30 seconds or every 5 minutes. Without an
  * agent host nothing is provided, and the features show no agent items.
@@ -86,10 +90,13 @@ export function provideAgentMessagingReaders(
   services.provide(ActiveAccountService, active);
   // One account at a time, for every reader of the port: the Inbox and Messenger in every window,
   // search and the overview, and so the desktop notifications, which follow the active account.
-  const scoped = scopeToAccount(messaging, active);
+  // They all share one long poll of the host's changes (`services.shared-changes`).
+  const shared = new SharedChanges(() => messaging.changes());
+  const scoped = scopeToAccount(messaging, active, () => shared.listen());
   services.provide(AgentMessagingService, scoped);
   services.provide(SearchMessagingService, scoped);
   services.provide(OverviewMessagingService, scoped);
   services.provide(AgentActivityService, new AgentHostActivity(transport, location));
+  services.provide(SyncDiagnosticsService, new AgentHostSyncDiagnostics(transport));
   return messaging;
 }

@@ -18,6 +18,14 @@ export {
   type StoredRead,
   storeFormat,
 } from "./stored-collection.ts";
+export {
+  SyncCounters,
+  type SyncCountersOptions,
+  type SyncRouteCall,
+  summaryLine,
+  syncDiagnosticsWindowMs,
+  syncLogEveryMs,
+} from "./sync-counters.ts";
 export type { SyncPersistence } from "./sync-persistence.ts";
 export {
   SyncScheduler,
