@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { button, polyfillModals } from "../test-support/modal.ts";
-import { byText, openChat, openMessenger, press } from "../test-support/page.tsx";
+import { byText, openChat, openMessenger, press, settle } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 beforeEach(polyfillModals);
-afterEach(unmountAll);
+afterEach(() => {
+  unmountAll();
+  vi.restoreAllMocks();
+});
 
 /** Acme's Chief, with one message the board hasn't seen; each message a minute after the last. */
 function acme() {
@@ -64,6 +67,38 @@ verifies("messenger.read-marks", () => {
     expect(page.querySelector("main header")).toBeNull();
     expect(chiefRowText(page)).toContain("1 unread");
     expect(document.activeElement).toBe(chiefRow(page).querySelector("button"));
+  });
+
+  it("keeps the chat unread when a read lands after the header's Mark as unread closed it", async () => {
+    const messaging = acme();
+    const [source] = await messaging.listSources();
+    const page = await openMessenger(messaging);
+    await openChat(page, "Chief");
+    // Every read of messages waits until the menu pick is done.
+    const held: (() => void)[] = [];
+    const listMessages = messaging.listMessages.bind(messaging);
+    vi.spyOn(messaging, "listMessages").mockImplementation(async (conversation) => {
+      await new Promise<void>((resolve) => held.push(resolve));
+      return listMessages(conversation);
+    });
+    messaging.addWork(source?.id ?? "", { label: "HAL-12", title: "Merge #12" });
+    await settle();
+    await press(button("More actions for Chief", page.querySelector("main header") ?? page));
+    await press(byText(page, "[role=menuitem]", "Mark as unread"));
+
+    expect(held.length).toBeGreaterThan(0);
+    for (const release of held) release();
+    await settle();
+
+    expect(chiefRowText(page)).toContain("1 unread");
+  });
+
+  it("offers no action on the open chat's row", async () => {
+    const page = await openMessenger(acme());
+
+    await openChat(page, "Chief");
+
+    expect(chiefRow(page).querySelectorAll("button")).toHaveLength(1);
   });
 
   it("offers no ··· menu once the board wrote last", async () => {

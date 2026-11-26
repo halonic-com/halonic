@@ -219,6 +219,15 @@ function useMessages(
     void read().catch(reportRead);
   }, [read, changed]);
 
+  // A read that lands once the chat closed counts as replaced, so it doesn't mark the chat read
+  // again after its header's **Mark as unread** closed it.
+  useEffect(
+    () => () => {
+      reads.current += 1;
+    },
+    [],
+  );
+
   return { messages, questions, failure, read };
 }
 

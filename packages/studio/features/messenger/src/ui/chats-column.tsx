@@ -1,6 +1,6 @@
 import type { MessagingId } from "@halonicjs/ports";
 import type { EngineWords } from "@halonicjs/studio-shell";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useReducer, useState } from "react";
 import type { FoundChat } from "../chat-search.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import type { WaitingCard } from "../needs-you.ts";
@@ -67,7 +67,6 @@ export function ChatsColumn({
   needsYou,
   onNeedsYou,
   newMenu,
-  onMarked,
 }: {
   readonly messenger: Messenger;
   readonly rows: readonly ConversationRow[] | undefined;
@@ -83,10 +82,10 @@ export function ChatsColumn({
   readonly needsYou: boolean;
   readonly onNeedsYou: () => void;
   readonly newMenu: ReactNode;
-  /** A row was marked read or unread; the page reads the list again. */
-  readonly onMarked: () => void;
 }) {
   const chatSearch = useChatSearch(messenger, rows);
+  // A mark changes only what this device keeps, so the rows draw again without asking the source.
+  const [, onMarked] = useReducer((count: number) => count + 1, 0);
   const marks: RowMarks = {
     canMarkUnread: (row) => messenger.canMarkUnread(row),
     onMarkRead: (row) => {

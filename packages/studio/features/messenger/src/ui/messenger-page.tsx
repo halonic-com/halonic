@@ -110,7 +110,6 @@ export function MessengerPage({
   const markUnread = () => {
     if (open !== undefined) messenger.markUnread(open);
     back();
-    readAgain();
   };
   return (
     <div className="flex h-full min-h-0 gap-2">
@@ -134,7 +133,6 @@ export function MessengerPage({
             needsYou={needsYou}
             onNeedsYou={openNeedsYou}
             newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
-            onMarked={readAgain}
           />
         </ListColumn>
       )}

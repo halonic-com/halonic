@@ -98,9 +98,38 @@ verifies("messenger.read-marks", () => {
     await new Messenger(messaging, undefined, undefined, new StoredReadMarks(storage)).rows();
     expect(storage.kept.get(key)).toBe("{}");
   });
+
+  it("keeps the marks of an online source that lists no chats in one read", async () => {
+    const { messaging, source, chat } = acme();
+    const storage = deviceStorage();
+    const messenger = new Messenger(messaging, undefined, undefined, new StoredReadMarks(storage));
+    messenger.markSeen(await chiefRow(messenger), await messaging.listMessages(chat.id));
+    // As the hub answers for a source whose read failed while another source answered.
+    vi.spyOn(messaging, "listConversations").mockResolvedValueOnce([]);
+
+    await messenger.rows();
+
+    expect(storage.kept.get(`halonic.messenger.read.${source.id}`)).toContain(chat.id);
+    expect(messenger.unreadCount(await chiefRow(messenger))).toBe(0);
+  });
 });
 
 describe("StoredReadMarks", () => {
+  it("never overwrites another window's newer marks with its older copy", () => {
+    const storage = deviceStorage();
+    const messengerWindow = new StoredReadMarks(storage);
+    const quickAsk = new StoredReadMarks(storage);
+    quickAsk.set("acme", "liam", "2026-11-26T08:00:00.000Z");
+    expect(messengerWindow.of("acme", "liam")).toBe("2026-11-26T08:00:00.000Z");
+
+    messengerWindow.set("acme", "chief", "2026-11-26T09:00:00.000Z");
+    quickAsk.keepOnly("acme", ["chief"]);
+
+    const kept = new StoredReadMarks(storage);
+    expect(kept.of("acme", "chief")).toBe("2026-11-26T09:00:00.000Z");
+    expect(kept.of("acme", "liam")).toBeUndefined();
+  });
+
   it("logs storage that refuses a mark, and keeps it for this page", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const marks = new StoredReadMarks({

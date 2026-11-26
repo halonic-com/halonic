@@ -117,9 +117,12 @@ export class Messenger {
     const rows = [...conversations]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .map((conversation) => rowOf(conversation, sources, agents));
-    // Only an online source's list is whole, so only its gone chats lose their marks.
+    // Only an online source's list is whole, so only its gone chats lose their marks. A source that
+    // lists nothing may have failed one read (the hub drops a failed source's answer while another
+    // answers), so its marks wait for a read that lists its chats.
     for (const source of sources.filter((each) => each.state.kind === "online")) {
       const listed = conversations.filter((conversation) => conversation.source === source.id);
+      if (listed.length === 0) continue;
       this.marks.keepOnly(
         source.id,
         listed.map((conversation) => conversation.id),
