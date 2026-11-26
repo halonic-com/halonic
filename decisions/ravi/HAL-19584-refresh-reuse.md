@@ -2,6 +2,7 @@
 
 - Approval: Liam's review of #6511 on HAL-19584 (26 Nov); the task is HAL-19584, and its reviewer approves this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:oTz22GTkQ6QLgctwt9l9xKll6IeC27ZxAelklEc/E4RHawJ/nbHjxuHzimMWNLBL9kNuDVhhYyprHTrhVodfDw==
 - Task: HAL-19584
 
 ## What changes
