@@ -2,7 +2,7 @@ import type { Conversation, MessagingAgent, MessagingId } from "@halonicjs/ports
 import { FilterChips } from "@halonicjs/studio-kit";
 import { useEffect, useState } from "react";
 import type { MessagingClient } from "./messaging-client.ts";
-import { OlderComputerNote } from "./older-computer-note.tsx";
+import { OlderComputerPanel } from "./older-computer-note.tsx";
 import { PhoneChat } from "./phone-chat.tsx";
 import { phoneMessengerWords as words } from "./phone-messenger-words.ts";
 
@@ -34,7 +34,7 @@ const maxPages = 10;
  * shows the update note instead and asks the computer nothing.
  */
 export function PhoneMessenger(props: PhoneMessengerProps) {
-  if (props.olderComputer) return <OlderComputerNote computer={props.computer} />;
+  if (props.olderComputer) return <OlderComputerPanel computer={props.computer} />;
   return <MessengerLists {...props} />;
 }
 

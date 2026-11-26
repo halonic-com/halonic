@@ -15,6 +15,7 @@ import type {
   GatewaySession,
   gatewayRefusalCodes,
 } from "@halonicjs/ports";
+import type { MessagingClient } from "./messaging-client.ts";
 import type { PhoneStatusLabel } from "./phone-status.ts";
 
 /**
@@ -127,6 +128,12 @@ export interface RemoteView {
    */
   readonly answersRisky: boolean;
   /**
+   * Whether the phone's owner check (a screen lock with a fingerprint, face or
+   * PIN) could ask, checked again after the last session list. Without it the
+   * phone reads the Inbox but answers nothing. `false` until that check answers.
+   */
+  readonly ownerCheckAvailable: boolean;
+  /**
    * Whether the computer and this phone speak different versions of the
    * gateway's messages, from the last connection that got that far. While it
    * is true, `offReason` says to update.
@@ -187,4 +194,6 @@ export interface PhoneRemote {
   ): Promise<RemoteSendOutcome>;
   /** Sends prompt text to a session: not empty, and at most 10,000 characters. */
   prompt(sessionId: string, text: string): Promise<RemoteSendOutcome>;
+  /** The Inbox and Messenger over message version 4; absent where the screens run on a fake. */
+  readonly messaging?: MessagingClient;
 }

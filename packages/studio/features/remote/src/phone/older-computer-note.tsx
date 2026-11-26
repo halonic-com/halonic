@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { EmptyState, LaptopIcon } from "@halonicjs/studio-kit";
 
 /** The words of `p05c` (Noah's HAL-17514 `wording`, rows "Halonic on the computer too old"). */
 export const olderComputerWords = {
@@ -9,22 +9,24 @@ export const olderComputerWords = {
 } as const;
 
 /**
- * `p05c`: over the agents while the computer runs a Halonic that speaks only version 3 of the
- * gateway's messages (`RemoteView.olderComputer`). The phone fell back to it, so it offers Agents
- * only; the note says what an update there would add. Plain page content, not a live region.
+ * `p05c`: the whole Inbox tab while the computer runs a Halonic that speaks only version 3 of the
+ * gateway's messages (`RemoteView.olderComputer`), in p05d's pattern: a laptop on a soft tile, the
+ * title centred, the hint small and muted at the foot (Noah, HAL-18949). The Agents tab keeps
+ * working without it. Plain page content, not a live region.
  */
-export function OlderComputerNote({ computer }: { readonly computer: string }) {
-  const titleId = useId();
+export function OlderComputerPanel({ computer }: { readonly computer: string }) {
   return (
-    <section
-      aria-labelledby={titleId}
-      className="flex flex-col gap-1 rounded-md border border-border px-4 py-3"
-    >
-      <p id={titleId} className="text-body-strong text-fg">
-        {olderComputerWords.title(computer)}
-      </p>
-      <p className="text-small text-fg">{olderComputerWords.text(computer)}</p>
-      <p className="text-small text-fg-muted">{olderComputerWords.hint}</p>
-    </section>
+    <div className="flex flex-1 flex-col justify-center">
+      <EmptyState
+        icon={<LaptopIcon />}
+        title={olderComputerWords.title(computer)}
+        description={
+          <>
+            <span className="block">{olderComputerWords.text(computer)}</span>
+            <span className="mt-4 block text-small">{olderComputerWords.hint}</span>
+          </>
+        }
+      />
+    </div>
   );
 }
