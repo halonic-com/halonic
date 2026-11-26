@@ -26,3 +26,12 @@ export type {
   UnreadableSecretsFileFix,
 } from "./run-failure-secrets-file.ts";
 export { isSetupCause, setupFailureOf } from "./run-failure-setup.ts";
+export {
+  type PlanConcurrencyStop,
+  type PlanReserve,
+  type PlanRun,
+  type PlanStop,
+  type PlanUnitStop,
+  planRunOf,
+  planStopOf,
+} from "./run-plan-stop.ts";

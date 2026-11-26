@@ -1,7 +1,7 @@
 import type { RunFailureCause } from "@halonicjs/events";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type RunFailedEvent, runFailureOf } from "./run-failure.ts";
+import { type PlanStop, type RunFailedEvent, runFailureOf } from "./run-failure.ts";
 
 verifies("app.run-failure-plan-stop", () => {
   /** A `budget` run whose cause is `cause`, with the engine's sentence for it. */
@@ -31,18 +31,19 @@ verifies("app.run-failure-plan-stop", () => {
       reason: "error",
       message: "Plan limit reached: 5 of 5 EUR used.",
       causeKnown: true,
+      plan: { kind: "unit", unit: "cost", member: false, usedPercent: 100, canUpgrade: true },
     });
   });
 
-  it("does the same for every other plan. code", () => {
-    const codes = [
-      "plan.member.cost",
-      "plan.concurrency",
-      "plan.none",
-      "plan.suspended",
-      "plan.member-removed",
-    ];
-    for (const code of codes) {
+  it("does the same for every other plan. code, with its facts when they read", () => {
+    const plans: Record<string, PlanStop | undefined> = {
+      "plan.member.cost": undefined,
+      "plan.concurrency": undefined,
+      "plan.none": { kind: "none" },
+      "plan.suspended": { kind: "suspended" },
+      "plan.member-removed": { kind: "member-removed" },
+    };
+    for (const [code, plan] of Object.entries(plans)) {
       const failed = stoppedBy(
         { kind: "limit_reached", code },
         `The meter's sentence for ${code}.`,
@@ -51,6 +52,7 @@ verifies("app.run-failure-plan-stop", () => {
         reason: "error",
         message: `The meter's sentence for ${code}.`,
         causeKnown: true,
+        ...(plan === undefined ? {} : { plan }),
       });
     }
   });
