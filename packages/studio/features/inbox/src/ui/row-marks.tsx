@@ -35,6 +35,14 @@ export function itemMark(item: InboxItem, size: AvatarSize = "sidebar"): Pick<Li
 }
 
 /**
+ * The mark that leads a Notices row (`inbox.notice-bell`): a bell on the same 60px tile as Needs
+ * you's own marks, with no badge, since Halonic itself tells.
+ */
+export function noticeMark() {
+  return <Avatar name="" size="sidebar" glyph={<KindIcon kind="notice" />} />;
+}
+
+/**
  * The mark of an agent's row (`inbox.picture-badge`): who asks as the picture, what kind of item
  * as the badge. An agent shows its `picture` when it was read, else its initial on its own tint,
  * keyed on its ID as in the Messenger (`kit.agent-tint`); a person their initials on the neutral

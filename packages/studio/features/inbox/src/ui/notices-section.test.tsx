@@ -199,13 +199,14 @@ verifies("inbox.notices-section", () => {
     expect(button(root, "Dismiss Daily summary failed at 06:00")).toBeDefined();
   });
 
-  // jsdom lays nothing out, so this holds the classes that do it: the row wraps, the title asks
-  // for 10rem, and Open run and × wrap as one group after the title (HAL-13930).
+  // jsdom lays nothing out, so this holds the classes that do it: the row's text beside its bell
+  // wraps, the title asks for 10rem, and Open run and × wrap as one group after the title
+  // (HAL-13930).
   it("puts Open run and × on a line under the title when the row is too narrow", async () => {
     const { source } = fakeNotices(async () => [a]);
     const { root } = await open(source);
     const title = [...root.querySelectorAll("p")].find((p) => p.textContent === a.title);
-    const row = title?.closest("li");
+    const row = title?.parentElement;
     expect(row?.className).toContain("flex-wrap");
     expect(title?.className).toContain("basis-40");
     const actions = button(root, "Open run").parentElement;

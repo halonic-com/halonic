@@ -26,6 +26,26 @@ export function leadOf(row: ConversationRow): MessagingAgent | undefined {
   return row.agents.find((agent) => agent.id === row.conversation.agent);
 }
 
+/** The two members a channel's picture shows: one in front, one behind it. */
+export interface PictureMembers {
+  readonly front: MessagingAgent;
+  /** None while the channel lists only one member. */
+  readonly behind: MessagingAgent | undefined;
+}
+
+/**
+ * Who a channel's picture shows (`messenger.channel-picture`): its lead in front and one more
+ * member behind, the first other one the source lists; the first member in front once the lead
+ * left. None while the source lists no member.
+ */
+export function pictureMembers(row: ConversationRow): PictureMembers | undefined {
+  const lead = leadOf(row);
+  const others = row.agents.filter((agent) => agent.id !== lead?.id);
+  const front = lead ?? others[0];
+  if (front === undefined) return undefined;
+  return { front, behind: others.find((agent) => agent.id !== front.id) };
+}
+
 /**
  * An agent's name as its source lists it, member of the channel or not; none when the source no
  * longer lists it. Never a name a message carries (requirement `messenger.author-from-source`).

@@ -15,12 +15,7 @@ import { ChatOpensService, MessengerService } from "../api.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
-import {
-  type AgentPictures,
-  pictureOf,
-  pictureOfAgent,
-  useAgentPictures,
-} from "./agent-pictures.ts";
+import { type AgentPictures, pictureOfAgent, useAgentPictures } from "./agent-pictures.ts";
 import { ChatsColumn, useChats } from "./chats-column.tsx";
 import { ConversationView } from "./conversation-view.tsx";
 import { useFadeIn } from "./load-states.tsx";
@@ -262,7 +257,7 @@ function Panel({
       messenger={messenger}
       row={open}
       changed={changed}
-      picture={pictureOf(pictures, open)}
+      pictures={pictures}
       words={words}
       onLeft={onLeft}
       onChanged={onChanged}
