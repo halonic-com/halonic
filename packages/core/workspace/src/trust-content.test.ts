@@ -325,6 +325,17 @@ verifies("workspace.trust-content", () => {
       );
       expect(deepEqual(content(plugin), content({ ...plugin, local: true }))).toBe(false);
     });
+
+    it("names a paperclip connector's connection, so changing it is a change", () => {
+      const contentOf = (connection: string) =>
+        trustContent({ connectors: [local({ paperclip: { connection } })] }).connectors[0];
+      expect(contentOf("acme-ops")).toMatchObject({
+        transport: "paperclip",
+        settings: { connection: "acme-ops" },
+      });
+      expect(contentOf("acme-support")?.settings).toEqual({ connection: "acme-support" });
+      expect(deepEqual(contentOf("acme-ops"), contentOf("acme-support"))).toBe(false);
+    });
   });
 
   describe("a URL that can't be trusted", () => {

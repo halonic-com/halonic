@@ -33,6 +33,17 @@ verifies("studio.trust-review-connector-lines", () => {
     ]);
   });
 
+  it("names a paperclip connector's connection after its transport", () => {
+    const tasks: ConnectorTrustContent = {
+      id: "tasks",
+      transport: "paperclip",
+      settings: { connection: "acme-ops" },
+      tools: { approve: [] },
+    };
+
+    expect(rowsOf(tasks)).toEqual([{ id: "tasks", detail: "paperclip · acme-ops", lines: [] }]);
+  });
+
   it("says every tool asks first for approve: all, and lists the tools that don't", () => {
     const every = rowsOf({ ...mail, tools: { approve: "all" } });
     const reading = rowsOf({ ...mail, tools: { approve: [], unknown: { read: ["read_mail"] } } });

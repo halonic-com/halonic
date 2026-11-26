@@ -97,3 +97,20 @@ function shownSite(site: string): Phrase {
     phrase`${printable(site)}`,
   );
 }
+
+/**
+ * What a connector's row shows after its id, when it isn't a program, a local integration or a
+ * plugin: an HTTP connector's address, a Paperclip connector's connection as
+ * "paperclip · acme-ops" (HAL-19787), or else its transport's name.
+ */
+export function transportAddress(connector: ConnectorTrustContent): Phrase {
+  const setting = (name: string) => {
+    const value = connector.settings[name];
+    return printable(typeof value === "string" ? value : "");
+  };
+  if (connector.transport === "http") return phrase`${setting("url")}`;
+  if (connector.transport === "paperclip") {
+    return phrase`${printable(connector.transport)} ${markPart("separator")} ${setting("connection")}`;
+  }
+  return phrase`${printable(connector.transport)}`;
+}
