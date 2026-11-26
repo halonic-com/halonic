@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: Sofia's flows HAL-17509 (flow I); Noah's wording table HAL-17514 (row k10c); Julian's security note HAL-17513 (finding M5); the phase 2 card approved by the board on HAL-17544 (24 Nov); HAL-18223.
 
-Where the person types `@` and a name in a channel's box that matches no member but an agent of the channel's source, the Messenger shall say, above the box, "Writer isn't in this channel." with **Add Writer**, and "Only members can be named here.". **Add Writer** shall change the members the way the Members panel does (`messenger.members`): in a channel with messages it first shows "Writer will see all earlier messages in Engineering." and changes nothing until the person confirms. In a channel of 8 agents, **Add Writer** shall be unavailable, with "A channel can have up to 8 agents.". Once Writer is added, focus shall move to the box.
+Where the person types `@` and a name in a channel's box that matches no member but an agent of the channel's source, the Messenger shall say, above the box, "Writer isn't in this channel." with **Add Writer**, and "Only members can be named here.", in place of the picker, which shall not show. Once the text goes past the name, the note shall go. **Add Writer** shall change the members the way the Members panel does (`messenger.members`): in a channel with messages it first shows "Writer will see all earlier messages in Engineering." and changes nothing until the person confirms. In a channel of 8 agents, **Add Writer** shall be unavailable, with "A channel can have up to 8 agents.". Once Writer is added, focus shall move to the box.
 
 ## Examples
 

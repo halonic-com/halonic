@@ -189,6 +189,30 @@ verifies("messenger.channel-work-actions", () => {
     await act(async () => finish());
   });
 
+  it("asks each agent again while another agent's send is still running", async () => {
+    const { messaging, elena, liam, channel } = engineering();
+    const since = "2026-11-24T10:00:00.000Z";
+    messaging.addMessage(channel.id, {
+      author: { kind: "me" },
+      body: "Check the build",
+      to: [elena.id, liam.id],
+      work: [
+        { agent: elena.id, state: "failed", since },
+        { agent: liam.id, state: "failed", since },
+      ],
+    });
+    const send = vi.spyOn(messaging, "send").mockReturnValue(new Promise(() => undefined));
+    const page = await openMessenger(messaging);
+    await openChat(page, "Engineering");
+    const asks = () => [
+      ...(page.querySelector("[data-work-lines]")?.querySelectorAll("button") ?? []),
+    ];
+    await press(asks()[0]);
+    expect(asks()[1]?.getAttribute("aria-busy")).not.toBe("true");
+    await press(asks()[1]);
+    expect(send.mock.calls.map((call) => call[3])).toEqual([{ to: [elena.id] }, { to: [liam.id] }]);
+  });
+
   it("sends nothing while the source is offline, and says so after the lines", async () => {
     const { messaging, acme } = closedForElena();
     messaging.goOffline(acme.id);
@@ -242,6 +266,7 @@ verifies("messenger.channel-picker-add", () => {
     expect(notMember?.textContent).toBe(
       "Writer isn't in this channel.Add WriterOnly members can be named here.",
     );
+    expect(page.querySelector("[data-chat-picker]")).toBeNull();
 
     await press(button("Add Writer", notMember ?? document));
     expect(openDialog()?.querySelector("[data-history-notice]")?.textContent).toBe(
@@ -293,6 +318,17 @@ verifies("messenger.channel-picker-add", () => {
     await press(add);
     expect(openDialog()).toBeFalsy();
     expect(setMembers).not.toHaveBeenCalled();
+  });
+
+  it("takes the note away once the text goes past the name", async () => {
+    const { messaging } = engineering();
+    const page = await openMessenger(messaging);
+    const box = await openChat(page, "Engineering");
+    await typeInBox(box, "@Wri");
+    expect(page.querySelector("[data-not-member]")).not.toBeNull();
+    await typeInBox(box, "@Wri ");
+    expect(page.querySelector("[data-not-member]")).toBeNull();
+    expect(page.querySelector("[data-chat-picker]")).toBeNull();
   });
 
   it("says nothing about adding while the name typed is a member's", async () => {

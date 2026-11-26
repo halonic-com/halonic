@@ -90,15 +90,18 @@ export function WorkLines({
   readonly askAgain: (message: Message, agent: MessagingId) => Promise<string | undefined>;
 }) {
   const [notSent, setNotSent] = useState<string | undefined>(undefined);
-  const [asking, setAsking] = useState<MessagingId | undefined>(undefined);
+  // Per agent, so one agent's send in flight leaves the other agents' Ask again ready.
+  const [asking, setAsking] = useState<ReadonlySet<MessagingId>>(new Set());
   const lines = workLines(message, row, questions, now);
   if (lines.length === 0) return null;
   const ask = (agent: MessagingId) => {
-    if (asking !== undefined) return;
-    setAsking(agent);
+    if (asking.has(agent)) return;
+    setAsking((current) => new Set(current).add(agent));
     askAgain(message, agent)
       .then(setNotSent, (error: unknown) => console.error("Asking again failed:", error))
-      .finally(() => setAsking(undefined));
+      .finally(() =>
+        setAsking((current) => new Set([...current].filter((each) => each !== agent))),
+      );
   };
   return (
     <>
@@ -118,7 +121,7 @@ export function WorkLines({
             </span>
             {line.text}
             {line.askAgain === undefined ? null : (
-              <AskAgain agent={line.askAgain} busy={asking === line.askAgain} onAsk={ask} />
+              <AskAgain agent={line.askAgain} busy={asking.has(line.askAgain)} onAsk={ask} />
             )}
           </li>
         ))}

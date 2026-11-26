@@ -66,13 +66,15 @@ export function useChannelAddress(
   };
   const notMember = open && options.length === 0 ? outsider(row, query ?? "") : undefined;
   useSayNotMember(notMember, say);
+  // The note above the box takes the picker's place, so its frame, with no rows, doesn't show
+  // (HAL-19415). Esc then does nothing; typing past the name hides the note.
   return {
     named: named.flatMap((each) => row.agents.find((agent) => agent.id === each) ?? []),
     line: toLine(row, named),
     lineId,
     picker: {
       label: channelWords.picker,
-      open,
+      open: open && notMember === undefined,
       options: options.map((agent) => ({ id: agent.id, content: <MemberOption agent={agent} /> })),
       onPick(agentId) {
         const agent = options.find((each) => each.id === agentId);
