@@ -26,6 +26,13 @@ const blockedByParam = {
     "The tasks that hold the work (the one with the PR or the decision), such as HAL-16989; never a parent epic.",
 } as const;
 
+const readyPrParam = {
+  type: "integer",
+  minimum: 1,
+  description:
+    "Optional: your own pull request's number on halonic-com/halonic, marked ready first. If GitHub refuses, nothing else changes.",
+} as const;
+
 /** The three task tools: one that comments, two that change a task's state. */
 export const taskToolDeclarations: PluginToolDeclaration[] = [
   {
@@ -78,6 +85,7 @@ export const taskToolDeclarations: PluginToolDeclaration[] = [
           required: ["inMinutes", "ref"],
         },
         blockedBy: blockedByParam,
+        readyPr: readyPrParam,
         comment: commentParam,
       },
       required: ["task", "status", "comment"],
@@ -87,7 +95,7 @@ export const taskToolDeclarations: PluginToolDeclaration[] = [
     name: "finish_run",
     displayName: "Finish your run on the task",
     description:
-      "Ends your work on the task you are running, with a comment, in one call: done, handoff to the next agent (status todo, which wakes them; your monitor is removed), or blocked by the tasks that hold the work. Call it last: a handoff stops your run at once, so push and comment before it.",
+      "Ends your work on the task you are running, with a comment, in one call: done, handoff to the next agent (status todo, which wakes them; your monitor is removed), or blocked by the tasks that hold the work. With readyPr it marks your pull request ready first, so one call closes the run. Call it last: a handoff stops your run at once, so push and comment before it.",
     parametersSchema: {
       type: "object",
       properties: {
@@ -98,6 +106,7 @@ export const taskToolDeclarations: PluginToolDeclaration[] = [
           description: "For handoff: the next agent's name or url key, such as Liam.",
         },
         blockedBy: blockedByParam,
+        readyPr: readyPrParam,
         comment: commentParam,
       },
       required: ["task", "outcome", "comment"],

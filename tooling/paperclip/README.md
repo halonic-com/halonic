@@ -333,6 +333,23 @@ inside the about 15 s the tool bridge gives a call.
   branch names of letters, digits and `._/-`.
 - `my_prs()` moved to the workspace plugin (workspace-company, HAL-17968);
   the gh guard still points `gh pr list` and `gh pr status` to it there.
+- **`write_pr(branch, title?, body?, state?, labels?)`** (HAL-18983, token
+  plan Track B on HAL-18938): opens or updates the calling agent's own pull
+  request on halonic-com/halonic in one call, instead of `gh pr create`,
+  `gh pr edit` and `gh pr ready`. With no open pull request on the branch it
+  opens one against `main` (a draft unless `state` is `ready`; title and
+  body needed), adds `built-on:paperclip` and a `Built-on: paperclip` line;
+  otherwise it changes only what the call names. Labels are only the
+  built-on ones: `fast-track` and the queue's labels stay with the board and
+  the queue session. `set_next_step` and `finish_run` take `readyPr` to mark
+  the pull request ready first, so one closing call does comment, state,
+  ready and handoff. Writes go only through `src/pr-write/write-client.ts`
+  with the **PR write token** (`prWriteToken`: a GitHub App with Pull
+  requests write on halonic-com/halonic only, the board's OK of 26 Nov),
+  which can't push, merge, approve, queue or close. Without the token set
+  it answers with the `gh` command to run. A pull request it opens has the
+  App as its author, which the fast-track rules treat as a bot: open a
+  fast-track candidate with `gh` instead.
 - **`queue_state()`** (Board Checker addendum on HAL-15997, for the Merger
   and the Fast-track Monitor): the merge queue in order, each entry's
   state, `ci-ok` on its group commit, minutes in the queue and who queued
