@@ -87,8 +87,9 @@ export function fakePaperclip(options: FakeHostOptions = {}) {
     issues,
     agents: { get: async () => null, list: async () => agents },
     projects: { list: async () => [] },
+    approvals: { list: async () => [] },
     state: { get: async () => null },
-  } as unknown as Pick<RuntimeHost, "issues" | "agents" | "projects" | "state">;
+  } as unknown as Pick<RuntimeHost, "issues" | "agents" | "projects" | "approvals" | "state">;
   return { host, received };
 }
 
@@ -114,7 +115,7 @@ export function writingTool(
  * are the tool file's `with`, or null for a tool file without one.
  */
 export async function callAction(
-  host: Pick<RuntimeHost, "issues" | "agents" | "projects" | "state">,
+  host: Pick<RuntimeHost, "issues" | "agents" | "projects" | "approvals" | "state">,
   action: ToolActionName,
   params: unknown,
   settings: Record<string, unknown> | null = { mode: "write" },
@@ -125,6 +126,7 @@ export async function callAction(
     tool: writingTool(action, settings),
     params,
     caller: { agentId: "agent-tomas", urlKey: "tomas", name: "Tomas" },
+    workspaceCommit: "0123456789abcdef0123456789abcdef01234567",
     companyId: "acme",
     templates: [],
     github: async () => {

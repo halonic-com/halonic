@@ -210,6 +210,20 @@ export interface ProjectRecord {
 }
 
 /**
+ * A board approval as the host's approval list returns it: only the fields
+ * the actions read. Its payload is Paperclip's, so every field is checked
+ * before use.
+ */
+export interface ApprovalRecord {
+  readonly id: string;
+  /** Such as `budget_override_required`. */
+  readonly type: string;
+  /** Such as `pending`. */
+  readonly status: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+}
+
+/**
  * The plugin host's clients the runtime calls. A tool call may get its own
  * host, whose calls Paperclip scopes to that call (the worker client gives
  * one); without one, the tool uses the host it was registered on.
@@ -238,6 +252,13 @@ export interface RuntimeHost {
       readonly limit?: number;
     }): Promise<readonly ProjectRecord[]>;
   };
+  /** Reading board approvals. The SDK has no way to file one (HAL-20033). */
+  readonly approvals: {
+    list(input: {
+      readonly companyId: string;
+      readonly status?: string;
+    }): Promise<readonly ApprovalRecord[]>;
+  };
   readonly issues: IssuesClient;
   readonly config: { get(companyId: string): Promise<Record<string, unknown>> };
   readonly secrets: {
@@ -265,6 +286,7 @@ export type Capability =
   | "agent.tools.register"
   | "agents.read"
   | "projects.read"
+  | "approvals.read"
   | "plugin.state.read"
   | "plugin.state.write"
   | "metrics.write"

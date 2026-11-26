@@ -1,5 +1,6 @@
 import type { Routing, Template, Tool, ToolActionName } from "@halonicjs/format";
 import { budgetsHandler } from "./budgets/budgets.ts";
+import { proposeBudgetHandler } from "./budgets/propose-budget.ts";
 import { seatRulesHandler } from "./budgets/seat-rules.ts";
 import type { GitHubGet, GitHubQuery } from "./github.ts";
 import type { Capability, ToolResult } from "./host.ts";
@@ -34,6 +35,8 @@ export interface ActionCall {
   readonly routing?: Routing;
   /** The calling agent: its id, url key and display name. */
   readonly caller: { readonly agentId: string; readonly urlKey: string; readonly name: string };
+  /** The full commit of the workspace snapshot the tool comes from. */
+  readonly workspaceCommit: string;
   /** The company the call runs in. */
   readonly companyId: string;
   /** The GitHub reader with the plugin's read token: GET to api.github.com only. */
@@ -77,5 +80,6 @@ export const runtimeHandlers: ActionHandlers = {
   "paperclip.seat-rules": seatRulesHandler,
   "github.merge-times": mergeTimesHandler,
   ...writeActionHandlers,
+  "paperclip.propose-budget": proposeBudgetHandler,
   "halonic.precheck": precheckHandler,
 };

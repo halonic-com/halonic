@@ -118,6 +118,7 @@ export function run(
     params,
     templates: [],
     caller,
+    workspaceCommit: "0123456789abcdef0123456789abcdef01234567",
     companyId: "acme",
     github: async () => github,
     githubQuery: async () => {

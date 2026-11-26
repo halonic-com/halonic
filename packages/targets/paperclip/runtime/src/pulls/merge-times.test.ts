@@ -76,6 +76,7 @@ function run(tool: Tool, get: GitHubGet) {
     params: {},
     templates: [],
     caller: { agentId: "agent-mateo", urlKey: "mateo", name: "Mateo" },
+    workspaceCommit: "0123456789abcdef0123456789abcdef01234567",
     now,
     companyId: "acme",
     paperclip: {} as ActionCall["paperclip"],

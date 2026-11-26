@@ -77,10 +77,16 @@ function run(params: unknown, paperclip: Pick<RuntimeHost, "agents" | "issues">)
     params,
     templates: [],
     caller: { agentId: "agent-tomas", urlKey: "tomas", name: "Tomas" },
+    workspaceCommit: "0123456789abcdef0123456789abcdef01234567",
     companyId: "acme",
     now: new Date("2026-11-24T12:00:00Z"),
     paperclip: paperclipAccess(
-      { ...paperclip, projects: { list: async () => [] }, state: { get: async () => null } },
+      {
+        ...paperclip,
+        projects: { list: async () => [] },
+        approvals: { list: async () => [] },
+        state: { get: async () => null },
+      },
       handler.capabilities,
       { companyId: "acme", runId: "run-1" },
     ),

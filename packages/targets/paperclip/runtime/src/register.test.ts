@@ -163,6 +163,7 @@ verifies("runtime.tools", () => {
         "paperclip.comment",
         "paperclip.next-step",
         "paperclip.finish-run",
+        "paperclip.propose-budget",
         "halonic.precheck",
       ]);
       expect(actions[0]).toMatchObject({ name: "github.pull-request", keys: ["github-read"] });

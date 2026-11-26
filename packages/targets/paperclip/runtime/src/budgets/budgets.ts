@@ -44,7 +44,7 @@ interface Listed {
 }
 
 /** The workspace's budgets from one of the tool's settings, in cents by url key. */
-function workspaceBudgets(tool: Tool, setting: "agents" | "projects"): Map<string, number> {
+export function workspaceBudgets(tool: Tool, setting: "agents" | "projects"): Map<string, number> {
   const settings = tool.action.with;
   const budgets =
     setting in settings
