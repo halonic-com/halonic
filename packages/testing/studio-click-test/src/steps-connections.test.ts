@@ -139,7 +139,10 @@ verifies("studio-click-test.connections-steps", () => {
   });
 
   describe("add another account", () => {
-    /** How the disconnected row reads, as Studio shows it today and before HAL-19032. */
+    /**
+     * How the second row can read after Disconnect: as Studio shows it today, as before
+     * HAL-19032, and still connected when Disconnect does nothing.
+     */
     const disconnectedRows = {
       // Run 45749966189: Disconnect deleted the key, so the row says Not connected and Sign in.
       "no-key": [userLabel, words.notConnected, words.noKeyCallout, words.signIn, words.keyPower],

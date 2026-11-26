@@ -56,7 +56,7 @@ The steps, in `src/steps/`:
 | 4 | The account switcher opens Settings › Connections | `connections.account-switcher` | the sidebar's account switcher shows "Show Inbox and Messenger for", and its Settings › Connections row opens the section with the connection |
 | 5 | The row and who it's signed in as | `connections.connection-row`, `connections.connection-user`, `agent-host.paperclip-signed-in-user` | the row reads Read-only and Connected, has no Sign in again, and its label names the signed-in user |
 | 6 | Connect Paperclip refuses plain http | `connections.connect-dialog` | `http://paperclip.acme.test` gets the https-only line on the field, and the dialog closes |
-| 7 | Add another account | `connections.add-account`, `agent-host.paperclip-add-account` | a second sign-in, approved, lists two connections; the step then disconnects the second, which stays listed as Signed out, leaving step 3's the only connected one |
+| 7 | Add another account | `connections.add-account`, `agent-host.paperclip-add-account` | a second sign-in, approved, lists two connections; the step then disconnects the second, which stays listed as Not connected (or Signed out), leaving step 3's the only connected one |
 | 8 | Inbox | `inbox.every-waiting-item`, `inbox.decisions`, `paperclip-client.approval-fields`, `studio.desktop-agent-messaging` | the seeded card shows, Approve answers it, and the test Paperclip has it approved |
 | 9 | Messenger | `studio.focused-app-window`, `messenger.chat-rows`, `messenger.send-text` | a message in the seeded chat, in the Halonic Messenger window, is a comment on the test Paperclip |
 | 10 | Search | `studio.desktop-search-overview`, `search.palette` | Ctrl+K and the seeded task's title find the task |

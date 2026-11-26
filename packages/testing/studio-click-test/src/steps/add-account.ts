@@ -115,5 +115,9 @@ async function disconnectSecond(context: StepContext): Promise<StepOutcome> {
   );
   const after = `After Disconnect: ${listSummary(gone.text)}.`;
   if (gone.value === true) return { passed: true, note: after };
-  return failure("NOT_DISCONNECTED", `The second connection stayed connected. ${after}`, gone.text);
+  return failure(
+    "NOT_DISCONNECTED",
+    `Expected 2 rows, 1 of them signed out or not connected, and "${words.keyRevoked}". ${after}`,
+    gone.text,
+  );
 }
