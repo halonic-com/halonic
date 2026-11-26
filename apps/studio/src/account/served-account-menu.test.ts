@@ -7,6 +7,7 @@ const sofia = {
   productName: "Acme Agents",
   plan: "Pro",
   usedPercent: 62,
+  warnings: [],
   accountUrl: "https://account.example.com/acme",
   planUrl: "https://account.example.com/acme#plan",
 };
@@ -41,6 +42,13 @@ verifies("studio.served-account-menu", () => {
       expect(await menu.load()).toEqual(sofia);
     });
 
+    it("reads the units nearly used up", async () => {
+      const warnings = [{ unit: "harnessMs", percent: 82, resetsAt: "2026-12-02T00:00:00.000Z" }];
+      const nearly = { ...sofia, usedPercent: 40, warnings };
+      const { menu } = served({ "GET /api/account-menu": () => Response.json(nearly) });
+      expect(await menu.load()).toEqual(nearly);
+    });
+
     it("reads a customer with no plan and no cost limit", async () => {
       const bare = { ...sofia, plan: null, usedPercent: null };
       const { menu } = served({ "GET /api/account-menu": () => Response.json(bare) });
@@ -62,6 +70,12 @@ verifies("studio.served-account-menu", () => {
       ["a script address", { ...sofia, planUrl: "javascript:alert(1)" }],
       ["a field too many", { ...sofia, extra: true }],
       ["a missing name", { ...sofia, name: undefined }],
+      ["no warnings", { ...sofia, warnings: undefined }],
+      ["a warning without a time", { ...sofia, warnings: [{ unit: "cost", percent: 80 }] }],
+      [
+        "a warning whose time isn't one",
+        { ...sofia, warnings: [{ unit: "cost", percent: 80, resetsAt: "soon" }] },
+      ],
     ])("rejects an answer with %s", async (_, answer) => {
       const { menu } = served({ "GET /api/account-menu": () => Response.json(answer) });
       await expect(menu.load()).rejects.toThrow("answer isn't an account menu");

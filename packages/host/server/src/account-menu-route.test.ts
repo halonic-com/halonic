@@ -54,6 +54,11 @@ function manyUserServer(changes: Partial<ManyUserPorts> = {}, withCloudSignIn = 
   return { server, errors };
 }
 
+/** The answer's warnings, the part these tests look at. */
+async function readWarnings(server: Server): Promise<{ warnings: unknown }> {
+  return (await readMenu(server, "alice-token")).json() as Promise<{ warnings: unknown }>;
+}
+
 function readMenu(server: Server, token?: string, onHost = host): Promise<Response> {
   const authorization = token === undefined ? {} : { authorization: `Bearer ${token}` };
   return server.handle(
@@ -80,6 +85,7 @@ describe("account menu route", () => {
         productName: "Acme Agents",
         plan: "Pro",
         usedPercent: 42,
+        warnings: [],
         accountUrl: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA",
         planUrl: "https://account.acme.example/prod_acmeAAAAAAAAAAAAAAAA#plan",
       });
@@ -89,14 +95,46 @@ describe("account menu route", () => {
     it("answers no plan and no percent when the deployment can't tell them", async () => {
       const { server } = manyUserServer();
       const answer = await (await readMenu(server, "alice-token")).json();
-      expect(answer).toMatchObject({ plan: null, usedPercent: null });
+      expect(answer).toMatchObject({ plan: null, usedPercent: null, warnings: [] });
       const noLimits = manyUserServer({
         accountUsage: async () => ({ plan: null, usedPercent: null }),
       });
       const limitless = await (await readMenu(noLimits.server, "alice-token")).json();
       expect(limitless).toMatchObject({ name: "Sofia Marin", plan: null, usedPercent: null });
     });
+  });
 
+  verifies("server.account-menu-warnings", () => {
+    it("warns of agent time at 82%, and of each unit from 80% and under 100%, highest first", async () => {
+      const resetsAt = "2026-12-02T00:00:00.000Z";
+      const units = [
+        { unit: "runs", percent: 79, resetsAt },
+        { unit: "harnessMs", percent: 82, resetsAt },
+        { unit: "cost", percent: 100, resetsAt },
+        { unit: "tokens", percent: 95, resetsAt },
+      ];
+      const { server } = manyUserServer({
+        accountUsage: async () => ({ plan: "Pro", usedPercent: 100, units }),
+      });
+      const answer = await readWarnings(server);
+      expect(answer.warnings).toEqual([
+        { unit: "tokens", percent: 95, resetsAt },
+        { unit: "harnessMs", percent: 82, resetsAt },
+      ]);
+    });
+
+    it("passes on only the unit, the percent and the reset time", async () => {
+      const resetsAt = "2026-12-02T00:00:00.000Z";
+      const unit = { unit: "cost", percent: 80, resetsAt, used: 8_000_000, limit: 10_000_000 };
+      const { server } = manyUserServer({
+        accountUsage: async () => ({ plan: "Pro", usedPercent: 80, units: [unit] }),
+      });
+      const answer = await readWarnings(server);
+      expect(answer.warnings).toEqual([{ unit: "cost", percent: 80, resetsAt }]);
+    });
+  });
+
+  verifies("server.account-menu", () => {
     it("answers 404 for a single-user Studio, signed in or not", async () => {
       // Without a password the server answers only on this computer's own address.
       const studios = [

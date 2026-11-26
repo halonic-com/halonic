@@ -9,13 +9,19 @@ const signOutPath = "/api/sign-out";
 /** Where the computer starts a Cloud sign-in. */
 const signInPath = "/api/sign-in";
 
-/** `GET /api/account-menu`'s answer: exactly these six fields. */
+/** One unit nearly used up: `{ unit, percent, resetsAt }`. */
+const warningSchema = s
+  .object({ unit: s.string(), percent: s.number(), resetsAt: s.string() })
+  .strict();
+
+/** `GET /api/account-menu`'s answer: exactly these seven fields. */
 const answerSchema = s
   .object({
     name: s.string(),
     productName: s.string(),
     plan: s.union([s.string(), s.null()]),
     usedPercent: s.union([s.number(), s.null()]),
+    warnings: s.array(warningSchema),
     accountUrl: s.string(),
     planUrl: s.string(),
   })
@@ -25,7 +31,8 @@ const answerSchema = s
  * The account menu of a served window (`studio.served-account-menu`): it asks the computer
  * running Halonic, on the page's own address and session, for the signed-in customer, and signs
  * out there. A 404 means this Studio has no account menu. Any other refusal, or an answer that
- * isn't the six fields with two `https:` addresses, rejects, so no menu shows half-known facts.
+ * isn't the seven fields with two `https:` addresses and a time in each warning, rejects, so no
+ * menu or banner shows half-known facts.
  */
 export class ServedAccountMenu implements AccountMenuHost {
   readonly signInAddress = signInPath;
@@ -57,7 +64,8 @@ export class ServedAccountMenu implements AccountMenuHost {
     const addressesOk =
       answer.ok &&
       isAccountAddress(answer.value.accountUrl) &&
-      isAccountAddress(answer.value.planUrl);
+      isAccountAddress(answer.value.planUrl) &&
+      answer.value.warnings.every(({ resetsAt }) => !Number.isNaN(Date.parse(resetsAt)));
     if (!answer.ok || !addressesOk) {
       throw new Error(`The computer's ${accountMenuPath} answer isn't an account menu.`);
     }

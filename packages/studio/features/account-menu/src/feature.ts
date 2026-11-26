@@ -8,6 +8,7 @@ import { AccountMenuHostService } from "./api.ts";
  * the host, as in the desktop app, or the computer has no menu to show, it draws nothing. After
  * **Sign out**, its dialog host draws the signed-out page over the window in every layout
  * (`account-menu.sign-out`), since a phone draws the title bar's items only at a place's top.
+ * A strip under the top bar shows the 80% usage banner (`account-menu.usage-banner`, flow C3).
  */
 export const accountMenuFeature = defineFeature({
   id: "account-menu",
@@ -19,6 +20,13 @@ export const accountMenuFeature = defineFeature({
       order: 100,
       view: "AccountMenuItem",
       load: () => import("./ui/account-menu-item.tsx"),
+    });
+    // Last of the strips: the first run's bar and a file's problems are about what you're doing.
+    studio.strips.add({
+      id: "account-menu.usage-banner",
+      order: 30,
+      view: "UsageBanner",
+      load: () => import("./ui/usage-banner.tsx"),
     });
     studio.dialogs.add({
       id: "account-menu.signed-out",

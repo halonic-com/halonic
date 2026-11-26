@@ -18,10 +18,22 @@ export interface AccountMenuFacts {
   readonly plan: string | null;
   /** Spent cost over the cost limit, rounded down and at most 100, or `null` with no cost limit. */
   readonly usedPercent: number | null;
+  /** The units at 80% or more of their limit and under 100%, highest first (flow C3). */
+  readonly warnings: readonly UsageWarning[];
   /** The account page (AC-00), as Cloud gave it: an `https:` address. */
   readonly accountUrl: string;
   /** The account page's plan section (AC-00 #plan), as the computer gave it. */
   readonly planUrl: string;
+}
+
+/** One unit nearly used up this period, as the computer gave it. */
+export interface UsageWarning {
+  /** The usage account's unit, such as `harnessMs` for agent time or `cost` for usage. */
+  readonly unit: string;
+  /** What was used of the unit's limit, a whole percent. */
+  readonly percent: number;
+  /** When the unit starts again from 0, as an ISO 8601 time. */
+  readonly resetsAt: string;
 }
 
 /** What the account menu asks the computer that serves the Studio. The app provides it. */
