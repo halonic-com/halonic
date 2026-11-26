@@ -8,7 +8,8 @@ use std::sync::Arc;
 
 use halonic_http_guard::{ProxySetting, Refusal};
 use halonic_update_state::{
-    CHECK_TIME_LIMIT, CheckFailure, CheckResult, UpdateState, Version, bucket_version, notes_url,
+    CHECK_TIME_LIMIT, CheckFailure, CheckResult, OfferedNotes, UpdateState, Version,
+    bucket_version, notes_url,
 };
 use reqwest::Url;
 use tauri::{AppHandle, Manager, Runtime};
@@ -53,6 +54,8 @@ fn apply(inner: &mut Inner, result: Result<String, CheckFailure>, at: u64) {
                 inner.state = Some(UpdateState::Available {
                     notes_url: notes_url(&offered),
                     version: offered,
+                    // A bucket answers only a version.
+                    changes: OfferedNotes::default(),
                 });
             } else {
                 inner.record.last_result = Some(CheckResult::UpToDate);

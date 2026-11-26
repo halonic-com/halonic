@@ -6,6 +6,7 @@
 //! crate what to do. Only `migrate_settings_file` touches files.
 
 mod managed;
+mod notes;
 mod record;
 mod settings;
 mod setup_version;
@@ -16,6 +17,7 @@ mod version;
 use std::time::Duration;
 
 pub use managed::{Managed, ManagedBy, bucket_version, detect as detect_managed};
+pub use notes::{MAX_NOTES_CHARS, MAX_NOTES_VERSIONS, OfferedNotes, VersionNotes, offered_notes};
 pub use record::{
     BadSignature, CheckResult, FORMAT, InstallRecord, MAX_BAD_SIGNATURES, RecordRead, StartOutcome,
     UpdaterRecord, read_record, record_text,

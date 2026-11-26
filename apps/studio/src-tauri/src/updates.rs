@@ -327,10 +327,11 @@ async fn check<R: Runtime>(app: &AppHandle<R>) {
             inner.record.last_result = Some(CheckResult::Available {
                 version: version.clone(),
             });
-            inner.found = Some(update);
             if !inner.busy() {
-                inner.state = Some(available(&mut inner.record, version));
+                let current = inner.current.clone();
+                inner.state = Some(available(&mut inner.record, &update, &current));
             }
+            inner.found = Some(update);
         }
         Err(error) => {
             halonic_shell_log::record("updates", format!("the check failed: {error}"));
@@ -437,9 +438,9 @@ pub fn update_cancel<R: Runtime>(app: AppHandle<R>) -> UpdateStatus {
     let mut inner = lock(&app);
     if let Some(task) = inner.download.take() {
         task.abort();
-        let version = inner.found.as_ref().map(|found| found.version.clone());
-        if let Some(version) = version {
-            inner.state = Some(available(&mut inner.record, version));
+        if let Some(found) = inner.found.clone() {
+            let current = inner.current.clone();
+            inner.state = Some(available(&mut inner.record, &found, &current));
         }
         inner.notify();
     }

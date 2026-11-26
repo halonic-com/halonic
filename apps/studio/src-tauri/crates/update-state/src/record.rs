@@ -6,6 +6,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::notes::{OfferedNotes, offered_notes};
 use crate::status::{CheckFailure, JustUpdated, UpdateState, notes_url};
 use crate::track::{UpdateTrack, chosen_or_none};
 use crate::version::Version;
@@ -172,6 +173,8 @@ impl UpdaterRecord {
             Some(CheckResult::Available { version }) if newer(version) => UpdateState::Available {
                 version: version.clone(),
                 notes_url: notes_url(version),
+                // The record keeps no notes; the next check brings them.
+                changes: OfferedNotes::default(),
             },
             Some(_) => UpdateState::UpToDate,
         }
@@ -259,6 +262,24 @@ impl UpdaterRecord {
 }
 
 impl UpdaterRecord {
+    /// The state for `version`, offered by `manifest` while `current` runs:
+    /// available with what changed since `current`, unless its signature
+    /// failed too often.
+    pub fn offered_state(&mut self, manifest: &Value, version: &str, current: &str) -> UpdateState {
+        let refused = Version::parse(version).is_some_and(|parsed| !self.may_download(&parsed));
+        match self.bad_signature.as_ref().filter(|_| refused) {
+            Some(bad) => UpdateState::SignatureMismatch {
+                version: version.to_owned(),
+                attempts: bad.count,
+            },
+            None => UpdateState::Available {
+                version: version.to_owned(),
+                notes_url: notes_url(version),
+                changes: offered_notes(manifest, current, version),
+            },
+        }
+    }
+
     /// Clears the install record once this version has proved it starts. A
     /// record whose target is newer than `running` stays: it is the way back's
     /// count of an install that didn't happen, and clearing it would lose that

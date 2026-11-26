@@ -39,7 +39,7 @@ export function UpdateDialog({ host, sandbox, announce, onRestart, onClose }: Up
   if (status === null || state === null) return null;
   const view = aboutView(status, new Date(), sandboxSetUp);
   const confirm = dialogConfirm(state);
-  const { notes, notesUrl } = notesFor(host, state);
+  const { versions, older, notesUrl } = notesFor(host, state);
   const onConfirm = () => {
     if (confirm.action === "download") return updater.download();
     onClose();
@@ -80,7 +80,12 @@ export function UpdateDialog({ host, sandbox, announce, onRestart, onClose }: Up
           </p>
         )}
         {view.progress === null ? null : <DownloadBar progress={view.progress} />}
-        <UpdateNotes heading={text.WHAT_CHANGED} notes={notes} notesUrl={notesUrl} />
+        <UpdateNotes
+          heading={text.WHAT_CHANGED}
+          notes={versions}
+          older={older}
+          notesUrl={notesUrl}
+        />
         {view.setupAgain === null ? null : (
           <p className="text-small text-fg-muted">{view.setupAgain}</p>
         )}

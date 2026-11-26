@@ -30,7 +30,7 @@ export function WhatsNewDialog({
         <p className="text-small text-fg-muted">{text.updatedFrom(update.from)}</p>
         <UpdateNotes
           heading={WHATS_NEW}
-          notes={update.notes ?? null}
+          notes={update.notes === undefined ? [] : [{ version: update.to, notes: update.notes }]}
           notesUrl={releasePage(update.to)}
         />
       </div>

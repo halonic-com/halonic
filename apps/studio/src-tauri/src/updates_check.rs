@@ -7,8 +7,8 @@
 use std::ffi::OsString;
 
 use halonic_update_state::{
-    CHECK_TIME_LIMIT, CheckFailure, UpdateState, UpdateTrack, UpdaterRecord, Version, notes_url,
-    raises_setup_version, this_build_setup_version, track_endpoint, track_pubkey,
+    CHECK_TIME_LIMIT, CheckFailure, UpdateState, UpdateTrack, UpdaterRecord, raises_setup_version,
+    this_build_setup_version, track_endpoint, track_pubkey,
 };
 use serde_json::Value;
 use tauri::{AppHandle, Runtime, Url};
@@ -74,20 +74,10 @@ pub(super) fn track_endpoints(
         .collect()
 }
 
-/// The state for a version the check found: available, unless its
-/// signature failed too often.
-pub(super) fn available(record: &mut UpdaterRecord, version: String) -> UpdateState {
-    let refused = Version::parse(&version).is_some_and(|parsed| !record.may_download(&parsed));
-    match record.bad_signature.as_ref().filter(|_| refused) {
-        Some(bad) => UpdateState::SignatureMismatch {
-            attempts: bad.count,
-            version,
-        },
-        None => UpdateState::Available {
-            notes_url: notes_url(&version),
-            version,
-        },
-    }
+/// The state for the update the check found, with what changed since
+/// `current`: available, unless its signature failed too often.
+pub(super) fn available(record: &mut UpdaterRecord, update: &Update, current: &str) -> UpdateState {
+    record.offered_state(&update.raw_json, &update.version, current)
 }
 
 /// Why a check got no usable answer, by the proxy setting and the updater's

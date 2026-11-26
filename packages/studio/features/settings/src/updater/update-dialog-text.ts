@@ -16,6 +16,8 @@ export const WHAT_CHANGED = "What changed";
 export const RELEASE_NOTES = "Release notes";
 /** When the update's manifest had no notes: the release page says what changed. */
 export const NO_NOTES = "The release notes say what changed.";
+/** Under the notes when the manifest's list stops above the installed version. */
+export const OLDER_NOTES = "The release notes say what changed in earlier versions.";
 
 /** The button's accessible name; its visible word is only "Update". */
 export const buttonName = (version: string) => `${UPDATE_AVAILABLE}: Halonic ${version}`;
