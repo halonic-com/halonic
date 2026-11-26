@@ -114,7 +114,8 @@ export function PlainRow(props: PlainRowProps) {
 
 /** The title, the part after it and the violet dot, which sits outside the cut so it stays. */
 function RowTitle({ title, afterTitle, flag, unread }: PlainRowProps) {
-  const weight = unread === undefined ? "text-body" : "text-body-strong";
+  // Semibold (600), not text-body-strong (500): at 14px only 600 reads as unread (Sofia, HAL-19512).
+  const weight = unread === undefined ? "text-body" : "text-body font-semibold";
   return (
     <span className="flex min-w-0 flex-1 items-center">
       <span className={`min-w-0 truncate ${weight}`}>

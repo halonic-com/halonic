@@ -41,7 +41,7 @@ verifies("kit.plain-list", () => {
     });
 
     expect(container.querySelector("ul")?.getAttribute("aria-label")).toBe("Chats");
-    expect(classesOf(title)).toContain("text-body-strong");
+    expect(classesOf(title)).toContain("font-semibold");
     expect(classesOf(lineText)).toContain("text-fg");
     expect(button.querySelector("[data-unread]")?.textContent).toBe("2 unread");
     expect(button.textContent).toContain("2 unread");
@@ -51,6 +51,7 @@ verifies("kit.plain-list", () => {
     const { button, title, lineText } = renderRow();
 
     expect(classesOf(title)).toContain("text-body");
+    expect(classesOf(title)).not.toContain("font-semibold");
     expect(classesOf(lineText)).toContain("text-fg-muted");
     expect(button.querySelector("[data-unread]")).toBeNull();
   });
