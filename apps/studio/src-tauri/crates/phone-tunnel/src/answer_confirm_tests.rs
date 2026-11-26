@@ -8,7 +8,7 @@ use std::task::{Context, Poll, Waker};
 use std::time::{Duration, Instant};
 
 use halonic_device_keys::ComputerId;
-use halonic_owner_check::{Confirmation, Decision, FakeOwnerCheck};
+use halonic_owner_check::{Availability, Confirmation, Decision, FakeOwnerCheck};
 use halonic_tunnel::{PhoneDetails, Platform};
 
 use crate::answer_confirm::{ANSWER_WINDOW, AnswerWindow};
@@ -185,4 +185,26 @@ fn phone_answer_confirm_lets_nothing_out_without_a_pass() {
     let none = Owner(None);
     let window = AnswerWindow::default();
     assert!(!answer(&window, &none, Decision::Answer, start).is_confirmed());
+}
+
+/// "Given a phone with a PIN and no strong biometric, when the owner sends an
+/// Inbox answer, then the prompt takes the PIN, and the answer goes out after
+/// it." (HAL-19060)
+#[test]
+fn phone_answer_confirm_takes_the_pin_for_an_inbox_answer_without_a_strong_biometric() {
+    let check = FakeOwnerCheck::new();
+    check.set_availability(Availability::NoStrongBiometric);
+    check.set_screen_lock(true);
+    let host = Owner(Some(check));
+    let window = AnswerWindow::default();
+    let start = Instant::now();
+
+    host.check().answer_next(Confirmation::Confirmed);
+    assert!(answer(&window, &host, Decision::Answer, start).is_confirmed());
+    assert_eq!(host.check().asked(), [Decision::Answer]);
+    // A risky approval on the same phone still needs a strong biometric.
+    assert_eq!(
+        answer(&window, &host, Decision::Approve, start + SECOND),
+        Confirmation::Unavailable(Availability::NoStrongBiometric)
+    );
 }

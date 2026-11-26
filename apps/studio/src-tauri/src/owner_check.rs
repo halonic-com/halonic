@@ -37,6 +37,13 @@ struct PromptRequest {
     allow_device_credential: bool,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StatusRequest {
+    /// Whether the PIN, pattern or password counts, as for [`PromptRequest`].
+    allow_device_credential: bool,
+}
+
 #[derive(Deserialize)]
 struct Status {
     status: String,
@@ -54,10 +61,13 @@ struct Away {
 }
 
 impl<R: Runtime> OwnerCheck for AndroidOwnerCheck<R> {
-    async fn availability(&self) -> Availability {
+    async fn availability(&self, decision: Decision) -> Availability {
+        let request = StatusRequest {
+            allow_device_credential: decision.accepts_device_credential(),
+        };
         match self
             .0
-            .run_mobile_plugin_async::<Status>("ownerCheckStatus", ())
+            .run_mobile_plugin_async::<Status>("ownerCheckStatus", request)
             .await
         {
             Ok(answer) => Availability::from_plugin(&answer.status),

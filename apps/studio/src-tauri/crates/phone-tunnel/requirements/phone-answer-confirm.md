@@ -23,3 +23,6 @@ When the page sends a `msg-answer`, the phone shall ask the owner check first, u
 - Given a prompt for an Inbox answer,
   when the owner cancels it,
   then nothing is sent (`not-confirmed`), and the next Inbox answer shows a prompt again.
+- Given a phone with a PIN and no strong biometric,
+  when the owner sends an Inbox answer,
+  then the prompt takes the PIN, and the answer goes out after it.

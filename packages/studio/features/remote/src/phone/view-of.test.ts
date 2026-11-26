@@ -39,6 +39,7 @@ function holding(overrides: Partial<ClientHolding> = {}): ClientHolding {
     sentAnswers: new SentAnswers(),
     answersRisky: false,
     ownerCheck: "unknown",
+    answerCheck: "unknown",
     updateNeeded: false,
     olderComputer: false,
     ...overrides,

@@ -14,8 +14,10 @@ use crate::prompt::Decision;
 ///   the phone's PIN, pattern or password too.
 /// - **iOS** (later): `LAContext` with biometrics only.
 pub trait OwnerCheck: Send + Sync {
-    /// Whether [`Self::confirm`] can ask now, without asking.
-    fn availability(&self) -> impl Future<Output = Availability> + Send;
+    /// Whether [`Self::confirm`] can ask now for `decision`, without asking:
+    /// for an inbox answer the phone's PIN, pattern or password counts, for
+    /// an approval only a strong biometric does.
+    fn availability(&self, decision: Decision) -> impl Future<Output = Availability> + Send;
 
     /// Shows the prompt for `decision` and waits for the person. Only
     /// [`Confirmation::Confirmed`] means they passed it.

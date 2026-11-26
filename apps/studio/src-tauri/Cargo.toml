@@ -160,6 +160,8 @@ halonic-screen-still = { path = "crates/screen-still" }
 halonic-elevate-start = { path = "crates/elevate-start" }
 # Each focused app's window gets its own taskbar entry (HAL-17903).
 halonic-window-app-id = { path = "crates/window-app-id" }
+# The fake owner check, for what `owner_check_available` answers (HAL-19060).
+halonic-owner-check = { path = "crates/owner-check", features = ["fake"] }
 
 # The pairing scanner (HAL-12246, build plan decision 16 on HAL-12232): the
 # official barcode-scanner plugin, approved in board decision 4c. The shell

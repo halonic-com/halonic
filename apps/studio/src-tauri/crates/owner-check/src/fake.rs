@@ -15,7 +15,11 @@ pub struct FakeOwnerCheck {
 
 #[derive(Debug)]
 struct State {
+    /// What the phone reports for a strong biometric.
     availability: Availability,
+    /// The phone has a PIN, pattern or password: an inbox answer can ask
+    /// even without a strong biometric.
+    screen_lock: bool,
     answers: VecDeque<Confirmation>,
     asked: Vec<Decision>,
     /// `None` once a test said the phone can't tell.
@@ -27,6 +31,7 @@ impl Default for FakeOwnerCheck {
         Self {
             state: Mutex::new(State {
                 availability: Availability::Ready,
+                screen_lock: false,
                 answers: VecDeque::new(),
                 asked: Vec::new(),
                 times_away: Some(0),
@@ -41,10 +46,17 @@ impl FakeOwnerCheck {
         Self::default()
     }
 
-    /// From now on the phone reports `availability`. Anything but
-    /// [`Availability::Ready`] answers every prompt with unavailable.
+    /// From now on the phone reports `availability` for a strong biometric.
+    /// Anything but [`Availability::Ready`] answers every prompt with
+    /// unavailable, unless [`Self::set_screen_lock`] lets an inbox answer in.
     pub fn set_availability(&self, availability: Availability) {
         self.lock().availability = availability;
+    }
+
+    /// From now on the phone has a PIN, pattern or password (`true`) or not:
+    /// with one, an inbox answer is ready whatever the strong biometric says.
+    pub fn set_screen_lock(&self, screen_lock: bool) {
+        self.lock().screen_lock = screen_lock;
     }
 
     /// Queues what the person does at the next prompt.
@@ -76,15 +88,25 @@ impl FakeOwnerCheck {
     }
 }
 
+impl State {
+    fn availability(&self, decision: Decision) -> Availability {
+        if decision.accepts_device_credential() && self.screen_lock {
+            return Availability::Ready;
+        }
+        self.availability
+    }
+}
+
 impl OwnerCheck for FakeOwnerCheck {
-    async fn availability(&self) -> Availability {
-        self.lock().availability
+    async fn availability(&self, decision: Decision) -> Availability {
+        self.lock().availability(decision)
     }
 
     async fn confirm(&self, decision: Decision) -> Confirmation {
         let mut state = self.lock();
-        if !state.availability.is_ready() {
-            return Confirmation::Unavailable(state.availability);
+        let availability = state.availability(decision);
+        if !availability.is_ready() {
+            return Confirmation::Unavailable(availability);
         }
         state.asked.push(decision);
         state.answers.pop_front().unwrap_or(Confirmation::Cancelled)

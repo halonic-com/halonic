@@ -52,10 +52,10 @@ function offOf(item: InboxItem, view: RemoteView): Off {
   if (!answersOnPhone(item, view)) {
     return { reason: { line: ANSWER_RISKY_ON_COMPUTER, tone: "info", icon: <LockIcon /> } };
   }
-  if (view.ownerCheck === "unavailable") {
+  if (view.answerCheck === "unavailable") {
     return { reason: { line: inboxWords.noScreenLock, tone: "attention", settings: true } };
   }
-  if (view.ownerCheck === "unknown") return { reason: undefined };
+  if (view.answerCheck === "unknown") return { reason: undefined };
   return undefined;
 }
 

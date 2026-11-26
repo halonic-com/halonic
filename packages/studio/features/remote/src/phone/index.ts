@@ -34,7 +34,7 @@ export {
   computersWords,
   routeOf,
 } from "./computers-words.ts";
-export type { OwnerCheckAvailable } from "./gateway-client.ts";
+export type { OwnerCheckAvailable, OwnerCheckReady } from "./gateway-client.ts";
 export {
   MAX_NEARBY,
   type NearbyComputer,
