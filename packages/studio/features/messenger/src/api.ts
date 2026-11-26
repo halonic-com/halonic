@@ -3,6 +3,7 @@ import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 import type { Messenger } from "./messenger.ts";
 
 export type { ConversationRow, DraftOutcome, Messenger, MessengerTab } from "./messenger.ts";
+export type { ShownChat } from "./shown-chat.ts";
 
 /**
  * The open workspace's {@link Messenger}. It is made the first time it's

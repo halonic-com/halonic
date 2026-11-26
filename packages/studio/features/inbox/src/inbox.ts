@@ -29,6 +29,7 @@ import {
   type RunProposalEntry,
 } from "./proposal-items.ts";
 import type { InboxSetupSource, SetupEntry, SetupFocus } from "./setup-source.ts";
+import { ShownItem } from "./shown-item.ts";
 
 /**
  * The runs the Inbox reads and answers. The app provides them for the open
@@ -123,6 +124,8 @@ export class Inbox {
   extraNotices: InboxNotices | undefined;
   /** The runs other pages show and announce, so the Inbox's "Waiting for you" leaves them out. */
   readonly shownRuns = new ShownRuns();
+  /** The item the page shows, for its window to keep (`inbox.window-item`). */
+  readonly shownItem = new ShownItem();
   #state: InboxState = {
     items: [],
     done: [],
