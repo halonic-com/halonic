@@ -41,6 +41,7 @@ Every adapter for a port passes its contract suite in `packages/testing/contract
 | `KnowledgeProvider` | `knowledge-provider.ts` | 1 | knowledge sources agents search and read, and their factory | `knowledge-provider` |
 | `LlmCache` | `llm-cache.ts` | 1 | model answers reused by simulation re-runs | `llm-cache` (with first adapter) |
 | `LlmProvider` | `llm-provider.ts` | 1 | model providers, and their factory | `llm-provider`, `llm-stream` |
+| `MessagingSync` | `messaging-sync.ts` | 1 | the collections a messaging provider keeps current in the engine's local copy (agents, conversations, inbox items, work): each read whole or as the changes after its watermark, already in `AgentMessaging`'s types, with a mapping version that makes the store load it whole again | `messaging-sync` (with first adapter) |
 | `PasswordHasher` | `password-hasher.ts` | 1 | hash and check the sign-in password: scrypt for `serve`, chained PBKDF2 for cloud targets (both planned, not in 0.1.0) | `password-hasher` (with first adapter) |
 | `PluginFolderWriter` | `plugin-folder-writer.ts` | 1 | places and removes whole plugin folders in the profile's plugins folder, never through a link | `plugin-folder-writer` |
 | `ProgramProbe` | `program-probe.ts` | 2 | finds a harness's program and asks it something short, such as its version | `program-probe` (with first adapter) |

@@ -1,0 +1,25 @@
+# @halonicjs/host-paperclip-sync
+
+The engine's local copy of a messaging provider's lists (requirement `agent-host.paperclip-sync`).
+A provider hands over its `MessagingSync` collections, already in `AgentMessaging`'s types; the
+`SyncStore` keeps them in memory and saves them through a `SyncPersistence` the host provides, and
+`StoredAgentMessaging` answers agents, conversations, inbox items and work from the store. Writes,
+messages and search still go to the provider. Web-standard APIs only.
+
+- **Layer:** host
+- **Owner:** tomas
+- **Public API:** `@halonicjs/host-paperclip-sync`
+
+## Example
+
+```ts
+const served = new StoredAgentMessaging({
+  live: provider,
+  sync: provider.sync(),
+  source: "paperclip:acme",
+  persistence,
+  warn: log,
+});
+await served.refresh(); // reads the source once
+await served.listInboxItems(); // answered from the store, no request
+```

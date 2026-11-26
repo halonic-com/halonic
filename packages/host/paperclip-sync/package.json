@@ -1,0 +1,32 @@
+{
+  "name": "@halonicjs/host-paperclip-sync",
+  "private": true,
+  "type": "module",
+  "description": "The engine's local copy of a messaging provider's lists, kept current from the provider's sync collections, and an AgentMessaging that answers reads from it, on Web-standard APIs only.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-contracts": "workspace:*",
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "host",
+    "owner": "tomas",
+    "coverage": {
+      "lines": 80
+    }
+  }
+}
