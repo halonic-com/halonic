@@ -13,12 +13,12 @@ import {
   verifierPackages,
 } from "./affected-tests.ts";
 import type { CheckContext } from "./context.ts";
+import { findDocReads } from "./doc-reads.ts";
 import { isTestFile } from "./source-files.ts";
 import {
   findRepoRoot,
   listRepoFiles,
   listWorkspacePackages,
-  owningPackage,
   type WorkspacePackage,
 } from "./workspace.ts";
 
@@ -50,14 +50,14 @@ const packages = [
 
 /** Each doc a test reads by a path out of its package, with the readers' packages. */
 function docsReadByTests(root: string): Map<string, Set<string>> {
-  const repoPackages = listWorkspacePackages(root);
-  const reads = /(?:(?:\.\.\/)+|findRepoRoot\(\),\s*["'`])(docs\/[\w./-]+\.md)/g;
+  const context = {
+    files: listRepoFiles(root),
+    packages: listWorkspacePackages(root),
+    read: (file: string) => readFileSync(join(root, file), "utf8"),
+  };
   const found = new Map<string, Set<string>>();
-  for (const file of listRepoFiles(root).filter(isTestFile)) {
-    const reader = owningPackage(file, repoPackages)?.manifest.name ?? file;
-    for (const [, doc = ""] of readFileSync(join(root, file), "utf8").matchAll(reads)) {
-      found.set(doc, new Set([...(found.get(doc) ?? []), reader]));
-    }
+  for (const { doc, reader } of findDocReads(context)) {
+    found.set(doc, new Set([...(found.get(doc) ?? []), reader]));
   }
   return found;
 }
