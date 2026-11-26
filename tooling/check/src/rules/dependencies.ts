@@ -94,7 +94,12 @@ function checkOne(
       `"${dependency.name}": "${dependency.version}" must be "catalog:". Put the version once in the catalog in pnpm-workspace.yaml.`,
     );
   }
-  if (approved.category === "dev-tooling" && !isDevField(context, pkg, dependency.field)) {
+  const shipsHere = approved.runtimeIn === packageName && dependency.field === "dependencies";
+  if (
+    approved.category === "dev-tooling" &&
+    !shipsHere &&
+    !isDevField(context, pkg, dependency.field)
+  ) {
     report.error(
       pkg.manifestPath,
       `"${dependency.name}" is dev tooling and belongs in devDependencies; it must never ship.`,
@@ -140,6 +145,25 @@ export function categoryProblem(entry: ApprovedDependency): string | undefined {
   }
 }
 
+/**
+ * `runtimeIn` lets dev tooling ship in exactly one adapter, which `allowedIn`
+ * also names exactly; `undefined` when the entry has none or it fits.
+ */
+export function runtimeInProblem(entry: ApprovedDependency): string | undefined {
+  const adapter = entry.runtimeIn;
+  if (adapter === undefined) {
+    return undefined;
+  }
+  if (entry.category !== "dev-tooling") {
+    return `is ${entry.category}, so it can't have runtimeIn: only dev tooling needs it.`;
+  }
+  const oneAdapter = adapter.startsWith("@halonicjs/adapter-") && !adapter.includes("*");
+  if (!oneAdapter || !entry.allowedIn.includes(adapter) || !entry.layers.includes("adapters")) {
+    return `has runtimeIn "${adapter}": it names one "@halonicjs/adapter-<name>" (no *), which allowedIn also names exactly, with "adapters" in layers.`;
+  }
+  return undefined;
+}
+
 function checkList(context: CheckContext, used: ReadonlySet<string>, report: Report): void {
   for (const [name, entry] of Object.entries(context.dependencyList.dependencies)) {
     const problem = categoryProblem(entry);
@@ -151,6 +175,10 @@ function checkList(context: CheckContext, used: ReadonlySet<string>, report: Rep
         context.dependencyListPath,
         `"${name}" is a core exception, so it names each core package exactly; "*" isn't allowed. Each one needs the user's approval.`,
       );
+    }
+    const runtimeProblem = runtimeInProblem(entry);
+    if (runtimeProblem !== undefined) {
+      report.error(context.dependencyListPath, `"${name}" ${runtimeProblem} ${guide}`);
     }
     if (entry.cloudRuntime === true && !cloudRuntimeCategories.has(entry.category)) {
       report.error(
