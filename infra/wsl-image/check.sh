@@ -89,7 +89,7 @@ for pkg in acme-docs acme-libs; do
 done
 chroot "$root" dpkg -i /tmp/acme/acme-docs.deb /tmp/acme/acme-libs.deb >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
 [ -f "$doc/acme-docs/copyright" ] || fail "dpkg left out a new package's copyright file"
-[ -L "$doc/acme-libs" ] && [ -f "$doc/acme-libs/copyright" ] || fail "dpkg left out a new package's doc folder link"
+if [ ! -L "$doc/acme-libs" ] || [ ! -f "$doc/acme-libs/copyright" ]; then fail "dpkg left out a new package's doc folder link"; fi
 for gone in doc/acme-docs/README man/man1/acme.1 locale/nl/LC_MESSAGES/acme.mo; do
   [ ! -e "$root/usr/share/$gone" ] || fail "dpkg installed /usr/share/$gone"
 done
