@@ -8,8 +8,14 @@ import { closeDialogs, onWorkspace, openPlace } from "./steps/open-demo.ts";
 import { seedNames } from "./test-paperclip.ts";
 import { screenText } from "./words.ts";
 
-/** How long a surface gets to show a newly seeded card, and Paperclip to have its answer. */
-const cardWaitMs = 90_000;
+/**
+ * How long a surface gets to show a newly seeded card, and Paperclip to have its answer. The
+ * runner's stock Paperclip turns board keys away on its events socket, so the host only polls:
+ * every 2 minutes while the main window is in the background (`pollRates.down` in
+ * `@halonicjs/host-paperclip-sync`), as it is after step 13 opens the focused apps' windows.
+ * The wait covers one such poll and a margin.
+ */
+const cardWaitMs = 150_000;
 const answerPolls = 15;
 /** How long an open card's Back to Inbox gets to show; without an open card there's none. */
 const backWaitMs = 2_000;
