@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19492
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:t+AXUTs989JhGBUzUV+4Upn+xy51oRDGDfBjWwhmcqsqFUexlFV6jrQA6P3YBeMxIJ7+ic17mEOHRnzdpaLhCg==
 
 The board approved the HAL-19192 sketches, whose question 4 is projects that fit: with five
 projects, today's filter chips wrap to four lines. Sketches A and C there put the filter on one
