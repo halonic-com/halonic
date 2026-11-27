@@ -32,6 +32,9 @@ afterEach(() => {
 
 const notesUrl = "https://example.test/notes";
 const ready: UpdateState = { kind: "ready", version: "0.1.1", notesUrl };
+/** The shell's link for a Preview build: its own repository (HAL-20424). */
+const previewNotesUrl =
+  "https://github.com/halonic-com/halonic-preview/releases/tag/v0.1.1-preview.425";
 
 function statusOf(state: UpdateState, rest: Partial<UpdateStatus> = {}): UpdateStatus {
   return {
@@ -295,7 +298,7 @@ verifies("settings.restart-flow", () => {
   it("shows the Updated to dialog once, with what's new, in place of a toast", async () => {
     localStorage.clear();
     const notes = "- The title bar has an Update button.";
-    const justUpdated = { from: "0.1.0", to: "0.1.1", notCarriedOver: [], notes };
+    const justUpdated = { from: "0.1.0", to: "0.1.1", notesUrl, notCarriedOver: [], notes };
     const { toasts, set } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
     set(statusOf({ kind: "up-to-date" }, { justUpdated }));
     expect(titles(toasts)).toEqual([]);
@@ -304,14 +307,26 @@ verifies("settings.restart-flow", () => {
     expect(shown[0]?.textContent).toContain("Updated to Halonic 0.1.1");
     expect(shown[0]?.textContent).toContain("You were on Halonic 0.1.0.");
     expect(shown[0]?.textContent).toContain(notes);
+    expect(shown[0]?.querySelector("a")?.getAttribute("href")).toBe(notesUrl);
     unmountAll();
     // A reload in the same run: the shell still says justUpdated, the page has seen it.
     await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
     expect(document.querySelectorAll("dialog[open]")).toHaveLength(0);
   });
 
+  it("links the Updated to dialog of a Preview build to the page the shell names", async () => {
+    localStorage.clear();
+    const to = "0.1.1-preview.425";
+    const justUpdated = { from: "0.1.0", to, notesUrl: previewNotesUrl, notCarriedOver: [] };
+    await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
+    const link = document.querySelector("dialog[open] a");
+    expect(link?.getAttribute("href")).toBe(previewNotesUrl);
+  });
+
   it("shows the didn't install toast with Try again, and the release page after a second failure", async () => {
-    const first = await mount(statusOf({ kind: "did-not-install", version: "0.1.1", attempts: 1 }));
+    const first = await mount(
+      statusOf({ kind: "did-not-install", version: "0.1.1", attempts: 1, notesUrl }),
+    );
     await settle();
     const toast = first.toasts.list()[0];
     expect(toast?.tone).toBe("danger");
@@ -322,15 +337,26 @@ verifies("settings.restart-flow", () => {
     toast?.action?.onClick();
     expect(first.host.download).toHaveBeenCalledOnce();
 
-    first.set(statusOf({ kind: "did-not-install", version: "0.1.1", attempts: 2 }));
+    first.set(statusOf({ kind: "did-not-install", version: "0.1.1", attempts: 2, notesUrl }));
     const second = first.toasts.list()[1];
     expect(second?.text).toBe("Download it from the release page.");
     expect(second?.action?.label).toBe("Try again");
     expect(second?.secondAction?.label).toBe("Open release page");
   });
 
+  it("opens the release page the shell names for a Preview build that didn't install", async () => {
+    const version = "0.1.1-preview.425";
+    const page = await mount(
+      statusOf({ kind: "did-not-install", version, attempts: 1, notesUrl: previewNotesUrl }),
+    );
+    page.toasts.list()[0]?.secondAction?.onClick();
+    expect(page.openExternal).toHaveBeenCalledWith(previewNotesUrl);
+  });
+
   it("says the updater didn't answer when the toast's Try again can't download", async () => {
-    const page = await mount(statusOf({ kind: "did-not-install", version: "0.1.1", attempts: 1 }));
+    const page = await mount(
+      statusOf({ kind: "did-not-install", version: "0.1.1", attempts: 1, notesUrl }),
+    );
     page.host.download.mockRejectedValueOnce(new Error("down"));
     await act(async () => page.toasts.list()[0]?.action?.onClick());
     expect(titles(page.toasts).at(-1)).toBe("Halonic's updater didn't answer.");
@@ -342,6 +368,7 @@ verifies("settings.not-carried-toast", () => {
     const justUpdated = {
       from: "0.1.0",
       to: "0.1.1",
+      notesUrl,
       notCarriedOver: ["appearance.panelOpacity", "formats.dateStyle"],
     };
     const { toasts } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
@@ -357,7 +384,12 @@ verifies("settings.not-carried-toast", () => {
   });
 
   it("shows it once for an update, however often the status arrives", async () => {
-    const justUpdated = { from: "0.1.0", to: "0.1.1", notCarriedOver: ["formats.dateStyle"] };
+    const justUpdated = {
+      from: "0.1.0",
+      to: "0.1.1",
+      notesUrl,
+      notCarriedOver: ["formats.dateStyle"],
+    };
     const { toasts, set } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
     set(statusOf({ kind: "up-to-date" }, { justUpdated }));
     await settle();
@@ -368,6 +400,7 @@ verifies("settings.not-carried-toast", () => {
     const justUpdated = {
       from: "0.1.0",
       to: "0.1.1",
+      notesUrl,
       notCarriedOver: ["appearance.panelOpacity", "formats.dateStyle"],
     };
     const { toasts, writeClipboard } = await mount(
@@ -391,7 +424,7 @@ verifies("settings.not-carried-toast", () => {
   });
 
   it("shows no settings toast when nothing was left behind", async () => {
-    const justUpdated = { from: "0.1.0", to: "0.1.1", notCarriedOver: [] };
+    const justUpdated = { from: "0.1.0", to: "0.1.1", notesUrl, notCarriedOver: [] };
     const { toasts } = await mount(statusOf({ kind: "up-to-date" }, { justUpdated }));
     await settle();
     expect(toasts.list().some((t) => t.sticky)).toBe(false);

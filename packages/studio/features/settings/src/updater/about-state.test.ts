@@ -128,7 +128,7 @@ verifies("settings.about-section", () => {
       "Halonic 0.1.1 is ready. It installs when you restart or quit Halonic.",
     );
     const failed = aboutView(
-      status({ kind: "did-not-install", version: "0.1.1", attempts: 1 }),
+      status({ kind: "did-not-install", version: "0.1.1", attempts: 1, notesUrl }),
       now,
     );
     expect(failed.line).toBe("Halonic 0.1.1 didn't install. You're still on 0.1.0.");
@@ -149,7 +149,7 @@ verifies("settings.about-section", () => {
     for (const state of [
       { kind: "available", version: "0.1.1", notesUrl },
       { kind: "downloading", version: "0.1.1", done: 1, total: 2, unit: "bytes" },
-      { kind: "did-not-install", version: "0.1.1", attempts: 1 },
+      { kind: "did-not-install", version: "0.1.1", attempts: 1, notesUrl },
     ] as const) {
       expect(aboutView(status(state, { managed }), now).actions).toEqual([]);
     }

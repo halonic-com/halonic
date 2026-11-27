@@ -162,6 +162,7 @@ impl UpdaterRecord {
             return UpdateState::DidNotInstall {
                 version: install.target.clone(),
                 attempts: install.failures,
+                notes_url: notes_url(&install.target),
             };
         }
         if let Some(bad) = self
@@ -261,6 +262,7 @@ impl UpdaterRecord {
                 from: install.from.clone(),
                 to: install.target.clone(),
                 not_carried_over: Vec::new(),
+                notes_url: notes_url(&install.target),
                 notes: kept_notes(install.notes.as_deref()),
             })
         } else {

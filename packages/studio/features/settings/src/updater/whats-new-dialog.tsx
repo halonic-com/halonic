@@ -1,5 +1,4 @@
 import { Dialog } from "@halonicjs/studio-kit";
-import { releasePage } from "./links.ts";
 import { updatedTo, WHATS_NEW } from "./restart-text.ts";
 import * as text from "./update-dialog-text.ts";
 import { UpdateNotes } from "./update-notes.tsx";
@@ -31,7 +30,7 @@ export function WhatsNewDialog({
         <UpdateNotes
           heading={WHATS_NEW}
           notes={update.notes === undefined ? [] : [{ version: update.to, notes: update.notes }]}
-          notesUrl={releasePage(update.to)}
+          notesUrl={update.notesUrl}
         />
       </div>
     </Dialog>
