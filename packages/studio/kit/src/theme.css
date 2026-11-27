@@ -280,8 +280,9 @@
   /* Colour changes and short fades, plus three movements (design review HAL-18481): things that
      arrive rise --motion-rise, list rows that move glide, and panes in a one-pane window slide
      --motion-slide. Nothing scales, bounces or moves on its own; the busy spinner and the typing
-     dots are the exceptions, because they tell you something is happening. Under reduced motion
-     only fades. */
+     dots are the exceptions, because they tell you something is happening, and a rail button's
+     drawing grows under the pointer and shrinks when pressed (decision HAL-20675). Under reduced
+     motion only fades. */
   --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* things that move on screen */
   --ease-enter: cubic-bezier(0.22, 1, 0.36, 1); /* things that appear */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* things that leave */
@@ -349,6 +350,8 @@
   --duration-fast: 120ms; /* hover, press, colour changes */
   --duration-base: 200ms; /* menus, toasts, tabs, toggles */
   --duration-slow: 320ms; /* dialogs, drawers, side panels */
+  --duration-rail-hover: 180ms; /* a rail button's drawing growing under the pointer (HAL-20672) */
+  --duration-rail-press: 60ms; /* and shrinking while pressed */
 
   --motion-rise: 8px; /* how far anything that arrives rises (or drops) as it fades in */
   --motion-slide: 24px; /* how far a pane slides in a one-pane window */

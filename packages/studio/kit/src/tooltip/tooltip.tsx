@@ -12,7 +12,7 @@ import {
   useRef,
 } from "react";
 import { InTooltipContext, Kbd, keyShortcutsLabel } from "../kbd/kbd.tsx";
-import { placePopover } from "../popover/place-popover.ts";
+import { placePopover, placePopoverBeside } from "../popover/place-popover.ts";
 
 /** How long the pointer rests on the control before its tooltip shows. */
 export const TOOLTIP_DELAY_MS = 500;
@@ -46,6 +46,11 @@ export interface TooltipOptions {
    * only helps sometimes, such as the full title of a title that may be cut with "…".
    */
   readonly showIf?: () => boolean;
+  /**
+   * `beside` puts it after the control, centred on it top to bottom, for a control in a column
+   * whose neighbours a tooltip below would cover, as the rail's buttons. Below by default.
+   */
+  readonly side?: "below" | "beside";
 }
 
 /** The props of `Tooltip`. */
@@ -149,6 +154,7 @@ export function useTooltip({
   isName = false,
   visualOnly = false,
   showIf,
+  side = "below",
 }: TooltipOptions): TooltipParts {
   const id = useId();
   const anchor = useRef<HTMLElement | null>(null);
@@ -183,7 +189,11 @@ export function useTooltip({
     }
     element.showPopover();
     shown.current = true;
-    placePopover(element, anchor.current, { gap: CONTROL_GAP, align: "center" });
+    if (side === "beside") {
+      placePopoverBeside(element, anchor.current, CONTROL_GAP);
+    } else {
+      placePopover(element, anchor.current, { gap: CONTROL_GAP, align: "center" });
+    }
   }
 
   function hide(): void {

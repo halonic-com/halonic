@@ -140,6 +140,11 @@ Colour changes and short fades only. Nothing slides, scales or moves on its own,
 with motion, and status dots stay still. The one exception is the busy spinner (`animate-spin`).
 The curves and durations stay in the file for later.
 
+The rail is the one place something scales (`kit.rail-button-motion`, decision HAL-20675): a
+`RailButton`'s drawing grows to 110% under the pointer and shrinks to 90% when pressed, never on
+the selected button and never under reduced motion. No other part scales on hover or press, and a
+test holds that.
+
 A card that ended settles away (`kit.settle`, imported from `@halonicjs/studio-kit/settle`): `useSettling` keeps it in its
 list while it shows its final state, one line from `finalState` ("Approved by Ada · 14:02",
 `kit.final-state`); `useSettleAway` holds it 4 seconds, paused while the pointer or the focus is
@@ -1937,6 +1942,7 @@ Spread the props `children` gets on the control: they link it to the tooltip.
 | `isName` | The text is the control's name, as on an icon button: it doesn't describe it too |
 | `visualOnly` | Screen readers already hear the text another way: it doesn't describe the control, and they skip it |
 | `showIf` | Asked each time it would show; it stays hidden when this says no |
+| `side` | `beside` puts it 4px after the control, centred on it top to bottom, for a column such as the rail. Below by default |
 | `children` | Renders the control; a kit `Button` takes every prop it gets |
 
 | State | What shows |
@@ -2564,6 +2570,34 @@ or a product. It's decoration, hidden from screen readers: the words next to it 
 
 The Empty state keeps its own tile, a `surface` one with a shadow, because it sits on the halo
 wash, where a halo-tinted tile would disappear.
+
+## RailButton
+
+One app in the icon rail on the window's left edge: its 24px drawing in a 40px circle, the name as
+a tooltip beside it, and a count badge at the circle's top end. The rail lays the buttons out and
+draws the travelling point of light; this is one button.
+
+```tsx
+<RailButton
+  label="Messenger"
+  icon={(selected) => <MessengerIcon selected={selected} />}
+  selected={app === "messenger"}
+  onSelect={() => open("messenger")}
+  count={{ value: 2, name: "2 unread" }}
+/>;
+```
+
+| State | What shows |
+| --- | --- |
+| Rest | The resting drawing, no circle |
+| Hover | `surface-muted` circle, the drawing at 110% in 180ms |
+| Pressed | The same circle, the drawing at 90% in 60ms |
+| Selected | `aria-current="page"`, the circle and the selected drawing; it doesn't scale |
+| Focus | The focus ring round the circle |
+| Count | A 20px `accent` badge 3px above and 5px beyond the circle, ringed in `canvas`; read after the name |
+
+With `href` it's a link that never follows its address: a click still calls `onSelect`. Under
+reduced motion the circle still fills, and nothing scales.
 
 ## PlaceIcon
 

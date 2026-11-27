@@ -429,6 +429,8 @@ describe("theme.css scales", () => {
       "--duration-fast",
       "--duration-base",
       "--duration-slow",
+      "--duration-rail-hover",
+      "--duration-rail-press",
     ]);
     expect(namesStartingWith(plainVariables, "--motion-")).toEqual([
       "--motion-rise",
