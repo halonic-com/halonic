@@ -9,6 +9,7 @@ import {
 } from "./card-fixtures.ts";
 import { cardHolding } from "./card-step.ts";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
+import { messengerWindowLabel } from "./main-window.ts";
 import { cardOneQuestion, cardPlan, cardYesNo, rejectReason } from "./steps/card-kinds.ts";
 import { seedNames } from "./test-paperclip.ts";
 import { buttonLabels, screenText, words } from "./words.ts";
@@ -27,7 +28,7 @@ function cardStudio(fixture: CardFixture, inbox: Answers, messenger: Answers, ch
   const main = () => studio.windows.get("main") ?? { text: "", buttons: new Map() };
   const answer = (copy: string, window: () => { text: string }, answers: Answers) => {
     for (const [label, { status, result = {}, shows = "" }] of Object.entries(answers)) {
-      button(studio, copy === "inbox" ? "main" : "Halonic Messenger", label, () => {
+      button(studio, copy === "inbox" ? "main" : messengerWindowLabel, label, () => {
         studio.cards?.set(`${copy}-${fixture.key}`, { status, result });
         window().text += ` ${shows}`;
       });
@@ -47,8 +48,9 @@ function cardStudio(fixture: CardFixture, inbox: Answers, messenger: Answers, ch
       studio.shortcuts.push(name);
       const text = `${seedNames.agent} ${promptOn(fixture, "Messenger")} ${chatText}`;
       const chat = { text, buttons: new Map<string, () => void>() };
-      studio.windows.set(name, chat);
-      button(studio, name, seedNames.agent);
+      // The fake names a window by its label, and the shortcut opens Messenger's.
+      studio.windows.set(messengerWindowLabel, chat);
+      button(studio, messengerWindowLabel, seedNames.agent);
       answer("messenger", () => chat, messenger);
     },
   });
@@ -70,6 +72,14 @@ verifies("studio-click-test.card-steps", () => {
       expect(statusOf(studio, "inbox-yes-no")).toBe("accepted");
       expect(statusOf(studio, "messenger-yes-no")).toBe("rejected");
       expect(studio.shortcuts).toEqual(["Halonic Messenger"]);
+    });
+
+    it("answers in Messenger's window, not in an Inbox window that names the agent too", async () => {
+      const studio = cardStudio(yesNoCard, accept, reject);
+      const text = `${seedNames.agent} asks ${promptOn(yesNoCard, "Messenger")}`;
+      studio.windows.set("inbox", { text, buttons: new Map() });
+      await expect(cardYesNo.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(statusOf(studio, "messenger-yes-no")).toBe("rejected");
     });
 
     it("fails as NOT_SEEDED when the agent never posted its copy", async () => {

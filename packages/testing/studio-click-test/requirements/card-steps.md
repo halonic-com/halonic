@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19002 (the board's re-plan of HAL-18861's acceptance, 26 Nov; Liam's plan approval, 27 Nov)
 
-The click test shall check each card kind it seeds, one step per kind after the Start menu shortcuts step and before Disconnect, each needing Connect Paperclip. Each step shall seed its kind twice on the throwaway Paperclip: an Inbox copy, made by the board on a task of its own, and a Messenger copy, made by the seeded agent on its chat in a run that a message on the chat starts, each copy's prompt ending in "(Inbox)" or "(Messenger)". It shall then answer the Inbox copy from its row in the main window's Inbox, and the Messenger copy in the agent's chat in Halonic Messenger, and after each answer shall read the copy back through the test Paperclip's API: its status and the fields of its result the answer sets (the options picked, the reason). A failure shall name the surface it happened on. Like every step, the card steps shall run in the nightly run and when a change touches the code their requirements are about (`studio-click-test.affected-steps`).
+The click test shall check each card kind it seeds, one step per kind after the Start menu shortcuts step and before Disconnect, each needing Connect Paperclip. Each step shall seed its kind twice on the throwaway Paperclip: an Inbox copy, made by the board on a task of its own, and a Messenger copy, made by the seeded agent on its chat in a run that a message on the chat starts, each copy's prompt ending in "(Inbox)" or "(Messenger)". It shall then answer the Inbox copy from its row in the main window's Inbox, and the Messenger copy in the agent's chat in Halonic Messenger, and after each answer shall read the copy back through the test Paperclip's API: its status and the fields of its result the answer sets (the options picked, the reason). It shall answer the second surface even when the first failed, and a failure's note shall name each surface that failed. It shall find Halonic Messenger's window by its label, `messenger`, since another window, such as Halonic Inbox, can name the agent too. Like every step, the card steps shall run in the nightly run and when a change touches the code their requirements are about (`studio-click-test.affected-steps`).
 
 The kinds it checks:
 
@@ -20,5 +20,9 @@ The kinds it checks:
   then the yes/no step fails as `NOT_ANSWERED_ON_PAPERCLIP`, noting "Inbox:".
 - Given a plan card whose Reject sends at once, with no reason field,
   then the plan step fails as `NO_REASON_FIELD`.
+- Given an Inbox whose Accept never reaches Paperclip and a Messenger answer recorded as another one,
+  then the yes/no step still answers the Messenger copy and fails as `NOT_ANSWERED_ON_PAPERCLIP`, noting "Inbox:" and then "Messenger:".
+- Given a Halonic Inbox window that names the agent and lists the Messenger copy, open before Messenger's,
+  then the step answers the copy in Messenger's window.
 - Given a Messenger answer that Paperclip records with another option,
   then the step fails as `WRONG_ANSWER`, noting "Messenger:" and what Paperclip has.

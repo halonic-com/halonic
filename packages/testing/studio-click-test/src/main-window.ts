@@ -3,6 +3,9 @@ import type { Driver } from "./webdriver.ts";
 /** The Tauri label of Studio's main window; the focused apps' windows are `inbox`, `messenger`, … */
 export const mainWindowLabel = "main";
 
+/** The Tauri label of Halonic Messenger's window. */
+export const messengerWindowLabel = "messenger";
+
 const findWaitMs = 30_000;
 const pollMs = 1_000;
 

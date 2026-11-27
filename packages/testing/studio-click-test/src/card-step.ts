@@ -1,5 +1,6 @@
 import { type CardFixture, promptOn, type Surface, surfaces } from "./card-fixtures.ts";
 import type { CardRecord, CardRef } from "./card-seed.ts";
+import { messengerWindowLabel } from "./main-window.ts";
 import type { Step, StepContext, StepOutcome } from "./runner.ts";
 import { clickRow, lastWords, waitForText, xpathString } from "./screen.ts";
 import { openAppWindow } from "./steps/app-window.ts";
@@ -95,13 +96,22 @@ async function openInInbox(context: StepContext, prompt: string): Promise<StepOu
   }
   if (await clickRow(context, prompt, cardWaitMs)) return { passed: true };
   const { text } = await waitForText(context, 0, () => undefined);
-  return { passed: false, code: "NO_ROW", note: lastWords(text) };
+  // The engine's reads are in the log, which tells a card Paperclip never sent from one the
+  // Inbox didn't show (run 46000541525).
+  const log = await context.shellLog();
+  return { passed: false, code: "NO_ROW", note: `${lastWords(text)}\nshell.log:\n${log}` };
 }
 
-/** Halonic Messenger, with the seeded agent's chat open. */
+/**
+ * Halonic Messenger, with the seeded agent's chat open. Its window is found by its label: the
+ * Inbox window step 13 left open names the agent too, once a card of its is waiting (run
+ * 46000541525).
+ */
 async function openInChat(context: StepContext): Promise<StepOutcome> {
-  const window = await openAppWindow(context, "Halonic Messenger", (text) =>
-    text.includes(seedNames.agent),
+  const window = await openAppWindow(
+    context,
+    "Halonic Messenger",
+    (text, label) => label === messengerWindowLabel && text.includes(seedNames.agent),
   );
   if (!window.opened) return { passed: false, code: "NO_CHAT", note: lastWords(window.text) };
   await clickRow(context, seedNames.agent, 10_000);
