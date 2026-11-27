@@ -3,6 +3,7 @@
 - Task: HAL-20675
 - Approval: Liam signs this note for HAL-20675 (build plan P2 on HAL-20617, approved). A team decision on an approved plan.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LpvwE0dR4R6EtUhBkSvbCzlnWdg1hdIVpitwCnJVSjt5WmAFdpOhmVLUFCt9AxRIhbapPP5Cx93OaDpqaRphDQ==
 
 ## What changes
 
