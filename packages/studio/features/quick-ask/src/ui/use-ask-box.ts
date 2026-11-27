@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type { AnswerState } from "../ask-answer.ts";
 import type { AskAgent, AskSession, LastAnswer } from "../ask-session.ts";
 
@@ -9,16 +16,22 @@ export interface Exchange {
   readonly question: string;
   /** `sending` until Messenger says, then `sent`, or `not-sent` with the question kept here. */
   readonly status: "sending" | "sent" | "not-sent";
+  /** Sent again with Try again, so its bubble says "Sending…" until Messenger answers. */
+  readonly retried?: boolean;
   /** Where the answer stands once the question is sent. */
   readonly answer: AnswerState | undefined;
   /** When Messenger sent the question, as ISO text: its bubble shows the time. */
   readonly sentAt?: string;
 }
 
-/** What the box shows: nothing while it reads, no agents, or the agents and the questions asked. */
+/**
+ * What the box shows: the text box while it reads the agents, that they couldn't be read, no
+ * agents, or the agents and the questions asked. The text typed while opening, or before the read
+ * failed, is kept (design HAL-19384).
+ */
 export type BoxState =
-  | { readonly kind: "opening" }
-  | { readonly kind: "failed"; readonly error: unknown }
+  | { readonly kind: "opening"; readonly text: string }
+  | { readonly kind: "failed"; readonly text: string }
   | { readonly kind: "no-agents" }
   | {
       readonly kind: "ready";
@@ -41,6 +54,8 @@ export interface AskBoxModel {
   retry(exchange: Exchange): void;
   /** Forgets the answer behind **Last answer ›**, once the person opened it. */
   forgetLastAnswer(): void;
+  /** Reads the agents again, after they couldn't be read. */
+  reload(): void;
 }
 
 /**
@@ -49,8 +64,9 @@ export interface AskBoxModel {
  * which is the box closing, stops the watch.
  */
 export function useAskBox(session: AskSession): AskBoxModel {
-  const [state, setState] = useState<BoxState>({ kind: "opening" });
-  const watch = useOpening(session, setState);
+  const [state, setState] = useState<BoxState>(() => ({ kind: "opening", text: session.unsent() }));
+  const opening = useOpening(session, setState);
+  const watch = opening.watch;
   const nextId = useRef(0);
 
   const change = (id: number, changed: (exchange: Exchange) => Exchange) =>
@@ -71,7 +87,7 @@ export function useAskBox(session: AskSession): AskBoxModel {
   return {
     state,
     type(text) {
-      setState((now) => (now.kind === "ready" ? { ...now, text } : now));
+      setState((now) => (now.kind === "ready" || now.kind === "opening" ? { ...now, text } : now));
       session.type(text);
     },
     pick(agent) {
@@ -95,7 +111,7 @@ export function useAskBox(session: AskSession): AskBoxModel {
       deliver(exchange);
     },
     retry(exchange) {
-      const sending: Exchange = { ...exchange, status: "sending" };
+      const sending: Exchange = { ...exchange, status: "sending", retried: true };
       update(sending);
       deliver(sending);
     },
@@ -107,6 +123,7 @@ export function useAskBox(session: AskSession): AskBoxModel {
         return rest;
       });
     },
+    reload: opening.reload,
   };
 }
 
@@ -134,41 +151,66 @@ interface AnswerWatch {
   replace(start: () => () => void): void;
 }
 
+/** What {@link useOpening} gives the box: the answer's watch, and reading the agents again. */
+interface Opening {
+  readonly watch: AnswerWatch;
+  readonly reload: () => void;
+}
+
+/** The text in the box now, carried from opening to ready or failed, and back on Try again. */
+function textOf(state: BoxState): string {
+  return state.kind === "no-agents" ? "" : state.text;
+}
+
 /**
- * Opens the session as the box shows and puts what it says in the state. Closing the box stops
- * the answer's watch, and a send that lands after that starts none.
+ * Opens the session as the box shows, and again on {@link Opening.reload}, and puts what it says
+ * in the state; text typed meanwhile wins over the remembered text. Closing the box stops the
+ * answer's watch, and a send that lands after that starts none.
  */
-function useOpening(session: AskSession, setState: (state: BoxState) => void): AnswerWatch {
+function useOpening(session: AskSession, setState: Dispatch<SetStateAction<BoxState>>): Opening {
   const stopWatching = useRef<(() => void) | undefined>(undefined);
   const showing = useRef(true);
+  // Each read counts up; only the newest one's answer lands, and none once the box has closed.
+  const reads = useRef(0);
 
-  useEffect(() => {
-    let current = true;
-    showing.current = true;
+  const read = useCallback(() => {
+    reads.current += 1;
+    const thisRead = reads.current;
+    const current = () => showing.current && reads.current === thisRead;
     session.open().then(
       (opening) => {
-        if (!current) return;
+        if (!current()) return;
         if (opening.kind === "no-agents") setState({ kind: "no-agents" });
-        else setState({ ...opening, kind: "ready", exchanges: [] });
+        else setState((now) => ({ ...opening, kind: "ready", text: textOf(now), exchanges: [] }));
       },
       (error: unknown) => {
         console.error("Quick ask couldn't read the agents to ask:", error);
-        if (current) setState({ kind: "failed", error });
+        if (current()) setState((now) => ({ kind: "failed", text: textOf(now) }));
       },
     );
+  }, [session, setState]);
+
+  useEffect(() => {
+    showing.current = true;
+    read();
     return () => {
-      current = false;
       showing.current = false;
       stopWatching.current?.();
       stopWatching.current = undefined;
     };
-  }, [session, setState]);
+  }, [read]);
 
   return {
-    replace(start) {
-      if (!showing.current) return;
-      stopWatching.current?.();
-      stopWatching.current = start();
+    watch: {
+      replace(start) {
+        if (!showing.current) return;
+        stopWatching.current?.();
+        stopWatching.current = start();
+      },
+    },
+    reload() {
+      setState((now) => ({ kind: "opening", text: textOf(now) }));
+      read();
     },
   };
 }

@@ -92,6 +92,11 @@ export class AskSession {
     return lastAnswer === undefined ? ready : { ...ready, lastAnswer };
   }
 
+  /** The text typed and not sent last time, at once, so the box takes typing before the agents are read. */
+  unsent(): string {
+    return this.#memory.unsent();
+  }
+
   /** Remembers the agent the person picked, so the next open starts with it. */
   pick(agent: AskAgent): void {
     this.#memory.setLastAgent(agent.row.conversation.id);

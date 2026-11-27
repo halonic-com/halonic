@@ -1,13 +1,5 @@
 import type { MessagingId } from "@halonicjs/ports";
-import {
-  Avatar,
-  Button,
-  ChevronDownIcon,
-  EmptyState,
-  enter,
-  isComposing,
-  leave,
-} from "@halonicjs/studio-kit";
+import { Button, ChevronDownIcon, enter, isComposing, leave } from "@halonicjs/studio-kit";
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -20,11 +12,12 @@ import {
 import type { AskWindow } from "../api.ts";
 import type { AskSession } from "../ask-session.ts";
 import { quickAskWords } from "../quick-ask-words.ts";
+import { AgentFace } from "./agent-face.tsx";
 import { AgentPicker, type PickerExit } from "./agent-picker.tsx";
 import { BoxFooter, type FooterAnswer } from "./box-footer.tsx";
+import { LoadFailed, NoAgents } from "./box-states.tsx";
 import { ExchangeList } from "./exchange-list.tsx";
 import { answerText } from "./exchange-view.tsx";
-import { OpeningView } from "./opening-view.tsx";
 import { type AskBoxModel, type Exchange, useAskBox } from "./use-ask-box.ts";
 
 /** The props of {@link AskBox}. */
@@ -61,7 +54,9 @@ const agentChipClasses = [
  * labelled "Ask an agent" with the picked agent, the text box and **Ask**, the questions asked and
  * their answers below, and one footer: the keys, or **Copy** and **Open in Messenger** once there's
  * an answer. It fades in and rises 8 px as it opens; Esc or a click beside it fades it out and hides
- * the window, and opening a chat in Messenger fades it out as Messenger's window opens.
+ * the window, and opening a chat in Messenger fades it out as Messenger's window opens. While it
+ * reads the agents it already shows its top row and takes typing; if it can't read them, it says
+ * so with **Try again** (design HAL-19384).
  */
 export function AskBox({ session, window, onClosed }: AskBoxProps) {
   const model = useAskBox(session);
@@ -71,8 +66,6 @@ export function AskBox({ session, window, onClosed }: AskBoxProps) {
   useEffect(() => {
     if (box.current !== null) void enter(box.current);
   }, []);
-
-  if (model.state.kind === "failed") throw model.state.error;
 
   /** Fades the box out once, then has its window hide or open a chat. */
   const fadeOut = async (then: () => Promise<void>, failure: string) => {
@@ -111,30 +104,23 @@ export function AskBox({ session, window, onClosed }: AskBoxProps) {
         className={boxClasses}
         onKeyDown={onKeyDown}
       >
-        {model.state.kind === "opening" ? <OpeningView /> : null}
         {model.state.kind === "no-agents" ? <NoAgents window={window} /> : null}
-        {model.state.kind === "ready" ? <Ready model={model} onOpenChat={openChat} /> : null}
+        {model.state.kind === "failed" ? (
+          <LoadFailed window={window} onTryAgain={model.reload} />
+        ) : null}
+        {model.state.kind === "ready" || model.state.kind === "opening" ? (
+          <Ready model={model} onOpenChat={openChat} />
+        ) : null}
       </section>
     </div>
   );
 }
 
-function NoAgents({ window }: { readonly window: AskWindow }) {
-  const openStudio = () =>
-    window.openStudio().catch((error: unknown) => {
-      console.error("Quick ask couldn't bring Studio's window forward:", error);
-    });
-  return (
-    <div className="p-6">
-      <EmptyState
-        title={quickAskWords.noAgents}
-        description={quickAskWords.noAgentsHint}
-        action={{ label: quickAskWords.openStudio, onClick: () => void openStudio() }}
-      />
-    </div>
-  );
-}
-
+/**
+ * The box's top row, the questions asked and the footer: while the agents are read (`opening`)
+ * the same row with a skeleton for the agent, the box's name as the placeholder and **Ask** doing
+ * nothing yet, so the box keeps its size when they arrive.
+ */
 function Ready({
   model,
   onOpenChat,
@@ -146,24 +132,28 @@ function Ready({
   const text = useRef<HTMLTextAreaElement>(null);
   const ask = useRef<HTMLButtonElement>(null);
   const hintId = useId();
-  if (model.state.kind !== "ready") return null;
-  const { agent, agents, exchanges, lastAnswer } = model.state;
-  const name = agent.agent.name;
+  if (model.state.kind !== "ready" && model.state.kind !== "opening") return null;
+  const ready = model.state.kind === "ready" ? model.state : undefined;
+  const exchanges = ready?.exchanges ?? [];
+  const name = ready?.agent.agent.name;
   const answer = newestAnswer(exchanges.at(-1));
 
   const closePicker = (exit: PickerExit) => {
     setPicking(false);
     focus(exit === "forward" ? ask : text);
   };
-  const onTextKey = textKeys(model, () => setPicking(true));
-  const placeholder =
-    answer === undefined ? quickAskWords.placeholder(name) : quickAskWords.reply(name);
+  // Try again goes as it's pressed, so the focus moves to the text box rather than the page.
+  const retry = (exchange: Exchange) => {
+    model.retry(exchange);
+    focus(text);
+  };
+  const onTextKey = textKeys(model, ready === undefined ? undefined : () => setPicking(true));
 
   return (
     <>
       <QuestionRow
         name={name}
-        placeholder={placeholder}
+        placeholder={placeholderFor(name, answer)}
         model={model}
         picking={picking}
         onKeyDown={onTextKey}
@@ -172,10 +162,10 @@ function Ready({
         ask={ask}
         keysId={answer === undefined ? hintId : undefined}
       />
-      {picking ? (
+      {picking && ready !== undefined ? (
         <AgentPicker
-          agents={agents}
-          picked={agent}
+          agents={ready.agents}
+          picked={ready.agent}
           onPick={(chosen) => {
             model.pick(chosen);
             closePicker("back");
@@ -184,12 +174,12 @@ function Ready({
         />
       ) : null}
       {exchanges.length > 0 ? (
-        <ExchangeList exchanges={exchanges} onRetry={model.retry} onOpenChat={onOpenChat} />
+        <ExchangeList exchanges={exchanges} onRetry={retry} onOpenChat={onOpenChat} />
       ) : null}
       <BoxFooter
         answer={answer}
         hintId={hintId}
-        lastAnswer={lastAnswer}
+        lastAnswer={ready?.lastAnswer}
         onOpenChat={onOpenChat}
         onOpenLastAnswer={(opened) => {
           model.forgetLastAnswer();
@@ -202,7 +192,8 @@ function Ready({
 
 /** The props of {@link QuestionRow}. */
 interface QuestionRowProps {
-  readonly name: string;
+  /** The picked agent's name; none while the agents are read. */
+  readonly name: string | undefined;
   readonly placeholder: string;
   readonly model: AskBoxModel;
   readonly picking: boolean;
@@ -216,8 +207,8 @@ interface QuestionRowProps {
 
 /**
  * The box's top row: the text box first, so the focus starts there, then the picked agent's
- * chip, drawn before it, and **Ask**, a round arrow: grey while the box is empty, blue once
- * there's a question (HAL-19142).
+ * chip, drawn before it, and **Ask**, a round arrow: grey while there's nothing it can send (an
+ * empty box, or the agents still loading), blue once it can (HAL-19142).
  */
 function QuestionRow({
   name,
@@ -230,7 +221,8 @@ function QuestionRow({
   ask,
   keysId,
 }: QuestionRowProps) {
-  const value = model.state.kind === "ready" ? model.state.text : "";
+  const value =
+    model.state.kind === "ready" || model.state.kind === "opening" ? model.state.text : "";
   return (
     <div className="flex shrink-0 items-start gap-2 px-3.5 py-3">
       <textarea
@@ -246,23 +238,30 @@ function QuestionRow({
         onKeyDown={onKeyDown}
         className="max-h-40 min-h-control-md flex-1 resize-none bg-transparent py-1.5 text-heading font-normal text-fg outline-none [field-sizing:content] placeholder:text-fg-subtle"
       />
-      <button
-        type="button"
-        aria-label={quickAskWords.agentButton(name)}
-        aria-haspopup="listbox"
-        aria-expanded={picking}
-        onClick={onAgent}
-        className={agentChipClasses}
-      >
-        <Avatar name={name} />
-        <span className="truncate">{name}</span>
-        <span className="size-3.5 shrink-0 text-fg-muted">
-          <ChevronDownIcon />
+      {name === undefined ? (
+        // Nothing to pick yet, so no chip: only its picture's skeleton, at the chip's height.
+        <span className="order-first mt-0.5 flex shrink-0 items-center p-0.5">
+          <AgentFace name={undefined} />
         </span>
-      </button>
+      ) : (
+        <button
+          type="button"
+          aria-label={quickAskWords.agentButton(name)}
+          aria-haspopup="listbox"
+          aria-expanded={picking}
+          onClick={onAgent}
+          className={agentChipClasses}
+        >
+          <AgentFace name={name} />
+          <span className="truncate">{name}</span>
+          <span className="size-3.5 shrink-0 text-fg-muted">
+            <ChevronDownIcon />
+          </span>
+        </button>
+      )}
       <Button
         ref={ask}
-        variant={value.trim() === "" ? "soft" : "primary"}
+        variant={model.state.kind === "ready" && value.trim() !== "" ? "primary" : "soft"}
         size="prompt"
         round
         icon={<ArrowUp />}
@@ -272,6 +271,12 @@ function QuestionRow({
       />
     </div>
   );
+}
+
+/** The text box's placeholder: the box's name while the agents are read, then who it asks or replies to. */
+function placeholderFor(name: string | undefined, answer: FooterAnswer | undefined): string {
+  if (name === undefined) return quickAskWords.label;
+  return answer === undefined ? quickAskWords.placeholder(name) : quickAskWords.reply(name);
 }
 
 /** The newest exchange's answer and its chat, once the agent has answered. */
@@ -297,11 +302,11 @@ function ArrowUp() {
 }
 
 /** The text box's keys: Enter sends, Tab opens the picker, and Shift keeps them for a new line or going back. */
-function textKeys(model: AskBoxModel, openPicker: () => void) {
+function textKeys(model: AskBoxModel, openPicker: (() => void) | undefined) {
   return (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (isComposing(event) || event.shiftKey) return;
     if (event.key === "Enter") model.send();
-    else if (event.key === "Tab") openPicker();
+    else if (event.key === "Tab" && openPicker !== undefined) openPicker();
     else return;
     event.preventDefault();
   };

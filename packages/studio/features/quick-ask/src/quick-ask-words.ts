@@ -2,7 +2,7 @@ import type { AgentActivity } from "@halonicjs/ports";
 
 /**
  * Every word the quick-ask box shows or says, copied from the approved design (HAL-18594,
- * sections 4–7). "Quick ask" is the working name until the chosen one replaces it everywhere.
+ * sections 4–7) and its empty, error and loading states (HAL-19384, words checked on HAL-19391). "Quick ask" is the working name until the chosen one replaces it everywhere.
  */
 export const quickAskWords = {
   /** The app's name, first in its window's title. */
@@ -25,8 +25,8 @@ export const quickAskWords = {
   ],
   /** The picker's search box. */
   findAgent: "Find an agent",
-  /** In place of the picker's list when no agent's name holds the text (the Agents list's words). */
-  noMatch: (text: string) => `No agents match "${text}".`,
+  /** In place of the picker's list when no agent's name holds the search (design HAL-19384). */
+  noMatch: (text: string) => `No agent matches "${text}"`,
   /** The picker's first group: the agents asked or chatted with most recently. */
   recent: "Recent",
   /**
@@ -53,9 +53,9 @@ export const quickAskWords = {
   lastAnswer: (agent: string, time: string) => `Last answer: ${agent}, ${time}`,
   /** Copies the answer's text. */
   copy: "Copy",
-  /** What Copy did, in a status line: the kit's CopyButton's own words. */
+  /** What Copy did, in its place for 2 s (design HAL-19384). */
   copied: "Copied",
-  notCopied: "Couldn't copy. Select the text and copy it yourself.",
+  notCopied: "Couldn't copy",
   /** Next to Copy: carries the conversation on in its Messenger chat. */
   openInMessenger: "Open in Messenger",
   /** The answer holds a card, which is answered in Messenger, not in the box. */
@@ -65,6 +65,8 @@ export const quickAskWords = {
   /** On a question that didn't go out (motion 4's words). */
   notSent: "Not sent",
   tryAgain: "Try again",
+  /** Under a question sent again after Try again, until it's sent or fails again (design HAL-19384). */
+  sending: "Sending…",
   /** Under a question that didn't go out. */
   unreachable: (source: string) => `Couldn't reach ${source}. Your question is still here.`,
   /** Said to screen readers while the box reads the agents to ask, as Messenger's "Loading your chats". */
@@ -73,4 +75,7 @@ export const quickAskWords = {
   noAgents: "No agents yet",
   noAgentsHint: "Connect a workspace or a team in Studio to ask its agents.",
   openStudio: "Open Studio",
+  /** The agents couldn't be read when the box opened (design HAL-19384), with Try again. */
+  loadFailed: "Couldn't load your agents",
+  loadFailedHint: "Studio didn't answer.",
 } as const;

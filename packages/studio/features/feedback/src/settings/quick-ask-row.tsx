@@ -4,7 +4,7 @@ import type {
   AskKeysSettings,
 } from "@halonicjs/studio-feature-quick-ask/api";
 import { useEffect, useState } from "react";
-import { askKeysTakenLine, notSavedLine, settingsWords } from "./settings-words.ts";
+import { notSavedLine, settingsWords, takenLine } from "./settings-words.ts";
 import { shortcutKeys, shortcutText } from "./shortcut-keys.ts";
 import { ShortcutRecorder } from "./shortcut-recorder.tsx";
 
@@ -50,7 +50,7 @@ export function QuickAskRow({ settings, announce }: QuickAskRowProps) {
       return;
     }
     const taken = change === "taken";
-    const line = taken ? askKeysTakenLine(textOf(next)) : notSavedLine(settingsWords.quickAsk);
+    const line = taken ? takenLine(textOf(next)) : notSavedLine(settingsWords.quickAsk);
     setProblem({ line, taken });
     announce(line);
   }
@@ -87,7 +87,7 @@ function WaylandRow() {
 /** The taken line for keys the shell couldn't register at start, before any change. */
 function takenNow(keys: AskKeys, textOf: (shortcut: string) => string): Problem | undefined {
   if (keys.state !== "taken") return undefined;
-  return { line: askKeysTakenLine(textOf(keys.shortcut)), taken: true };
+  return { line: takenLine(textOf(keys.shortcut)), taken: true };
 }
 
 /**

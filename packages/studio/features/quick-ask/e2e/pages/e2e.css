@@ -5,6 +5,7 @@
 
 @import "tailwindcss";
 @import "@halonicjs/studio-kit";
+@import "@halonicjs/studio-kit/fonts";
 
 @source "../../src";
 @source "../../../../kit/src";
