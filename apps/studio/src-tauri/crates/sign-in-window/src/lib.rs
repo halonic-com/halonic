@@ -119,12 +119,27 @@ pub fn launch(url: &Url, rect: Rect) -> Result<Option<Launch>, String> {
     Ok(Some(Launch { exe, before, rect }))
 }
 
+/// Windows' `CREATE_NO_WINDOW` process flag, so the start never opens a
+/// console window (HAL-13197); the browser's own windows are unaffected.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 #[allow(
     clippy::zombie_processes,
     reason = "Windows has no zombie processes: dropping the child closes its handle, and the browser lives on"
 )]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the crate's one Command::new, which hides the console window"
+)]
 fn start(exe: &Path, url: &Url, rect: Rect) -> Result<(), String> {
-    Command::new(exe)
+    let mut command = Command::new(exe);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
         .args(launch_arguments(url, rect))
         .spawn()
         .map(drop)
