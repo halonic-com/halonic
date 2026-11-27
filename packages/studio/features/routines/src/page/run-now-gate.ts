@@ -16,8 +16,8 @@ export interface RunNowGate {
    */
   readonly agentNoticeId: string;
   /**
-   * Run now's `unavailable` while the routine starts an agent or the sandbox can't start;
-   * `undefined` while it can start.
+   * Run now's `unavailable` while the routine starts an agent, the sandbox can't start or its first
+   * check hasn't answered; `undefined` while it can start.
    */
   readonly unavailable: ButtonUnavailable | undefined;
   /** Run now, which takes focus once **Check again** finds the sandbox ready. */
@@ -27,7 +27,8 @@ export interface RunNowGate {
 /**
  * Whether the routine page's **Run now** can start a run. A routine that starts an agent can't, as
  * its notice says (HAL-17816). Otherwise it needs the sandbox only when what the routine starts
- * runs a program (`startsProgram`), and only a check that refuses makes it unavailable. The
+ * runs a program (`startsProgram`): a check that refuses makes it unavailable, and so does a first
+ * check that hasn't answered, while the agent host starts (HAL-19614). The
  * routine stays on either way (checklist 3.4).
  */
 export function useRunNowGate(
@@ -58,5 +59,5 @@ function unavailableFor(
   ids: { readonly cantRunId: string; readonly agentNoticeId: string },
 ): ButtonUnavailable | undefined {
   if (startsAgent(routine)) return { reason: ids.agentNoticeId };
-  return sandbox.refused === undefined ? undefined : { reason: ids.cantRunId };
+  return sandbox.blocksRun ? { reason: ids.cantRunId } : undefined;
 }

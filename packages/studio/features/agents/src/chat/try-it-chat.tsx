@@ -82,7 +82,7 @@ export function TryItChatView(props: TryItChatViewProps) {
     held,
     harness: props.harness,
     strip: props.harnessStrip,
-    sandboxRefused: sandbox.refused !== undefined,
+    sandboxBlocks: sandbox.blocksRun,
     budgetReached: props.budgetReached,
     missingKey: props.modelKey?.missing,
   });
@@ -187,9 +187,10 @@ export function TryItChatView(props: TryItChatViewProps) {
     void send({ keyChecked: true });
   };
 
-  const sandboxRefused = problem?.kind === "sandbox";
+  const sandboxBlocks = problem?.kind === "sandbox";
+  const sandboxRefused = sandboxBlocks && sandbox.refused !== undefined;
   // The Callout stays out of the box's status region, so its buttons aren't read with it; only its
-  // first line is read, once, when it shows (C516 S-5).
+  // first line is read, once, when it shows (C516 S-5). The line while the host starts isn't read.
   const announce = props.announce;
   useEffect(() => {
     if (sandboxRefused) announce?.(cantRunWords.cantRun(name));
@@ -252,7 +253,7 @@ export function TryItChatView(props: TryItChatViewProps) {
           line={line()}
         />
         {/* The same Callout as Run, under the box; once the sandbox works, the box takes focus. */}
-        {sandboxRefused ? (
+        {sandboxBlocks ? (
           <SandboxCantRunCallout
             name={name}
             start={sandbox}

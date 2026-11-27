@@ -36,6 +36,7 @@ import {
 import * as text from "./sandbox-text.ts";
 import { UnfencedYesBlock } from "./unfenced-yes.tsx";
 import { useAgentSandbox } from "./use-agent-sandbox.ts";
+import { useStudioStartsUnfenced } from "./use-studio-starts-unfenced.ts";
 import { WslRemoveDialog } from "./wsl-remove-dialog.tsx";
 
 /** Settings › Agent sandbox as the settings container shows it. Without a host it reads Not available. */
@@ -90,6 +91,7 @@ export function AgentSandboxHostView({
 }: AgentSandboxHostViewProps) {
   const sandbox = useAgentSandbox(host, place, announce);
   const start = useSandboxStart(startCheck, !sandbox.facts.available);
+  const startsUnfenced = useStudioStartsUnfenced(host);
   const [removing, setRemoving] = useState(false);
   // Remove the sandbox… leaves while the removal runs, so focus goes to its step (HAL-15091).
   const status = useRef<HTMLOListElement>(null);
@@ -121,7 +123,7 @@ export function AgentSandboxHostView({
         <NewAgentsRunControl
           settings={newAgentsSettings}
           viewOnly={place === "served"}
-          studioStartsUnfenced={host?.studioStartsUnfenced ?? false}
+          studioStartsUnfenced={startsUnfenced}
         />
       </div>
     );

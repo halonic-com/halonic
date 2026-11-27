@@ -12,14 +12,18 @@ export interface RunGate {
   readonly sandbox: SandboxStart;
   /** The `id` of the Callout's first line, which describes Run while it is unavailable. */
   readonly cantRunId: string;
-  /** Run's `unavailable` while the sandbox can't start; `undefined` while it can. */
+  /**
+   * Run's `unavailable` while the sandbox can't start or its first check hasn't answered;
+   * `undefined` while it can.
+   */
   readonly unavailable: ButtonUnavailable | undefined;
 }
 
 /**
  * Whether the workflow page's Run can start a run: it needs the sandbox only when a step starts a
- * program, which it knows once the workflow is read, and only a check that refuses makes it
- * unavailable (checklist 3.1).
+ * program, which it knows once the workflow is read. A check that refuses makes it unavailable
+ * (checklist 3.1), and so does a first check that hasn't answered, while the agent host starts
+ * (HAL-19614).
  */
 export function useRunGate(
   load: WorkflowLoad,
@@ -29,12 +33,11 @@ export function useRunGate(
   const programSteps = programStepsOf(load.kind === "ready" ? load.value : undefined);
   const sandbox = useSandboxStart(check, canStart && programSteps.length > 0);
   const cantRunId = useId();
-  const refused = sandbox.refused !== undefined;
   return {
     programSteps,
     sandbox,
     cantRunId,
-    unavailable: refused ? { reason: cantRunId } : undefined,
+    unavailable: sandbox.blocksRun ? { reason: cantRunId } : undefined,
   };
 }
 

@@ -11,8 +11,12 @@ export type CheckOutcome =
  * Whether the sandbox can start, for a page whose run controls need it.
  *
  * - `refused`: the reason code while the sandbox can't start; `undefined` while it can, before the
- *   first check answers, and where nothing can check. Only a refusal disables a control: a check
- *   that can't run leaves the controls as they are, and the engine still refuses the run itself.
+ *   first check answers, and where nothing can check.
+ * - `starting`: the first check hasn't answered yet. Until the agent host has started, the shell
+ *   holds the check, and a run pressed now would wait without a word (HAL-19614).
+ * - `blocksRun`: a refusal or a first check still out; the page's run controls are off while it
+ *   holds. A check that can't run leaves the controls as they are, and the engine still refuses the
+ *   run itself.
  * - `details`: for `other`, the check's own sentences, for **Copy details** only; never shown.
  * - `checking`: a press of **Check again** is waiting for its answer.
  * - `checkFailed`: the last press couldn't check at all.
@@ -20,6 +24,8 @@ export type CheckOutcome =
  */
 export interface SandboxStart {
   readonly refused: string | undefined;
+  readonly starting: boolean;
+  readonly blocksRun: boolean;
   readonly details: string | undefined;
   readonly checking: boolean;
   readonly checkFailed: boolean;
@@ -34,28 +40,36 @@ export interface SandboxStart {
  *
  * @example
  * const start = useSandboxStart(context.services.find(sandboxStartCheckKey), stepsStartAProgram);
- * <Button unavailable={start.refused === undefined ? undefined : { reason: firstLineId }}>Run</Button>
+ * <Button unavailable={start.blocksRun ? { reason: firstLineId } : undefined}>Run</Button>
  */
 export function useSandboxStart(
   check: SandboxStartCheck | undefined,
   needed: boolean,
 ): SandboxStart {
   const [refusal, setRefusal] = useState<Refusal>();
+  // Starting from the first render, so Run is never on for a frame before the check is asked.
+  const [starting, setStarting] = useState(() => check !== undefined && needed);
   const [checking, setChecking] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
 
   useEffect(() => {
     if (check === undefined || !needed) {
       setRefusal(undefined);
+      setStarting(false);
       return;
     }
     let current = true;
+    setStarting(true);
     check.check().then(
       (result) => {
-        if (current) setRefusal(refusalOf(result));
+        if (!current) return;
+        setRefusal(refusalOf(result));
+        setStarting(false);
       },
       // The first check couldn't run: nothing is disabled on a guess.
-      () => undefined,
+      () => {
+        if (current) setStarting(false);
+      },
     );
     return () => {
       current = false;
@@ -80,6 +94,8 @@ export function useSandboxStart(
 
   return {
     refused: refusal?.reason,
+    starting,
+    blocksRun: starting || refusal !== undefined,
     details: refusal?.details,
     checking,
     checkFailed,

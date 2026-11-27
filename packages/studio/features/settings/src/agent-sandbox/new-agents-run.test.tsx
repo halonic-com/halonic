@@ -90,6 +90,24 @@ verifies("settings.new-agents-run", () => {
     expect(store.stored.has("sandbox.new-agents")).toBe(false);
   });
 
+  it("drops the line once the host answers that Studio can, in a section already open", async () => {
+    const listeners = new Set<() => void>();
+    const host = {
+      ...readyHost(false),
+      subscribeStudioStartsUnfenced(listener: () => void) {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+    };
+    const { view } = await show("app", undefined, host);
+    expect(view.textContent).toContain(studioCantStart);
+    await act(async () => {
+      Object.assign(host, { studioStartsUnfenced: true });
+      for (const listener of listeners) listener();
+    });
+    expect(view.textContent).not.toContain(studioCantStart);
+  });
+
   it("says in the dialog that Studio can't start these agents, while its host says so", async () => {
     const cant = await show("app", undefined, readyHost(false));
     await change(cant.select, "this-computer");

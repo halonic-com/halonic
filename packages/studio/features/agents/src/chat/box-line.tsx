@@ -25,8 +25,11 @@ export interface BoxState {
   readonly harness: AgentHarnessId;
   /** The strip the harness check calls for, or `null` when the harness can run. */
   readonly strip: HarnessStrip | null;
-  /** The sandbox check refused: the agent's program can't start on this computer. */
-  readonly sandboxRefused: boolean;
+  /**
+   * The sandbox check refused, so the agent's program can't start on this computer, or its first
+   * check hasn't answered while the agent host starts (HAL-19614).
+   */
+  readonly sandboxBlocks: boolean;
   /** The monthly budget's sentence while this month's spend has reached it. */
   readonly budgetReached: string | undefined;
   /** The agent's model, when it needs a key that isn't stored. */
@@ -37,7 +40,7 @@ export interface BoxState {
 export function boxProblem(state: BoxState): BoxProblem | undefined {
   if (state.held !== undefined) return { kind: "key-in-message", hold: state.held };
   if (state.strip !== null) return { kind: "harness", strip: state.strip, harness: state.harness };
-  if (state.sandboxRefused) return { kind: "sandbox" };
+  if (state.sandboxBlocks) return { kind: "sandbox" };
   if (state.budgetReached !== undefined) return { kind: "budget", line: state.budgetReached };
   if (state.missingKey !== undefined) return { kind: "model-key", key: state.missingKey };
   return undefined;

@@ -49,7 +49,9 @@ async function open(
       options.pending ??
       ((answers.length > 1 ? answers.shift() : answers[0]) as SandboxStartResult),
   );
-  const { host } = memoryHost([], [], [options.workflow ?? reply()], [], {
+  // A list the test may change, so the workflow can gain a program step while the page is open.
+  const views = [options.workflow ?? reply()];
+  const { host, change } = memoryHost([], [], views, [], {
     startRun: async () => ({ runId: "run_mfx3k2a1_01jd8q" }),
     ...(options.startRefusal && { startRefusal: async () => options.startRefusal }),
   });
@@ -67,7 +69,11 @@ async function open(
     </PresentationProvider>,
   );
   await act(async () => {});
-  return { page, check };
+  const edit = async (workflow: WorkflowView) => {
+    views[0] = workflow;
+    await act(async () => change([]));
+  };
+  return { page, check, edit };
 }
 
 const firstLine = "Support reply can't run: the sandbox can't start on this computer.";
@@ -112,20 +118,44 @@ verifies("workflows.page.cant-run", () => {
     const pending = new Promise<SandboxStartResult>((resolve) => {
       answer = resolve;
     });
-    const { page } = await open({ pending });
+    // No step starts a program yet, so Run opens the card without a check.
+    const noProgram = reply([
+      { id: "read", type: "task", agent: "sorter" },
+      { id: "done", type: "final" },
+    ]);
+    const { page, edit } = await open({ workflow: noProgram, pending });
     act(() => runOf(page)?.click());
     const start = () => buttonNamed(page, "Start run") as HTMLButtonElement;
     expect(start().hasAttribute("aria-disabled")).toBe(false);
+    const describedBy = () =>
+      document.getElementById(start().getAttribute("aria-describedby") ?? "")?.textContent;
+    await edit(reply());
+    expect(start().getAttribute("aria-disabled")).toBe("true");
+    expect(describedBy()).toBe("Agent host is still starting");
     await act(async () => answer(bubblewrapMissing));
     expect(page.textContent).toContain("START A RUN");
     expect(start().getAttribute("aria-disabled")).toBe("true");
     expect(start().disabled).toBe(false);
-    expect(
-      document.getElementById(start().getAttribute("aria-describedby") ?? "")?.textContent,
-    ).toBe(firstLine);
+    expect(describedBy()).toBe(firstLine);
     await act(async () => start().click());
     expect(page.textContent).not.toContain("Run started");
     expect(page.querySelector("textarea")?.value).toBe("{}");
+  });
+
+  it("keeps Run unavailable, saying the agent host is still starting, until the check answers", async () => {
+    let answer: (result: SandboxStartResult) => void = () => {};
+    const pending = new Promise<SandboxStartResult>((resolve) => {
+      answer = resolve;
+    });
+    const { page } = await open({ pending });
+    const run = runOf(page) as HTMLButtonElement;
+    expect(run.getAttribute("aria-disabled")).toBe("true");
+    expect(document.getElementById(run.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
+      "Agent host is still starting",
+    );
+    await act(async () => answer({ ok: true }));
+    expect(runOf(page)?.hasAttribute("aria-disabled")).toBe(false);
+    expect(page.textContent).not.toContain("Agent host is still starting");
   });
 
   it("ends with the step, its program and the agent's settings, which open the agent", async () => {

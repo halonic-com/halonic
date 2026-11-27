@@ -61,6 +61,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     return this.#startsUnfenced;
   }
   #startsUnfenced = false;
+  readonly #startsUnfencedListeners = new Set<() => void>();
   readonly #transport: AgentHostTransport;
   readonly #setup: AgentHostSandboxSetup;
   readonly #now: () => Date;
@@ -96,6 +97,7 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
       studioStartsUnfenced.then(
         (answer) => {
           this.#startsUnfenced = answer;
+          for (const listener of [...this.#startsUnfencedListeners]) listener();
         },
         // It stays the cautious false.
         (error: unknown) => console.error("Asking the agent host about sessions", error),
@@ -111,6 +113,12 @@ export class AgentHostSandboxFacts implements AgentSandboxHost {
     this.#now = now;
     this.#elevate = elevate;
     this.#wslSetup = wslSetup;
+  }
+
+  /** Tells `listener` once the host's answer about `studioStartsUnfenced` is in (HAL-19614). */
+  subscribeStudioStartsUnfenced(listener: () => void): () => void {
+    this.#startsUnfencedListeners.add(listener);
+    return () => this.#startsUnfencedListeners.delete(listener);
   }
 
   async check(): Promise<SandboxCheckFacts> {

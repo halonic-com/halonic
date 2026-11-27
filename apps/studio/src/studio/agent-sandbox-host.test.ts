@@ -4,7 +4,7 @@ import type {
   AgentHostTransport,
 } from "@halonicjs/adapter-agent-host-client";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { AgentHostSandboxFacts } from "./agent-sandbox-host.ts";
 import { agentSandboxOffered } from "./provide-agent-sandbox.ts";
 import type { ShellElevation } from "./sandbox-elevate-shell.ts";
@@ -46,6 +46,30 @@ verifies("studio.agent-sandbox-host", () => {
     expect(facts().studioStartsUnfenced).toBe(false);
     expect(facts(false).studioStartsUnfenced).toBe(false);
     expect(facts(true).studioStartsUnfenced).toBe(true);
+  });
+
+  it("tells its listeners once the host's coming answer is in, and not after they stop", async () => {
+    const { transport } = host({});
+    let answer: (startsUnfenced: boolean) => void = () => {};
+    const coming = new Promise<boolean>((resolve) => (answer = resolve));
+    const facts = new AgentHostSandboxFacts(
+      transport,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      coming,
+    );
+    const heard: boolean[] = [];
+    const stop = facts.subscribeStudioStartsUnfenced(() => heard.push(facts.studioStartsUnfenced));
+    const stopped = vi.fn();
+    facts.subscribeStudioStartsUnfenced(stopped)();
+    answer(true);
+    await coming;
+    expect(heard).toEqual([true]);
+    expect(stopped).not.toHaveBeenCalled();
+    stop();
   });
 
   it("reads a passing check as Ready", async () => {
