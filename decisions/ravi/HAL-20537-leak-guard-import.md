@@ -2,6 +2,7 @@
 
 - Approval: HAL-20537 (option (a) of the security review of halonic-com/halonic#6815)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QypajhiyxID3ARNCqzuoZZu41eLAvjpr9XYhgrg0WAmXdUfis3DAm1qd09Ydq6omIxacihg9ee0I4hhKIvTFCA==
 
 The `layers` rule allows exactly one import to reach into another package by
 path: from `tooling/check/src/leaks/` to `packages/core/std/src/secret-rules.ts`.
