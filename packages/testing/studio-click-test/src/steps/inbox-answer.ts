@@ -34,7 +34,7 @@ const staleLine = "//*[@data-failed]";
 
 /** The seeded card's row in the Inbox's plain List: its box, and its avatar's 60px place. */
 const cardRow = rowContaining(screenText.strategyApproval.text);
-const cardRowParts = {
+export const cardRowParts = {
   row: `${cardRow}/*[1]`,
   picture: `${cardRow}//*[contains(concat(' ', normalize-space(@class), ' '), ' size-15 ')]`,
 } as const;
@@ -78,15 +78,21 @@ export const inboxAnswer: Step = {
     if (!(await openPlace(context, screenText.inbox.text))) {
       return { passed: false, code: "NO_INBOX", note: "No Inbox in Places." };
     }
+    // The row is read before the click: a narrow window hides the list once the card opens.
+    const listed = await waitForText(context, cardWaitMs, (text) =>
+      text.includes(screenText.strategyApproval.text) ? true : undefined,
+    );
+    if (listed.value !== true) {
+      return { passed: false, code: "NO_CARD", note: lastWords(listed.text) };
+    }
+    const size = await sidebarRowSize(context, "The Inbox's card row", cardRowParts);
+    if (!size.passed) return size;
     const shown = await clickRow(context, screenText.strategyApproval.text, cardWaitMs);
     const card = await waitForText(context, shown ? 20_000 : 0, (text) =>
       text.includes(seedNames.card) ? true : undefined,
     );
     if (card.value !== true) return { passed: false, code: "NO_CARD", note: lastWords(card.text) };
     if (isStale(card.text)) return stale(context, card.text);
-    // Read while the card is open: once answered, it leaves the list.
-    const size = await sidebarRowSize(context, "The Inbox's card row", cardRowParts);
-    if (!size.passed) return size;
     if (!(await clickWhenShown(context, buttonLabels.approve.text, 10_000))) {
       return { passed: false, code: "NO_ANSWER_BUTTON", note: lastWords(card.text) };
     }

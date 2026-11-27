@@ -23,6 +23,8 @@ export interface FakeStudio {
   readonly elements: Map<string, number>;
   /** The computed background colour each XPath's element has; one it doesn't name has none. */
   readonly backgrounds: Map<string, string>;
+  /** The computed height each XPath's element has; one it doesn't name has none. */
+  readonly heights: Map<string, string>;
   /**
    * Buttons that a hidden copy comes before in the page, such as a closed menu's row: a click
    * reaches the shown one only through the XPath scope named here, and otherwise isn't interactable.
@@ -52,6 +54,7 @@ export function fakeStudio(text = ""): FakeStudio {
     title: "",
     elements: new Map(),
     backgrounds: new Map(),
+    heights: new Map(),
     shownWithin: new Map(),
     approval: undefined,
     paperclip: { status: "pending", comments: [], keyWorks: true },
@@ -85,7 +88,8 @@ export function fakeStudio(text = ""): FakeStudio {
       press();
     },
     attribute: async (_xpath, name) => studio.rootAttributes.get(name) ?? null,
-    cssValue: async (xpath) => studio.backgrounds.get(xpath) ?? "",
+    cssValue: async (xpath, property) =>
+      (property === "height" ? studio.heights : studio.backgrounds).get(xpath) ?? "",
     pageText: async () => window().text,
     title: async () => studio.title,
     // The fake names each window by its label, as Tauri does.
@@ -140,4 +144,19 @@ export function button(
   press: () => void = () => undefined,
 ) {
   studio.windows.get(windowName)?.buttons.set(name, press);
+}
+
+/**
+ * Draws a sidebar row at `parts.row` with the heights given for it and its picture, the kit's by
+ * default. Whether the picture shows, rather than initials, each test sets itself.
+ */
+export function drawRow(
+  studio: FakeStudio,
+  parts: { readonly row: string; readonly picture: string },
+  rowHeight = "80px",
+  pictureHeight = "60px",
+): void {
+  studio.elements.set(parts.row, 1);
+  studio.heights.set(parts.row, rowHeight);
+  studio.heights.set(parts.picture, pictureHeight);
 }

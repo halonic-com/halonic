@@ -1,9 +1,14 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
+import { button, drawRow, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
 import { placesList } from "./screen.ts";
-import { inboxAnswer } from "./steps/inbox-answer.ts";
-import { agentPictureIn, messengerProbe, messengerSend } from "./steps/messenger-send.ts";
+import { cardRowParts, inboxAnswer } from "./steps/inbox-answer.ts";
+import {
+  agentPictureIn,
+  messengerProbe,
+  messengerSend,
+  openRowFillOf,
+} from "./steps/messenger-send.ts";
 import { overviewRecap, searchTask } from "./steps/search-overview.ts";
 import { disconnect, startMenuShortcuts } from "./steps/shortcuts-disconnect.ts";
 import { seedNames } from "./test-paperclip.ts";
@@ -16,9 +21,10 @@ function main(studio: FakeStudio) {
   return window;
 }
 
-/** A connected Studio on a workspace, with the Places list holding `places`. */
+/** A connected Studio on a workspace, with the Places list holding `places` and the card's row. */
 function connectedStudio(places: Record<string, () => void>): FakeStudio {
   const studio = fakeStudio("Acme");
+  drawRow(studio, cardRowParts);
   button(studio, "main", screenText.places.text, () => {
     for (const [name, open] of Object.entries(places)) button(studio, "main", name, open);
   });
@@ -151,6 +157,7 @@ verifies("studio-click-test.paperclip-steps", () => {
         },
       });
       for (const place of where) studio.elements.set(agentPictureIn[place], 1);
+      drawRow(studio, { row: openRowFillOf.row, picture: openRowFillOf.tile });
       return studio;
     }
 

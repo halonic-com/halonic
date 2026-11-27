@@ -11,17 +11,22 @@ export interface SidebarRowParts {
 /**
  * Reads the heights the app drew for a sidebar row and its picture (`kit.plain-row-size`): the
  * row exactly 80px and the picture 60px. The kit's sizes are CSS px, so a scaled screen still
- * reads 80px here. A narrow window shows only the open item, with no list, so there is nothing
- * to measure.
+ * reads 80px here. Steps call it before they open the item, while the list shows: a window
+ * below 900px wide then shows only the open item. A missing row fails as `NO_SIDEBAR_ROW`; a
+ * missing picture is left to the step, which reports initials itself.
  */
 export async function sidebarRowSize(
   context: StepContext,
   where: string,
   parts: SidebarRowParts,
 ): Promise<StepOutcome> {
-  if ((await context.driver.count(parts.row)) === 0) return { passed: true };
+  if ((await context.driver.count(parts.row)) === 0) {
+    return { passed: false, code: "NO_SIDEBAR_ROW", note: `${where} isn't in the list.` };
+  }
   const row = await context.driver.cssValue(parts.row, "height");
-  const picture = await context.driver.cssValue(parts.picture, "height");
+  // Reading a missing element throws, so a row showing initials reads no picture height.
+  const pictureDrawn = (await context.driver.count(parts.picture)) > 0;
+  const picture = pictureDrawn ? await context.driver.cssValue(parts.picture, "height") : "60px";
   if (row === "80px" && picture === "60px") return { passed: true };
   return {
     passed: false,

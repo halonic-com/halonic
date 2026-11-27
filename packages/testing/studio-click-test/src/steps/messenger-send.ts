@@ -66,6 +66,10 @@ export const messengerSend: Step = {
     }
     // The row is read before the click: a narrow window shows only the open chat after it.
     const rowPicture = await pictureShows(context, agentPictureIn["chat row"]);
+    const size = await sidebarRowSize(context, "The Messenger's chat row", {
+      row: openRowFillOf.row,
+      picture: openRowFillOf.tile,
+    });
     await clickRow(context, seedNames.agent, 10_000);
     const sent = await sendProbe(context);
     if (!sent.passed) return sent;
@@ -80,10 +84,7 @@ export const messengerSend: Step = {
     }
     const tile = await tileOnOpenRow(context);
     if (!tile.passed) return tile;
-    return sidebarRowSize(context, "The Messenger's chat row", {
-      row: openRowFillOf.row,
-      picture: openRowFillOf.tile,
-    });
+    return size;
   },
 };
 
