@@ -147,6 +147,40 @@ verifies("inbox.project-line", () => {
     expect(names(root)).toEqual(["All projects, 5", "Studio app", "+3 more projects"]);
     expect(rowCount(root)).toBe(5);
   });
+
+  it("measures again when the chips' widths change, as when the web font arrives", async () => {
+    const observed = new Map<Element, () => void>();
+    globalThis.ResizeObserver = class {
+      readonly #measure: ResizeObserverCallback;
+      constructor(measure: ResizeObserverCallback) {
+        this.#measure = measure;
+      }
+      observe(target: Element) {
+        observed.set(target, () => this.#measure([], this));
+      }
+      unobserve() {}
+      disconnect() {}
+    };
+    try {
+      const root = await inboxWithProjects();
+      expect(names(root)).toEqual(["All projects, 5", "Studio app", "+3 more projects"]);
+      Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+        configurable: true,
+        get: () => 60,
+      });
+      const copy = root.querySelector('div.invisible[aria-hidden="true"]');
+      await act(async () => observed.get(copy ?? root)?.());
+      expect(names(root)).toEqual([
+        "All projects, 5",
+        "Studio app",
+        "Engine",
+        "Halonic marketing website",
+        "No project",
+      ]);
+    } finally {
+      Reflect.deleteProperty(globalThis, "ResizeObserver");
+    }
+  });
 });
 
 describe("chipsThatFit", () => {

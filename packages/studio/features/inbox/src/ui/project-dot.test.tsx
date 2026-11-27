@@ -197,10 +197,11 @@ verifies("inbox.project-dot", () => {
 });
 
 describe("projectColour", () => {
-  it("picks one of five fixed colours from the ID alone, none violet, amber or azure", () => {
+  it("picks one of four fixed colours from the ID alone, none violet, amber, azure or rose", () => {
     const ids = Array.from({ length: 60 }, (_, index) => `project-${index}`);
     const picked = new Set(ids.map(projectColour));
-    expect(picked.size).toBe(5);
+    expect(picked.size).toBe(4);
+    expect(picked).not.toContain("bg-series-2");
     expect(projectColour("p-studio")).toBe(projectColour("p-studio"));
     for (const colour of picked) expect(colour).not.toMatch(/warning|attention|running/);
   });

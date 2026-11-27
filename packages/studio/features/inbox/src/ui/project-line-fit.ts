@@ -32,7 +32,8 @@ export function chipsThatFit({ room, first, chips, more, gap }: LineWidths): num
 
 /**
  * Measures the line and a hidden copy of its chips (`sample`: "All", each project chip, then a
- * "+N"), again whenever the line changes size or `shape` changes, and says how many chips fit.
+ * "+N"), again whenever the line or the copy changes size or `shape` changes, and says how many
+ * chips fit.
  */
 export function useChipsThatFit(
   line: RefObject<HTMLElement | null>,
@@ -58,6 +59,9 @@ export function useChipsThatFit(
     const observer =
       typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(measure);
     observer?.observe(row);
+    // The copy's chips change width while the line doesn't: the web font arriving after the
+    // first measure, or a count going from 9 to 10 (HAL-20370).
+    observer?.observe(copy);
     return () => observer?.disconnect();
   }, [line, sample, shape]);
   return fit;

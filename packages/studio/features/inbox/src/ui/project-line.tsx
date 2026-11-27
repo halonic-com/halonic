@@ -144,15 +144,16 @@ function menuEntries(
     count: String(choice.count),
     checked: choice.value === value,
     onSelect: () => onChange(choice.value),
-    ...(choice.value === "all"
-      ? {}
-      : {
-          icon: (
-            <span className="grid place-items-center">
-              <ChoiceDot choice={choice} />
-            </span>
-          ),
-        }),
+    // "All projects" gets an empty dot so its name lines up with the projects' (sketch A).
+    icon: (
+      <span className="grid place-items-center">
+        {choice.value === "all" ? (
+          <span aria-hidden="true" className="size-2" />
+        ) : (
+          <ChoiceDot choice={choice} />
+        )}
+      </span>
+    ),
   });
   const [all, ...choices] = options;
   const projects = choices.filter((choice) => choice.value !== "none");

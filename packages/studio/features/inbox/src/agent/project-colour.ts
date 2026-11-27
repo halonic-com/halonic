@@ -1,18 +1,13 @@
 /**
- * The five project dot colours, the theme's own series hues spelled out whole so the Studio's CSS
- * build finds each class. None is the violet of "your turn", the amber of late or the azure of a
- * running agent, which on an agent's row would read as "working" (HAL-20307); the
+ * The four project dot colours, the theme's own series hues spelled out whole so the Studio's CSS
+ * build finds each class. None is the violet of "your turn", the amber of late, the azure of a
+ * running agent, which on an agent's row would read as "working" (HAL-20307), or the rose of
+ * `series-2`, which is the Studio's "failed" and would read as an alarm (HAL-20370); the
  * name beside the dot tells two close hues apart, as a chart's line ends do.
  */
-const colours = [
-  "bg-series-1",
-  "bg-series-2",
-  "bg-series-3",
-  "bg-series-4",
-  "bg-series-other",
-] as const;
+const colours = ["bg-series-1", "bg-series-3", "bg-series-4", "bg-series-other"] as const;
 
-/** One of the five project dot colours, as a background class. */
+/** One of the four project dot colours, as a background class. */
 export type ProjectColour = (typeof colours)[number];
 
 /**
