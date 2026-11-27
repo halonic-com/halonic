@@ -26,6 +26,10 @@ only those from the confirmation, never a decision's option an agent named
 of other requirements (`budget-incidents`, `option-notes`, the port's
 reads) now expect `declines` on those options; none of them expects less.
 
+After its second round, a confirmation card that carries Paperclip's
+`payload.secretProposal` is `risky` too, with a `reach` from that payload,
+because its Accept approves the binding (`paperclip-client.risky-reach`).
+
 The user sees nothing different yet: `reach` is shown only by the shell's
 confirmation, in the next pull request of this stack.
 

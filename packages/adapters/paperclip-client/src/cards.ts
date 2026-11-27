@@ -27,7 +27,7 @@ import {
 import { asList, asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
 import { authorOf, fullLinksOf, type MapContext, timeOf } from "./map.ts";
 import type { PaperclipRequestName } from "./requests.ts";
-import { hireReach } from "./risky-reach.ts";
+import { cardApprovesProposal, cardReach, hireReach } from "./risky-reach.ts";
 
 /** The request that answers a card or an approval, and its body. */
 export interface AnswerRequest {
@@ -233,6 +233,7 @@ export function cardToItem(
   if (state === undefined) {
     return undefined;
   }
+  const reach = cardReach(payload);
   return {
     id: context.ids.make("card", task, id),
     source: context.ids.source(),
@@ -242,8 +243,10 @@ export function cardToItem(
     ...(questions === undefined ? {} : { questions }),
     ...itemKindOf(kind),
     work: context.ids.make("task", task),
-    // A card asks a question in words and changes no one's rights, unless it lets an agent run a tool.
-    risk: asksToRunTool(payload) ? "risky" : "normal",
+    // A card asks a question in words and changes no one's rights, unless it lets an agent run a
+    // tool or its Accept approves a secret proposal (`paperclip-client.risky-reach`).
+    risk: asksToRunTool(payload) || cardApprovesProposal(payload) ? "risky" : "normal",
+    ...(reach === undefined ? {} : { reach }),
     createdAt: timeOf(record, "createdAt"),
     // The Inbox adds the files of the card's task (`card-files.ts`).
     attachments: [],

@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { agentAda, agentBo, me } from "./acme-data.test-helper.ts";
 import { joinRequestToItem, secretProposalToItem } from "./board-request-items.ts";
-import { approvalToItem } from "./cards.ts";
+import { approvalToItem, cardToItem } from "./cards.ts";
 import { PaperclipIds } from "./ids.ts";
 import type { JsonRecord } from "./json.ts";
 import { hireReach } from "./risky-reach.ts";
@@ -176,6 +176,42 @@ verifies("paperclip-client.risky-reach", () => {
       expect(agent).toBe(`${"I".repeat(198)}…`);
       const item = approvalToItem(context, hire(hireEnv(), `${"I".repeat(198)}🚀🚀`), undefined);
       expect(item !== undefined && inboxItemFits(item)).toBe(true);
+    });
+    it("marks a card whose Accept approves a secret proposal risky, with its reach", () => {
+      const card = {
+        id: "c0000000-0000-4000-8000-000000000001",
+        kind: "request_confirmation",
+        status: "pending",
+        createdByAgentId: agentAda,
+        payload: {
+          version: 1,
+          prompt: "Give Bo the deploy token?",
+          secretProposal: {
+            proposalId: "5e000000-0000-4000-8000-000000000001",
+            targetAgentName: "Bo",
+            sourceSecretLabel: "Acme deploy token",
+            configPath: "env.ACME_DEPLOY_TOKEN",
+          },
+        },
+        createdAt: "2026-11-27T09:50:00.000Z",
+      };
+      const task = "t0000000-0000-4000-8000-000000000001";
+      const item = cardToItem(context, task, card);
+      expect(item?.risk).toBe("risky");
+      expect(item?.reach).toEqual({
+        agent: "Bo",
+        secret: { name: "Acme deploy token", settingPath: "env.ACME_DEPLOY_TOKEN" },
+      });
+      expect(item?.options.filter((option) => option.declines === true).map((o) => o.id)).toEqual([
+        "reject",
+      ]);
+      expect(item !== undefined && inboxItemFits(item)).toBe(true);
+      const plain = cardToItem(context, task, {
+        ...card,
+        payload: { version: 1, prompt: "Ship?" },
+      });
+      expect(plain?.risk).toBe("normal");
+      expect(plain).not.toHaveProperty("reach");
     });
   });
 });

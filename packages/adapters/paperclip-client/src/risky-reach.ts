@@ -121,3 +121,36 @@ export function proposalReach(
   const name = shown(text(record, "proposedName") ?? text(record, "proposedKey"));
   return reachOf({ agent: shown(proposer), secret: name === undefined ? undefined : { name } });
 }
+
+/** A confirmation card's `payload.secretProposal`, which Paperclip sets when accepting the card approves a secret binding. */
+function cardProposal(payload: JsonRecord | undefined): JsonRecord | undefined {
+  return asRecord(field(payload, "secretProposal"));
+}
+
+/**
+ * Whether accepting a card approves a secret proposal: Paperclip set `payload.secretProposal` on
+ * it, and its Accept approves the binding, so it is as risky as the proposal itself.
+ */
+export function cardApprovesProposal(payload: JsonRecord | undefined): boolean {
+  return cardProposal(payload) !== undefined;
+}
+
+/**
+ * What accepting a card that carries a secret proposal reaches: the agent that gets the secret
+ * (`targetAgentName`) and the secret (`sourceSecretLabel`) with its setting path (`configPath`).
+ */
+export function cardReach(payload: JsonRecord | undefined): InboxReach | undefined {
+  const proposal = cardProposal(payload);
+  if (proposal === undefined) {
+    return undefined;
+  }
+  const name = shown(text(proposal, "sourceSecretLabel"));
+  const settingPath = shown(text(proposal, "configPath"));
+  return reachOf({
+    agent: shown(text(proposal, "targetAgentName")),
+    secret:
+      name === undefined
+        ? undefined
+        : { name, ...(settingPath === undefined ? {} : { settingPath }) },
+  });
+}
