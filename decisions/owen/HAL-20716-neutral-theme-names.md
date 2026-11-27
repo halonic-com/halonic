@@ -3,7 +3,6 @@
 - Task: HAL-20716
 - Approval: Liam signs this note for HAL-20716 (board request on HAL-10: no reference app names in the code base). A rename, fast-track.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nqGobSzQOLE1R1Q2nkZefLZs0CMSm13+gPR5D1H3oWC9w2ZqZCvhoXUXfs1YokkbvySkOJwL5aSouTOZzCQBCg==
 
 ## What changes
 
@@ -22,3 +21,5 @@ The board's rule: our code bases never name the app the design was modelled on.
 - packages/studio/kit/src/theme.test.ts
 - packages/studio/kit/src/theme-new-design.test.ts
 - decisions/owen/HAL-20674-whatsapp-theme.md
+- kit.whatsapp-theme
+- packages/studio/kit/src/theme-whatsapp.test.ts
