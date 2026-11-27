@@ -27,7 +27,12 @@ import {
   type StepperStage,
   type StepperView,
 } from "../stepper-view.ts";
-import { answeredAsChanged, unchangedChecks, withJudgement } from "./changed-after-start.ts";
+import {
+  answeredAsChanged,
+  unchangedChecks,
+  withJudgement,
+  withPagesToReopen,
+} from "./changed-after-start.ts";
 import { gateRefusal, stoppedByChecks } from "./check-gate.ts";
 import { checkedValues } from "./expect-stop.ts";
 import {
@@ -212,7 +217,9 @@ export class StepperRun {
     const account = await steps.account(reviewed.service);
     const stage =
       account === undefined ? signInStage(reviewed.service, null) : { kind: "ready" as const };
-    this.set({ ...shown, account: account?.name ?? null, stage });
+    const view = { ...shown, account: account?.name ?? null, stage };
+    // Only a request that can still run offers a page again; a stopped or ended one doesn't.
+    this.set(stage.kind === "ready" ? withPagesToReopen(view, unchanged) : view);
   }
 
   /** The request's definition; the review found it, or the run would have stopped there. */

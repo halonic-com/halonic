@@ -7,7 +7,7 @@
  */
 import { checkChangedAfterStart, type StepperDefinition } from "@halonicjs/action-steppers";
 import type { ActionKeptValue, ActionRecordEvent } from "@halonicjs/events";
-import type { StepOutcome, StepperView } from "../stepper-view.ts";
+import type { StepperView } from "../stepper-view.ts";
 
 /** Shown when the record has no page the stepper opened before the check, so nothing to compare with. */
 export const noStartMessage = "Open the page from this stepper first, then check again.";
@@ -50,21 +50,34 @@ export function unchangedChecks(
 
 /**
  * The view with each unchanged check failed with its message, whatever its read answered, so it
- * isn't done and the run bar offers it again once the user has saved; a guided page it needs and
- * the stepper never opened is to do again.
+ * isn't done and the run bar offers it again once the user has saved.
  */
 export function withJudgement(
   view: StepperView,
   unchanged: ReadonlyMap<number, UnchangedCheck>,
 ): StepperView {
-  const reopen = new Set([...unchanged.values()].map((check) => check.reopen));
   const steps = view.steps.map((step) => {
     const message = unchanged.get(step.number)?.message;
-    let outcome: StepOutcome = step.outcome;
-    if (message !== undefined) outcome = { kind: "failed", message };
-    else if (reopen.has(step.number)) outcome = { kind: "pending" };
-    return { ...step, outcome };
+    return message === undefined
+      ? step
+      : { ...step, outcome: { kind: "failed", message } as const };
   });
+  return { ...view, steps };
+}
+
+/**
+ * The view with each guided step an unchanged check needs, and whose page the stepper never
+ * opened, to do again, so the user can open the page from here. Only for a request that can still
+ * run: once stopped or ended, the record's outcome stands.
+ */
+export function withPagesToReopen(
+  view: StepperView,
+  unchanged: ReadonlyMap<number, UnchangedCheck>,
+): StepperView {
+  const reopen = new Set([...unchanged.values()].map((check) => check.reopen));
+  const steps = view.steps.map((step) =>
+    reopen.has(step.number) ? { ...step, outcome: { kind: "pending" } as const } : step,
+  );
   return { ...view, steps };
 }
 
@@ -83,8 +96,9 @@ export function answeredAsChanged(
 
 /** Why the check doesn't count, or `undefined` when its time is later than the start. */
 function judgement(judged: CheckSuccess, field: string): string | undefined {
-  if (judged.byHand) return byHandMessage;
+  // A missing start comes first: the user can act on it before running the check.
   if (judged.startedAt === undefined) return noStartMessage;
+  if (judged.byHand) return byHandMessage;
   const result = checkChangedAfterStart(judged.kept, field, judged.startedAt);
   return result.ok ? undefined : result.message;
 }

@@ -226,6 +226,25 @@ verifies("action-steppers.changed-after-start-run", () => {
       expect(fake.opened).toEqual([secretsPage]);
       expect(answers[0]).toMatchObject({ outcome: "succeeded" });
     });
+
+    it("leaves step 1 as the record says once an expect stop ended the request", async () => {
+      const { answers, run } = await runOf(() => "2026-11-27T09:03:41Z", { name: "OTHER_TOKEN" });
+      run.actions.markDoneByHand(1);
+      await run.idle();
+      run.actions.runStep(2);
+      await run.idle();
+      expect(answers).toEqual([
+        {
+          kind: "action-result",
+          outcome: "failed",
+          steps: [
+            { step: 1, outcome: "succeeded", byHand: true },
+            { step: 2, outcome: "failed", failure: "state-changed" },
+          ],
+        },
+      ]);
+      expect(outcomes(run)[0]).toEqual({ kind: "succeeded" });
+    });
   });
 });
 
