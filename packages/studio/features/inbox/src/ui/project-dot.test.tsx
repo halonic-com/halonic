@@ -96,17 +96,17 @@ verifies("inbox.project-dot", () => {
     const third = rowOf("Send the weekly digest?");
     expect(first?.querySelector(colour)).not.toBeNull();
     expect(second?.querySelector(colour)).not.toBeNull();
-    expect(third?.querySelector('[class*="bg-series-"], .bg-running')).toBeNull();
+    expect(third?.querySelector('[class*="bg-series-"]')).toBeNull();
     expect(rowLine(third)).toContain("Paperclip · Acme · Chief");
   });
 });
 
 describe("projectColour", () => {
-  it("picks one of six fixed colours from the ID alone, none violet or amber", () => {
+  it("picks one of five fixed colours from the ID alone, none violet, amber or azure", () => {
     const ids = Array.from({ length: 60 }, (_, index) => `project-${index}`);
     const picked = new Set(ids.map(projectColour));
-    expect(picked.size).toBe(6);
+    expect(picked.size).toBe(5);
     expect(projectColour("p-studio")).toBe(projectColour("p-studio"));
-    for (const colour of picked) expect(colour).not.toMatch(/warning|attention/);
+    for (const colour of picked) expect(colour).not.toMatch(/warning|attention|running/);
   });
 });
