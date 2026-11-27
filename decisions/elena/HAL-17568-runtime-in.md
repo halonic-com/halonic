@@ -1,33 +1,33 @@
 # Decision: one adapter may ship a dev-tooling library, named in `runtimeIn`
 
 - Task: HAL-17568 (T3 of the ToolScript track, HAL-17560)
-- Approval: Liam chose option 1 on HAL-17568 (26 Nov); Liam signs this note in review
-- Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hi1Jy+nTX79Rl7vwpTb3d6E4gFtVs0nHWsWAd7n33BrUDaojscm2OHVL2G1ob9bMKMUaHqErg79d24hAvZ67CQ==
+- Approval: Liam chose option 1 on HAL-17568 (26 Nov). The change reaches a trust root (`tooling/check/src/lib/config-files.ts`), so both guardians sign this note: Liam and Julian
+- Kind: user-visible
 
 ## What changes
 
-- `tooling/check/dependencies.json`: a `dev-tooling` entry may carry a new field, `runtimeIn`,
+- `tooling/check/dependencies.json` may give a `dev-tooling` entry a new field, `runtimeIn`,
   naming exactly one `@halonicjs/adapter-<name>` that its `allowedIn` also names, with `adapters`
   in its `layers`. Only that adapter may list the library in `dependencies` and import it from a
   source file that isn't a test or config file. Every other package keeps the dev-tooling rules.
-- `@typescript/typescript6` gets `"runtimeIn": "@halonicjs/adapter-toolscript-check"`, so the
-  ToolScript checker (stacked PR) can use the TypeScript JS API at run time. The repo's
-  `typescript` is 7.0, which has no JS API; the entry's reason says to remove this once 7.1 ships
-  its own.
 - `tooling/check/src/rules/dependencies.ts` and `layers.ts` read the field;
   `src/lib/config-files.ts` parses it and fails an entry whose `runtimeIn` is set on a library
   that isn't dev tooling, or that names a pattern, a non-adapter or a package outside `allowedIn`.
+  `config-files.ts` is imported by the guard commands, so this is a trust-root change.
 - New requirement `check.dev-tooling-runtime-in`; `docs/guides/dependencies.md` describes the
   field.
+- No entry uses the field yet. CI runs the guard from the merge base's copy, which doesn't know
+  `runtimeIn` until this merges, so the stacked ToolScript checker PR sets it for
+  `@typescript/typescript6` after this lands (the two-step rule in `docs/guides/checks.md`).
 
 **Trust:** no new library and no lockfile change. The field widens nothing by itself: each use
-names one package, by exact name, in a file only Liam reviews (`tooling/check/`), so a second
-runtime user needs another reviewed change to `dependencies.json`.
+names one package, by exact name, in `tooling/check/dependencies.json`, which only the CTO
+reviews, so every runtime user needs its own reviewed change there.
 
 ## Why
 
-The checker needs a TypeScript syntax tree and `transpileModule`. Listing the library under
+The ToolScript checker needs a TypeScript syntax tree and `transpileModule`, and the repo's
+`typescript` is 7.0, which has no JS API. Listing `@typescript/typescript6` under
 `devDependencies` with no guard change (option 2) would work today, but once Studio wires the
 checker in (T9) a library labelled dev tooling would ship in its bundle, which is what the
 dependency rule exists to stop. A narrow, named exception keeps the rule honest until TypeScript

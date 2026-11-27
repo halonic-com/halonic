@@ -15,8 +15,7 @@ Adding a dependency is a decision, not a side effect.
    the package using it brings its own copy. When one adapter really has to
    ship a dev-tooling library, its entry names that adapter in `runtimeIn`
    (one exact `@halonicjs/adapter-<name>`, also in `allowedIn`), and only that
-   adapter may list it in `dependencies` and import it from its source. Today that's `@typescript/typescript6`
-   in `adapters/toolscript-check`, until TypeScript 7.1 ships its own JS API.
+   adapter may list it in `dependencies` and import it from its source.
 
 ## The approved libraries and their wrappers
 
