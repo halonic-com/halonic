@@ -14,11 +14,12 @@ function still(element: HTMLElement): boolean {
 }
 
 /**
- * The agent button's face (design HAL-19384): while the agents are read, a skeleton circle the
- * avatar's size, drawn after 300 ms (the kit's `SKELETON_AFTER_MS`, so a fast read doesn't flash),
- * breathing at most 3 times and read out as "Loading your agents"; once they're there, the picked
- * agent's avatar, fading in over 120 ms. Either way the face keeps the avatar's size, so the row
- * keeps its height; the chip around the avatar adds the name once the agents arrive.
+ * The agent chip's inside (design HAL-19384): while the agents are read, a skeleton circle the
+ * avatar's size, a name bar and the chevron's space, drawn after 300 ms (the kit's
+ * `SKELETON_AFTER_MS`, so a fast read doesn't flash), breathing at most 3 times and read out as
+ * "Loading your agents"; once they're there, the picked agent's avatar, fading in over 120 ms.
+ * The skeleton fills the chip's outline as the real chip does, so the text box beside it moves
+ * only by the difference between the bar and the name when the agents arrive (HAL-20415).
  */
 export function AgentFace({ name }: { readonly name: string | undefined }) {
   return name === undefined ? <AgentSkeleton /> : <ArrivingAvatar name={name} />;
@@ -26,7 +27,7 @@ export function AgentFace({ name }: { readonly name: string | undefined }) {
 
 function AgentSkeleton() {
   const [shown, setShown] = useState(false);
-  const circle = useRef<HTMLSpanElement>(null);
+  const greys = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setShown(true), SKELETON_AFTER_MS);
@@ -34,7 +35,7 @@ function AgentSkeleton() {
   }, []);
 
   useEffect(() => {
-    const element = circle.current;
+    const element = greys.current;
     if (!shown || element === null || still(element)) return;
     const breaths = element.animate([{ opacity: 1 }, { opacity: 0.55 }, { opacity: 1 }], {
       duration: BREATH_MS,
@@ -46,8 +47,17 @@ function AgentSkeleton() {
 
   return (
     <>
-      <span ref={circle} data-agent-skeleton="" className={shown ? "block" : "block invisible"}>
+      {/* The circle, the name bar and the chevron's space, spaced as the chip spaces its parts. */}
+      <span
+        ref={greys}
+        data-agent-skeleton=""
+        className={shown ? "flex items-center gap-1.5" : "flex items-center gap-1.5 invisible"}
+      >
         <SkeletonBar kind="avatar" />
+        <span data-name-bar="" className="w-16">
+          <SkeletonBar kind="meta" />
+        </span>
+        <span className="size-3.5 shrink-0" />
       </span>
       {/* There from the start, so screen readers announce the words when they arrive. */}
       <span role="status" className="sr-only">

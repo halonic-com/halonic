@@ -41,13 +41,15 @@ const boxClasses = [
 ].join(" ");
 
 /**
- * The agent chip: a 32 px pill with the agent's picture, its name and a chevron (design section 4),
- * 2 px down so it centres on the 36 px round Ask.
+ * The agent chip's outline: a 32 px pill drawn before the text box, 2 px down so it centres on the
+ * 36 px round Ask. The loading skeleton takes it too, so the text box doesn't jump when the agents
+ * arrive (HAL-20415).
  */
-const agentChipClasses = [
-  "order-first mt-0.5 flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border",
-  "py-0.5 ps-0.5 pe-2 text-body text-fg hover:bg-surface-muted focus-ring",
-].join(" ");
+const agentChipShape =
+  "order-first mt-0.5 flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border py-0.5 ps-0.5 pe-2";
+
+/** The agent chip: the outline with the agent's picture, its name and a chevron (design section 4). */
+const agentChipClasses = `${agentChipShape} text-body text-fg hover:bg-surface-muted focus-ring`;
 
 /**
  * Quick ask's box (requirement `quick-ask.box`, design HAL-18594 sections 4–6): a `dialog`
@@ -239,8 +241,8 @@ function QuestionRow({
         className="max-h-40 min-h-control-md flex-1 resize-none bg-transparent py-1.5 text-heading font-normal text-fg outline-none [field-sizing:content] placeholder:text-fg-subtle"
       />
       {name === undefined ? (
-        // Nothing to pick yet, so no chip: only its picture's skeleton, at the chip's height.
-        <span className="order-first mt-0.5 flex shrink-0 items-center p-0.5">
+        // Nothing to pick yet, so no button: the chip's outline from the first frame, with its skeleton inside.
+        <span data-agent-slot="" className={agentChipShape}>
           <AgentFace name={undefined} />
         </span>
       ) : (
