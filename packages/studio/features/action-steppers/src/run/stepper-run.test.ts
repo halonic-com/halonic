@@ -364,7 +364,27 @@ verifies("action-steppers.shell-check-gate", () => {
 
       expect(methods(fake.sent)).toEqual(["GET"]);
       expect(run.current().stage).toEqual({ kind: "changed", message: stillOnline, changes: [] });
-      expect(run.current().steps[1]?.outcome.kind).toBe("failed");
+      // The requester's view didn't change: the line says what the rule says, not "state-changed".
+      expect(run.current().steps[1]?.outcome).toEqual({ kind: "failed", message: stillOnline });
+      expect(answers.map((answer) => answer.kind === "action-result" && answer.outcome)).toEqual([
+        "failed",
+      ]);
+    });
+
+    it("names a required field a check marked done by hand didn't read, not the rule's reason", async () => {
+      // No `expect`, so only the rule can stop it.
+      const { definition, version, parameters, expires } = runnerRequest;
+      const unexpected = { definition, version, parameters, expires };
+      const { fake, answers, open } = await runOf(unexpected, { service: runner("online") });
+      const run = await open();
+      run.actions.markDoneByHand(1);
+      await run.idle();
+      run.actions.runStep(2);
+      await run.idle();
+
+      expect(fake.sent).toEqual([]);
+      const notRead = 'The check didn\'t read "status".';
+      expect(run.current().stage).toEqual({ kind: "changed", message: notRead, changes: [] });
       expect(answers.map((answer) => answer.kind === "action-result" && answer.outcome)).toEqual([
         "failed",
       ]);
@@ -376,6 +396,7 @@ verifies("action-steppers.shell-check-gate", () => {
       first.actions.runStep(2);
       await first.idle();
       expect(fake.sent).toEqual([]);
+      expect(String(first.failure)).toContain("Run the check before this step first.");
 
       first.actions.runStep(1);
       await first.idle();

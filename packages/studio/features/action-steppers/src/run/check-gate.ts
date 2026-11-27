@@ -13,7 +13,8 @@ import {
 } from "@halonicjs/action-steppers";
 import type { ActionKeptValue } from "@halonicjs/events";
 import type { InboxActionRequest } from "@halonicjs/ports";
-import type { ExpectStop } from "./expect-stop.ts";
+import { nextStep, type StepperView } from "../stepper-view.ts";
+import { type ExpectStop, expectStop, stoppedView } from "./expect-stop.ts";
 import type { RecordState } from "./record-fold.ts";
 
 /** What each step that succeeded kept, by step number. */
@@ -41,16 +42,43 @@ export function gateRefusal(
 
 /**
  * The stop for the next step when a check before it broke one of the definition's `requires`
- * rules; `undefined` otherwise. A check that hasn't run yet doesn't stop the request: it only
- * keeps the step after it from being sent.
+ * rules or didn't read a field one names; `undefined` otherwise. A check that hasn't run yet
+ * doesn't stop the request: it only keeps the step after it from being sent.
  */
-export function requiresStop(
+function requiresStop(
   catalog: StepperCatalog,
   action: InboxActionRequest,
   next: number,
   record: RecordState,
 ): ExpectStop | undefined {
   const gate = gateRefusal(catalog, action, next, record);
-  if (gate.ok || gate.cause !== "requires") return undefined;
+  if (gate.ok || (gate.cause !== "requires" && gate.cause !== "not-read")) return undefined;
   return { message: gate.message, changes: [] };
+}
+
+/** What a stop after the checks reads from. */
+export interface CheckStopInput {
+  readonly catalog: StepperCatalog;
+  readonly action: InboxActionRequest;
+  /** What the checks kept, merged, or `undefined` while none has succeeded. */
+  readonly current: Readonly<Record<string, ActionKeptValue>> | undefined;
+  readonly record: RecordState;
+}
+
+/**
+ * The view of a request its checks stopped, or `undefined` when nothing stopped it: a changed
+ * `expect` first (`action-steppers.expect-stop`), then a `requires` rule. A `requires` stop shows
+ * its own sentence on the next step, since what the requester saw may not have changed at all.
+ */
+export function stoppedByChecks(
+  shown: StepperView,
+  input: CheckStopInput,
+): StepperView | undefined {
+  const { catalog, action, current, record } = input;
+  const changed = expectStop(action, current);
+  if (changed !== undefined) return stoppedView(shown, changed);
+  const next = nextStep(shown)?.number;
+  const stop = next === undefined ? undefined : requiresStop(catalog, action, next, record);
+  if (stop === undefined) return undefined;
+  return stoppedView(shown, stop, { kind: "failed", message: stop.message });
 }

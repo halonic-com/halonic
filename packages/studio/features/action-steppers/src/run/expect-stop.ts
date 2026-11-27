@@ -7,6 +7,7 @@
 import { checkExpect, type ExpectChange, type StepperDefinition } from "@halonicjs/action-steppers";
 import type { ActionKeptValue } from "@halonicjs/events";
 import type { InboxActionRequest } from "@halonicjs/ports";
+import type { StepOutcome } from "../stepper-view.ts";
 import { nextStep, type StepperView } from "../stepper-view.ts";
 import { type RecordState, stateChangedOutcome } from "./record-fold.ts";
 
@@ -50,13 +51,16 @@ export function expectStop(
 
 /**
  * The view of a request whose check read a state other than its `expect`: it says what changed,
- * and the next step, which it didn't send, shows as failed with `state-changed`.
+ * and the next step, which it didn't send, shows as failed with `state-changed`, or with
+ * `outcome` when another check stopped it.
  */
-export function stoppedView(view: StepperView, stop: ExpectStop): StepperView {
+export function stoppedView(
+  view: StepperView,
+  stop: ExpectStop,
+  outcome: StepOutcome = stateChangedOutcome,
+): StepperView {
   const stopped = nextStep(view)?.number;
-  const steps = view.steps.map((step) =>
-    step.number === stopped ? { ...step, outcome: stateChangedOutcome } : step,
-  );
+  const steps = view.steps.map((step) => (step.number === stopped ? { ...step, outcome } : step));
   return {
     ...view,
     steps,

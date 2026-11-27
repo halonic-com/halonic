@@ -25,8 +25,8 @@ import {
   type StepperStage,
   type StepperView,
 } from "../stepper-view.ts";
-import { gateRefusal, requiresStop } from "./check-gate.ts";
-import { checkedValues, expectStop, stoppedView } from "./expect-stop.ts";
+import { gateRefusal, stoppedByChecks } from "./check-gate.ts";
+import { checkedValues } from "./expect-stop.ts";
 import {
   answerDay,
   foldRecord,
@@ -193,11 +193,8 @@ export class StepperRun {
     this.record = record;
     const current = checkedValues(this.definition(), record);
     const shown = this.withRecord(current === undefined ? reviewed : this.review(current), record);
-    const next = nextStep(shown)?.number;
-    const stop =
-      expectStop(item.action, current) ??
-      (next === undefined ? undefined : requiresStop(catalog, item.action, next, record));
-    if (stop !== undefined) return this.set(stoppedView(shown, stop));
+    const stopped = stoppedByChecks(shown, { catalog, action: item.action, current, record });
+    if (stopped !== undefined) return this.set(stopped);
     if (record.finished !== undefined) {
       const ended = { ...shown, stage: endedStage(record.finished) };
       return this.set(hasSignIn(reviewed) ? this.withSignIn(ended, ended.stage) : ended);
@@ -261,8 +258,11 @@ export class StepperRun {
       if (action?.kind === "sign-in") return this.runSignInPart(number, action.phase);
       const route = catalog.route(item.action.definition, item.action.version, number);
       if (route === undefined) return;
-      // A check before it hasn't run, or kept something it shouldn't have: send nothing.
-      if (this.record === undefined || this.refusal(number, this.record) !== undefined) return;
+      if (this.record === undefined) return;
+      // A check before it hasn't run, or kept something it shouldn't have: send nothing, and say
+      // why on the card, as a refused pasted result does.
+      const refusal = this.refusal(number, this.record);
+      if (refusal !== undefined) throw new Error(refusal);
       this.markRunning(number);
       const request = stepRequest(item.action, route);
       if (route.kind === "call") await steps.runStep(this.request, request);

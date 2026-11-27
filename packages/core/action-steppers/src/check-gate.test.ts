@@ -70,10 +70,16 @@ verifies("action-steppers.check-gate", () => {
       });
     });
 
-    it("refuses when the check didn't keep the required field at all", () => {
-      const result = checkStepGate(acmeRunner, 2, {}, new Map([[1, { name: "acme-build-1" }]]));
+    it("names a required field the check didn't read, instead of the rule's reason", () => {
+      const result = checkStepGate(acmeRunner, 2, {}, new Map([[1, {}]]));
 
-      expect(result.ok).toBe(false);
+      expect(result).toEqual({
+        ok: false,
+        check: 1,
+        cause: "not-read",
+        changes: [],
+        message: 'The check didn\'t read "status".',
+      });
     });
 
     it("compares values with ===, so a kept 0 doesn't meet a required false", () => {

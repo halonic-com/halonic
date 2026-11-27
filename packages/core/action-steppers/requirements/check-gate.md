@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: stream HAL-17488 (user-only action steppers); plan on HAL-20236; architecture note on HAL-17491, section 6.2
 
-When a step is about to run, the action-steppers package shall refuse it if a `check` step before it has not run, when that check kept a value that differs from the request's `expect`, or when that check kept a value that breaks one of the definition's `requires` rules; a broken `requires` rule shall stop the stepper with the rule's own `reason`, and never with the value the service sent.
+When a step is about to run, the action-steppers package shall refuse it if a `check` step before it that has a `requires` rule, or keeps a value the request's `expect` names, has not run; if that check kept a value that differs from the request's `expect`; or if that check didn't read a field one of the definition's `requires` rules names, or read a value that breaks the rule. A broken `requires` rule shall stop the stepper with the rule's own `reason`, a field the check didn't read with Halonic's own sentence naming that field, and never with the value the service sent.
 
 ## Examples
 
@@ -17,6 +17,9 @@ When a step is about to run, the action-steppers package shall refuse it if a `c
 - Given a check with a `requires` rule that hasn't run yet,
   when the step after it is asked to run,
   then it is refused with `Run the check before this step first.`
+- Given a definition whose check requires a runner's `status` to be `offline`,
+  when the check was marked done by hand and kept nothing,
+  then the next step is refused with `The check didn't read "status".`
 - Given a check with no `requires` rule and no `expect` value it keeps,
   when the step after it runs,
   then nothing is refused.

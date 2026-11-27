@@ -9,8 +9,11 @@ export type GateResult =
       ok: false;
       /** The `check` step that stopped it. */
       check: number;
-      /** What stopped it: a changed `expect` value, a broken `requires` rule, or a check that hasn't run. */
-      cause: "expect" | "requires" | "not-checked";
+      /**
+       * What stopped it: a changed `expect` value, a broken `requires` rule, a
+       * required field the check didn't read, or a check that hasn't run.
+       */
+      cause: "expect" | "requires" | "not-read" | "not-checked";
       /** What differs from the request's `expect`; empty when a `requires` stopped it. */
       changes: readonly ExpectChange[];
       message: string;
@@ -23,7 +26,7 @@ export type KeptByStep = ReadonlyMap<number, Readonly<Record<string, ActionKeptV
  * Decides whether step `step` may run (architecture note, 6.2): every
  * `check` step before it that has something to compare must have run, its
  * kept values must match the request's `expect` for the fields it keeps, and
- * then each of its `requires` rules must hold. The first refusal stops the
+ * then each of its `requires` rules must hold, on a field it read. The first refusal stops the
  * stepper in one place, before anything changes. A changed `expect` value
  * stops it with `checkExpect`'s sentence; a broken `requires` with the
  * definition's own `reason`, so the service's value never becomes Halonic's
@@ -71,9 +74,12 @@ function refusalOf(
   if (!compared.ok) {
     return { cause: "expect", changes: compared.changes, message: compared.message };
   }
-  const unmet = check.requires?.find(
-    (rule) => !Object.hasOwn(current, rule.name) || current[rule.name] !== rule.equals,
-  );
+  // A check marked done by hand kept nothing: the rule's reason would claim a state nobody read.
+  const unread = check.requires?.find((rule) => !Object.hasOwn(current, rule.name));
+  if (unread !== undefined) {
+    return { cause: "not-read", changes: [], message: `The check didn't read "${unread.name}".` };
+  }
+  const unmet = check.requires?.find((rule) => current[rule.name] !== rule.equals);
   return unmet === undefined
     ? undefined
     : { cause: "requires", changes: [], message: unmet.reason };
