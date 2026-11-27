@@ -21,6 +21,7 @@ export const workspaceTemplateKind: FileKind<WorkspaceTemplate> = {
   maxBytes: MAX_WORKSPACE_TEMPLATE_FILE_BYTES,
   // A key pasted into a shared template would reach everyone who copies it.
   check: (template) => [
+    ...checkKeysIn(template.title, ["title"], "setting"),
     ...checkKeysIn(template.summary, ["summary"], "setting"),
     ...template.tryFirst.flatMap((entry, index) =>
       checkKeysIn(entry.hint, ["tryFirst", index, "hint"], "setting"),

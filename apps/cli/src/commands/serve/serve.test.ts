@@ -1,4 +1,4 @@
-import { rm, utimes } from "node:fs/promises";
+import { readFile, rm, utimes } from "node:fs/promises";
 import { createServer } from "node:net";
 import { join } from "node:path";
 import { testGit } from "@halonicjs/adapter-git/testing";
@@ -20,6 +20,7 @@ import { fakeSignals } from "../../test/fake-signals.ts";
 import { savedVersionOf } from "../../workspace-at-version.ts";
 import { openWorkspaceDir } from "../../workspace-dir.ts";
 import { cliTrustService, readWorkspaceTrust } from "../../workspace-trust.ts";
+import { examplesFolderFor } from "../init/examples.ts";
 import { serveCommandWith } from "./command.ts";
 import type { ServeSetup } from "./serve.ts";
 import { studioPlacesFor } from "./studio-places.ts";
@@ -106,6 +107,9 @@ function addressOf(line: string | undefined): string {
   return found[1];
 }
 
+/** The repository's `examples` folder, from this test in `apps/cli/src/commands/serve`. */
+const examplesFolder = examplesFolderFor(false, join(import.meta.dirname, "..", "init"));
+
 verifies("cli.commands.serve.serve", () => {
   it("serves a trusted workspace on this computer until Ctrl C", async () => {
     await trustAcme();
@@ -167,6 +171,18 @@ verifies("cli.commands.serve.serve", () => {
 
     const workspace = await (await fetch(`${address}/api/workspace`)).json();
     expect(workspace).toEqual({ name: "Acme", sample: false, folder: "acme" });
+  });
+
+  it("marks a workspace whose template.yaml is a demo, such as a copy of the Acme example, as the sample", async () => {
+    const template = await readFile(join(examplesFolder, "acme", "template.yaml"), "utf8");
+    await writeFiles(acmeRuns.acme, { "template.yaml": template });
+    await trustAcme();
+    const { io } = startServeHomedAt(join(acmeRuns.folder, "profile"), "--port", "0");
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    const workspace = await (await fetch(`${address}/api/workspace`)).json();
+    expect(workspace).toEqual({ name: "Acme", sample: true, folder: "acme" });
   });
 
   it("serves the built Studio page at / with the page's own content security policy", async () => {

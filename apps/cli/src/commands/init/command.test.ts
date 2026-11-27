@@ -10,6 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import { parseFile } from "@halonicjs/format";
 import { verifies } from "@halonicjs/testing-spec";
 import { filesOf, loadWorkspace } from "@halonicjs/workspace";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -300,7 +301,12 @@ verifies("cli.commands.init.copy-example", () => {
         expect(filesOf(copy, kind)).toEqual([]);
       }
       const workflows = filesOf(copy, "workflow").map((file) => file.value.id);
-      expect(workflows).toContain(acme.workflow.id);
+      const template = parseFile(
+        "workspaceTemplate",
+        readFileSync(join(folder, "acme", "template.yaml"), "utf8"),
+      );
+      expect(template.ok).toBe(true);
+      expect(workflows).toContain(template.ok ? template.value.value.tryFirst[0]?.workflow : "");
     });
   });
 

@@ -18,6 +18,7 @@ import { makePrivateFolder } from "@halonicjs/adapter-fs-node";
 import { createScryptHasher } from "@halonicjs/adapter-password-scrypt";
 import { workspaceModelSettings } from "@halonicjs/adapter-workspace-models";
 import type { RoutineEngine } from "@halonicjs/engine";
+import { workspaceTemplatePath } from "@halonicjs/format";
 import {
   createServer,
   isHttpsOrigin,
@@ -393,6 +394,8 @@ async function listenOnComputer(
       // Read at every request from the live version: a rename shows once committed, before a run.
       describe: servedWorkspaceFacts({
         workspace: () => versions.live(),
+        template: () => dir.store.read(workspaceTemplatePath),
+        warn: (line) => context.warn(line),
         dir,
         folder: root,
         home,
