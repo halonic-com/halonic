@@ -102,8 +102,44 @@ verifies("quick-ask.box-states", () => {
       );
       expect(classes).not.toContain("hover:bg-surface-muted");
       const skeleton = slot?.querySelector("[data-agent-skeleton]");
+      // Without it, a missing skeleton gives `undefined` below, and `not.toBeNull()` passes.
+      expect(skeleton).toBeInstanceOf(HTMLElement);
       expect(skeleton?.querySelector(".rounded-full.size-7")).not.toBeNull();
       expect(skeleton?.querySelector("[data-name-bar].w-16 .h-2")).not.toBeNull();
+    });
+
+    it("breathes the skeleton three times, then fades the agent's picture in over 120 ms", async () => {
+      vi.useFakeTimers();
+      const { messenger, read } = slowMessenger();
+      const animation = { cancel: () => undefined, finished: Promise.resolve() };
+      const animate = vi.fn(() => animation as unknown as Animation);
+      HTMLElement.prototype.animate = animate;
+      // The box's own rise animates too, so each check picks the calls made on its element.
+      const callsOn = (element: Element | null | undefined) =>
+        animate.mock.calls.filter((_, index) => animate.mock.contexts[index] === element);
+      try {
+        const { page } = await openBox(messenger);
+        const skeleton = page.querySelector("[data-agent-skeleton]");
+        expect(callsOn(skeleton)).toHaveLength(0);
+        await wait(300);
+        expect(callsOn(skeleton)).toEqual([
+          [
+            [{ opacity: 1 }, { opacity: 0.55 }, { opacity: 1 }],
+            expect.objectContaining({ duration: 1600, iterations: 3 }),
+          ],
+        ]);
+
+        await act(async () => read.release());
+        await settle();
+        const chip = page.querySelector('button[aria-label="Ask Chief. Change agent."]');
+        // StrictMode mounts the picture twice and cancels the first fade, so the last one is the one seen.
+        expect(callsOn(chip?.firstElementChild).at(-1)).toEqual([
+          [{ opacity: 0 }, { opacity: 1 }],
+          expect.objectContaining({ duration: 120 }),
+        ]);
+      } finally {
+        Reflect.deleteProperty(HTMLElement.prototype, "animate");
+      }
     });
   });
 

@@ -42,8 +42,8 @@ const boxClasses = [
 
 /**
  * The agent chip's outline: a 32 px pill drawn before the text box, 2 px down so it centres on the
- * 36 px round Ask. The loading skeleton takes it too, so the text box doesn't jump when the agents
- * arrive (HAL-20415).
+ * 36 px round Ask. The loading skeleton takes it too, so when the agents arrive the text box moves
+ * only by the name's width minus the skeleton's 64 px name bar (HAL-20415).
  */
 const agentChipShape =
   "order-first mt-0.5 flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border py-0.5 ps-0.5 pe-2";
@@ -242,7 +242,7 @@ function QuestionRow({
       />
       {name === undefined ? (
         // Nothing to pick yet, so no button: the chip's outline from the first frame, with its skeleton inside.
-        <span data-agent-slot="" className={agentChipShape}>
+        <span className={agentChipShape}>
           <AgentFace name={undefined} />
         </span>
       ) : (
