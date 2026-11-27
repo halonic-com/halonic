@@ -3,6 +3,7 @@
 - Approval: the task asks for this change (HAL-20460, from the security review on HAL-20445); Liam
   wrote it, so Julian reviews and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:M9caQXb5dJwED4pdI5yGqyU1KVrTbQVO8cMb3+86vRHPOmk2bl5o+5sBGM2vllrmUM9cHfRa2NG8COC4UaVyCw==
 
 ## What changes
 
