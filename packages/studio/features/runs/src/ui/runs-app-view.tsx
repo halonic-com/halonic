@@ -69,7 +69,8 @@ export function RunsAppView({
         <div
           ref={listColumn}
           data-part="list-column"
-          // The px-2 keeps the run cards' borders off the frame and the 1px line (design check, HAL-20755).
+          // The px-2 keeps the run cards' borders off the frame and the 1px line (design check,
+          // HAL-20755).
           className={
             onePane
               ? "flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-2"
@@ -98,7 +99,8 @@ export function RunsAppView({
             timeZone={timeZone}
             selected={open?.id}
             {...actions}
-            // The Costs view comes with the Runs app's pane (HAL-18725); until then the summary stays.
+            // The Costs view comes with the Runs app's pane (HAL-18725); until then the summary
+            // stays.
             onCosts={() => undefined}
           />
         </div>

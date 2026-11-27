@@ -30,9 +30,10 @@ function studioWithPlaces(pageText: (name: string) => string): FakeStudio {
 
 const repo = new URL("../../../../../", import.meta.url);
 
-/** Each place's first expected text, so its page shows as it should. */
+/** Each place's first expected text, and its wide text, so its page shows as it should. */
 function shownPage(name: string): string {
-  return placePages.find((page) => page.place.text === name)?.shows[0]?.text ?? "";
+  const page = placePages.find((each) => each.place.text === name);
+  return [page?.shows[0]?.text, page?.wide?.text].filter((text) => text !== undefined).join(" ");
 }
 
 verifies("studio-click-test.places-open", () => {
@@ -68,10 +69,30 @@ verifies("studio-click-test.places-open", () => {
       });
     });
 
+    it("widens the window to see the Runs page's content pane, then gives the size back", async () => {
+      const studio = studioWithPlaces(shownPage);
+      await expect(placesOpen.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(studio.resizes).toEqual([
+        { width: 1280, height: 800 },
+        { width: 800, height: 600 },
+      ]);
+    });
+
+    it("fails as NO_RUNS_WIDE_PAGE when a wide window shows no content pane beside the list", async () => {
+      const runs = placePages.find((page) => page.place.text === "Runs");
+      const studio = studioWithPlaces((name) =>
+        name === "Runs" ? (runs?.shows[0]?.text ?? "") : shownPage(name),
+      );
+      const outcome = await placesOpen.run(studio.context);
+      expect(outcome).toMatchObject({ passed: false, code: "NO_RUNS_WIDE_PAGE" });
+      expect(outcome.passed ? "" : outcome.note).toContain("Runs, in a wide window:");
+    });
+
     const texts = placePages.flatMap((page) => [
       page.place,
       ...page.shows,
       ...(page.failed === undefined ? [] : [page.failed]),
+      ...(page.wide === undefined ? [] : [page.wide]),
     ]);
     it.each(texts)("reads $text from $file, which still holds it", async ({ text, file }) => {
       const source = await readFile(new URL(file, repo), "utf8");

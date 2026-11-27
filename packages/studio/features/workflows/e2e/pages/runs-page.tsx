@@ -5,7 +5,6 @@ import {
   RunsAppView,
   RunsList,
   type RunsSource,
-  RunTitleOnPhone,
   RunView,
 } from "@halonicjs/studio-feature-runs/api";
 import { framedPanelClass, NarrowProvider } from "@halonicjs/studio-kit";
@@ -151,7 +150,8 @@ if (root === null) {
 }
 createRoot(root).render(
   <StrictMode>
-    {/* The screenshot's frame: the window's frame with Studio's framed panel on it, as the shell draws a page. */}
+    {/* The screenshot's frame: the window's frame with Studio's framed panel on it, as the
+        shell draws a page. */}
     <div className="flex h-screen bg-canvas p-2 text-fg">
       <div id="shot" className={`flex min-h-0 min-w-0 flex-1 ${framedPanelClass("studio")}`}>
         <NarrowProvider narrow={narrow}>
@@ -160,11 +160,7 @@ createRoot(root).render(
             engine={engineWordsOf({})}
             now={now}
             timeZone="Europe/Amsterdam"
-            runPane={(item) => (
-              <RunTitleOnPhone key={item.id}>
-                <RunView list={list} runId={item.id} now={now} />
-              </RunTitleOnPhone>
-            )}
+            runPane={(item) => <RunView key={item.id} list={list} runId={item.id} now={now} />}
           />
         </NarrowProvider>
       </div>

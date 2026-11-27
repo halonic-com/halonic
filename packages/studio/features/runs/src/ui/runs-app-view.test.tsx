@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { NarrowProvider } from "@halonicjs/studio-kit";
+import { NarrowProvider, PresentationProvider } from "@halonicjs/studio-kit";
 import { engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -9,6 +9,7 @@ import { type AllRunsFeed, type AllRunsFeedState, AllRunsService } from "../app/
 import type { AllRunsRow } from "../app/source-rows.ts";
 import { RunsList, RunsListService } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
+import { summaryWith } from "../summary.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { RunsAppView } from "./runs-app-view.tsx";
 import { RunsPage } from "./runs-page.tsx";
@@ -169,6 +170,35 @@ verifies("runs.list-column", () => {
   });
 
   describe("RunsPage's content pane", () => {
+    it("shows the open run's title on a phone, where the top bar says Runs", async () => {
+      const run = summaryWith({ id: "run_a_7k2m9p" });
+      const list = new RunsList(fakeSource([run]).source);
+      await act(() => list.refresh());
+      const feed = feedOf({
+        rows: [row(run.id, { item: { kind: "run", hub: "acme", id: run.id } })],
+      });
+      const services = {
+        find: (key: unknown) => (key === AllRunsService ? feed : undefined),
+        get: (key: unknown) => (key === RunsListService ? list : undefined),
+      };
+      const announcer = { announce: vi.fn(), announceState: vi.fn() };
+      const context = { services, openItem: vi.fn(), announcer };
+      const root = render(
+        <PresentationProvider presentation="phone">
+          <NarrowProvider narrow>
+            <RunsPage context={context as unknown as PlaceViewProps["context"]} />
+          </NarrowProvider>
+        </PresentationProvider>,
+      );
+      clickRow(root, run.id);
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      const heading = root.querySelector('[data-part="run-pane"] h1');
+      expect(heading?.textContent).toBe("Run 7k2m9p");
+      expect(heading?.className).not.toContain("sr-only");
+    });
+
     it("closes a run that left the workspace when its page leads to Runs", async () => {
       const { source } = fakeSource([]);
       const list = new RunsList(source);

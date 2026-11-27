@@ -16,7 +16,10 @@ import { type RunPageContext, runHeader } from "./run-page-model.ts";
  */
 const TitleOnPhone = createContext(false);
 
-/** Shows the run's title on a phone for the run pages inside it, as the Runs page's content pane does. */
+/**
+ * Shows the run's title on a phone for the run pages inside it, as the Runs page's content pane
+ * does.
+ */
 export function RunTitleOnPhone({ children }: { readonly children: ReactNode }) {
   return <TitleOnPhone value={true}>{children}</TitleOnPhone>;
 }
