@@ -21,6 +21,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, UpdaterBuilder, UpdaterExt};
 
 use crate::http_fetch::HttpFetchState;
+use crate::parts_download::part_hop_allowed;
 
 /// As many redirects as reqwest follows by default. More than the guard's
 /// `MAX_REDIRECTS` for `http_fetch` (5): update servers and their download
@@ -124,12 +125,33 @@ pub(super) fn client_for(url: &Url, setting: &Arc<ProxySetting>) -> Result<Clien
     Ok(on_proxy_rules(Client::builder(), setting))
 }
 
+/// A client for a sandbox part's download (HAL-20583): the same proxy
+/// rules, with one redirect policy that asks every hop of the parts
+/// allow-list and of `route_for`.
+#[allow(
+    dead_code,
+    reason = "setup (HAL-20583 PR 3b) and the updater (PR 4) call it"
+)]
+pub(crate) fn part_client(setting: &Arc<ProxySetting>) -> ClientBuilder {
+    tunnelled(
+        Client::builder().redirect(part_redirect_policy(Arc::clone(setting))),
+        setting,
+    )
+}
+
 /// No proxy from the environment; the proxy `route_for` picks for each
 /// request instead, and a redirect policy that asks it again for every hop.
 fn on_proxy_rules(client: ClientBuilder, setting: &Arc<ProxySetting>) -> ClientBuilder {
-    let client = client
-        .no_proxy()
-        .redirect(redirect_policy(Arc::clone(setting)));
+    tunnelled(
+        client.redirect(redirect_policy(Arc::clone(setting))),
+        setting,
+    )
+}
+
+/// No proxy from the environment; the proxy `route_for` picks for each
+/// request instead.
+fn tunnelled(client: ClientBuilder, setting: &Arc<ProxySetting>) -> ClientBuilder {
+    let client = client.no_proxy();
     match setting.as_ref() {
         ProxySetting::Proxy { endpoint, .. } => {
             client.proxy(tunnel_proxy(endpoint, Arc::clone(setting)))
@@ -162,6 +184,28 @@ fn redirect_policy(setting: Arc<ProxySetting>) -> Policy {
         // The first URL in `previous` is the request's own, not a redirect.
         if attempt.previous().len() > UPDATER_MAX_REDIRECTS {
             return attempt.error("too many redirects");
+        }
+        match route_for(attempt.url(), &setting) {
+            Ok(_) => attempt.follow(),
+            Err(refusal) => attempt.error(refusal),
+        }
+    })
+}
+
+/// Follows a part's download only to a hop the parts allow-list takes, at
+/// most `PART_MAX_REDIRECTS` times, and only where `route_for` allows it.
+/// Nothing widens it, in any build.
+#[allow(
+    dead_code,
+    reason = "setup (HAL-20583 PR 3b) and the updater (PR 4) call it"
+)]
+fn part_redirect_policy(setting: Arc<ProxySetting>) -> Policy {
+    Policy::custom(move |attempt| {
+        // The first URL in `previous` is the request's own, so this hop is
+        // redirect number `previous().len()`.
+        let redirects = attempt.previous().len();
+        if let Err(reason) = part_hop_allowed(attempt.url(), redirects) {
+            return attempt.error(reason);
         }
         match route_for(attempt.url(), &setting) {
             Ok(_) => attempt.follow(),

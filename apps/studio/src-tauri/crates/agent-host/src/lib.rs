@@ -24,6 +24,7 @@ mod paperclip_keep;
 mod paperclip_key_kept;
 mod paperclip_restore;
 mod paperclip_routes;
+pub mod parts;
 mod relay;
 mod route_kinds;
 mod routes;

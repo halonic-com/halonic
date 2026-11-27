@@ -122,6 +122,12 @@ mod page_calls;
 mod page_ends;
 mod page_streams;
 mod pair_scan;
+#[cfg(desktop)]
+#[allow(
+    dead_code,
+    reason = "setup (HAL-20583 PR 3b) and the updater (PR 4) call it"
+)]
+mod parts_download;
 mod phone_nearby;
 mod phone_screens;
 mod phone_tunnel;
