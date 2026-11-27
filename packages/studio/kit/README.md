@@ -1760,7 +1760,7 @@ menu and let the browser open it. Divide groups with `"divider"`.
 
 | State | What shows |
 | --- | --- |
-| Default | `surface`, a 1px `border` edge, radius 16px, `shadow-2`, 4px padding, at least 180px wide and never wider than the window less 8px each side; 32px items with a 12px radius and 12px at the sides; a leading icon draws 18px in a 20px box in `fg-muted`; dividers inset 8px |
+| Default | `surface`, radius 16px, `shadow-2` (its 1px hairline is the edge; a transparent border for forced colours), 4px padding, at least 180px wide and never wider than the window less 8px each side; 32px items with a 12px radius and 12px at the sides; a leading icon draws 18px in a 20px box in `fg-muted`; dividers inset 8px |
 | Hover and active | The item under the pointer or the keyboard has focus and the `surface-muted` fill; no ring |
 | Danger | `danger` text, always last, below a divider |
 | Disabled | `fg-disabled`; still listed, but the arrow keys and type-to-find skip it |

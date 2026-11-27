@@ -183,6 +183,8 @@ verifies("kit.toast", () => {
     show({ tone: "danger", title: "Signed out", action: { label: "Sign in", onClick: vi.fn() } });
     const action = button(container, "Sign in");
     expect(action.parentElement?.className).toContain("flex-wrap items-start");
+    // 14px of row gap less the pill's 6px pull leaves 8px between the text and a wrapped action.
+    expect(action.parentElement?.className).toContain("gap-x-2 gap-y-3.5");
     expect(action.parentElement?.firstElementChild?.className).toContain("flex-[1_1_10rem]");
     expect(action.className).toContain("max-w-full flex-none");
     expect(action.className).toContain("min-h-control-md rounded-full py-1.5");

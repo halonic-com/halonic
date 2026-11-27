@@ -94,7 +94,7 @@ verifies("kit.menu", () => {
     expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     expect(menu.className).toContain(
-      "min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-border p-1",
+      "min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-transparent p-1",
     );
     expect(menu.className).toContain("bg-surface text-fg shadow-2");
     expect(menu.className).toContain("starting:opacity-0");
