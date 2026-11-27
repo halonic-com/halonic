@@ -107,6 +107,16 @@ function row(container: HTMLElement, name: string): HTMLElement {
   return found;
 }
 
+/** An element's whole classes, so `bg-surface-muted` doesn't match `hover:bg-surface-muted`. */
+function classesOf(element: Element | null): string[] {
+  return element?.className.split(" ") ?? [];
+}
+
+/** The fills a row has at rest: its classes that start with `bg-`. */
+function fillsOf(element: Element): string[] {
+  return classesOf(element).filter((name) => name.startsWith("bg-"));
+}
+
 function press(key: string) {
   act(() => {
     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
@@ -148,6 +158,30 @@ verifies("shell.settings-container", () => {
     act(() => row(container, "Appearance").click());
     await settle();
     expect(container.textContent).toContain("Appearance view for appearance");
+  });
+});
+
+verifies("shell.settings-two-columns", () => {
+  it("shows the list column and the section in the content pane, both on the panel colour", async () => {
+    const { container } = await open();
+    const list = classesOf(container.querySelector('nav[data-part="list-column"]'));
+    expect(list).toEqual(
+      expect.arrayContaining(["w-[34%]", "min-w-52", "max-w-95", "bg-app-panel", "border-e"]),
+    );
+    const pane = container.querySelector('[data-part="content-pane"]');
+    expect(classesOf(pane)).toContain("bg-app-panel");
+    expect(pane?.textContent).toContain("Appearance view for appearance");
+  });
+
+  it("fills only the current section's row, with the muted fill", async () => {
+    const { container } = await open();
+    expect(fillsOf(row(container, "Appearance"))).toEqual(["bg-surface-muted"]);
+    act(() => row(container, "Formats").click());
+    await settle();
+    expect(fillsOf(row(container, "Formats"))).toEqual(["bg-surface-muted"]);
+    for (const name of ["Appearance", "Models", "Assistant"]) {
+      expect(fillsOf(row(container, name))).toEqual([]);
+    }
   });
 });
 

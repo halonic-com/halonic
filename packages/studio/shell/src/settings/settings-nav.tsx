@@ -52,8 +52,8 @@ export function SettingsNav({ groups, current, attention, onShow, navRef }: Sett
     <nav
       ref={navRef}
       aria-label="Settings sections"
-      // 208px (flow-settings 3); the right column keeps the rest, at least 360px.
-      className="w-52 shrink-0 overflow-y-auto border-e border-border bg-surface-subtle p-2"
+      data-part="list-column"
+      className={listColumnClass}
       onKeyDown={onKeyDown}
       onBlur={onBlur}
     >
@@ -158,6 +158,12 @@ export function rowAfterKey(
   }
 }
 
+// The list column of the two-column layout (`shell.settings-two-columns`, HAL-20617): 34% of the
+// dialog, never under the old 208px nor over 380px, on the panel colour as the part recipe's list
+// (HAL-20672), past a 1px line from the content pane. The theme's tokens carry light and dark.
+const listColumnClass =
+  "w-[34%] min-w-52 max-w-95 shrink-0 overflow-y-auto border-e border-border bg-app-panel p-2";
+
 // A divided group (HAL-19539): a 1px hairline in the border token above every group but the
 // first, with 8px on each side of it, and no heading.
 const dividedGroupClass =
@@ -169,10 +175,12 @@ const rowBase =
   "flex min-h-control-md w-full min-w-0 items-center gap-2 rounded-sm px-2 py-1 text-start text-body focus-ring-inset";
 
 const rowClasses = {
-  // In forced colours the tint is gone, so a 2px `Highlight` bar at the start marks the current row.
+  // The part recipe's current row (HAL-20672): the same muted fill as a row under the pointer, as
+  // the kit's `PlainList` draws it. In forced colours the fill is gone, so a 2px `Highlight` bar
+  // at the start marks the row.
   current: [
     rowBase,
-    "bg-halo-tint font-medium text-fg",
+    "bg-surface-muted font-medium text-fg",
     "forced-colors:border-s-2 forced-colors:border-[Highlight]",
   ].join(" "),
   other: [rowBase, "text-fg-muted hover:bg-surface-muted hover:text-fg"].join(" "),
