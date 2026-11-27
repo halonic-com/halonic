@@ -9,7 +9,8 @@ import type { SetupViewProps } from "../setup-source.ts";
 import { pendingApproval, waitingRun } from "../test-runs.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
-import { InboxView, type InboxViewProps } from "./inbox-page.tsx";
+import { InboxView } from "./inbox-page.tsx";
+import type { InboxViewProps } from "./inbox-view-props.ts";
 
 // The clock the test moves: an approval ignores a press that comes right as its card shows.
 const clock = { now: new Date(2026, 10, 8, 10, 43) };

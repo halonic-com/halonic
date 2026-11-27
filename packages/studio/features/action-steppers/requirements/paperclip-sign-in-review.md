@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17545 (approvals stream HAL-17488, PR 13), Liam's approval of option (A); architecture note on HAL-17491, row 15
+- Source: HAL-17545 (approvals stream HAL-17488, PR 13), Liam's approval of option (A); architecture note on HAL-17491, row 15; HAL-20265 (the address's label, Julian's review of #6694)
 
-When the stepper shows a request whose definition has `sign-in` steps for review, each such step shall keep its part of the sign-in, and "Show the request" shall say what that part does: "Starts a Paperclip sign-in in the desktop app and shows its code", "Opens the approval page the sign-in gives, on the connection's own Paperclip", "Waits for your approval, then keeps the key in this computer's keychain" and "Says who is signed in, and revokes the key of a test sign-in".
+When the stepper shows a request whose definition has `sign-in` steps for review, each such step shall keep its part of the sign-in, and "Show the request" shall say what that part does: "Starts a Paperclip sign-in in the desktop app and shows its code", "Opens the approval page the sign-in gives, on the connection's own Paperclip", "Waits for your approval, then keeps the key in this computer's keychain" and "Says who is signed in, and revokes the key of a test sign-in". What the request touches shall name its Paperclip as "<host>, from this workspace's connection file", the address the host binding (`action-steppers.paperclip-host`) checked against the connection.
 
 ## Examples
 
@@ -14,3 +14,6 @@ When the stepper shows a request whose definition has `sign-in` steps for review
 - Given the `approve` part,
   when "Show the request" is open,
   then it says "Opens the approval page the sign-in gives, on the connection's own Paperclip".
+- Given a sign-in request for `paperclip.acme.example`,
+  when it is shown for review,
+  then what it touches reads "Paperclip paperclip.acme.example, from this workspace's connection file".

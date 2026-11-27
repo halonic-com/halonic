@@ -1,26 +1,12 @@
-import type { AgentMessaging } from "@halonicjs/ports";
 import { AccountMenuHostService } from "@halonicjs/studio-feature-account-menu/api";
 import {
   defaultRequesterPolicy,
   emptyActionCatalog,
-  type RequesterPolicy,
-  type StepperCatalog,
 } from "@halonicjs/studio-feature-action-steppers/api";
-import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
+import { RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { EmptyState, List, useNarrow, usePresentation } from "@halonicjs/studio-kit";
-import {
-  type ActionSteps,
-  type AgentConnections,
-  desktopOnlyActionSteps,
-} from "@halonicjs/studio-services";
-import {
-  type EngineWords,
-  engineWords,
-  engineWordsOf,
-  type ItemRef,
-  type OpenItemOptions,
-  type PlaceViewProps,
-} from "@halonicjs/studio-shell";
+import { desktopOnlyActionSteps } from "@halonicjs/studio-services";
+import { engineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { flushSync } from "react-dom";
 import {
@@ -29,12 +15,8 @@ import {
   InboxService,
   ProposalDecisionsService,
 } from "../api.ts";
-import type { Inbox } from "../inbox.ts";
 import { waits } from "../inbox-count.ts";
-import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
-import type { ProposalDecisions } from "../proposal-decisions.ts";
-import type { InboxRequests } from "../request/inbox-requests.ts";
 import { agentServicesOf } from "./agent-services.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
@@ -51,8 +33,9 @@ import {
   placeOf,
 } from "./inbox-page-parts.tsx";
 import { countDetail, inboxRow, lateCount, withActionRoom } from "./inbox-row.tsx";
+import type { InboxViewProps } from "./inbox-view-props.ts";
 import { ItemHeader, openHeading } from "./item-header.tsx";
-import { type InboxMotion, kitMotion, useGlidingState } from "./list-motion.ts";
+import { kitMotion, useGlidingState } from "./list-motion.ts";
 import { failureReason, isSignedOut, loadFailed, openItemWords, StaleLine } from "./load-lines.tsx";
 import { needsYouListed } from "./needs-you-listed.ts";
 import { NothingOpen, nothingWaiting } from "./nothing-open.tsx";
@@ -60,8 +43,7 @@ import { NoticesSection } from "./notices-section.tsx";
 import { OpenCard } from "./open-card.tsx";
 import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import { itemMark } from "./row-marks.tsx";
-import type { RunFactsOf } from "./run-facts.ts";
-import { type ServerSessionHost, useActionChecks } from "./use-action-checks.ts";
+import { useActionChecks } from "./use-action-checks.ts";
 import { useAgentItems } from "./use-agent-items.tsx";
 import { useItemSteps } from "./use-item-steps.ts";
 import { useOpenItem } from "./use-open-item.ts";
@@ -73,7 +55,7 @@ import { useRunReview } from "./use-run-review.ts";
 import { useSeeUsage } from "./use-see-usage.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { useSettleLeftOver } from "./use-settle-left-over.ts";
-import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
+import { useTrustReview } from "./workspace-trust.ts";
 
 /**
  * The Inbox place's page: the open workspace's Inbox, from `InboxService`. In the Inbox's own
@@ -122,70 +104,6 @@ export function InboxWindow({ context }: PlaceViewProps) {
   return <InboxPage context={context} framed />;
 }
 
-/** Props for {@link InboxView}. */
-export interface InboxViewProps {
-  readonly inbox: Inbox;
-  /** In the Inbox's own window: the list on the frame and the item on a framed panel. */
-  readonly framed?: boolean | undefined;
-  /** The clock for the waiting times; tests pass a fixed one. */
-  readonly now?: () => Date;
-  /**
-   * The engine words for this window's host: said when a load fails with no reason of its own,
-   * and over the list when a later load fails (microcopy 10.1). The desktop app's by default.
-   */
-  readonly words?: EngineWords;
-  /** The workflows the Inbox starts as requests; without it there is no request form. */
-  readonly requests?: InboxRequests | undefined;
-  /** The notices under Needs you; without it there is no Notices section. */
-  readonly notices?: InboxNotices | undefined;
-  /**
-   * Accept and Reject on run proposals, which the app provides only where it lists them; without
-   * it Needs you says where proposals show, and a proposal names the command that decides it.
-   */
-  readonly proposals?: ProposalDecisions | undefined;
-  /** Opens New connector, for a secret pasted when no account is there to take it. */
-  readonly openNewConnector?: () => void;
-  /** Opens Workspace settings at Budget, for **Change budget** on the monthly budget notice and the refused request. */
-  readonly openBudget?: (() => void) | undefined;
-  /** Opens a run's page, for **Open run** on the toast that says a request started. */
-  readonly openRun?: ((hubId: string, runId: string) => void) | undefined;
-  /** Opens an item's page, for a setup item's own buttons, such as the first run's **Continue**. */
-  readonly openPage?: ((item: ItemRef, options?: OpenItemOptions) => void) | undefined;
-  /**
-   * The workspace's trust, for a card whose answer was refused because the workspace isn't
-   * trusted: **Review**, and the line goes once it is. Without it that line has no button.
-   */
-  readonly trust?: TrustReview | undefined;
-  /**
-   * The workflow and starter of a run: the row says the workflow, and the card says what started
-   * the run and has **Open run** (with `openRun`). Without it the Inbox says neither.
-   */
-  readonly runFacts?: RunFactsOf | undefined;
-  /**
-   * The installed catalog an agent's action request is checked against when it opens. Without it
-   * nothing is in the catalog, so every request shows as a card Halonic can't read.
-   */
-  readonly actionCatalog?: StepperCatalog | undefined;
-  /** The user's requester policy. Without it the default holds: only routine requests may run. */
-  readonly requesterPolicy?: RequesterPolicy | undefined;
-  /** Runs an action request's steps; without it, as in a browser, requests can only be reviewed. */
-  readonly actionSteps?: ActionSteps | undefined;
-  /** The user's connections: a Paperclip request runs only on one of them. Without it, none does. */
-  readonly agentConnections?: AgentConnections | undefined;
-  /** What "Run with Claude" starts with; without it no server is set up and only the guide shows. */
-  readonly serverSession?: ServerSessionHost | undefined;
-  /** The workspace's runs: a phone's request sheet stops waiting when the run it started ends. */
-  readonly runs?: RunsList | undefined;
-  /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
-  readonly announce?: ((line: string) => void) | undefined;
-  /** The agents' cards and questions, listed after the Inbox's own items; without it there are none. */
-  readonly agentMessaging?: AgentMessaging | undefined;
-  /** The motions it plays as rows come and go and panes change; tests pass their own. */
-  readonly motion?: InboxMotion;
-  /** Opens the customer's usage, for **See usage** on a run at a plan limit; without it there's none. */
-  readonly seeUsage?: (() => void) | undefined;
-}
-
 /**
  * The Inbox (flow-inbox 3.1, UX checklist 2.1, 2.3, 2.9 and 2.10): "Inbox", then Needs you, a
  * grid of what waits for you, setup items first, then newest first, with its count in the heading
@@ -231,6 +149,7 @@ export function InboxView({
   actionCatalog = emptyActionCatalog,
   requesterPolicy = defaultRequesterPolicy,
   actionSteps = desktopOnlyActionSteps,
+  serviceSignIn,
   agentConnections,
   serverSession,
   motion = kitMotion,
@@ -247,6 +166,7 @@ export function InboxView({
     steps: actionSteps,
     connections: agentConnections,
     serverSession,
+    serviceSignIn,
   });
   const agent = useAgentItems(agentMessaging, checks, { list, motion, announce });
   // An item of the Inbox's own that opens, by hand or on request, takes the pane from an agent's.

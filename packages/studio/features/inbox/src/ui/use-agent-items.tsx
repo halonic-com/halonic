@@ -118,6 +118,7 @@ function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: 
       policy={checks.policy}
       steps={checks.steps}
       paperclips={checks.paperclips}
+      serviceSignIn={checks.serviceSignIn}
     />
   );
 }

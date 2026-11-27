@@ -61,3 +61,47 @@ export const approveAcmeApp: InboxActionRequest = {
   parameters: { owner: "acme", repo: "app", environment: "release" },
   expires: "2026-11-25T12:00:00.000Z",
 };
+
+const signInPhases = ["start", "approve", "keep", "test"] as const;
+
+/** Connects Studio to the invented `acme` Paperclip, in the four parts of a sign-in. */
+const connectAndTest: StepperDefinition<Values> = {
+  id: "paperclip.connect-and-test",
+  version: 1,
+  service: "paperclip",
+  title: "Connect Studio to Paperclip and test the sign-in",
+  summary: "Signs in to Paperclip.",
+  risk: "admin",
+  parameters: strictParameters({
+    host: { kind: "text", pattern: /^[a-z0-9.-]{1,253}$/ },
+    connection: { kind: "text", pattern: /^[a-z]{1,20}$/ },
+    mode: { kind: "choice", options: ["connect", "test"] },
+  }),
+  steps: signInPhases.map((phase) => ({
+    kind: "sign-in",
+    service: "paperclip",
+    phase,
+    manual: { url: "https://{host}/", instructions: ["Follow Studio."] },
+  })),
+  targets: (parameters) => [
+    { service: "paperclip", kind: "Paperclip", name: String(parameters["host"]) },
+  ],
+  preview: () => signInPhases.map((phase) => `The ${phase} part.`),
+};
+
+/** A catalog with only the sign-in stepper. */
+export const acmeSignInCatalog: StepperCatalog = {
+  definition: (id, version) =>
+    id === connectAndTest.id && version === connectAndTest.version ? connectAndTest : undefined,
+  stepType: () => undefined,
+  browserOrigins: [],
+  route: () => undefined,
+};
+
+/** Test a sign-in to the `acme` connection on `paperclip.acme.example`. */
+export const testAcmeSignIn: InboxActionRequest = {
+  definition: "paperclip.connect-and-test",
+  version: 1,
+  parameters: { host: "paperclip.acme.example", connection: "acme", mode: "test" },
+  expires: "2026-11-25T12:00:00.000Z",
+};

@@ -8,10 +8,12 @@ import type { ServiceRegistry } from "@halonicjs/app";
 import {
   AgentConnectionsService,
   HostAgentConnections,
+  HostServiceSignIn,
   hostServerEngine,
   type RestoreTrust,
   restoreWhenMayStart,
   ServerEngineService,
+  serviceSignInKey,
   type TauriAgentHostTransport,
 } from "@halonicjs/studio-services";
 
@@ -26,7 +28,9 @@ import {
  * them to sign in again (`services.paperclip-restore`); a folder that needs
  * trust and has none starts nothing. It also provides
  * the workspace's server engine, for the Messaging engine row
- * (`services.server-engine`).
+ * (`services.server-engine`), and the Inbox stepper's Paperclip sign-in over
+ * the same connections, which asks the shell whether it keeps a key before
+ * it starts (`services.service-sign-in`).
  * Without an agent host nothing is provided, and Settings shows no
  * Connections section.
  *
@@ -35,22 +39,33 @@ import {
 export function provideAgentConnections(
   services: ServiceRegistry,
   transport:
-    | (AgentHostTransport & Pick<TauriAgentHostTransport, "restorePaperclipKeys">)
+    | (AgentHostTransport &
+        Pick<TauriAgentHostTransport, "restorePaperclipKeys" | "paperclipKeyKept">)
     | undefined,
   location: string,
   trust: RestoreTrust,
 ): void {
   if (transport === undefined) return;
+  const signIn = new AgentHostPaperclipSignIn(transport, location);
+  const report = (error: unknown) => console.error("Paperclip sign-in", error);
   const connections = new HostAgentConnections({
-    signIn: new AgentHostPaperclipSignIn(transport, location),
+    signIn,
     host: new AgentHostPaperclipKey(transport),
     restoreKeys: (workspace) => transport.restorePaperclipKeys(workspace),
     workspace: location,
     wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     now: Date.now,
-    report: (error) => console.error("Paperclip sign-in", error),
+    report,
   });
   services.provide(AgentConnectionsService, connections);
+  const serviceSignIn = new HostServiceSignIn({
+    listed: () => signIn.listed(),
+    connections,
+    keyKept: (connection) => transport.paperclipKeyKept(location, connection),
+    now: Date.now,
+    report,
+  });
+  services.provide(serviceSignInKey, serviceSignIn);
   services.provide(
     ServerEngineService,
     hostServerEngine(new AgentHostServerEngine(transport, location)),
