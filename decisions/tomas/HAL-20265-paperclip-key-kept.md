@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20452 (Liam approved the HAL-20265 plan, the new shell command with his conditions, and refusing a sign-in over a kept key; Julian's finding on HAL-20398)
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:AOSbixW3B94B9fozGYCztrqODBnLaFUp9oAvTJ8deZt3WwwypDrL8xuipSEIV+tZC4jt0bt3nDMxlhs7DQSFBQ==
 
 A connection's keychain entry is named after the connection only
 (`paperclip-<connection>`), not the workspace. Since HAL-20278 the page can't
