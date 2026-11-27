@@ -3,6 +3,7 @@
 - Task: HAL-20531, from the words and a11y check on HAL-20525
 - Approval: HAL-20531 (the fix the a11y check asked for, approved in review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Pu7qmiFxbIcZC4aLJdPzViJyVXm/vZBy/HpLItxQMHTdO3sVdWFJOHZKuxECSzxfnR5nVTX314hgFvinVCAjCA==
 
 ## What changes
 
