@@ -3,7 +3,6 @@
 - Task: HAL-20467, pull request #6794
 - Approval: HAL-20467, Liam's review of #6794
 - Kind: internal
-- Signature:
 
 ## What changes
 
