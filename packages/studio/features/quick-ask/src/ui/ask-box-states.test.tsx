@@ -47,6 +47,13 @@ async function answered(page: HTMLElement, messenger: FakeMessenger): Promise<vo
   await act(async () => messenger.change("acme"));
 }
 
+/** The live regions on the page that say `words`, as a screen reader would hear them. */
+function statusesSaying(page: HTMLElement, words: string): Element[] {
+  return [...page.querySelectorAll('[role="status"]')].filter(
+    (status) => status.textContent === words,
+  );
+}
+
 verifies("quick-ask.box-states", () => {
   describe("opening", () => {
     it("shows the row at once, takes typing, and draws the skeleton, read out as Loading your agents, only after 300 ms", async () => {
@@ -185,7 +192,21 @@ verifies("quick-ask.box-states", () => {
       expect(page.textContent).toContain("Not sent · Try again");
     });
 
-    it("says nothing under a question on its first send", async () => {
+    it("has a screen reader hear Sending… once when it sends the question again", async () => {
+      const messenger = new FakeMessenger([chat(chief)]);
+      messenger.refuse = "offline";
+      const { page } = await openBox(messenger);
+      await ask(page, "Where are we?");
+      messenger.refuse = undefined;
+      messenger.sendHeld = new Held();
+      await press(byText(page, "button", "Try again"));
+
+      const heard = statusesSaying(page, "Sending…");
+      expect(heard).toHaveLength(1);
+      expect(heard[0]?.querySelector("[data-sending]")).not.toBeNull();
+    });
+
+    it("says nothing under a question on its first send, to the eye or a screen reader", async () => {
       const messenger = new FakeMessenger([chat(chief)]);
       messenger.sendHeld = new Held();
       const { page } = await openBox(messenger);
@@ -193,6 +214,7 @@ verifies("quick-ask.box-states", () => {
 
       expect(page.querySelector("[data-question]")).not.toBeNull();
       expect(page.querySelector("[data-sending]")).toBeNull();
+      expect(statusesSaying(page, "Sending…")).toHaveLength(0);
     });
   });
 

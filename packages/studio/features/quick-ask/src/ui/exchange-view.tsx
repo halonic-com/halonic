@@ -51,11 +51,15 @@ export function ExchangeView({ exchange, onRetry, onOpenChat }: ExchangeViewProp
           )}
         </div>
       </Arriving>
-      {exchange.status === "sending" && exchange.retried === true ? (
-        <p data-sending="" className="mt-1 self-end text-small text-fg-muted">
-          {quickAskWords.sending}
-        </p>
-      ) : null}
+      {/* There from the start, so a screen reader hears "Sending…" when Try again sends the
+          question again; the first send fills nothing and stays silent. */}
+      <div role="status" className="flex flex-col">
+        {exchange.status === "sending" && exchange.retried === true ? (
+          <p data-sending="" className="mt-1 self-end text-small text-fg-muted">
+            {quickAskWords.sending}
+          </p>
+        ) : null}
+      </div>
       {sent && !arrived ? <PendingLines agent={agent} answer={exchange.answer} /> : null}
       {/* Only what comes back is read out, once: not the question just typed, nor the waiting
           and working lines. Shown while empty, as a hidden live region may not be heard once it
