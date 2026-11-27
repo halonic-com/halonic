@@ -43,6 +43,7 @@ import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
+  commandButtons,
   currentRow,
   InboxPanes,
   itemPaneClass,
@@ -77,10 +78,6 @@ import { useSeeUsage } from "./use-see-usage.ts";
 import { useSentRequestCard } from "./use-sent-request-card.ts";
 import { useSettleLeftOver } from "./use-settle-left-over.ts";
 import { type TrustReview, useTrustReview } from "./workspace-trust.ts";
-
-/** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
-const newConnectorCommand = "library.new-connector";
-const openBudgetCommand = "workspace.open-budget";
 
 /**
  * The Inbox place's page: the open workspace's Inbox, from `InboxService`. In the Inbox's own
@@ -117,12 +114,7 @@ export function InboxPage({ context, framed }: PlaceViewProps & { readonly frame
       actionSteps={context.services.find(actionStepsKey)}
       agentConnections={context.services.find(AgentConnectionsService)}
       notices={notices}
-      {...(context.runCommand === undefined
-        ? {}
-        : {
-            openNewConnector: () => context.runCommand?.(newConnectorCommand),
-            openBudget: () => context.runCommand?.(openBudgetCommand),
-          })}
+      {...commandButtons(context.runCommand)}
       trust={trust}
       seeUsage={seeUsage}
       {...(openItem && {
