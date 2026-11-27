@@ -89,6 +89,20 @@ verifies("studio-click-test.card-steps", () => {
       });
     });
 
+    it("still answers the Messenger copy when the Inbox fails, and names both failures", async () => {
+      const studio = cardStudio(
+        yesNoCard,
+        { Accept: { status: "pending" } },
+        { Reject: { status: "accepted" } },
+      );
+      const outcome = await cardYesNo.run(studio.context);
+      expect(outcome).toMatchObject({
+        code: "NOT_ANSWERED_ON_PAPERCLIP",
+        note: expect.stringMatching(/^Inbox: .* Messenger: Paperclip has/),
+      });
+      expect(statusOf(studio, "messenger-yes-no")).toBe("accepted");
+    });
+
     it("fails as WRONG_ANSWER, naming the Messenger, when Paperclip has another answer", async () => {
       const studio = cardStudio(yesNoCard, accept, { Reject: { status: "accepted" } });
       await expect(cardYesNo.run(studio.context)).resolves.toMatchObject({

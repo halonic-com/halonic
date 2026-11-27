@@ -49,11 +49,18 @@ export function cardStep(spec: CardStepSpec): Step {
         (error: unknown) => String(error),
       );
       if (typeof seeded === "string") return { passed: false, code: "NOT_SEEDED", note: seeded };
+      // Both surfaces are tried even when the first fails: a chat holds one open yes/no card, so
+      // one left unanswered here would be expired by the next step's seed, and the Messenger's
+      // own result would be lost.
+      const failures: { code: string; note: string }[] = [];
       for (const surface of surfaces) {
         const outcome = await answerOn(context, spec, surface, seeded[surface]);
-        if (!outcome.passed) return { ...outcome, note: `${surface}: ${outcome.note}` };
+        if (!outcome.passed)
+          failures.push({ code: outcome.code, note: `${surface}: ${outcome.note}` });
       }
-      return { passed: true };
+      const [first] = failures;
+      if (first === undefined) return { passed: true };
+      return { passed: false, code: first.code, note: failures.map((each) => each.note).join(" ") };
     },
   };
 }
