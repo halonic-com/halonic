@@ -46,7 +46,9 @@ pub fn is_kept(label: &str) -> bool {
     window_labels().contains(&label)
 }
 
-/// The key no window's place is kept under (see `place_key`).
+/// The key no window's place is kept under (see `place_key`). Only Windows
+/// has frames.
+#[cfg(windows)]
 pub const IN_FRAME: &str = "in-frame";
 
 /// The key the window labelled `label` has its place kept under: its label,
