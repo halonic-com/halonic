@@ -168,9 +168,16 @@ export const confirmWords = {
 
 /** A browser step's label over its instructions. */
 export function sourceText(source: InstructionsSource, requester: StepperRequester): string {
-  return source.kind === "library"
-    ? `Checked on ${dayText(source.checkedOn)}`
-    : `Instructions from ${requesterText(requester)}, not checked by Halonic`;
+  switch (source.kind) {
+    case "library":
+      return `Checked on ${dayText(source.checkedOn)}`;
+    case "docs":
+      return "From the service's docs, not checked on the page";
+    case "unchecked":
+      return "Not checked on the page";
+    case "requester":
+      return `Instructions from ${requesterText(requester)}, not checked by Halonic`;
+  }
 }
 
 /** What "Copy instructions" copies: the label for on-demand steps, the address, the numbered lines. */
