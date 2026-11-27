@@ -51,6 +51,35 @@ verifies("studio-click-test.steps", () => {
       expect(studio.typed).toEqual([probeMessage]);
     });
 
+    // Runs 45965592082 and 45966738840: the reply showed, but the updater's announcement had taken
+    // the one polite live region from "Writer replied." before the next read (HAL-20543).
+    it("passes on Writer's ended reply when a later announcement took the live region", async () => {
+      const { writer, said } = screenText;
+      const announcement = "Halonic 0.1.2-preview.446 is ready to install. Restart to update.";
+      const studio = studioWithChat(
+        `${writer.text}${said.text} Sam wants a refund. ${announcement}`,
+      );
+      await expect(engineAnswers.run(studio.context)).resolves.toEqual({ passed: true });
+    });
+
+    it("fails as NO_REPLY while Writer's reply is still being written", async () => {
+      const { writer, said } = screenText;
+      const studio = studioWithChat(`${writer.text}${said.text} Sam wants`);
+      studio.elements.set(`//*[@aria-busy='true'][contains(., '${writer.text}${said.text}')]`, 1);
+      const outcome = await engineAnswers.run(studio.context);
+      expect(outcome).toMatchObject({ passed: false, code: "NO_REPLY" });
+      expect(outcome.passed ? "" : outcome.note).toContain("Writer's reply never ended.");
+    });
+
+    it("fails as REPLY_FAILED when Writer's shown reply ended in a failure", async () => {
+      const { writer, said, replyFailed } = screenText;
+      const studio = studioWithChat(
+        `${writer.text}${said.text} ${writer.text}${replyFailed.text}no model.`,
+      );
+      const outcome = await engineAnswers.run(studio.context);
+      expect(outcome).toMatchObject({ passed: false, code: "REPLY_FAILED" });
+    });
+
     it("fails with the engine line's code, the page and the shell log's lines", async () => {
       const studio = studioWithChat(words.engineNotAnswering);
       const outcome = await engineAnswers.run(studio.context);

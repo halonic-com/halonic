@@ -150,6 +150,7 @@ export const screenText = {
   chatWith: { text: "Chat with ", file: tryItFile },
   messageTo: { text: "Message ", file: tryItFile },
   replied: { text: " replied.", file: tryItFile },
+  said: { text: " said", file: tryItFile },
   engineStopped: { text: "Stopped when Halonic's engine stopped.", file: tryItFile },
   replyFailed: { text: "'s reply failed: ", file: tryItFile },
   sendAnyway: { text: "Send anyway", file: tryItFile },

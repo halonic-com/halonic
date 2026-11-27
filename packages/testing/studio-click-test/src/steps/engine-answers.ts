@@ -1,5 +1,5 @@
 import type { Step, StepContext, StepOutcome } from "../runner.ts";
-import { clickOrWhyNot, clickWhenShown, lastWords, waitForText } from "../screen.ts";
+import { clickOrWhyNot, clickWhenShown, lastWords, pollEveryMs, waitForText } from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { buttonLabels, errorCodeIn, screenText } from "../words.ts";
 import { openDemo } from "./open-demo.ts";
@@ -14,7 +14,8 @@ export const probeMessage = "Click test: are you there?";
  * then the demo's Writer agent, whose Try it chat is open on its page, and
  * sends one message. The demo's mock model needs no key and answers with its
  * own canned line, not the message (run 45675354530), so the step passes once
- * the chat announces "Writer replied." and fails on an engine line. The desktop
+ * the chat announces "Writer replied.", or shows Writer's reply after the message and
+ * it has ended (HAL-20543), and fails on an engine line. The desktop
  * Studio registers no Assistant panel (run 45654461077), so the Try it chat is
  * where a person meets "The engine isn't answering". The workspace shows before its engine
  * answers and the message waits for it, so once Writer replied, the line "Starting the engine…"
@@ -75,11 +76,43 @@ async function sendAndWaitForReply(context: StepContext): Promise<StepOutcome> {
   const reply = await waitForText(context, replyWaitMs, (text) => {
     const code = errorCodeIn(text);
     if (code !== undefined) return code;
-    return text.includes(replied) ? "replied" : undefined;
+    if (text.includes(replied)) return "replied";
+    return replyShown(text) ? "shown" : undefined;
   });
   if (reply.value === "replied") return startingLineGone(context);
+  if (reply.value === "shown") return replyEnded(context);
   if (reply.value !== undefined) return failure(reply.value, "", reply.text);
   return failure("NO_REPLY", "No reply.", reply.text);
+}
+
+/**
+ * Whether Writer's reply follows the probe in the transcript. "Writer replied." alone isn't
+ * enough: the window has one polite live region, and a later announcement, such as "Halonic … is
+ * ready to install.", takes it before the next read (HAL-20543).
+ */
+function replyShown(text: string): boolean {
+  const probeAt = text.lastIndexOf(probeMessage);
+  if (probeAt === -1) return false;
+  return text.slice(probeAt).includes(`${screenText.writer.text}${screenText.said.text}`);
+}
+
+/**
+ * Waits until Writer's shown reply is no longer `aria-busy`, so its turn has ended as "replied"
+ * says, then passes unless it ended on an error line.
+ */
+async function replyEnded(context: StepContext): Promise<StepOutcome> {
+  const heading = `${screenText.writer.text}${screenText.said.text}`;
+  const busyReply = `//*[@aria-busy='true'][contains(., '${heading}')]`;
+  const reads = Math.ceil(replyWaitMs / pollEveryMs);
+  for (let read = 0; read < reads; read += 1) {
+    if ((await context.driver.count(busyReply)) === 0) {
+      const text = await context.driver.pageText().catch(() => "");
+      const code = errorCodeIn(text);
+      return code === undefined ? startingLineGone(context) : failure(code, "", text);
+    }
+    await context.sleep(pollEveryMs);
+  }
+  return failure("NO_REPLY", "Writer's reply never ended.", "");
 }
 
 /** The engine answered, so the workspace's "Starting the engine…" line has gone. */
