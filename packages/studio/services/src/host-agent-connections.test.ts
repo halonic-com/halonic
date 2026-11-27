@@ -8,8 +8,6 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { HostAgentConnections, signInPollMs } from "./host-agent-connections.ts";
 
-// A made-up key: no real one appears in tests.
-const fakeKey = "acme-test-board-key";
 const address = "https://paperclip.acme.test";
 const startedAt = Date.parse("2026-11-24T14:00:00.000Z");
 const acmeRow: PaperclipConnectionRow = {
@@ -22,12 +20,12 @@ const acmeRow: PaperclipConnectionRow = {
 };
 /** The row as Settings gets it: no file name or company. */
 const { name: _name, company: _company, ...acmeListed } = acmeRow;
+/** The approved poll as the shell passes it on: it kept the key, so the answer holds none. */
 const connected: PaperclipSignInState = {
   status: "connected",
   connection: "acme",
   address,
   company: "acme",
-  key: fakeKey,
 };
 
 /** The host's sign-in in memory: each poll takes the next state, or throws when it is an error. */
@@ -36,11 +34,6 @@ class FakeSignIn {
   states: (PaperclipSignInState | Error)[] = [];
   starts: { address: string; connection: string | undefined; newConnection?: boolean }[] = [];
   cancels: string[] = [];
-  confirms: string[] = [];
-  /** When set, a confirm or a cancel throws it. */
-  failWith: Error | undefined;
-  /** How many of the next confirms throw, as when their answer gets lost. */
-  confirmsLost = 0;
   startAnswer: PaperclipSignInStart = {
     outcome: "started",
     signInId: "sign-in-1",
@@ -62,25 +55,16 @@ class FakeSignIn {
     if (next.status === "connected") this.rows = [acmeRow];
     return next;
   }
-  async confirm(signInId: string) {
-    this.confirms.push(signInId);
-    if (this.failWith !== undefined) throw this.failWith;
-    if (this.confirmsLost > 0) {
-      this.confirmsLost--;
-      throw new Error("The answer got lost.");
-    }
-    return true;
-  }
   async cancel(signInId: string) {
     this.cancels.push(signInId);
-    if (this.failWith !== undefined) throw this.failWith;
     return { status: "cancelled" } as const;
   }
 }
 
-function setUp(options: { getFails?: boolean; setFails?: boolean; revoked?: boolean } = {}) {
+function setUp(options: { revoked?: boolean } = {}) {
   const signIn = new FakeSignIn();
-  const kept = new Map<string, string>();
+  /** The keychain tokens the page read; it never writes or removes one. */
+  const read: string[] = [];
   const disconnected: PaperclipConnectionRef[] = [];
   const reported: unknown[] = [];
   let now = startedAt;
@@ -95,14 +79,9 @@ function setUp(options: { getFails?: boolean; setFails?: boolean; revoked?: bool
     },
     tokens: {
       get: async (name) => {
-        if (options.getFails) throw new Error("The keychain is locked.");
-        return kept.get(name) ?? null;
+        read.push(name);
+        return null;
       },
-      set: async (name, value) => {
-        if (options.setFails) throw new Error("The keychain is locked.");
-        kept.set(name, value);
-      },
-      remove: async (name) => void kept.delete(name),
     },
     workspace: "/work/acme",
     wait: async (ms) => {
@@ -113,7 +92,7 @@ function setUp(options: { getFails?: boolean; setFails?: boolean; revoked?: bool
   });
   return {
     signIn,
-    kept,
+    read,
     disconnected,
     reported,
     connections,
@@ -142,8 +121,8 @@ verifies("connections.connection-user", () => {
 
 verifies("services.host-agent-connections", () => {
   describe("HostAgentConnections", () => {
-    it("writes the approved key to the keychain and passes on no key", async () => {
-      const { signIn, kept, connections } = setUp();
+    it("passes on the approved sign-in, which holds no key, and touches no keychain", async () => {
+      const { signIn, read, reported, connections } = setUp();
       let heard = 0;
       connections.subscribe(() => heard++);
       signIn.states = [{ status: "pending" }, connected];
@@ -152,15 +131,9 @@ verifies("services.host-agent-connections", () => {
         outcome: "connected",
         connection: { ...acmeListed, provider: "paperclip" },
       });
-      expect(JSON.stringify(result)).not.toContain(fakeKey);
-      expect(JSON.parse(kept.get("paperclip-acme") ?? "{}")).toEqual({
-        key: fakeKey,
-        address,
-        company: "acme",
-        workspaces: ["/work/acme"],
-      });
-      expect(signIn.confirms).toEqual(["sign-in-1"]);
       expect(signIn.cancels).toEqual([]);
+      expect(read).toEqual([]);
+      expect(reported).toEqual([]);
       expect(heard).toBe(1);
     });
 
@@ -175,74 +148,17 @@ verifies("services.host-agent-connections", () => {
       expect(signIn.starts).toEqual([{ address, connection: "acme" }]);
     });
 
-    it("cancels the sign-in when the keychain refuses the key, and keeps no copy", async () => {
-      const { signIn, kept, disconnected, reported, connections } = setUp({ setFails: true });
-      signIn.states = [connected];
-      signIn.failWith = new Error("The host can't be reached.");
+    it("ends as key-not-saved when the shell couldn't keep the key", async () => {
+      const { signIn, read, connections } = setUp();
+      let heard = 0;
+      connections.subscribe(() => heard++);
+      signIn.states = [{ status: "key-not-saved" }];
       const { result } = await resultOf(connections);
       expect(result).toEqual({ outcome: "key-not-saved" });
-      expect(signIn.confirms).toEqual([]);
-      expect(signIn.cancels).toEqual(["sign-in-1"]);
-      expect(disconnected).toEqual([]);
-      expect(kept.size).toBe(0);
-      expect(reported).toHaveLength(2);
-    });
-
-    it("removes the written key and cancels when the host doesn't take the confirm", async () => {
-      const { signIn, kept, reported, connections } = setUp();
-      signIn.states = [connected];
-      signIn.failWith = new Error("The host can't be reached.");
-      const { result } = await resultOf(connections);
-      expect(result).toEqual({ outcome: "key-not-saved" });
-      expect(signIn.confirms).toEqual(["sign-in-1", "sign-in-1"]);
-      expect(signIn.cancels).toEqual(["sign-in-1"]);
-      expect(kept.size).toBe(0);
-      expect(reported).toHaveLength(3);
-    });
-
-    it("puts the old key back when Sign in again fails at the confirm", async () => {
-      const { signIn, kept, connections } = setUp();
-      kept.set("paperclip-acme", "old-entry");
-      signIn.states = [connected];
-      signIn.failWith = new Error("The host can't be reached.");
-      const { result } = await resultOf(connections);
-      expect(result).toEqual({ outcome: "key-not-saved" });
-      expect(kept.get("paperclip-acme")).toBe("old-entry");
-      expect(signIn.cancels).toEqual(["sign-in-1"]);
-    });
-
-    it("keeps the old key when Sign in again fails at the keychain write", async () => {
-      const { signIn, kept, connections } = setUp({ setFails: true });
-      kept.set("paperclip-acme", "old-entry");
-      signIn.states = [connected];
-      const { result } = await resultOf(connections);
-      expect(result).toEqual({ outcome: "key-not-saved" });
-      expect(kept.get("paperclip-acme")).toBe("old-entry");
-      expect(signIn.confirms).toEqual([]);
-      expect(signIn.cancels).toEqual(["sign-in-1"]);
-    });
-
-    it("writes nothing and cancels when the keychain can't be read first", async () => {
-      const { signIn, kept, reported, connections } = setUp({ getFails: true });
-      signIn.states = [connected];
-      const { result } = await resultOf(connections);
-      expect(result).toEqual({ outcome: "key-not-saved" });
-      expect(kept.size).toBe(0);
-      expect(signIn.confirms).toEqual([]);
-      expect(signIn.cancels).toEqual(["sign-in-1"]);
-      expect(reported).toHaveLength(1);
-    });
-
-    it("sends a confirm whose answer got lost once more, and connects when the host has the key", async () => {
-      const { signIn, kept, reported, connections } = setUp();
-      signIn.states = [connected];
-      signIn.confirmsLost = 1;
-      const { result } = await resultOf(connections);
-      expect(result).toMatchObject({ outcome: "connected" });
-      expect(signIn.confirms).toEqual(["sign-in-1", "sign-in-1"]);
+      // The shell already cancelled the sign-in; the page sends nothing more.
       expect(signIn.cancels).toEqual([]);
-      expect(kept.has("paperclip-acme")).toBe(true);
-      expect(reported).toHaveLength(1);
+      expect(read).toEqual([]);
+      expect(heard).toBe(1);
     });
 
     it("still connects when the list fails after the key is kept", async () => {
@@ -297,17 +213,18 @@ verifies("services.host-agent-connections", () => {
     });
 
     it("disconnects a listed connection, and says how long a key it couldn't revoke stays valid", async () => {
-      const { signIn, connections, kept } = setUp({ revoked: false });
+      const { signIn, connections, disconnected, read } = setUp({ revoked: false });
       signIn.rows = [acmeRow];
       await connections.list();
-      kept.set("paperclip-acme", "entry");
       let heard = 0;
       const stop = connections.subscribe(() => heard++);
       expect(await connections.disconnect("paperclip:acme")).toEqual({
         revoked: false,
         validUntil: "2026-12-24T14:00:00.000Z",
       });
-      expect(kept.size).toBe(0);
+      // The shell deletes the keychain entry; the page only asks the host.
+      expect(disconnected).toEqual([{ workspace: "/work/acme", connection: "acme" }]);
+      expect(read).toEqual([]);
       expect(heard).toBe(1);
       stop();
       await expect(connections.disconnect("paperclip:globex")).rejects.toThrow();

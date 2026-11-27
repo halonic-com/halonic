@@ -44,7 +44,7 @@ export const startMenuShortcuts: Step = {
 export const disconnect: Step = {
   id: "disconnect",
   title: "Disconnect revokes the key on Paperclip",
-  requirements: ["services.paperclip-disconnect"],
+  requirements: ["studio.src-tauri.paperclip-key-keep"],
   needs: ["connect-paperclip"],
   run: async (context) => {
     const workspace = await onWorkspace(context);

@@ -2,27 +2,18 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17439 (PR 2, the wiring; Liam's option 1 for the key, 24 Nov), HAL-17897 (Settings › Connections in the app), HAL-17942 (the confirm), HAL-18048 (keeping the old key); ADR `docs/adr/2026-11-24-agent-messaging.md`, sections "Sign-in" and "The key"; `agent-host.paperclip-key`
+- Source: HAL-17439 (PR 2, the wiring; Liam's option 1 for the key, 24 Nov), HAL-17897 (Settings › Connections in the app), HAL-17942 (the confirm), HAL-18048 (keeping the old key), HAL-20278 (the shell keeps the key, `studio.src-tauri.paperclip-key-keep`); ADR `docs/adr/2026-11-24-agent-messaging.md`, sections "Sign-in" and "The key"; `agent-host.paperclip-key`
 
-The desktop app's `AgentConnections` shall list the agent host's connections for the open workspace, start a sign-in through the host for an address (and, for Sign in again, the listed connection's name), and poll the host every 2 seconds until the sign-in ends. When a poll says `connected`, it shall write the key from that answer straight to the keychain entry of the connection, `paperclip-<name>`, with the address and company it was made for, and pass on no key: the sign-in's result names only the connection. Once the keychain has the key, it shall confirm the sign-in to the host, and send a confirm that failed once more. When the keychain write or the confirm fails, it shall cancel the sign-in, so the host revokes the key and undoes it, put back the keychain entry the connection had before, or remove the one it wrote when there was none, end the sign-in as `key-not-saved` and keep no copy of the new key. A poll that fails shall be tried again until the sign-in's 10 minutes have passed. Disconnect shall go through `services.paperclip-disconnect`, and the listeners shall hear every connect and disconnect.
+The desktop app's `AgentConnections` shall list the agent host's connections for the open workspace, start a sign-in through the host for an address (and, for Sign in again, the listed connection's name), and poll the host every 2 seconds until the sign-in ends. The poll's answer shall hold no key, since the shell keeps it (`studio.src-tauri.paperclip-key-keep`). When a poll says `connected`, the sign-in's result shall name only the connection, and when it says `key-not-saved`, the sign-in shall end as `key-not-saved`. It shall neither write, remove nor confirm a key. A poll that fails shall be tried again until the sign-in's 10 minutes have passed. Disconnect shall ask the host to revoke and forget the connection's key, and the shell deletes its keychain entry. The listeners shall hear every connect and disconnect.
 
 ## Examples
 
 - Given a sign-in the board approves,
-  when the poll answers the key,
-  then the keychain holds it under `paperclip-acme`, and the result holds only the connection "Paperclip · Acme".
-- Given a keychain that refuses the write,
-  when the board approves,
-  then the sign-in is cancelled through the host and ends as `key-not-saved`.
-- Given a host that can't be reached for the confirm,
-  when the board approves,
-  then the keychain entry is removed, the sign-in is cancelled and it ends as `key-not-saved`.
-- Given Sign in again on a connection whose keychain entry holds a key,
-  when the keychain write or the confirm fails,
-  then the keychain entry holds the old key again.
-- Given a confirm whose answer got lost,
-  when the confirm sent once more says the host has the key,
-  then the sign-in ends as connected and the keychain keeps the new key.
+  when the poll answers `connected`,
+  then the result holds only the connection "Paperclip · Acme", and Studio's page wrote nothing to the keychain.
+- Given a shell that couldn't keep the approved key,
+  when the poll answers `key-not-saved`,
+  then the sign-in ends as `key-not-saved`.
 - Given a host that doesn't answer polls,
   when the sign-in's 10 minutes have passed,
   then it ends as `expired`.

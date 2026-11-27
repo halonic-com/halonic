@@ -80,7 +80,6 @@ export const agentHostRequestRoutes = [
   "POST /v1/paperclip/feedback",
   "POST /v1/paperclip/sign-in/start",
   "POST /v1/paperclip/sign-in/poll",
-  "POST /v1/paperclip/sign-in/confirm",
   "POST /v1/paperclip/sign-in/cancel",
   "POST /v1/messaging/read",
   "POST /v1/messaging/answer",

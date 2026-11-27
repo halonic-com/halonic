@@ -125,6 +125,7 @@ verifies("agent-host.paperclip-sign-in", () => {
         connection: "acme",
         address,
         company: "acme",
+        workspace,
         key: fakeBoardKey,
       });
       expect(await (await post("poll", { signInId })).json()).toEqual({ status: "unknown" });

@@ -3,6 +3,17 @@
 
 use crate::route_kinds::{Answer, Method, Route, route};
 
+/// The sign-in's confirm, which says the keychain has the approved key. Only
+/// the shell sends it, once it has written the key (`paperclip_keep.rs`,
+/// HAL-20278), so it isn't in [`PAPERCLIP_ROUTES`] and no page can name it.
+pub const SIGN_IN_CONFIRM: Route =
+    route(Method::Post, "/v1/paperclip/sign-in/confirm", Answer::Json);
+
+/// The sign-in's cancel, as the shell sends it when it couldn't keep the
+/// approved key, so the host revokes it. A page may cancel too, through
+/// [`PAPERCLIP_ROUTES`].
+pub const SIGN_IN_CANCEL: Route = route(Method::Post, "/v1/paperclip/sign-in/cancel", Answer::Json);
+
 /// Every Paperclip and agent messaging route a page may call, by its name.
 pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
     // A Paperclip connection's key, handed over when the person connects
@@ -33,13 +44,11 @@ pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
         "POST /v1/paperclip/sign-in/start",
         route(Method::Post, "/v1/paperclip/sign-in/start", Answer::Json),
     ),
+    // The approved poll's key goes to the keychain in the shell, and the page
+    // gets the answer without it (`paperclip_keep.rs`, HAL-20278).
     (
         "POST /v1/paperclip/sign-in/poll",
         route(Method::Post, "/v1/paperclip/sign-in/poll", Answer::Json),
-    ),
-    (
-        "POST /v1/paperclip/sign-in/confirm",
-        route(Method::Post, "/v1/paperclip/sign-in/confirm", Answer::Json),
     ),
     (
         "POST /v1/paperclip/sign-in/cancel",

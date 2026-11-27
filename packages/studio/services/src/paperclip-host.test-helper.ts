@@ -1,7 +1,9 @@
 /**
  * A stand-in agent host and Paperclip for the stepper's sign-in tests: the
  * invented `acme` Paperclip on `paperclip.acme.example`, its sign-in routes
- * and a keychain in memory. Keys are made up and never real.
+ * and a keychain in memory. Its poll plays the Studio shell's part too: on
+ * approval it writes the key to the keychain and confirms it, and answers the
+ * page without the key (HAL-20278). Keys are made up and never real.
  */
 import type {
   PaperclipConnectionRef,
@@ -12,7 +14,7 @@ import type {
 import type { SignInConnection } from "@halonicjs/ports";
 import { HostAgentConnections } from "./host-agent-connections.ts";
 import { HostServiceSignIn } from "./host-service-sign-in.ts";
-import { paperclipKeyTokenName } from "./paperclip-key.ts";
+import { paperclipKeyEntryText, paperclipKeyTokenName } from "./paperclip-key.ts";
 
 /** The request `/api/cli-auth/revoke-current`, as the stand-in Paperclip logs it. */
 export const revokeCurrent = "POST /api/cli-auth/revoke-current";
@@ -50,7 +52,7 @@ export class StandInPaperclipHost {
   showsUserName = true;
   /** Called after each keychain write, so a test can close the stepper right then. */
   onKeyWritten: () => void = () => {};
-  /** Called once the host has the keychain write's confirm, before the sign-in answers. */
+  /** Called once the host has the shell's confirm, before the sign-in answers. */
   onConfirmed: () => void = () => {};
   readonly #setup: StandInSetup;
   readonly #challenges: Challenge[] = [];
@@ -63,7 +65,7 @@ export class StandInPaperclipHost {
     this.#setup = setup;
     for (const name of setup.keys ?? []) {
       const key = `acme-made-up-key-${name}`;
-      this.keychain.set(paperclipKeyTokenName(name), key);
+      this.keychain.set(paperclipKeyTokenName(name), this.#entryText(name, key));
       this.#held.set(name, key);
       this.#working.add(key);
     }
@@ -95,14 +97,7 @@ export class StandInPaperclipHost {
 
   /** Studio's own `ServiceSignIn`, over this stand-in. */
   serviceSignIn(report: (error: unknown) => void): HostServiceSignIn {
-    const tokens = {
-      get: async (name: string) => this.keychain.get(name) ?? null,
-      set: async (name: string, value: string) => {
-        this.keychain.set(name, value);
-        this.onKeyWritten();
-      },
-      remove: async (name: string) => void this.keychain.delete(name),
-    };
+    const tokens = { get: async (name: string) => this.keychain.get(name) ?? null };
     const connections = new HostAgentConnections({
       signIn: this.signInRoutes(),
       host: { handOver: async () => {}, disconnect: (ref) => this.disconnect(ref) },
@@ -122,13 +117,13 @@ export class StandInPaperclipHost {
       listed: async () => ({ workspace: "/work/acme", connections: this.#rows() }),
       start: async (address: string, connection?: string) => this.#start(address, connection),
       poll: async (signInId: string) => this.#poll(signInId),
-      confirm: async (signInId: string) => this.#confirm(signInId),
       cancel: async (signInId: string) => this.#cancel(signInId),
     };
   }
 
-  /** The host's Disconnect: revokes the key at Paperclip and forgets it. */
+  /** The host's Disconnect: revokes the key at Paperclip and forgets it; the shell deletes the keychain entry, also when the host fails. */
   async disconnect(ref: PaperclipConnectionRef): Promise<{ revoked: boolean }> {
+    this.keychain.delete(paperclipKeyTokenName(ref.connection));
     if (this.disconnectGoes === "fails") throw new Error("The agent host didn't answer.");
     const key = this.#held.get(ref.connection);
     this.#held.delete(ref.connection);
@@ -173,24 +168,28 @@ export class StandInPaperclipHost {
       return { status };
     if (status !== "approved") return { status: "pending" };
     challenge.status = "handed";
+    // The shell writes the key to the keychain, confirms it, and answers the page without it.
+    const { connection, key } = challenge;
+    this.keychain.set(paperclipKeyTokenName(connection), this.#entryText(connection, key));
+    this.onKeyWritten();
+    this.#confirm(signInId);
     // Only a listed connection file's sign-in is started.
-    const { address, company } = this.#setup.connections[challenge.connection] as SignInConnection;
-    return {
-      status: "connected",
-      connection: challenge.connection,
-      address,
-      company,
-      key: challenge.key,
-    };
+    const { address, company } = this.#setup.connections[connection] as SignInConnection;
+    return { status: "connected", connection, address, company };
   }
 
-  #confirm(signInId: string): boolean {
+  /** The keychain entry the shell writes for `key`, signed in from this stand-in's workspace. */
+  #entryText(connection: string, key: string): string {
+    // Only a listed connection file's key is kept.
+    const { address, company } = this.#setup.connections[connection] as SignInConnection;
+    return paperclipKeyEntryText({ key, address, company, workspaces: ["/work/acme"] });
+  }
+
+  #confirm(signInId: string): void {
     const challenge = this.#find(signInId);
-    if (challenge.status !== "handed") return false;
     challenge.status = "kept";
     this.#held.set(challenge.connection, challenge.key);
     this.onConfirmed();
-    return true;
   }
 
   #cancel(signInId: string): PaperclipSignInState {

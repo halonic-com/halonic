@@ -108,36 +108,3 @@ export async function connectPaperclip(
   });
   return "connected";
 }
-
-/** What Disconnect did. When Paperclip didn't revoke the key, it stays valid until its expiry. */
-export interface PaperclipDisconnectResult {
-  readonly revoked: boolean;
-}
-
-/**
- * Disconnect, the person's own action (`services.paperclip-disconnect`): the
- * agent host asks Paperclip to revoke the key, then forgets it and deletes
- * the connection's cache, and this deletes the keychain entry. The entry is
- * deleted also when the revoke fails or Paperclip can't be reached, and also
- * when the host can't be asked at all, so Disconnect never leaves the key
- * behind on this computer.
- *
- * @param tokens - the keychain's tokens, from `tokenStoreKey`
- * @param host - the agent host's disconnect, an `AgentHostPaperclipKey`
- * @param ref - the workspace's real path and the connection's name
- * @returns whether Paperclip revoked the key; when not, Studio says it stays valid until its expiry
- * @throws AgentHostError when the host refuses or can't be reached, after the keychain entry is deleted; KeychainError when it can't be deleted
- */
-export async function disconnectPaperclip(
-  tokens: Pick<TokenStore, "remove">,
-  host: { disconnect(ref: PaperclipConnectionRef): Promise<PaperclipDisconnectResult> },
-  ref: PaperclipConnectionRef,
-): Promise<PaperclipDisconnectResult> {
-  const asked = await host.disconnect(ref).then(
-    (result) => ({ ok: true as const, result }),
-    (error: unknown) => ({ ok: false as const, error }),
-  );
-  await tokens.remove(paperclipKeyTokenName(ref.connection));
-  if (!asked.ok) throw asked.error;
-  return { revoked: asked.result.revoked };
-}

@@ -54,13 +54,14 @@ export interface PaperclipSignInRouteDeps {
  *   engine is a server it is 409 `server_engine` (`agent-host.messaging-engine`).
  * - `POST /v1/paperclip/sign-in/poll` with `{ signInId }` answers the
  *   sign-in's state. The first `connected` answer is the only one that holds
- *   the key, with the connection's name, address and company, for Studio's
- *   keychain.
+ *   the key, with the connection's name, address and company and the
+ *   workspace's real path, for the keychain. The Studio shell keeps it and
+ *   passes the page that answer without the key (HAL-20278).
  * - `POST /v1/paperclip/sign-in/confirm` with `{ signInId }` says the keychain
- *   has that key, and answers `{ confirmed }`. A key Studio doesn't confirm
- *   within a minute is revoked, and its sign-in undone.
+ *   has that key, and answers `{ confirmed }`. Only the shell sends it; a key
+ *   nobody confirms within a minute is revoked, and its sign-in undone.
  * - `POST /v1/paperclip/sign-in/cancel` with `{ signInId }` ends it; after the
- *   approved answer, it revokes the key Studio couldn't keep and undoes it.
+ *   approved answer, it revokes the key the shell couldn't keep and undoes it.
  *
  * A failure is 502 `sign_in_failed`; the log names only the error's kind.
  */
@@ -173,7 +174,10 @@ function sameAddressAs(address: string): (each: NamedConnection) => boolean {
   return (each) => paperclipOrigin(each.connection.address) === address;
 }
 
-/** A state as Studio reads it; only the approved answer holds the key. */
+/**
+ * A state as the shell reads it; only the approved answer holds the key, and
+ * the shell keeps it and passes the page the answer without it (HAL-20278).
+ */
 function answerOf(state: SignInState): unknown {
   if (state.status !== "connected") return state;
   return {
@@ -181,6 +185,7 @@ function answerOf(state: SignInState): unknown {
     connection: state.name,
     address: state.address,
     company: state.companyId,
+    workspace: state.workspace,
     key: state.key,
   };
 }
