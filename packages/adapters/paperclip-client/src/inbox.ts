@@ -5,6 +5,7 @@ import { assignedToPerson, boardTaskToItem } from "./board-tasks.ts";
 import { cardFilesOf, type FilesOf, PaperclipCardFiles } from "./card-files.ts";
 import { approvalToItem, cardToItem } from "./cards.ts";
 import { mayBeChannel } from "./channels.ts";
+import { readChats } from "./conversations.ts";
 import { decisionPage, decisionToItem } from "./decisions.ts";
 import { EndedItems } from "./ended-items.ts";
 import { asRecord, asRecords, type JsonRecord, text } from "./json.ts";
@@ -65,8 +66,8 @@ export async function eachLimited<T>(
 /**
  * Reads every item that waits on the person across the whole company
  * (`inbox.every-waiting-item`): pending approvals, and the cards on every
- * open task, chat or not. Paperclip has no company-wide read for cards, so
- * it reads each open task's cards, but only again when the task changed:
+ * open task and every chat. Paperclip has no company-wide read for cards, so
+ * it reads each one's cards, but only again when it changed:
  * Paperclip touches a task whenever a card on it is made or answered.
  */
 export class PaperclipInbox {
@@ -137,9 +138,13 @@ export class PaperclipInbox {
    * Every inbox item, newest first, each with its task's project when the
    * task has one, and the open tasks assigned to the person that wait on
    * nothing else. `tasks` is the open-task list when the caller already
-   * read it in this poll, so one poll reads it once.
+   * read it in this poll, so one poll reads it once, and `chats` the same for the chat list.
    */
-  async list(context: MapContext, tasks?: readonly JsonRecord[]): Promise<InboxItem[]> {
+  async list(
+    context: MapContext,
+    tasks?: readonly JsonRecord[],
+    chats?: readonly JsonRecord[],
+  ): Promise<InboxItem[]> {
     const projectOf = await this.#projects(context);
     const open = tasks ?? (await this.openTasks());
     // A task with both an approval and a card has its files read once.
@@ -152,7 +157,8 @@ export class PaperclipInbox {
     const approvalsAndDecisions = await this.#ended.list(waiting, lookUp, this.#now());
     const boardRequests = await this.#boardRequests.list(context);
     const mentions = await this.#mentions.list(context, open, projectOf);
-    const read = await this.#allCards(context, projectOf, open, filesOf);
+    const withChats = [...open, ...(await this.#chatsNotIn(open, chats))];
+    const read = await this.#allCards(context, projectOf, withChats, filesOf);
     const cards =
       this.#steppers === undefined
         ? read
@@ -188,6 +194,19 @@ export class PaperclipInbox {
         ? []
         : [withProject(item, projectOf(text(task, "projectId")))];
     });
+  }
+
+  /**
+   * The person's chats, `chats` when already read, that `tasks` leaves out. Paperclip's task list leaves out every chat unless
+   * it is a search, so an agent's card on its own chat is found only through the chats.
+   */
+  async #chatsNotIn(
+    tasks: readonly JsonRecord[],
+    chats: readonly JsonRecord[] | undefined,
+  ): Promise<JsonRecord[]> {
+    const listed = new Set(tasks.map((task) => text(task, "id")));
+    const read = chats ?? (await readChats(this.#reader, this.#company));
+    return read.filter((chat) => !listed.has(text(chat, "id")));
   }
 
   /** The company's projects, read once per list, as a lookup. */
