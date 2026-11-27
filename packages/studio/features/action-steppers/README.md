@@ -33,7 +33,13 @@ step's line shows the definition's preview with today's values next to the chang
 request's `expect` is compared with what the check kept (`checkExpect`, requirement
 `action-steppers.expect-stop`): a difference sends none of the later steps, ends the request as
 failed with the next step `state-changed`, and shows "This changed since the request: …" with the
-values apart from it. A `check` that names `changedAfterStart`, such as the Actions secret's
+values apart from it. A check's `requires` rule stops the request the same way, with the
+definition's own reason (`action-steppers.shell-check-gate`), and so does a rule comparing what
+the check kept with one of the request's parameters, or a request whose `expect` lacks a name the
+check lists in `requiredExpect` ("This request doesn't say what the requester saw: …",
+`action-steppers.shell-gate-request`). A `parameter-list` body field sends its definition step's
+parameter as a one-item list, such as `environment_ids: [161]`, and **Show the request** shows the
+same body. A `check` that names `changedAfterStart`, such as the Actions secret's
 `updated_at`, is done only when that time is later than when the stepper first opened the guided
 step's page (requirement `action-steppers.changed-after-start-run`); otherwise it shows as failed
 with its message and the run bar offers it again. All of these come from the record, so a request
@@ -50,7 +56,7 @@ catalog is empty and the default policy holds.
 | `not-available` | the request's definition isn't in this version; no steps |
 | `desktop-only` | "Open it in the desktop app to run it.", **Copy instructions** on each browser step, and **Decline** |
 | `blocked` | "Blocked by your settings. This requester may only ask for steps marked Routine." and **Decline** |
-| `changed` | "This changed since the request: …", then each changed value with what the requester saw and what the check read today; no buttons |
+| `changed` | "This changed since the request: …", then each changed value with what the requester saw and what the check read today; or, for a `requires` rule or a missing `requiredExpect` name, that one sentence; no buttons |
 
 Every sentence is in `src/ui/stepper-words.ts`.
 

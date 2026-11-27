@@ -1,8 +1,10 @@
 /**
- * The stepper run's stop on a definition's `requires` rules (`action-steppers.shell-check-gate`):
- * before a step runs, the checks before it must have run and kept what the definition requires.
- * A broken rule stops the request the same way a changed `expect` does (`expect-stop.ts`), with
- * the definition's own reason. The record is the one place kept values live, so a request opened
+ * The stepper run's stop on a definition's `requires` rules (`action-steppers.shell-check-gate`)
+ * and on its `requiredExpect` names and parameter rules (`action-steppers.shell-gate-request`):
+ * before a step runs, the checks before it must have run and kept what the definition requires,
+ * a rule with `equalsParameter` must find the request's parameter, and the request's `expect` must
+ * name what each check requires. A broken rule stops the request the same way a changed `expect`
+ * does (`expect-stop.ts`), with the definition's own reason. The record is the one place kept values live, so a request opened
  * again stops in the same place.
  */
 import {
@@ -37,13 +39,21 @@ export function gateRefusal(
   const definition = catalog.definition(id, version) ?? catalog.stepType(id, version);
   // The review already refused a request whose definition isn't in the catalog.
   if (definition === undefined) return { ok: true };
-  return checkStepGate(definition, step, action.expect ?? {}, keptByStep(record));
+  // A rule comparing a kept value with a parameter fails closed without them.
+  return checkStepGate(
+    definition,
+    step,
+    action.expect ?? {},
+    keptByStep(record),
+    action.parameters,
+  );
 }
 
 /**
  * The stop for the next step when a check before it broke one of the definition's `requires`
- * rules or didn't read a field one names; `undefined` otherwise. A check that hasn't run yet
- * doesn't stop the request: it only keeps the step after it from being sent.
+ * rules, didn't read a field one names, or the request's `expect` lacks a field the check
+ * requires; `undefined` otherwise. A check that hasn't run yet doesn't stop the request: it only
+ * keeps the step after it from being sent.
  */
 function requiresStop(
   catalog: StepperCatalog,
@@ -52,7 +62,8 @@ function requiresStop(
   record: RecordState,
 ): ExpectStop | undefined {
   const gate = gateRefusal(catalog, action, next, record);
-  if (gate.ok || (gate.cause !== "requires" && gate.cause !== "not-read")) return undefined;
+  // A changed `expect` value stops through `expectStop` already.
+  if (gate.ok || gate.cause === "not-checked" || gate.cause === "expect") return undefined;
   return { message: gate.message, changes: [] };
 }
 
@@ -67,8 +78,9 @@ export interface CheckStopInput {
 
 /**
  * The view of a request its checks stopped, or `undefined` when nothing stopped it: a changed
- * `expect` first (`action-steppers.expect-stop`), then a `requires` rule. A `requires` stop shows
- * its own sentence on the next step, since what the requester saw may not have changed at all.
+ * `expect` first (`action-steppers.expect-stop`), then a missing `requiredExpect` name or a broken
+ * `requires` rule, with a parameter or a fixed value. Those show their own sentence on the next
+ * step, since what the requester saw may not have changed at all.
  */
 export function stoppedByChecks(
   shown: StepperView,
