@@ -1,5 +1,6 @@
 // The usage account's own small types. They stay this small on purpose: the Meter port's types
 // arrive with the engine's Meter (HAL-16241), and the object that binds the two is a thin adapter.
+import type { LimitEventRow } from "./usage-limit-events.ts";
 
 /**
  * Where an account keeps its state: a Durable Object's synchronous storage (`ctx.storage.kv` and
@@ -182,11 +183,14 @@ export interface UsageRecord {
 /** A row waiting to go to Cloud. Rows are only added here; sending them comes later. */
 export type OutboxRow =
   | { readonly kind: "usage"; readonly record: UsageRecord }
+  | LimitEventRow
   | {
       readonly kind: "threshold";
       readonly scope: string;
       readonly unit: UsageUnit;
       readonly percent: 80 | 100;
+      /** `seller` when the limit reached is the seller's override, not the plan's. */
+      readonly source?: "seller";
       readonly used: number;
       readonly limit: number;
       readonly periodStart: number;
