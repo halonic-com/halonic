@@ -31,8 +31,8 @@ export function changeProblem(change: AgentChange): string | undefined {
   if (change.output?.type === "choice" && change.output.options.length === 0) {
     return "A list of options needs at least one.";
   }
-  if (change.params !== undefined) return paramsProblem(change.params);
-  return sandboxProblem(change);
+  const paramsCheck = change.params === undefined ? undefined : paramsProblem(change.params);
+  return paramsCheck ?? sandboxProblem(change);
 }
 
 /**

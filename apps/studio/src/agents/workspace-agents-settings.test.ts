@@ -127,5 +127,24 @@ verifies("studio.workspace-agents-sandbox-fields", () => {
       });
       expect(changes).toHaveLength(0);
     });
+
+    it("still checks the folder and sites when the same change carries valid params", async () => {
+      const { host, changes } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      const params = { temperature: 0.2 };
+      await expect(host.update(ref, { params, workingFolder: ".git/hooks" })).rejects.toMatchObject(
+        {
+          kind: "invalid_input",
+          message: expect.stringContaining("'.git'"),
+        },
+      );
+      await expect(host.update(ref, { params, allowedSites: ["localhost"] })).rejects.toMatchObject(
+        {
+          kind: "invalid_input",
+          message: "Enter a site like registry.npmjs.org.",
+        },
+      );
+      expect(changes).toHaveLength(0);
+    });
   });
 });
