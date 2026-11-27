@@ -2,6 +2,7 @@
 
 - Approval: Sofia decided the wording on HAL-20346 under the board-approved frames (HAL-2282 rule); a team decision with no board card
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:+jW/iQl8jzLDGvmfjs0kZEk2qUYBWdHrohfi0GkGTLwLASnslL5TNMuMWzzIIQdPUphlhFUzSZFEZHk76k87DQ==
 - Task: HAL-20346
 
 ## What changes
