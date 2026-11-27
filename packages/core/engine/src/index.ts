@@ -180,6 +180,7 @@ export { RunStoreTurnLog } from "./run/run-store-turn-log.ts";
 export {
   type ActionRequests,
   fileActionRequest,
+  type HalonicSource,
   type RequestActionToolOptions,
   type RequesterPolicySource,
   requestActionTool,

@@ -5,6 +5,7 @@
 // the user's Studio has those, and it decides again when the user opens it.
 
 import {
+  type AttestedSource,
   decideRequester,
   type RequesterPolicy,
   requestExpiresAt,
@@ -32,11 +33,25 @@ export interface RequesterPolicySource {
   read(): Promise<RequesterPolicy>;
 }
 
+/**
+ * The source a host attests for its runs' requests. Its kind is always
+ * `halonic`, so a run can never pass as the user, who always passes.
+ */
+export interface HalonicSource extends AttestedSource {
+  readonly kind: "halonic";
+}
+
 /** What a host gives the engine so its agents can file action requests. */
 export interface ActionRequests {
   /** The reviewed definitions this Halonic ships, which a request must name. */
   readonly catalog: StepperCatalog;
   readonly policy: RequesterPolicySource;
+  /**
+   * Who the host is, as Studio names it when it decides again, such as
+   * `halonic-server:<origin>`. The host sets it, never the workspace: a hub's
+   * folder name is the same in every clone, so it can't widen the policy.
+   */
+  readonly source: HalonicSource;
 }
 
 /**
@@ -44,8 +59,6 @@ export interface ActionRequests {
  * or write a request's record: a test fails if one is added.
  */
 export interface RequestActionToolOptions extends ActionRequests {
-  /** The agent's hub: the source the engine attests for the policy. */
-  readonly hubId: string;
   readonly runId: string;
   /** The agent that files, named in the request's `requester`. */
   readonly agent: string;
@@ -64,7 +77,8 @@ export const requestActionToolName = "request_action";
  * `action.requested` to the run log and answers with the request's id.
  *
  * @example
- * const tool = requestActionTool({ catalog, policy, hubId: "acme", runId: "r-1", agent: "ops", clock, ids, log });
+ * const source = { kind: "halonic", id: "halonic-server:https://acme.example" } as const;
+ * const tool = requestActionTool({ catalog, policy, source, runId: "r-1", agent: "ops", clock, ids, log });
  * await tool.run({ definition: "acme.restart-app", version: 1, parameters: { app: "web" }, reason: "It hangs." });
  * // => "Filed request req_1. The user reviews it in Studio and runs it or declines it."
  */
@@ -113,14 +127,15 @@ export async function fileActionRequest(
   args: ToolArgs,
 ): Promise<string> {
   const definition = requiredStringArg(args, "definition");
-  if (args["version"] === undefined) throw new Error('"version" is required');
+  if (args["version"] === undefined || args["version"] === null) {
+    throw new Error('"version" is required');
+  }
   const version = integerArg(args, "version", { min: 1, max: 1000, fallback: 1 });
   const reason = requiredStringArg(args, "reason");
   const parameters = args["parameters"] ?? {};
   const risk = checkAgainstCatalog(options.catalog, { definition, version, reason, parameters });
   const policy = await options.policy.read();
-  const source = { kind: "halonic" as const, id: options.hubId };
-  if (decideRequester(policy, source, options.agent, risk) === "blocked") {
+  if (decideRequester(policy, options.source, options.agent, risk) === "blocked") {
     throw new Error(
       `the user's settings don't let this agent request \`${risk}\` actions, so nothing was filed`,
     );

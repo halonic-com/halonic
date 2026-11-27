@@ -38,8 +38,9 @@ export interface RunAgentToolsOptions {
   readonly records?: RecordStore;
   readonly clock: Clock;
   /**
-   * The catalog and the user's requester policy; without them, the agent gets
-   * no `request_action`. Together with `ids`, which names each request.
+   * The catalog, the user's requester policy and the source the host
+   * attests; without them, the agent gets no `request_action`. Together with
+   * `ids`, which names each request.
    */
   readonly actionRequests?: ActionRequests & { readonly ids: IdGenerator };
   /** The log of the run's model call, where a subagent's `agent.*` and an `action.requested` go. */
@@ -85,13 +86,13 @@ export function runAgentTools(options: RunAgentToolsOptions): HalonicTool[] {
     );
   }
   if (options.actionRequests !== undefined) {
-    const { catalog, policy, ids } = options.actionRequests;
+    const { catalog, policy, source, ids } = options.actionRequests;
     tools.push(
       requestActionTool({
         catalog,
         policy,
+        source,
         ids,
-        hubId: options.hubId,
         runId,
         agent: agent.id,
         clock,

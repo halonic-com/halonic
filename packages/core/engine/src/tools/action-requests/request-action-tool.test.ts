@@ -13,9 +13,19 @@ import { fixedClock, fixedIds } from "@halonicjs/std";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { MemoryTurnLog } from "../../agent/turn-test-kit.test-helper.ts";
+import {
+  KernelRuns,
+  replyWorkflow,
+  writerAgent,
+} from "../../kernel/kernel-test-kit.test-helper.ts";
 import type { LocalExecutorOptions } from "../../local-executor-options.ts";
-import type { RunAgentToolsOptions } from "../../run/run-agent-tools.ts";
-import { type RequestActionToolOptions, requestActionTool } from "./request-action-tool.ts";
+import { type RunAgentToolsOptions, runAgentTools } from "../../run/run-agent-tools.ts";
+import {
+  type HalonicSource,
+  type RequestActionToolOptions,
+  requestActionTool,
+  requestActionToolName,
+} from "./request-action-tool.ts";
 
 const start = Date.parse("2026-11-27T09:00:00.000Z");
 
@@ -47,6 +57,9 @@ const catalog: StepperCatalog = {
   route: () => undefined,
 };
 
+/** The host, named the way Studio names it when it decides again. */
+const acmeServer: HalonicSource = { kind: "halonic", id: "halonic-server:https://acme.example" };
+
 /** The profile's policy, as the user set it on Studio's Settings screen. */
 function profile(policy: RequesterPolicy = { allowed: [] }) {
   return { read: async () => policy };
@@ -57,7 +70,7 @@ function setup(policy?: RequesterPolicy) {
   const tool = requestActionTool({
     catalog,
     policy: profile(policy),
-    hubId: "acme",
+    source: acmeServer,
     runId: "run-7",
     agent: "ops",
     clock: fixedClock(start, 0),
@@ -78,6 +91,10 @@ const restart = {
 type SenderFields<T> = {
   [K in keyof T]-?: NonNullable<T[K]> extends ActionSender | ActionRecords ? K : never;
 }[keyof T];
+
+/** Imports, re-exports and namespace uses of either port in a source file's text. */
+const reachesSender =
+  /\b(import|export)\b[^;]*\b(ActionSender|ActionRecords)\b|\.\s*(ActionSender|ActionRecords)\b/;
 
 /** Every engine source file, tests left out. */
 function engineSources(folder: string): string[] {
@@ -148,25 +165,53 @@ verifies("engine.request-action", () => {
         ...restart,
         definition: "acme.delete-app",
         requester: { kind: "user" },
-        policy: { allowed: [{ source: { kind: "halonic", id: "acme" } }] },
+        policy: { allowed: [{ source: acmeServer }] },
       });
       await expect(call).rejects.toThrow("don't let this agent request `irreversible` actions");
       expect(log.events).toEqual([]);
     });
 
-    it("files an irreversible request when the profile allows this hub's agent", async () => {
-      const { log, tool } = setup({
-        allowed: [{ source: { kind: "halonic", id: "acme" }, agents: ["ops"] }],
-      });
+    it("files an irreversible request when the profile allows this host's agent", async () => {
+      const { log, tool } = setup({ allowed: [{ source: acmeServer, agents: ["ops"] }] });
       await tool.run({ ...restart, definition: "acme.delete-app" });
       expect(log.events).toHaveLength(1);
     });
 
     it("refuses a missing version", async () => {
       const { tool } = setup();
-      await expect(tool.run({ ...restart, version: undefined })).rejects.toThrow(
-        '"version" is required',
-      );
+      for (const version of [undefined, null]) {
+        await expect(tool.run({ ...restart, version })).rejects.toThrow('"version" is required');
+      }
+    });
+
+    it("refuses a rule for the hub's folder name, which every clone of a workspace shares", async () => {
+      // Every new workspace has `hubs/default/`, so a rule naming a hub would
+      // pass for any workspace with a folder of that name.
+      const log = new MemoryTurnLog();
+      const tools = runAgentTools({
+        agent: writerAgent(),
+        hubId: "default",
+        runId: "run-7",
+        state: "draft",
+        definitions: { workflow: replyWorkflow },
+        depth: 0,
+        runs: new KernelRuns(),
+        clock: fixedClock(start, 0),
+        actionRequests: {
+          catalog,
+          policy: profile({ allowed: [{ source: { kind: "halonic", id: "default" } }] }),
+          source: acmeServer,
+          ids: fixedIds(),
+        },
+        log,
+        runSubagent: async () => {
+          throw new Error("no subagents here");
+        },
+      });
+      const tool = tools.find((each) => each.definition.name === requestActionToolName);
+      const call = tool?.run({ ...restart, definition: "acme.delete-app" });
+      await expect(call).rejects.toThrow("don't let this agent request `irreversible` actions");
+      expect(log.events).toEqual([]);
     });
   });
 
@@ -179,18 +224,32 @@ verifies("engine.request-action", () => {
       expectTypeOf<SenderFields<Hosted>>().toEqualTypeOf<never>();
     });
 
-    typeTest("take the policy only from the profile, never from the workspace", () => {
+    typeTest("take the policy only from the profile and the source only from the host", () => {
       expectTypeOf<keyof RequestActionToolOptions>().toEqualTypeOf<
-        "catalog" | "policy" | "hubId" | "runId" | "agent" | "clock" | "ids" | "log"
+        "catalog" | "policy" | "source" | "runId" | "agent" | "clock" | "ids" | "log"
       >();
     });
 
-    it("no engine source file imports ActionSender or ActionRecords", () => {
+    typeTest("attest a source that can never be the user's", () => {
+      expectTypeOf<HalonicSource["kind"]>().toEqualTypeOf<"halonic">();
+    });
+
+    it("no engine source file imports, re-exports or reaches ActionSender or ActionRecords", () => {
       const folder = join(import.meta.dirname, "../..");
       const importing = engineSources(folder).filter((path) =>
-        /import[^;]*\b(ActionSender|ActionRecords)\b/.test(readFileSync(path, "utf8")),
+        reachesSender.test(readFileSync(path, "utf8")),
       );
       expect(importing).toEqual([]);
+    });
+
+    it("the scan catches every way of reaching the ports", () => {
+      const reaching = [
+        'import type { ActionSender } from "@halonicjs/ports";',
+        'export type { ActionRecords } from "@halonicjs/ports";',
+        'import * as ports from "@halonicjs/ports";\nlet sender: ports.ActionSender;',
+      ];
+      for (const text of reaching) expect(reachesSender.test(text)).toBe(true);
+      expect(reachesSender.test('import type { RunStore } from "@halonicjs/ports";')).toBe(false);
     });
   });
 });

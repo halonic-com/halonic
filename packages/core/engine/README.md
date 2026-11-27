@@ -118,8 +118,8 @@ turn again at the same call. A chat turn can't wait, so a subagent's stop fails 
 A run's agent gets the tools its kept file grants after its memory tools (requirement
 `engine.run-agent-tools`): `list_runs` and `read_run` with `runLogs: true`, the records tools of
 its `collections` when the executor has a record store, a `delegate_` tool per subagent, and
-`request_action` when the executor has `actionRequests` (the catalog and the profile's requester
-policy; requirement `engine.request-action`). The
+`request_action` when the executor has `actionRequests` (the catalog, the profile's requester
+policy and the source the host attests; requirement `engine.request-action`). The
 collections come from the run's kept definitions (`RunDefinitions.collections`). A chat turn gets
 none of them.
 
