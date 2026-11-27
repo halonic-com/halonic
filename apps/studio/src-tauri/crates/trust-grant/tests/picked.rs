@@ -373,3 +373,36 @@ fn trust_grants_remember_the_most_recent_picks_only() {
         .collect();
     assert_eq!(names, ["picked-folders.json"]);
 }
+
+/// The Paperclip key goes back only to a folder the person picked that is
+/// still that folder (HAL-20278, Julian's condition 4 on HAL-20292).
+#[test]
+fn trust_grants_tell_whether_a_real_path_is_still_a_picked_folder() {
+    let scratch = Scratch::new("still-picked");
+    let acme = Shell::start().pick(&scratch, "work/acme");
+    let same = |first: &str, second: &str| first == second;
+    assert!(scratch.list().is_still_picked(&acme, same));
+    // A folder inside a picked one, and one never picked, aren't.
+    assert!(
+        !scratch
+            .list()
+            .is_still_picked(&scratch.location("work/acme/hubs"), same)
+    );
+    assert!(
+        !scratch
+            .list()
+            .is_still_picked(&scratch.location("work/other"), same)
+    );
+    // `same` decides which entry a path names.
+    assert!(
+        scratch
+            .list()
+            .is_still_picked("ACME", |entry, _| entry == acme)
+    );
+
+    fs::rename(scratch.path("work/acme"), scratch.path("work/old-acme"))
+        .expect("the folder can be moved");
+    assert!(!scratch.list().is_still_picked(&acme, same));
+    fs::create_dir(scratch.path("work/acme")).expect("the folder can be made again");
+    assert!(!scratch.list().is_still_picked(&acme, same));
+}

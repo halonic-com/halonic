@@ -2,10 +2,9 @@ import type {
   AgentHostPaperclipSignIn,
   PaperclipConnectionList,
   PaperclipConnectionRef,
-  PaperclipKeyHandOver,
   PaperclipSignInState,
 } from "@halonicjs/adapter-agent-host-client";
-import type { MessagingId, TokenStore } from "@halonicjs/ports";
+import type { MessagingId } from "@halonicjs/ports";
 import type {
   AgentConnection,
   AgentConnections,
@@ -13,7 +12,6 @@ import type {
   SignInResult,
   SignInStart,
 } from "./agent-connections.ts";
-import { restorePaperclipKeys } from "./paperclip-restore.ts";
 
 /** How often a waiting sign-in asks the engine whether the board approved it. */
 export const signInPollMs = 2000;
@@ -22,13 +20,18 @@ export const signInPollMs = 2000;
 export interface HostAgentConnectionsOptions {
   /** The agent host's sign-in and connection list for the open workspace. */
   readonly signIn: Pick<AgentHostPaperclipSignIn, "listed" | "start" | "poll" | "cancel">;
-  /** The agent host's hand-over, for a restored key, and its Disconnect, which revokes the key and forgets it. */
+  /** The agent host's Disconnect, which revokes the key and forgets it. */
   readonly host: {
-    handOver(entry: PaperclipKeyHandOver): Promise<void>;
     disconnect(ref: PaperclipConnectionRef): Promise<{ revoked: boolean }>;
   };
-  /** The keychain's tokens, read only to give a key back when the workspace opens. */
-  readonly tokens: Pick<TokenStore, "get">;
+  /**
+   * The Studio shell's restore of the kept keys of `workspace`
+   * (`agent_host_paperclip_restore`, `studio.src-tauri.paperclip-key-keep`):
+   * the shell decides what goes back, hands it over itself and answers how
+   * many keys went back, never a key. It rejects when the host couldn't list
+   * the workspace's connections yet.
+   */
+  readonly restoreKeys: (workspace: string) => Promise<number>;
   /** The open workspace's path, as Studio names it to the host. */
   readonly workspace: string;
   /** Waits between two polls: a timer in the app; tests pass one they move on themselves. */
@@ -48,9 +51,10 @@ export interface HostAgentConnectionsOptions {
  * (HAL-20278). So no page code, feature, React state or view sees the key.
  * When the shell couldn't keep it, the poll answers `key-not-saved`.
  *
- * The keychain entry names the workspaces the person signed in from, so
- * {@link HostAgentConnections.restore} can give the key back when one of them
- * opens again (`services.paperclip-restore`).
+ * The keychain entry names the workspaces the person signed in from, so the
+ * shell can give the key back when one of them opens again, once
+ * {@link HostAgentConnections.restore} asks it to (`services.paperclip-restore`).
+ * No page code reads, writes or holds the key.
  */
 export class HostAgentConnections implements AgentConnections {
   readonly #options: HostAgentConnectionsOptions;
@@ -81,13 +85,13 @@ export class HostAgentConnections implements AgentConnections {
   }
 
   /**
-   * Gives the host back the keys the person signed in with in this workspace,
-   * once, when it opens (`services.paperclip-restore`). It never throws or
-   * asks anything; a failure is reported and leaves that row as it was.
+   * Asks the shell, once, when the workspace opens, to give the host back the
+   * keys the person signed in with in it (`services.paperclip-restore`). It
+   * never throws or asks anything; a failure is reported.
    *
-   * When the host can't list the workspace's connections yet, as right after
-   * a start, the restore stays pending and the next {@link list} tries it
-   * again, until one listing succeeds (HAL-19027).
+   * When the shell's restore fails, as while the host can't list the
+   * workspace's connections right after a start, the restore stays pending
+   * and the next {@link list} asks again, until one succeeds (HAL-19027).
    */
   async restore(): Promise<void> {
     this.#restorePending = true;
@@ -103,14 +107,16 @@ export class HostAgentConnections implements AgentConnections {
   }
 
   async #tryRestore(): Promise<void> {
-    const { tokens, host, workspace, report } = this.#options;
-    const listed = async () => {
-      const list = await this.#listed();
-      // Listed: what happens to each row now is final, and nothing is tried again.
-      this.#restorePending = false;
-      return list;
-    };
-    const restored = await restorePaperclipKeys({ listed, tokens, host, workspace, report });
+    const { restoreKeys, workspace, report } = this.#options;
+    let restored: number;
+    try {
+      restored = await restoreKeys(workspace);
+    } catch (error) {
+      report(error);
+      return;
+    }
+    // The shell listed the workspace: what happened to each row is final, and nothing is asked again.
+    this.#restorePending = false;
     if (restored > 0) this.#changed();
   }
 

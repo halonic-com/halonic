@@ -5,6 +5,7 @@ import { type HostRoute, sendError, sendErrorAndHangUp, sendJson } from "../serv
 import { readCheckedBody } from "../server/json-body.ts";
 import { namedWorkspace } from "../server/named-workspace.ts";
 import { isFromOtherSite } from "../server/other-site.ts";
+import type { WorkspaceMayStart } from "./workspace-may-start.ts";
 
 /**
  * A connection's name: its file name without `.yaml`. Studio keeps the key in
@@ -27,6 +28,9 @@ const handOverBody = s
   })
   .strict();
 
+/** Why a hand-over was refused for a workspace that may not start a run. */
+const mayNotStartMessage = "The workspace may not start a run, so no Paperclip key is kept for it.";
+
 /** What the hand-over route reaches. */
 export interface PaperclipKeyRouteDeps {
   keys: PaperclipKeys;
@@ -38,6 +42,12 @@ export interface PaperclipKeyRouteDeps {
   log?: ((text: string) => void) | undefined;
   /** Whether the workspace's messaging engine is a server, so no Paperclip key is kept for it. */
   usesServer?: ((workspace: string) => Promise<boolean>) | undefined;
+  /**
+   * Whether the workspace may start a run, read fresh at each hand-over
+   * (`agent-host.paperclip-may-start`). Without it, no key is kept: the host
+   * can't tell, so it refuses.
+   */
+  mayStart?: WorkspaceMayStart | undefined;
 }
 
 /**
@@ -56,8 +66,10 @@ export interface PaperclipKeyRouteDeps {
  * computer (400 `body_invalid`, with no detail, as the body holds the key),
  * and a folder that isn't the real path of a workspace the launcher named
  * (404 `unknown_workspace`), and a workspace whose messaging engine is a
- * server (409 `server_engine`, `agent-host.messaging-engine`). No
- * answer and no log line holds the key.
+ * server (409 `server_engine`, `agent-host.messaging-engine`), and a
+ * workspace that may not start a run, or one the host can't tell about
+ * (403 `may_not_start`, `agent-host.paperclip-may-start`). No answer and no
+ * log line holds the key.
  */
 export function paperclipKeyRoutes(deps: PaperclipKeyRouteDeps): HostRoute[] {
   return [
@@ -88,6 +100,11 @@ export function paperclipKeyRoutes(deps: PaperclipKeyRouteDeps): HostRoute[] {
           sendError(response, 409, "server_engine", serverEngineMessage);
           return;
         }
+        // The host's own run gate, not the shell's word: a key reaches only a workspace that may start a run.
+        if (!(await mayStartRun(deps, workspace))) {
+          sendError(response, 403, "may_not_start", mayNotStartMessage);
+          return;
+        }
         const binding = { workspace, connection: body.connection };
         try {
           deps.keys.replace(binding, body);
@@ -111,6 +128,16 @@ export function paperclipKeyRoutes(deps: PaperclipKeyRouteDeps): HostRoute[] {
       },
     },
   ];
+}
+
+/** The run gate's answer, `false` without a gate or when it fails: the hand-over fails closed. */
+async function mayStartRun(deps: PaperclipKeyRouteDeps, workspace: string): Promise<boolean> {
+  try {
+    return (await deps.mayStart?.(workspace)) === true;
+  } catch (error) {
+    deps.log?.(`A Paperclip key wasn't kept: the run gate failed (${errorName(error)}).\n`);
+    return false;
+  }
 }
 
 /** Only the error's name: the log needs neither its message nor anything from the body. */

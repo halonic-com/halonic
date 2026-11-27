@@ -25,7 +25,7 @@ const KEEP: &str = "keeping the Paperclip key";
 
 /// A connection's everyday Paperclip key. Its `Debug` never shows it, and it
 /// has no `Serialize`, so it can't reach a log, an error or an answer.
-pub struct PaperclipKey(String);
+pub struct PaperclipKey(pub(crate) String);
 
 impl fmt::Debug for PaperclipKey {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -48,18 +48,22 @@ pub trait SignInHost {
     fn cancel(&self, sign_in_id: &str) -> Result<(), HostCallFailed>;
 }
 
-/// One turn per connection, so two keeps for one connection (Sign in again
-/// from two workspaces at once) take turns: otherwise one's put-back could
-/// overwrite the entry the other just confirmed. The shell holds one for as
-/// long as it runs; it names each connection once, and a person has few.
+/// One turn per keychain entry, so two keeps for one connection (Sign in
+/// again from two workspaces at once) take turns: otherwise one's put-back
+/// could overwrite the entry the other just confirmed. The shell holds one
+/// for as long as it runs; it names each entry once, and a person has few.
 #[derive(Default)]
 pub struct KeepTurns(Mutex<HashMap<String, Arc<Mutex<()>>>>);
 
 impl KeepTurns {
-    /// The turn of the connection `connection`.
+    /// The turn of the connection `connection`'s keychain entry. Names that
+    /// differ only in case, or in `-` and `_`, share one entry, so they
+    /// share one turn too.
     fn of(&self, connection: &str) -> Arc<Mutex<()>> {
+        let entry = SecretName::paperclip_key(connection)
+            .map_or_else(|_| connection.to_owned(), |name| name.as_str().to_owned());
         let mut turns = self.0.lock().unwrap_or_else(PoisonError::into_inner);
-        Arc::clone(turns.entry(connection.to_owned()).or_default())
+        Arc::clone(turns.entry(entry).or_default())
     }
 }
 
@@ -270,7 +274,7 @@ fn kept_workspaces(text: &str, address: &str, company: &str) -> Option<Vec<Strin
 /// Whether two real paths, as the agent host resolves them, name one
 /// folder: the same text, or two Windows paths (`C:\…` or `\\server\…`) that
 /// differ only in case, as Windows treats them. The page's `sameWorkspace`.
-pub(crate) fn same_workspace(first: &str, second: &str) -> bool {
+pub fn same_workspace(first: &str, second: &str) -> bool {
     first == second
         || (is_windows_path(first)
             && is_windows_path(second)

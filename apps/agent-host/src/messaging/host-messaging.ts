@@ -15,6 +15,7 @@ import { HostKeyStore } from "../paperclip/host-key-store.ts";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
 import { PaperclipSignIn } from "../paperclip/paperclip-sign-in.ts";
 import { paperclipSignInRoutes } from "../paperclip/paperclip-sign-in-routes.ts";
+import { profileWorkspaceMayStart } from "../paperclip/workspace-may-start.ts";
 import { webCryptoDigest } from "../profile-token-key.ts";
 import type { HostRoute } from "../server/host-server.ts";
 import {
@@ -80,6 +81,7 @@ export function hostMessaging(
     log,
   });
   if (profile === undefined) {
+    // No profile, no trust records to read the run gate in: every hand-over is refused.
     return {
       routes: [...paperclipKeyRoutes({ keys, workspaceRoots, log }), ...feedback],
       stop: async () => {},
@@ -147,6 +149,9 @@ export function hostMessaging(
   });
   const signIn = hostSignIn(keys, messaging, scheduler, sync);
   const usesServer = (workspace: string) => messaging.usesServer(workspace);
+  const mayStart = profileWorkspaceMayStart(profile, (error) =>
+    log(`The run gate couldn't read a workspace (${errorName(error)}).\n`),
+  );
   sync.start().catch((error: unknown) => report({ provider: "scheduler", action: "start", error }));
   return {
     routes: [
@@ -157,8 +162,9 @@ export function hostMessaging(
           (await messaging.of(workspace))?.connect(connection),
         log,
         usesServer,
+        mayStart,
       }),
-      ...messagingRoutes({ messaging, sync, replies, log }),
+      ...messagingRoutes({ messaging, sync, replies, log, mayStart }),
       syncDiagnosticsRoute(counters),
       ...paperclipSignInRoutes({ signIn, workspaceRoots, log, usesServer }),
       ...feedback,
@@ -219,6 +225,11 @@ function hostSignIn(
     scheduler,
     clock: systemClock,
   });
+}
+
+/** Only the error's name: the run gate's errors may name the workspace's files. */
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "Error";
 }
 
 function describe(error: unknown): string {

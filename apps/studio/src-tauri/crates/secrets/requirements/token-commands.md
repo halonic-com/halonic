@@ -2,9 +2,9 @@
 
 - Status: draft
 - Since: unreleased
-- Source: HAL-11253, HAL-18501 (server pairings)
+- Source: HAL-11253, HAL-18501 (server pairings), HAL-20278 (a Paperclip connection's key, Julian on HAL-20277)
 
-When the page calls `token_get`, `token_set` or `token_delete` with a token's name, the shell shall check the name against the secret name rule, refuse one whose canonical form starts with `server_pairing__` with `reserved_name`, keep the token under `halonic_token_` followed by the name's canonical form (at most 128 characters in all), and check the value for `token_set` as `secret_set` does, before the backend runs. It shall return the token or nothing for `token_get`, replace any stored token for `token_set`, and succeed for `token_delete` even when nothing is stored. If a call fails, then the shell shall return one of the kinds of `secret-commands`, with a message that never contains the value.
+When the page calls `token_get`, `token_set` or `token_delete` with a token's name, the shell shall check the name against the secret name rule, refuse one whose canonical form starts with `server_pairing__`, `owner_session__` or `paperclip_` with `reserved_name`, keep the token under `halonic_token_` followed by the name's canonical form (at most 128 characters in all), and check the value for `token_set` as `secret_set` does, before the backend runs. It shall return the token or nothing for `token_get`, replace any stored token for `token_set`, and succeed for `token_delete` even when nothing is stored. If a call fails, then the shell shall return one of the kinds of `secret-commands`, with a message that never contains the value.
 
 ## Examples
 
@@ -20,6 +20,9 @@ When the page calls `token_get`, `token_set` or `token_delete` with a token's na
 - Given the token name `Server-Pairing__0123456789abcdef0123456789abcdef`,
   when the page calls `token_get`, `token_set` or `token_delete`,
   then the result is `reserved_name` and the backend doesn't run.
+- Given the shell keeps the key of the Paperclip connection `acme`,
+  when the page calls `token_get`, `token_set` or `token_delete` with `paperclip-acme`, `Paperclip-ACME` or `paperclip_acme`,
+  then the result is `reserved_name`, the backend doesn't run and the key stays as it was.
 - Given a token that isn't stored,
   when `token_delete` runs,
   then it succeeds.

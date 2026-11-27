@@ -242,3 +242,36 @@ verifies("services.shell-sandbox-choice-save", () => {
     );
   });
 });
+
+verifies("services.paperclip-restore", () => {
+  const restore = "agent_host_paperclip_restore";
+
+  it("asks the shell to restore the workspace's keys and answers how many went back", async () => {
+    const shell = new FakeShell().answer(restore, () => 2);
+
+    await expect(
+      new TauriAgentHostTransport(shell).restorePaperclipKeys("/work/acme"),
+    ).resolves.toBe(2);
+    expect(shell.callsOf(restore)).toEqual([{ workspace: "/work/acme" }]);
+  });
+
+  it("rejects as the host not answering while the host can't list the workspace", async () => {
+    const shell = new FakeShell().answer(restore, () => {
+      throw { kind: "host_unavailable", message: "the agent host couldn't list" };
+    });
+
+    await expect(
+      new TauriAgentHostTransport(shell).restorePaperclipKeys("/work/acme"),
+    ).rejects.toMatchObject({ status: 0, kind: "unavailable" });
+  });
+
+  it("refuses an answer that isn't a count", async () => {
+    for (const odd of [-1, 1.5, "2", null, { restored: 2 }]) {
+      const shell = new FakeShell().answer(restore, () => odd);
+
+      await expect(
+        new TauriAgentHostTransport(shell).restorePaperclipKeys("/work/acme"),
+      ).rejects.toMatchObject({ kind: "answer_invalid" });
+    }
+  });
+});

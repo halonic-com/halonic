@@ -74,3 +74,40 @@ fn token_commands_refuse_empty_and_oversized_values() {
     );
     assert_eq!(get_token(&backend, "google_refresh"), Ok(None));
 }
+
+/// A Paperclip connection's key is the shell's alone (HAL-20278): the page's
+/// token commands refuse its entry in every spelling, and leave it as it was.
+#[test]
+fn token_commands_refuse_a_paperclip_key_in_every_spelling() {
+    let backend = MemoryBackend::new();
+    let entry = SecretName::paperclip_key("acme").expect("a valid name");
+    backend
+        .set(&entry, "kept-entry")
+        .expect("the shell stores it");
+    for name in [
+        "paperclip-acme",
+        "Paperclip-ACME",
+        "paperclip_acme",
+        "PAPERCLIP_acme",
+        "paperclip-",
+    ] {
+        assert_eq!(
+            get_token(&backend, name),
+            Err(SecretError::ReservedName),
+            "{name:?}"
+        );
+        assert_eq!(
+            set_token(&backend, name, "page-value"),
+            Err(SecretError::ReservedName),
+            "{name:?}"
+        );
+        assert_eq!(
+            delete_token(&backend, name),
+            Err(SecretError::ReservedName),
+            "{name:?}"
+        );
+    }
+    assert_eq!(backend.get(&entry), Ok(Some("kept-entry".into())));
+    // A token that only starts with the same letters is still the page's.
+    set_token(&backend, "paperclipped", "value").expect("stores");
+}

@@ -51,11 +51,7 @@ export {
   type IntegrationSignOutResult,
 } from "./integration-sign-in.ts";
 export { AgentHostReactions } from "./message-reactions.ts";
-export {
-  AgentHostPaperclipKey,
-  type PaperclipConnectionRef,
-  type PaperclipKeyHandOver,
-} from "./paperclip-key.ts";
+export { AgentHostPaperclipKey, type PaperclipConnectionRef } from "./paperclip-key.ts";
 export {
   AgentHostPaperclipSignIn,
   type ConnectionRowState,

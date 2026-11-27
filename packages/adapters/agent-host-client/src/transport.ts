@@ -74,7 +74,6 @@ export const agentHostRequestRoutes = [
   "POST /v1/integrations/sign-in/sign-out-all",
   "POST /v1/plugins/call",
   "POST /v1/plugins/secrets",
-  "POST /v1/paperclip/key",
   "POST /v1/paperclip/disconnect",
   "POST /v1/paperclip/connections",
   "POST /v1/paperclip/feedback",

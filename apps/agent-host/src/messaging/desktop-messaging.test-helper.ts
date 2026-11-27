@@ -1,11 +1,7 @@
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  AgentHostMessaging,
-  AgentHostPaperclipKey,
-  type AgentHostTransport,
-} from "@halonicjs/adapter-agent-host-client";
+import { AgentHostMessaging, type AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
 import { ManualClock, MemoryScheduler, MemorySecretStore } from "@halonicjs/adapter-memory";
 import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import {
@@ -16,6 +12,7 @@ import {
   SyncScheduler,
 } from "@halonicjs/host-paperclip-sync";
 import { paperclipKeyRoutes } from "../paperclip/paperclip-key-routes.ts";
+import type { WorkspaceMayStart } from "../paperclip/workspace-may-start.ts";
 import { profileOf } from "../profile-folder.ts";
 import { webCryptoDigest } from "../profile-token-key.ts";
 import { type HostServer, startHostServer } from "../server/host-server.ts";
@@ -26,6 +23,7 @@ import { MessagingEngineSetting } from "./messaging-engine-setting.ts";
 import { messagingRoutes } from "./messaging-routes.ts";
 import { ReplyWatch } from "./reply-watch.ts";
 import { ServerPairings } from "./server-engine.ts";
+import { ShellPaperclipKey } from "./shell-paperclip-key.test-helper.ts";
 import { syncDiagnosticsRoute } from "./sync-diagnostics-route.ts";
 
 // A fake key only these tests use, so its absence from answers and files means something.
@@ -266,8 +264,8 @@ export interface Desktop {
   studio: AgentHostMessaging;
   /** What Studio reads through for {@link Desktop.otherWorkspace}. */
   otherStudio: AgentHostMessaging;
-  /** Studio's key hand-over and Disconnect. */
-  paperclipKey: AgentHostPaperclipKey;
+  /** The shell's key hand-over, and the page's Disconnect. */
+  paperclipKey: ShellPaperclipKey;
   /** The page's calls to the host. */
   transport: AgentHostTransport;
   /** Every answer body the host sent the page, as text. */
@@ -284,9 +282,15 @@ export interface Desktop {
 /**
  * The desktop engine on a real loopback server, with two of Acme's workspaces
  * (the same connection file, nobody connected yet), a profile folder for the cache, a
- * fake Paperclip and a scheduler the test moves on.
+ * fake Paperclip and a scheduler the test moves on. Every workspace may
+ * start a run unless `options.mayStart` says otherwise; with `noRunGate`,
+ * the routes get no run gate at all, as a host without a profile folder.
  */
-export async function startDesktop(): Promise<Desktop> {
+export async function startDesktop(
+  options: { mayStart?: WorkspaceMayStart; noRunGate?: boolean } = {},
+): Promise<Desktop> {
+  const defaultGate: WorkspaceMayStart = async () => true;
+  const mayStart = options.noRunGate === true ? undefined : (options.mayStart ?? defaultGate);
   const workspace = await realpath(await mkdtemp(join(tmpdir(), "acme-workspace-")));
   const otherWorkspace = await realpath(await mkdtemp(join(tmpdir(), "acme-other-workspace-")));
   const workspaceRoots = [workspace, otherWorkspace];
@@ -367,8 +371,9 @@ export async function startDesktop(): Promise<Desktop> {
       kept: async (binding) => (await messaging.of(binding.workspace))?.connect(binding.connection),
       log,
       usesServer: (folder) => messaging.usesServer(folder),
+      mayStart,
     }),
-    ...messagingRoutes({ messaging, sync, replies, log }),
+    ...messagingRoutes({ messaging, sync, replies, log, mayStart }),
     syncDiagnosticsRoute(counters),
   ]);
   const answers: string[] = [];
@@ -401,7 +406,7 @@ export async function startDesktop(): Promise<Desktop> {
     profile,
     studio: new AgentHostMessaging(transport, workspace),
     otherStudio: new AgentHostMessaging(transport, otherWorkspace),
-    paperclipKey: new AgentHostPaperclipKey(transport),
+    paperclipKey: new ShellPaperclipKey(host.url, token, transport, answers),
     transport,
     answers,
     logged,

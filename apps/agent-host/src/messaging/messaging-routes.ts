@@ -10,6 +10,7 @@ import {
 } from "@halonicjs/ports";
 import { type Infer, type Schema, s } from "@halonicjs/schema-kit";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
+import type { WorkspaceMayStart } from "../paperclip/workspace-may-start.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
@@ -42,6 +43,8 @@ const changesBody = s
   .strict();
 const focusBody = s.object({ inFront: s.boolean() }).strict();
 const connectionsBody = s.object({ workspace }).strict();
+// Only the shell asks whether the workspace may start a run, so Settings › Connections runs no trust check.
+const connectionsListBody = s.object({ workspace, mayStart: s.literal(true).optional() }).strict();
 /** A time with its zone, as `toISOString` writes it: the bound of today's finished runs. */
 const isoTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 const runsBody = s
@@ -64,6 +67,11 @@ export interface MessagingRouteDeps {
   replies: ReplyWatch;
   /** Where the host writes what failed; never a key. */
   log: (text: string) => void;
+  /**
+   * Whether a workspace may start a run (`agent-host.paperclip-may-start`),
+   * for a connections list that asks; without it, the answer is `false`.
+   */
+  mayStart?: WorkspaceMayStart | undefined;
 }
 
 type ReadBody = Infer<typeof readBody>;
@@ -104,6 +112,10 @@ type ReadBody = Infer<typeof readBody>;
  *   the workspace's real path, as the host binds keys to it, and its
  *   connection files with their labels, addresses, companies and states,
  *   for Settings › Connections and Studio's restore of a saved sign-in. No key.
+ *   With `mayStart: true` the answer also holds `mayStart`: whether the
+ *   workspace may start a run, read fresh (`agent-host.paperclip-may-start`),
+ *   so Studio's shell hands a kept key back only then. Without the flag no
+ *   trust check runs.
  * - `POST /v1/paperclip/disconnect` with `{ connection }` revokes the key,
  *   then forgets it and deletes the cache even if the revoke failed, in this
  *   workspace and every other one that holds the same key, and answers
@@ -197,9 +209,10 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
       const changes = await messaging.waitForChanges(body.after, gone.signal);
       if (!response.writableEnded && !response.destroyed) sendJson(response, 200, changes);
     }),
-    inWorkspace("/v1/paperclip/connections", connectionsBody, async (messaging) => ({
+    inWorkspace("/v1/paperclip/connections", connectionsListBody, async (messaging, body) => ({
       workspace: messaging.workspace,
       connections: await messaging.connections(),
+      ...(body.mayStart === true ? { mayStart: await mayStartRun(deps, messaging.workspace) } : {}),
     })),
     route("/v1/paperclip/disconnect", disconnectBody, async (body, response) => {
       if (await deps.messaging.usesServer(body.workspace)) {
@@ -218,6 +231,16 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
       sendJson(response, 200, {});
     }),
   ];
+}
+
+/** The run gate's answer, `false` without a gate or when it fails (`agent-host.paperclip-may-start`). */
+async function mayStartRun(deps: MessagingRouteDeps, workspace: string): Promise<boolean> {
+  try {
+    return (await deps.mayStart?.(workspace)) === true;
+  } catch (error) {
+    deps.log(`The run gate failed for a connections list: ${describe(error)}\n`);
+    return false;
+  }
 }
 
 /** The port's runs query, without a field the body left out. */

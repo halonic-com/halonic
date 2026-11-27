@@ -53,7 +53,7 @@ mod unfenced_allow;
 mod remote_asks;
 
 #[path = "agent_host_paperclip_key.rs"]
-mod paperclip_key;
+pub mod paperclip_key;
 
 #[path = "agent_host_life.rs"]
 mod life;

@@ -78,6 +78,25 @@ impl TrustState {
     }
 }
 
+impl PickedFolders {
+    /// Whether `real_path`, a folder as another program resolved it (the
+    /// agent host, HAL-20278), is one the person picked and is still that
+    /// folder, by the checks `reopen` makes: the same canonical path and the
+    /// same identity. `same` says whether two paths name one folder, such
+    /// as two spellings of a Windows path that differ only in case. It
+    /// opens nothing, and a folder that changed, went missing or can't be
+    /// read answers `false`.
+    pub fn is_still_picked(&self, real_path: &str, same: impl Fn(&str, &str) -> bool) -> bool {
+        let Some(entry) = self.find_where(|location| same(location, real_path)) else {
+            return false;
+        };
+        let Ok(canonical) = folder_at(&entry.location) else {
+            return false;
+        };
+        still_picked(entry.identity, folder_identity(&canonical))
+    }
+}
+
 /// Whether a picked folder's entry still names the folder now, as
 /// [`same_folder`] says. One exception: an entry written on Windows before
 /// the shell read identities there has none. It passes while the folder's

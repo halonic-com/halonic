@@ -63,7 +63,7 @@ class FakeSignIn {
 
 function setUp(options: { revoked?: boolean } = {}) {
   const signIn = new FakeSignIn();
-  /** The keychain tokens the page read; it never writes or removes one. */
+  /** The restores the page asked the shell for; a sign-in or Disconnect asks none. */
   const read: string[] = [];
   const disconnected: PaperclipConnectionRef[] = [];
   const reported: unknown[] = [];
@@ -71,17 +71,14 @@ function setUp(options: { revoked?: boolean } = {}) {
   const connections = new HostAgentConnections({
     signIn,
     host: {
-      handOver: async () => {},
       disconnect: async (ref) => {
         disconnected.push(ref);
         return { revoked: options.revoked ?? true };
       },
     },
-    tokens: {
-      get: async (name) => {
-        read.push(name);
-        return null;
-      },
+    restoreKeys: async (workspace) => {
+      read.push(workspace);
+      return 0;
     },
     workspace: "/work/acme",
     wait: async (ms) => {

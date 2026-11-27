@@ -427,3 +427,11 @@ fn the_key_never_shows_in_debug_output() {
     let shown = format!("{:?}", PaperclipKey("pk-secret".to_owned()));
     assert!(!shown.contains("pk-secret"), "{shown}");
 }
+
+#[test]
+fn spellings_of_one_keychain_entry_share_one_turn() {
+    let turns = KeepTurns::default();
+    // `acme-x` and `Acme_X` name one keychain entry, so one turn.
+    assert!(Arc::ptr_eq(&turns.of("acme-x"), &turns.of("Acme_X")));
+    assert!(!Arc::ptr_eq(&turns.of("acme-x"), &turns.of("acme-y")));
+}

@@ -95,9 +95,13 @@ signed out and the person had to sign in again each time. The keychain entry
 now also lists the workspaces the person signed in from, by the real path the
 engine resolved. When one of them opens and may start a run, because the
 person has trusted it (or trusts it later) or it reaches only the test model,
-like the demo (HAL-19832), Studio hands the key back to the engine once, quietly, but
-only when the entry names that workspace and its address
-(scheme, host and port) and company match the connection file. Opening replays
+like the demo (HAL-19832), Studio's shell hands the key back to the engine
+once, quietly, but only when the engine itself says the workspace may start a
+run, the workspace is still a folder the person picked, and the entry names
+that workspace and its address (scheme, host and port) and company match the
+connection file. Studio's page only asks for the restore; it never reads the
+entry, and the engine refuses a hand-over for a workspace that may not start
+(HAL-20278, Julian's conditions on HAL-20292). Opening replays
 an earlier Connect in that workspace; it doesn't start a new one, so a
 workspace's files still never decide where a key goes. A clone, a file that
 now names another address or company, and an entry saved before this change
@@ -167,8 +171,8 @@ our server. Only the board's own Approve click is still to be tried live.
    Studio's shell takes it out of the engine's answer, writes the keychain
    entry and confirms it to the engine itself, so the sign-in never hands
    Studio's page the key (HAL-20278, section 6.8 of the HAL-17491 note).
-   Connect and the restore still read it there until the next pull request
-   of HAL-20278.
+   The page's token commands refuse the entry, and the restore on open runs
+   in the shell too (see *Restoring a sign-in on open*).
 
 When a key expires or is revoked, calls get a 401, and Studio asks the board
 to sign in again. Disconnecting revokes the key (`revoke-current`) and deletes

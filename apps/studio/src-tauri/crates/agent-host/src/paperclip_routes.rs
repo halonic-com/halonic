@@ -14,15 +14,15 @@ pub const SIGN_IN_CONFIRM: Route =
 /// [`PAPERCLIP_ROUTES`].
 pub const SIGN_IN_CANCEL: Route = route(Method::Post, "/v1/paperclip/sign-in/cancel", Answer::Json);
 
+/// A Paperclip connection's key, handed back to the host when a workspace
+/// opens (HAL-17495): the host keeps it in memory only, with the address and
+/// company it was made for, and answers no key. Only the shell sends it,
+/// from the keychain entry it keeps (`paperclip_restore.rs`, HAL-20278), so
+/// it isn't in [`PAPERCLIP_ROUTES`] and no page can name it.
+pub const KEY_HAND_OVER: Route = route(Method::Post, "/v1/paperclip/key", Answer::Json);
+
 /// Every Paperclip and agent messaging route a page may call, by its name.
 pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
-    // A Paperclip connection's key, handed over when the person connects
-    // (HAL-17495): the host keeps it in memory only, with the address and
-    // company it was made for, and answers no key.
-    (
-        "POST /v1/paperclip/key",
-        route(Method::Post, "/v1/paperclip/key", Answer::Json),
-    ),
     // Disconnect and the desktop engine's AgentMessaging (HAL-17438); no key comes back.
     (
         "POST /v1/paperclip/disconnect",
