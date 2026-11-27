@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: stream HAL-17488 (user-only action steppers); plan on HAL-20236; architecture note on HAL-17491, section 6.2
 
-Before a step runs, the action-steppers package shall refuse it when a `check` step before it has not run, when that check kept a value that differs from the request's `expect`, or when that check kept a value that breaks one of the definition's `requires` rules; a broken `requires` rule shall stop the stepper with the rule's own `reason`, and never with the value the service sent.
+When a step is about to run, the action-steppers package shall refuse it if a `check` step before it has not run, when that check kept a value that differs from the request's `expect`, or when that check kept a value that breaks one of the definition's `requires` rules; a broken `requires` rule shall stop the stepper with the rule's own `reason`, and never with the value the service sent.
 
 ## Examples
 
