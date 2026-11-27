@@ -94,12 +94,14 @@ verifies("kit.menu", () => {
     expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
     expect(menu.className).toContain(
-      "min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-md",
+      "min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-border p-1",
     );
-    expect(menu.className).toContain("bg-surface-raised text-fg shadow-2");
+    expect(menu.className).toContain("bg-surface text-fg shadow-2");
     expect(menu.className).toContain("starting:opacity-0");
     expect(labels(items)).toEqual(["Open", "Rename…", "Copy path", "Run now", "Delete agent"]);
     expect(menu.lastElementChild?.previousElementSibling?.tagName).toBe("HR");
+    expect(menu.lastElementChild?.previousElementSibling?.className).toContain("mx-2 my-1");
+    expect(items[0]?.className).toContain("rounded-md px-3");
     expect(items.at(-1)?.className).toContain("text-danger");
   });
 
@@ -285,9 +287,14 @@ verifies("kit.menu", () => {
     const { items } = renderMenu([{ id: "open", label: "Open", icon: <svg />, onSelect: vi.fn() }]);
     expect(items[0]?.className).toContain("min-h-control-md");
     expect(items[0]?.className).toContain("phone:min-h-touch touch:min-h-touch");
-    expect(items[0]?.firstElementChild?.className).toContain(
-      "phone:size-icon-md touch:size-icon-md",
-    );
+    expect(items[0]?.firstElementChild?.className).toContain("phone:*:size-full touch:*:size-full");
+  });
+
+  it("draws a leading icon 18px in a 20px box, in fg-muted", () => {
+    const { items } = renderMenu([{ id: "open", label: "Open", icon: <svg />, onSelect: vi.fn() }]);
+    expect(items[0]?.firstElementChild?.className).toContain("size-icon-md");
+    expect(items[0]?.firstElementChild?.className).toContain("*:size-4.5");
+    expect(items[0]?.firstElementChild?.className).toContain("text-fg-muted");
   });
 
   it("makes items with checked radio items, the current one with a 16px accent check", () => {

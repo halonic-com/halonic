@@ -82,9 +82,8 @@ verifies("kit.toast", () => {
     expect(region?.className).toContain("phone:short:fixed");
     const [card] = cards(container);
     expect(card?.getAttribute("role")).toBe("status");
-    expect(card?.className).toContain("rounded-md");
+    expect(card?.className).toContain("rounded-lg py-3 pr-3 pl-4");
     expect(card?.className).toContain("bg-surface-raised shadow-2");
-    expect(card?.className).toContain("p-3");
     expect(card?.className).toContain("outline-1 outline-transparent -outline-offset-1");
     expect(card?.className).toContain("ease-enter");
     expect(card?.querySelector("[aria-hidden]")?.className).toContain("text-success");
@@ -186,7 +185,8 @@ verifies("kit.toast", () => {
     expect(action.parentElement?.className).toContain("flex-wrap items-start");
     expect(action.parentElement?.firstElementChild?.className).toContain("flex-[1_1_10rem]");
     expect(action.className).toContain("max-w-full flex-none");
-    expect(action.className).toContain("hover:underline");
+    expect(action.className).toContain("min-h-control-md rounded-full py-1.5");
+    expect(action.className).toContain("bg-surface-muted");
     expect(action.className).toContain("phone:hit-touch");
   });
 

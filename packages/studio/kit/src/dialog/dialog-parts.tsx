@@ -127,7 +127,7 @@ export function DialogFooter({
   return (
     <footer
       className={
-        phone ? "flex flex-col gap-2 px-6 pt-3 pb-4" : "flex justify-end gap-2 px-6 pt-3 pb-4"
+        phone ? "flex flex-col gap-2 px-6 pt-3 pb-4" : "flex justify-end gap-2 px-6 pt-3 pb-5"
       }
     >
       {phone ? (

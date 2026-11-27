@@ -65,7 +65,7 @@ verifies("kit.tooltip", () => {
     expect(button.getAttribute("aria-describedby")).toBe(tooltip.id);
     expect(tooltip.textContent).toBe("Make a version of the flow");
     expect(tooltip.className).toContain("bg-inverse text-caption text-surface");
-    expect(tooltip.className).toContain("max-w-60 rounded-xs border border-transparent px-2 py-1");
+    expect(tooltip.className).toContain("max-w-60 rounded-sm border border-transparent px-2 py-1");
     expect(tooltip.className).toContain("pointer-events-none");
     expect(tooltip.className).toContain("starting:opacity-0");
   });

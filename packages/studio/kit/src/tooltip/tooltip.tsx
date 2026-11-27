@@ -99,7 +99,7 @@ const CONTROL_GAP = 4;
  * edge keeps its shape in high contrast, which drops the fill. It never takes the pointer.
  */
 export const tooltipClasses = [
-  "pointer-events-none m-0 inset-auto max-w-60 rounded-xs border border-transparent px-2 py-1",
+  "pointer-events-none m-0 inset-auto max-w-60 rounded-sm border border-transparent px-2 py-1",
   "bg-inverse text-caption text-surface",
   "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
 ].join(" ");

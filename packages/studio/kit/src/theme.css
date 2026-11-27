@@ -79,7 +79,7 @@
      from the white panel; in dark the frame is the lighter one. */
   --color-app-frame: light-dark(#f3f5fa, #0a1630); /* a focused app's window frame */
   --color-app-panel: light-dark(#ffffff, #060d1d); /* a focused app's one content panel */
-  --color-overlay: light-dark(rgb(0 0 0 / 0.32), rgb(0 0 0 / 0.56)); /* behind a dialog */
+  --color-overlay: light-dark(rgb(0 0 0 / 0.32), rgb(0 0 0 / 0.32)); /* behind a dialog */
 
   /* ---------------------------------------------------------------- Colour: lines (border-*) */
   --color-border: light-dark(#e3e8f1, #1b2638); /* dividers, card edges */
@@ -251,7 +251,7 @@
   --container-column: 744px; /* a form or list column inside a page body */
   --container-empty: 360px; /* the Empty state's text and buttons */
   --container-toast: 360px; /* the toast stack on desktop */
-  --container-dialog-sm: 440px; /* confirmations and short forms */
+  --container-dialog-sm: 500px; /* confirmations and short forms */
   --container-dialog-md: 560px; /* a form whose options show their own fields or hints */
   --container-dialog-lg: 720px; /* Settings */
   --container-palette: 600px; /* the Ctrl K palette (specs 24.3) */
@@ -261,11 +261,11 @@
      up), which would clash with the phone: variant (theme-utilities.css). */
 
   /* ---------------------------------------------------------------- Radius (rounded-*) */
-  --radius-xs: 4px; /* badges, checkboxes, kbd, tooltips */
-  --radius-sm: 8px; /* buttons, inputs, selects, nav items, menu items */
+  --radius-xs: 4px; /* badges, checkboxes, kbd */
+  --radius-sm: 8px; /* buttons, inputs, selects, nav items, tooltips */
   --radius-segment: 6px; /* a tab inside the Tabs track: radius-sm less the track's 2px padding */
-  --radius-md: 12px; /* cards, panels, menus, toasts */
-  --radius-lg: 16px; /* dialogs */
+  --radius-md: 12px; /* cards, panels, menu items */
+  --radius-lg: 16px; /* dialogs, menus, toasts */
   --radius-prompt: 24px; /* Quick ask, the palette and the chat search */
   --radius-full: 9999px; /* avatars, toggles, counters */
   --radius-panel: 8px; /* the panels on the window frame (HAL-20674) */

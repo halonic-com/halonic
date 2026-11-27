@@ -28,17 +28,18 @@ const tones: Record<ToastTone, { readonly icon: ReactNode; readonly colour: stri
  * outline, inside the box so nothing grows, becomes its edge there.
  */
 const card = [
-  "pointer-events-auto flex items-start gap-2 rounded-md p-3 outline-1 outline-transparent",
+  "pointer-events-auto flex items-start gap-2 rounded-lg py-3 pr-3 pl-4 outline-1 outline-transparent",
   "-outline-offset-1 bg-surface-raised shadow-2 transition-opacity duration-(--duration-fast)",
   "starting:opacity-0",
 ].join(" ");
 
 /**
- * A text button in `accent-text` with no padding, so a wrapped label starts at the text's left
- * edge; hover underlines it, and on touch its 48px hit area is a pseudo-element.
+ * A 32px pill on a `surface-muted` tint (COMPONENTS.md, Toast), pulled 6px into the line above and
+ * below so it keeps the title line 20px high; on touch its 48px hit area is a pseudo-element.
  */
 const actionButton = [
-  "rounded-xs text-left text-body-strong text-accent-text hover:underline focus-ring",
+  "-my-1.5 min-h-control-md rounded-full py-1.5 bg-surface-muted px-3 text-left text-body-strong text-fg",
+  "hover:bg-surface-soft-hover focus-ring",
   "phone:hit-touch touch:hit-touch",
 ].join(" ");
 
