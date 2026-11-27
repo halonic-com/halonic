@@ -5,6 +5,7 @@ import { keys } from "../webdriver.ts";
 import { words } from "../words.ts";
 import { openAppWindow } from "./app-window.ts";
 import { onWorkspace } from "./open-demo.ts";
+import { sidebarRowSize } from "./plain-row-size.ts";
 
 /** What step 10 sends. */
 export const messengerProbe = "Click test: hello from Messenger";
@@ -35,7 +36,8 @@ const pictureWaitMs = 10_000;
  * message, and the test Paperclip has it as a comment on that chat. The
  * chat's row and its header show Acme Clicky's picture, which Paperclip gives
  * every agent, not its initials (HAL-19151). On the open chat's filled row,
- * the picture's tile keeps a fill of its own, so its circle shows (HAL-19751).
+ * the picture's tile keeps a fill of its own, so its circle shows (HAL-19751). The row is exactly
+ * 80px high and its picture 60px (HAL-20558).
  */
 export const messengerSend: Step = {
   id: "messenger-send",
@@ -47,6 +49,7 @@ export const messengerSend: Step = {
     "messenger.agent-pictures",
     "kit.avatar-picture",
     "kit.avatar-on-row-fill",
+    "kit.plain-row-size",
   ],
   needs: ["connect-paperclip"],
   run: async (context) => {
@@ -63,6 +66,10 @@ export const messengerSend: Step = {
     }
     // The row is read before the click: a narrow window shows only the open chat after it.
     const rowPicture = await pictureShows(context, agentPictureIn["chat row"]);
+    const size = await sidebarRowSize(context, "The Messenger's chat row", {
+      row: openRowFillOf.row,
+      picture: openRowFillOf.tile,
+    });
     await clickRow(context, seedNames.agent, 10_000);
     const sent = await sendProbe(context);
     if (!sent.passed) return sent;
@@ -75,7 +82,9 @@ export const messengerSend: Step = {
         note: `${seedNames.agent}'s ${missing.join(" and ")} showed its initials, not its picture.`,
       };
     }
-    return tileOnOpenRow(context);
+    const tile = await tileOnOpenRow(context);
+    if (!tile.passed) return tile;
+    return size;
   },
 };
 

@@ -97,7 +97,7 @@ export function ChatsSkeleton({ onRetry }: { readonly onRetry: () => void }) {
         {wait === "early" ? null : (
           <ul ref={breathe} aria-hidden="true" className="flex flex-col gap-1">
             {skeletonWidths.map((widths) => (
-              <li key={widths.name} className="flex min-h-20 items-center gap-3 px-3 py-2.5">
+              <li key={widths.name} className="flex h-20 items-center gap-3 px-3 py-2.5">
                 <SkeletonBar kind="sidebar" />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="flex items-center text-reading">

@@ -1,6 +1,6 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type FakeStudio, fakeStudio } from "../fake-studio.test-helper.ts";
+import { drawRow, type FakeStudio, fakeStudio } from "../fake-studio.test-helper.ts";
 import { seedNames } from "../test-paperclip.ts";
 import { agentChatRow, agentPictureIn, messengerSend, openRowFillOf } from "./messenger-send.ts";
 
@@ -24,6 +24,7 @@ function studioWithOpenRow(tileFill: string, shown = true): FakeStudio {
     },
   });
   for (const xpath of Object.values(agentPictureIn)) studio.elements.set(xpath, 1);
+  drawRow(studio, { row: openRowFillOf.row, picture: openRowFillOf.tile });
   if (shown) studio.elements.set(agentChatRow, 1);
   studio.backgrounds.set(openRowFillOf.row, rowFill);
   studio.backgrounds.set(openRowFillOf.tile, tileFill);

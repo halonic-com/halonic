@@ -37,9 +37,8 @@ verifies("messenger.load-states", () => {
       expect(page.querySelectorAll("nav [aria-busy='true'] li")).toHaveLength(3);
       // In the shape of the 80px chat rows, with their 60px picture (`kit.plain-row-size`).
       const loadingRow = page.querySelector("nav [aria-busy='true'] li") as HTMLElement;
-      expect(loadingRow.className.split(" ")).toEqual(
-        expect.arrayContaining(["min-h-20", "py-2.5"]),
-      );
+      expect(loadingRow.className.split(" ")).toEqual(expect.arrayContaining(["h-20", "py-2.5"]));
+      expect(loadingRow.className.split(" ")).not.toContain("min-h-20");
       expect(loadingRow.firstElementChild?.className.split(" ")).toContain("size-15");
     });
 
