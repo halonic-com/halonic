@@ -3,6 +3,7 @@
 - Task: HAL-20675
 - Approval: Liam signs this note for HAL-20675 (build plan P2 on HAL-20617, approved). A team decision from Julian's review of the rail button.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:03GHF045Hk/mh1dVcGmSZ2nKjvMUjLWjhS5WeU8fIzg0I/GCe7z5B1edXrr4U88ny5/tWuqe0lSXq55crPCDAw==
 
 ## What changes
 
