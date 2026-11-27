@@ -120,28 +120,27 @@ function resultStep(
  * "set on <day>". Declined and expired requests list no steps, as the answer's check demands.
  *
  * @param day - the day the stepper ended, such as "25 Nov 2026", from the injected clock
- * @param changedAt - the step the stepper didn't send because its check read a state other than
- *   the requester's `expect`; it is listed as failed with `state-changed`
+ * @param stateChanged - the steps listed as failed with `state-changed` instead of what the record
+ *   says: the step the stepper didn't send because its check read a state other than the
+ *   requester's `expect`, and a check whose `changedAfterStart` time isn't after the start
  */
 export function resultAnswer(
   state: RecordState,
   outcome: ActionOutcome,
   secretSteps: ReadonlySet<number>,
   day: string,
-  changedAt?: number,
+  stateChanged: readonly number[] = [],
 ): ActionResultAnswer {
   if (outcome === "declined" || outcome === "expired")
     return { kind: "action-result", outcome, steps: [] };
-  const steps = [...state.steps.values()]
-    .filter((event) => event.step !== changedAt)
-    .sort((first, second) => first.step - second.step)
+  const steps: ActionResultStep[] = [...state.steps.values()]
+    .filter((event) => !stateChanged.includes(event.step))
     .flatMap(
       (event) => resultStep(event, secretSteps.has(event.step) ? `set on ${day}` : undefined) ?? [],
     );
-  if (changedAt !== undefined) {
-    steps.push({ step: changedAt, outcome: "failed", failure: "state-changed" });
-    steps.sort((first, second) => first.step - second.step);
-  }
+  for (const step of stateChanged)
+    steps.push({ step, outcome: "failed", failure: "state-changed" });
+  steps.sort((first, second) => first.step - second.step);
   return { kind: "action-result", outcome, steps };
 }
 
