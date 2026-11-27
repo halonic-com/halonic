@@ -71,7 +71,7 @@ export interface FocusedWindowProps {
   readonly workspace: StudioWorkspace | undefined;
   /**
    * Whether the window is still opening its workspace: with no `workspace` yet, it then says it
-   * reads the workspace instead of saying to open Halonic.
+   * reads the workspace instead of saying to open Halonic, and offers to open Halonic after a minute.
    */
   readonly opening?: boolean | undefined;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
@@ -160,21 +160,36 @@ function FocusedContent({
   readonly openStudio: () => void;
 }) {
   if (workspace !== undefined) return <FocusedPage shell={shell} app={app} workspace={workspace} />;
-  if (opening) return <OpeningWorkspace app={app} />;
+  if (opening) return <OpeningWorkspace app={app} openStudio={openStudio} />;
   return <NoWorkspace app={app} openStudio={openStudio} />;
 }
 
+/** How long the window waits for its workspace before it offers to open Halonic: as long as Welcome waits for the engine. */
+const openHalonicAfterMs = 60_000;
+
 /**
  * The wait while the window opens its workspace (`shell.focused-app-opening`): the line a Recent
- * row shows for the same step, with the time waited, so a slow open is never a blank window.
+ * row shows for the same step, with the time waited, so a slow open is never a blank window. The
+ * workspace is chosen and still opening, so after a minute the line stays and only adds the way
+ * to Studio's window.
  */
-function OpeningWorkspace({ app }: { readonly app: FocusedAppContribution }) {
+function OpeningWorkspace({
+  app,
+  openStudio,
+}: {
+  readonly app: FocusedAppContribution;
+  readonly openStudio: () => void;
+}) {
   const [since] = useState(() => new Date());
   const waitedMs = useWaitedMs(since);
+  const actions =
+    waitedMs < openHalonicAfterMs
+      ? []
+      : [{ label: focusedWindowWords.openHalonic, onClick: openStudio }];
   return (
     <main className={`flex flex-1 items-center justify-center ${focusedPanelClass}`}>
       <h1 className="sr-only">{`${appName} ${app.title}`}</h1>
-      <WaitingLine what={welcomeOpenWords.steps.workspace} waitedMs={waitedMs} />
+      <WaitingLine what={welcomeOpenWords.steps.workspace} waitedMs={waitedMs} actions={actions} />
     </main>
   );
 }

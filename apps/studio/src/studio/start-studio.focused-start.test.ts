@@ -106,8 +106,10 @@ verifies("studio.focused-app-start", () => {
     expect(element.textContent).not.toContain(noWorkspace);
   });
 
-  it("says to open Halonic once the workspace hasn't opened in a minute", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
+  it("keeps reading the workspace after a minute, offers Halonic, and names the step", async () => {
+    vi.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
+    });
     const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
     started = startStudio({
       element,
@@ -121,15 +123,39 @@ verifies("studio.focused-app-start", () => {
 
     await vi.advanceTimersByTimeAsync(focusedOpenLimitMs);
 
-    await vi.waitFor(() => expect(element.textContent).toContain(noWorkspace));
+    await vi.waitFor(() =>
+      expect([...element.querySelectorAll("button")].map((button) => button.textContent)).toContain(
+        "Open Halonic",
+      ),
+    );
+    expect(element.textContent).toContain(opening);
+    expect(element.textContent).not.toContain(noWorkspace);
     const said = errors.mock.calls.map((call) => String(call[0]));
     expect(said).toContain(
-      `The focused app's workspace hasn't opened after ${focusedOpenLimitMs} ms.`,
+      `The focused app's workspace hasn't opened after ${focusedOpenLimitMs} ms: still reading the window's content.`,
     );
   });
 
+  it("says to open Halonic, and why, when the shell refuses to reopen the folder", async () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const refusal = Promise.reject(new Error("folder_missing"));
+    refusal.catch(() => undefined);
+    started = startStudio({
+      element,
+      window: webviewLabelled("inbox", "reopen_folder", refusal),
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage: storageWithAcme(),
+    });
+
+    await vi.waitFor(() => expect(element.textContent).toContain(noWorkspace));
+    const said = errors.mock.calls.map((call) => String(call[0]));
+    expect(said).toContain("The focused app couldn't open the workspace at /work/acme:");
+  });
+
   it("shows the Messenger for a workspace that opens after the minute", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval"] });
+    vi.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
+    });
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     let answer: (content: null) => void = () => undefined;
     const late = new Promise<null>((resolve) => {
@@ -141,8 +167,11 @@ verifies("studio.focused-app-start", () => {
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       storage: storageWithAcme(),
     });
+    await vi.waitFor(() =>
+      expect(element.querySelector('[data-focused-app="messenger"]')).not.toBeNull(),
+    );
     await vi.advanceTimersByTimeAsync(focusedOpenLimitMs);
-    await vi.waitFor(() => expect(element.textContent).toContain(noWorkspace));
+    await vi.waitFor(() => expect(element.textContent).toContain(opening));
 
     answer(null);
 
@@ -150,6 +179,6 @@ verifies("studio.focused-app-start", () => {
       () => expect(element.querySelector('nav[aria-label="Messenger"]')).not.toBeNull(),
       { timeout: 15_000 },
     );
-    expect(element.textContent).not.toContain(noWorkspace);
+    expect(element.textContent).not.toContain(opening);
   }, 30_000);
 });

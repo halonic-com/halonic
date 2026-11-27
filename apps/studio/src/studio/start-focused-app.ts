@@ -54,10 +54,23 @@ export function focusedAppOf(
 }
 
 /**
- * How long a focused app's window waits for its workspace before it says to open Halonic
- * (`studio.focused-app-start`): a minute, as long as Welcome waits for Halonic's engine.
+ * How long a focused app's window waits for its workspace before the console says which step it
+ * still waits on (`studio.focused-app-start`): a minute, as long as the window waits before it
+ * offers to open Halonic (`shell.focused-app-opening`).
  */
 export const focusedOpenLimitMs = 60_000;
+
+/** The step of opening a focused app's workspace under way, named as the console says it. */
+export type OpenStep =
+  | "reading the window's content"
+  | "reopening the folder"
+  | "opening the workspace";
+
+/** Where a focused app's open is, so a slow one can say which step it waits on. */
+export interface OpenProgress {
+  /** The step under way. */
+  step: OpenStep;
+}
 
 /** The workspace a focused app's window opened, where, and what the window showed before. */
 interface FoundWorkspace {
@@ -70,11 +83,11 @@ interface FoundWorkspace {
  * Starts a focused app's window (`studio.focused-app-window`): only that app, on the approved
  * frame, for the workspace it showed before, or else the one Studio last had open, opened as a
  * Recent row opens it (`studio.window-content`). The window is drawn at once, saying it reads the
- * workspace, before the shell is asked anything (`studio.focused-app-start`, HAL-20489), so the
- * page's own "Starting Halonic…" text never stays. With no workspace in Recent, one that can't be
- * opened, or one still opening after {@link focusedOpenLimitMs}, the window says to open Halonic,
- * its button brings Studio's window forward, and the reason goes to the console; a workspace that
- * opens later still shows. Its times follow the system's region format, as Studio's window's do,
+ * workspace, before it waits on the shell for anything (`studio.focused-app-start`, HAL-20489), so
+ * the page's own "Starting Halonic…" text never stays. With no workspace in Recent, or one that
+ * can't be opened, the window says to open Halonic, its button brings Studio's window forward, and
+ * the reason goes to the console. One still opening after {@link focusedOpenLimitMs} keeps saying
+ * so, the console names the step it waits on, and it shows once it opens. Its times follow the system's region format, as Studio's window's do,
  * and it hears the feedback shortcut as Studio's window does, sending through the workspace it
  * opened. It never opens the workspace's engine for routines: Studio's window does, and engine
  * locks are held per window. Quick ask's box starts through `startAskBox` instead, which opens no
@@ -102,12 +115,14 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
   };
   // The app's times follow the system's region format once the shell has read it, as Studio's do.
   const stopRegion = followSystemRegion(ipc, (regionFormat) => redraw({ regionFormat }));
+  const progress: OpenProgress = { step: "reading the window's content" };
   const limit = setTimeout(() => {
-    console.error(`The focused app's workspace hasn't opened after ${focusedOpenLimitMs} ms.`);
-    redraw({ opening: false });
+    console.error(
+      `The focused app's workspace hasn't opened after ${focusedOpenLimitMs} ms: still ${progress.step}.`,
+    );
   }, focusedOpenLimitMs);
   let settled = false;
-  const opening = openFocusedWorkspace(page, parts).catch((error: unknown) => {
+  const opening = openFocusedWorkspace(page, parts, progress).catch((error: unknown) => {
     console.error("The focused app couldn't open its workspace:", error);
     return undefined;
   });
@@ -151,6 +166,7 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
 async function openFocusedWorkspace(
   page: StudioPage,
   parts: FocusedAppParts,
+  progress: OpenProgress,
 ): Promise<FoundWorkspace | undefined> {
   const { shell, ipc, display } = parts;
   const device: DeviceMemory = {
@@ -163,7 +179,7 @@ async function openFocusedWorkspace(
   if (location === undefined) return undefined;
   const open =
     parts.openWorkspace ?? ((at: string) => openFolder(shell, page.window, at, display, device));
-  const opened = await openLast(ipc, location, open);
+  const opened = await openLast(ipc, location, open, progress);
   return opened === undefined ? undefined : { opened, location, content };
 }
 
@@ -241,9 +257,12 @@ export async function openLast(
   ipc: TauriIpc,
   location: string,
   open: (location: string) => Promise<OpenedWorkspace>,
+  progress: OpenProgress = { step: "reopening the folder" },
 ): Promise<OpenedWorkspace | undefined> {
   try {
+    progress.step = "reopening the folder";
     await new TauriPickedFolders(ipc).reopen(location);
+    progress.step = "opening the workspace";
     return await open(location);
   } catch (error) {
     console.error(`The focused app couldn't open the workspace at ${location}:`, error);

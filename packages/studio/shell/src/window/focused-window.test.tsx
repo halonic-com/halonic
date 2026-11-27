@@ -31,6 +31,7 @@ afterEach(() => {
   element.remove();
   restoreMedia();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 /**
@@ -174,7 +175,7 @@ verifies("shell.focused-apps", () => {
 });
 
 verifies("shell.focused-app-opening", () => {
-  it("says it reads the workspace while it opens, then shows the app once it has", async () => {
+  it("says it reads the workspace while it opens, offers Halonic after a minute, then shows the app", async () => {
     vi.useFakeTimers();
     const shell = shellWith(inboxApp);
     const services = new MapTarget();
@@ -194,6 +195,12 @@ verifies("shell.focused-app-opening", () => {
     );
     expect(element.textContent).toContain("3 s");
     expect(element.textContent).not.toContain("Open Halonic");
+    await act(() => vi.advanceTimersByTimeAsync(57_000));
+    expect(element.textContent).toContain("Reading the workspace…");
+    expect(element.textContent).not.toContain("Open Halonic to choose a workspace.");
+    expect([...element.querySelectorAll("button")].map((button) => button.textContent)).toContain(
+      "Open Halonic",
+    );
     const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name: "Acme" });
     await act(async () => {
       focused?.update({ ...props, workspace, opening: false });
