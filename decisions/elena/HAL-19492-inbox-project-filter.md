@@ -19,7 +19,7 @@ dropped `series-2`: its rose is the Studio's "failed", which on an agent's item 
 alarm, and no free strong hue is left in the theme to replace it. So the rule now says four
 colours, none the rose of failed, and its test expects four. Its examples are unchanged.
 
-Four existing test files change, and none checks less:
+Five existing test files change, and none checks less:
 
 - `src/ui/project-dot.test.tsx` (`inbox.project-dot`): it expects four colours, not five, and
   now also checks that `bg-series-2` is never picked.
@@ -34,6 +34,10 @@ Four existing test files change, and none checks less:
 - `src/ui/agent-bundle-projects.test.tsx` (`inbox.project-filter`): it presses the Website chip,
   now a button on the line, instead of the radio inside its label. What it checks after, that a
   bundle holds only Website cards, is unchanged.
+- `src/ui/agent-final-state.test.tsx` (`inbox.final-state`): its `pickProject` helper presses
+  the chip, now a button on the line, or else the entry in "+N"'s menu, instead of the radio
+  inside its label. What the test checks after, that a card which ended while the filter hid it
+  doesn't come back, is unchanged.
 
 ## Covers
 
@@ -43,3 +47,4 @@ Four existing test files change, and none checks less:
 - packages/studio/features/inbox/src/ui/project-filter.test.tsx
 - packages/studio/features/inbox/src/agent/project-filter.test.ts
 - packages/studio/features/inbox/src/ui/agent-bundle-projects.test.tsx
+- packages/studio/features/inbox/src/ui/agent-final-state.test.tsx
