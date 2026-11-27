@@ -66,10 +66,10 @@ async function addSite(page: HTMLElement, site: string) {
 verifies("agents.configuration.sandbox-fields", () => {
   it("shows the working folder and allowed sites from the agent's file", async () => {
     const page = await openHarness(
-      hostWith({ workingFolder: "hubs/acme/work/sorter", allowedSites: ["registry.npmjs.org"] }),
+      hostWith({ workingFolder: "files/work/sorter", allowedSites: ["registry.npmjs.org"] }),
     );
     expect(page.textContent).toContain("Working folder");
-    expect(page.textContent).toContain("hubs/acme/work/sorter");
+    expect(page.textContent).toContain("files/work/sorter");
     expect(buttonNamed(page, "Change…")).toBeDefined();
     expect(page.textContent).toContain("Allowed sites");
     expect(chipsOf(page)).toEqual(["registry.npmjs.org"]);
@@ -84,20 +84,20 @@ verifies("agents.configuration.sandbox-fields", () => {
   });
 
   it("saves a changed working folder through the save model and puts Change… back", async () => {
-    const host = hostWith({ workingFolder: "hubs/acme/work/sorter" });
+    const host = hostWith({ workingFolder: "files/work/sorter" });
     const page = await openHarness(host);
-    await changeFolder(page, "hubs/acme/out", "Enter");
-    expect((await host.settings(ref)).workingFolder).toBe("hubs/acme/out");
-    expect(page.textContent).toContain("hubs/acme/out");
+    await changeFolder(page, "files/out", "Enter");
+    expect((await host.settings(ref)).workingFolder).toBe("files/out");
+    expect(page.textContent).toContain("files/out");
     expect(document.activeElement).toBe(buttonNamed(page, "Change…"));
   });
 
   it("closes the box without saving on Esc", async () => {
-    const host = hostWith({ workingFolder: "hubs/acme/work/sorter" });
+    const host = hostWith({ workingFolder: "files/work/sorter" });
     const page = await openHarness(host);
-    await changeFolder(page, "hubs/acme/out", "Escape");
-    expect((await host.settings(ref)).workingFolder).toBe("hubs/acme/work/sorter");
-    expect(page.textContent).toContain("hubs/acme/work/sorter");
+    await changeFolder(page, "files/out", "Escape");
+    expect((await host.settings(ref)).workingFolder).toBe("files/work/sorter");
+    expect(page.textContent).toContain("files/work/sorter");
     expect(named(page, "Working folder")).toBeNull();
   });
 
