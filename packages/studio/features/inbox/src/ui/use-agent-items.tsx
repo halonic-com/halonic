@@ -1,4 +1,9 @@
-import type { InboxItem as AgentItem, AgentMessaging, MessagingSource } from "@halonicjs/ports";
+import type {
+  InboxItem as AgentItem,
+  AgentMessaging,
+  MessagingProject,
+  MessagingSource,
+} from "@halonicjs/ports";
 import type {
   ActionItem,
   RequesterPolicy,
@@ -27,6 +32,7 @@ import { ActionItemCard } from "./action-item-card.tsx";
 import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
 import { lineEndingInWait, wholeLine } from "./inbox-row.tsx";
 import type { ItemHeading } from "./item-header.tsx";
+import { ProjectTag } from "./project-tag.tsx";
 import { agentMark } from "./row-marks.tsx";
 import { type AskerPicture, useAskerPictures } from "./use-asker-pictures.ts";
 
@@ -178,11 +184,16 @@ export function useAgentItems(
       const bundle = bundles.find((each) => each.key === key);
       if (bundle === undefined) {
         // Once none waits, the first card heads itself, and its line ends at who asks (HAL-19913).
-        const line = agentItemAsker(first, sourceOf(first));
+        const line = withProject(
+          first.project,
+          { meta: agentItemAsker(first, sourceOf(first)) },
+          false,
+        );
         const picture = agentMark(first, "header", pictureOf(first)).avatar;
-        return { picture, title: agentItemTitle(first), line };
+        return { picture, title: agentItemTitle(first), line: line.meta };
       }
-      const row = bundleRow(bundle, state, now, pictureOf);
+      // The header names the project whole (sketch E on HAL-19192).
+      const row = bundleRow(bundle, state, now, pictureOf, false);
       const [oldest] = bundle.items;
       return {
         picture: agentMark(oldest, "header", pictureOf(oldest)).avatar,
@@ -227,25 +238,32 @@ interface Opened {
 }
 
 /**
- * A row of the agents' items: one item's title, or a bundle's count, then the source, who asks and
- * how long the oldest has waited (`inbox.agent-item-bundles`).
+ * A row of the agents' items: one item's title, or a bundle's count, then its project, the
+ * source, who asks and how long the oldest has waited (`inbox.agent-item-bundles`,
+ * `inbox.project-dot`). A bundle holds one project's items. `cut` cuts a long project name, as a
+ * row does; the header shows it whole.
  */
 function bundleRow(
   bundle: AgentBundle,
   state: AgentInboxState,
   now: Date,
   pictureOf: AskerPicture,
+  cut = true,
 ): ListRow {
   const [oldest] = bundle.items;
   if (oldest === undefined) return { id: bundle.key, title: "" };
   const source = state.sources.find((each) => each.id === oldest.source);
-  if (bundle.items.length === 1) return agentRow(oldest, source, now, pictureOf(oldest));
+  if (bundle.items.length === 1) return agentRow(oldest, source, now, pictureOf(oldest), cut);
   const work = state.work.find((each) => each.id === bundle.work);
   const row = {
     ...agentMark(oldest, "sidebar", pictureOf(oldest)),
     id: bundle.key,
     title: bundleTitle(bundle, work),
-    ...lineEndingInWait(bundleAsker(bundle, source), waitingFor(new Date(oldest.createdAt), now)),
+    ...withProject(
+      oldest.project,
+      lineEndingInWait(bundleAsker(bundle, source), waitingFor(new Date(oldest.createdAt), now)),
+      cut,
+    ),
     wrapTitle: true,
     wrapMeta: true,
   };
@@ -254,24 +272,47 @@ function bundleRow(
     : row;
 }
 
-/** An agent item's row: its title, then its source, who asks and how long it has waited. */
+/** An agent item's row: its title, then its project, source, who asks and how long it has waited. */
 function agentRow(
   item: AgentItem,
   source: MessagingSource | undefined,
   now: Date,
   picture: ImageBitmap | undefined,
+  cut: boolean,
 ): ListRow {
   const row = {
     ...agentMark(item, "sidebar", picture),
     id: agentItemKey(item),
     title: agentItemTitle(item),
-    ...lineEndingInWait(agentItemAsker(item, source), waitingFor(new Date(item.createdAt), now)),
+    ...withProject(
+      item.project,
+      lineEndingInWait(agentItemAsker(item, source), waitingFor(new Date(item.createdAt), now)),
+      cut,
+    ),
     wrapTitle: true,
     wrapMeta: true,
   };
   return isAgentItemLate(item, now)
     ? { ...row, trailing: <StatusChip tone="attention">Late</StatusChip> }
     : row;
+}
+
+/** A row's line, led by its item's project when it has one (`inbox.project-dot`). */
+function withProject(
+  project: MessagingProject | undefined,
+  line: Pick<ListRow, "meta" | "metaEnd">,
+  cut: boolean,
+): Pick<ListRow, "meta" | "metaEnd"> {
+  if (project === undefined) return line;
+  return {
+    ...line,
+    meta: (
+      <>
+        <ProjectTag project={project} cut={cut} />
+        {line.meta === "" || line.meta === undefined ? null : <> · {line.meta}</>}
+      </>
+    ),
+  };
 }
 
 function SourceLines({
