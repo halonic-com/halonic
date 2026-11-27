@@ -33,6 +33,8 @@ function summary(id: string, title: string): ChatSummary {
 function fakeChats(start: readonly ChatSummary[]) {
   let chats = start;
   const listeners = new Set<() => void>();
+  const leaves = new Map<string, () => void>();
+  const release = vi.fn();
   const service: AiChats = {
     list: async () => chats,
     subscribe: (_context, listener) => {
@@ -40,8 +42,12 @@ function fakeChats(start: readonly ChatSummary[]) {
       return () => listeners.delete(listener);
     },
     newChat: vi.fn(async () => "new-chat"),
-    open: vi.fn(),
-    render: (chatId) => <p>{`Chat ${chatId}`}</p>,
+    open: vi.fn(() => release),
+    openInTab: vi.fn(),
+    render: (chatId, _context, onLeave) => {
+      leaves.set(chatId, onLeave);
+      return <p>{`Chat ${chatId}`}</p>;
+    },
   };
   const change = async (next: readonly ChatSummary[]) => {
     chats = next;
@@ -49,7 +55,11 @@ function fakeChats(start: readonly ChatSummary[]) {
       for (const listener of listeners) listener();
     });
   };
-  return { service, change };
+  /** The chat leaves Home for another place, as the Assistant tells Home. */
+  const leave = async (chatId: string) => {
+    await act(async () => leaves.get(chatId)?.());
+  };
+  return { service, change, leave, release };
 }
 
 function contextWith(service: AiChats | undefined): WorkspaceContext {
@@ -64,9 +74,9 @@ function Home({ context }: { readonly context: WorkspaceContext }) {
   return (
     <>
       <HomeListColumn {...slot} />
-      <main>
+      <div data-pane="">
         <HomeContentPane {...slot} sections={<p>Sections</p>} />
-      </main>
+      </div>
     </>
   );
 }
@@ -88,11 +98,22 @@ function rowTitles(page: HTMLElement): string[] {
   return [...page.querySelectorAll("tr")].map((row) => row.textContent?.trim() ?? "");
 }
 
+function pane(page: HTMLElement): string | null | undefined {
+  return page.querySelector("[data-pane]")?.textContent;
+}
+
+function cellOf(page: HTMLElement, title: string): HTMLElement | undefined {
+  const row = [...page.querySelectorAll("tr")].find((each) => each.textContent?.includes(title));
+  return row?.querySelector<HTMLElement>('[role="gridcell"]') ?? undefined;
+}
+
 verifies("home.list-column", () => {
   it("shows New chat first, then the AI chats in the order given", async () => {
     const { service } = fakeChats([summary("digest", "Digest"), summary("triage", "Triage")]);
     const page = await show(contextWith(service));
-    expect(button(page, "New chat")).toBeDefined();
+    const newChat = button(page, "New chat");
+    const list = page.querySelector("table, [role='grid']");
+    expect(newChat?.compareDocumentPosition(list as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(rowTitles(page)).toEqual([
       expect.stringContaining("Digest"),
       expect.stringContaining("Triage"),
@@ -109,7 +130,7 @@ verifies("home.list-column", () => {
     const page = await show(contextWith(service));
     await act(async () => button(page, "New chat")?.click());
     expect(service.open).toHaveBeenCalledWith("new-chat", expect.anything());
-    expect(page.querySelector("main")?.textContent).toBe("Chat new-chat");
+    expect(pane(page)).toBe("Chat new-chat");
   });
 
   it("says why a new chat couldn't start", async () => {
@@ -128,7 +149,41 @@ verifies("home.list-column", () => {
     const page = await show(contextWith(undefined));
     expect(button(page, "New chat")).toBeUndefined();
     expect(page.querySelector("nav")).toBeNull();
-    expect(page.querySelector("main")?.textContent).toBe("Sections");
+    expect(pane(page)).toBe("Sections");
+  });
+
+  it("shows the open chat's row as the current one", async () => {
+    const { service } = fakeChats([summary("digest", "Digest"), summary("triage", "Triage")]);
+    const page = await show(contextWith(service));
+    await act(async () => cellOf(page, "Triage")?.click());
+    const current = [...page.querySelectorAll("[aria-current]")].map(
+      (each) => each.closest("tr")?.textContent ?? "",
+    );
+    expect(current.length).toBeGreaterThan(0);
+    expect(current.every((text) => text.includes("Triage"))).toBe(true);
+  });
+
+  it("opens a chat as its tab on a Ctrl-click, and keeps the pane as it is", async () => {
+    const { service } = fakeChats([summary("triage", "Triage")]);
+    const page = await show(contextWith(service));
+    await act(async () =>
+      cellOf(page, "Triage")?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, ctrlKey: true }),
+      ),
+    );
+    expect(service.openInTab).toHaveBeenCalledWith("triage", expect.anything());
+    expect(pane(page)).toBe("Sections");
+  });
+
+  it("says what failed when the chats can't be read", async () => {
+    const { service } = fakeChats([]);
+    service.list = async () => Promise.reject(new Error("The engine isn't answering."));
+    const context = contextWith(service);
+    await show(context);
+    expect(context.announcer.announce).toHaveBeenCalledWith(
+      "Couldn't load the chats. The engine isn't answering.",
+      "assertive",
+    );
   });
 });
 
@@ -136,17 +191,34 @@ verifies("home.content-pane", () => {
   it("shows Home's sections while no chat is open, and the chat once picked", async () => {
     const { service } = fakeChats([summary("triage", "Triage")]);
     const page = await show(contextWith(service));
-    expect(page.querySelector("main")?.textContent).toBe("Sections");
-    const row = page.querySelector<HTMLElement>('tr [role="gridcell"]');
-    await act(async () => row?.click());
-    expect(page.querySelector("main")?.textContent).toBe("Chat triage");
+    expect(pane(page)).toBe("Sections");
+    await act(async () => cellOf(page, "Triage")?.click());
+    expect(pane(page)).toBe("Chat triage");
+  });
+
+  it("holds the open chat in Home and gives it back when the pane moves on", async () => {
+    const { service, change, release } = fakeChats([summary("triage", "Triage")]);
+    const page = await show(contextWith(service));
+    await act(async () => cellOf(page, "Triage")?.click());
+    expect(service.open).toHaveBeenCalledWith("triage", expect.anything());
+    expect(release).not.toHaveBeenCalled();
+    await change([]);
+    expect(release).toHaveBeenCalledOnce();
+  });
+
+  it("shows the sections again when the open chat leaves Home for another place", async () => {
+    const { service, leave } = fakeChats([summary("triage", "Triage")]);
+    const page = await show(contextWith(service));
+    await act(async () => cellOf(page, "Triage")?.click());
+    await leave("triage");
+    expect(pane(page)).toBe("Sections");
   });
 
   it("shows the sections again when the open chat is deleted", async () => {
     const { service, change } = fakeChats([summary("triage", "Triage")]);
     const page = await show(contextWith(service));
-    await act(async () => page.querySelector<HTMLElement>('tr [role="gridcell"]')?.click());
+    await act(async () => cellOf(page, "Triage")?.click());
     await change([]);
-    expect(page.querySelector("main")?.textContent).toBe("Sections");
+    expect(pane(page)).toBe("Sections");
   });
 });

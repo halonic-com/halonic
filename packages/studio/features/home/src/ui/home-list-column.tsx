@@ -7,31 +7,33 @@ import { keptOpenChat, type ListedChat } from "../open-chat.ts";
 
 /**
  * Home's list column (`home.list-column`): "New chat" first, then the folder's AI chats, newest
- * message first, or "No chats yet." when there are none. A picked chat opens in the content pane.
+ * message first, or "No chats yet." when there are none. A picked chat opens in the content pane;
+ * a Ctrl-click, Cmd-click or middle click opens it as its tab. The shell sets the column's width.
  * Without the Assistant the column is empty, and the pane shows Home's sections.
  */
 export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) {
   const chats = context.services.find(AiChatsService);
   const listed = useListedChats(chats, context, open, setOpen);
   if (chats === undefined) return null;
-  const openChat = (chatId: string) => {
-    chats.open(chatId, context);
-    setOpen(chatId);
-  };
   const newChat = async () => {
     try {
-      openChat(await chats.newChat(context));
+      setOpen(await chats.newChat(context));
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       context.announcer.announce(`${homeWords.newChatFailed} ${reason}`, "assertive");
     }
   };
   return (
-    <nav aria-label={homeWords.title} className="flex w-80 shrink-0 flex-col gap-2 py-2">
+    <nav aria-label={homeWords.title} className="flex min-w-0 flex-col gap-2 py-2">
       <Button variant="ghost" icon={<PlusIcon />} onClick={() => void newChat()}>
         {homeWords.newChat}
       </Button>
-      <ChatList chats={listed} open={open} onOpen={openChat} />
+      <ChatList
+        chats={listed}
+        open={open}
+        onOpen={setOpen}
+        onOpenInNewTab={(chatId) => chats.openInTab(chatId, context)}
+      />
     </nav>
   );
 }
@@ -41,10 +43,12 @@ function ChatList({
   chats,
   open,
   onOpen,
+  onOpenInNewTab,
 }: {
   readonly chats: readonly ListedChat[] | undefined;
   readonly open: string | undefined;
   readonly onOpen: (chatId: string) => void;
+  readonly onOpenInNewTab: (chatId: string) => void;
 }) {
   if (chats === undefined) return null;
   if (chats.length === 0) {
@@ -57,13 +61,16 @@ function ChatList({
       rows={chats.map((chat) => ({ id: chat.id, title: chat.title }))}
       {...(open === undefined ? {} : { current: open })}
       onOpen={onOpen}
+      onOpenInNewTab={onOpenInNewTab}
     />
   );
 }
 
 /**
- * The AI chats, read again after each change. A chat that leaves the list closes in the pane
- * (`keptOpenChat`). A failed read keeps what the list showed and says why.
+ * The AI chats, read again after each change to the list. A chat that leaves the list closes in
+ * the pane (`keptOpenChat`). A failed read keeps what the list showed and says what failed. The
+ * subscription keys on the service only: the context is a new object on each window draw, so it is
+ * read through `latest`.
  */
 function useListedChats(
   chats: AiChats | undefined,
@@ -72,8 +79,8 @@ function useListedChats(
   setOpen: (id: string | undefined) => void,
 ): readonly ListedChat[] | undefined {
   const [listed, setListed] = useState<readonly ListedChat[] | undefined>(undefined);
-  const latest = useRef({ listed, open, setOpen });
-  latest.current = { listed, open, setOpen };
+  const latest = useRef({ listed, open, setOpen, context });
+  latest.current = { listed, open, setOpen, context };
   useEffect(() => {
     if (chats === undefined) return;
     let current = true;
@@ -86,16 +93,17 @@ function useListedChats(
       if (kept !== shown) show(kept);
     };
     const fail = (reason: string) => {
-      if (current) context.announcer.announce(reason, "assertive");
+      if (!current) return;
+      latest.current.context.announcer.announce(`${homeWords.chatsFailed} ${reason}`, "assertive");
     };
-    const read = () => void readChats(chats, context, take, fail);
+    const read = () => void readChats(chats, latest.current.context, take, fail);
     read();
-    const stop = chats.subscribe(context, read);
+    const stop = chats.subscribe(latest.current.context, read);
     return () => {
       current = false;
       stop();
     };
-  }, [chats, context]);
+  }, [chats]);
   return listed;
 }
 

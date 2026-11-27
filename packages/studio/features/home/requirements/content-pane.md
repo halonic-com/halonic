@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-20741; HAL-20673 rail flows, section 2, line 25
 
-While no chat is open, Home's content pane shall show Home's sections as the shell draws them. While a chat is open, it shall show that chat. When an open chat leaves the list, deleted in Home or elsewhere, the content pane shall show Home's sections again. A new chat that has no message yet shall stay open, though the list doesn't show it.
+While no chat is open, Home's content pane shall show Home's sections as the shell draws them. While a chat is open, it shall show that chat and hold it in Home, and it shall give the chat back when it shows something else or goes. When the open chat leaves Home (deleted, or shown in the panel or a tab), or leaves the list, the content pane shall show Home's sections again. A new chat that has no message yet shall stay open, though the list doesn't show it.
 
 ## Examples
 
@@ -17,3 +17,6 @@ While no chat is open, Home's content pane shall show Home's sections as the she
 - Given the person pressed New chat,
   when the list is read again before the first message,
   then the new chat stays open.
+- Given "Triage" is open in Home,
+  when the person picks it in the side panel's chat menu,
+  then Home's content pane shows Home's sections.
