@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { recordingActions } from "../test-support/acme-requests.test-helper.ts";
 import { signInView } from "../test-support/acme-sign-in.test-helper.ts";
 import { fakeModal, restoreModal } from "../test-support/modal.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
+import { render, rerender, unmountAll } from "../test-support/render.tsx";
 import { ActionStepper } from "./action-stepper.tsx";
 import { ServiceSignInPanel } from "./service-sign-in-panel.tsx";
 
@@ -85,6 +85,29 @@ verifies("action-steppers.paperclip-sign-in-run", () => {
       );
       act(() => button?.click());
       expect(actions.calls).toEqual(["run 2"]);
+    });
+
+    it("says who is signed in once, through the stepper's status region, when the key is kept", () => {
+      const expiresAt = new Date(startedAt + 10 * 60 * 1000);
+      const signIn = { code: "acme-code-1", expiresAt, kept: false, account: null };
+      const waiting = signInView(signIn, new Date(startedAt));
+      const actions = recordingActions();
+      const stepper = render(<ActionStepper view={waiting} actions={actions} />);
+      const status = stepper.querySelector('section > [role="status"]');
+      expect(status?.textContent).toBe("");
+
+      const result = "Signed in as Acme Board.";
+      const steps = waiting.steps.map((step) =>
+        step.number === 3 ? { ...step, outcome: { kind: "succeeded" as const, result } } : step,
+      );
+      const kept = { ...signIn, kept: true, account: "Acme Board" };
+      const signedIn = { ...waiting, steps, serviceSignIn: kept };
+      rerender(stepper, <ActionStepper view={signedIn} actions={actions} />);
+      expect(status?.textContent).toBe("Done. Signed in as Acme Board.");
+      // The panel's own line is seen, not read out, so the account is said once.
+      const shown = [...stepper.querySelectorAll("p")].find((line) => line.textContent === result);
+      expect(shown).toBeDefined();
+      expect(shown?.closest('[role="status"]')).toBeNull();
     });
   });
 });

@@ -14,6 +14,9 @@ When a request's `check` step has succeeded and what it kept differs from the re
 - Given the same request expecting 1,
   when the check reads 1,
   then both steps are sent.
+- Given a request that expects `branch` to be `main`,
+  when the check reads no `branch` at all,
+  then the stepper shows `branch` with "Today: nothing found".
 - Given the check read 1 required review,
   when the request shows,
   then step 2's line reads "Required reviews on `main` today: 1. After: 2."

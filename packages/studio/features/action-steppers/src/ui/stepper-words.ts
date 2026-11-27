@@ -299,7 +299,7 @@ export const changeWords = {
   expected: "When asked:",
   today: "Today:",
   /** The check read nothing for that name: the service no longer has it, or it was done by hand. */
-  notRead: "not read",
+  notRead: "nothing found",
 } as const;
 
 /**
