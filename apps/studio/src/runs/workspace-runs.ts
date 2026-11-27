@@ -1,16 +1,12 @@
 import {
   defaultCurrency,
-  type HubWorkflow,
   halonicCommand,
-  hubWorkflows,
   isWindowsFolder,
   lookUpWorkflow,
   type ProposedRecord,
   shortRunId,
-  testModelsOf,
   workflowIn,
 } from "@halonicjs/app";
-import { type RoutineClock, routineClocks } from "@halonicjs/app/routines";
 import { type WorkspaceModels, workspaceModelsOf } from "@halonicjs/app/run-failure";
 import type { RunEvent, RunSummary } from "@halonicjs/events";
 import type {
@@ -33,14 +29,10 @@ import type {
   RunWorkflow,
   SourcedRun,
 } from "@halonicjs/studio-feature-runs/api";
-import {
-  filesOf,
-  type LoadedWorkspace,
-  loadWorkspace,
-  providerIsLocal,
-} from "@halonicjs/workspace";
+import { type LoadedWorkspace, loadWorkspace } from "@halonicjs/workspace";
 import { ProposalEntries } from "./proposal-entries.ts";
 import { providerHost } from "./provider-host.ts";
+import { type WorkspaceFacts, workspaceFactsOf } from "./workspace-facts.ts";
 
 /** How often the runs are read again to see whether one changed: every 10 s (states K5). */
 export const runsPollInterval = 10_000;
@@ -97,27 +89,11 @@ export interface WorkspaceRunsOptions {
   readonly proposals?: () => Promise<readonly ProposedRecord[]>;
   /** The proposals settled in the last 30 days, as the agent host lists them; left out, none. */
   readonly doneProposals?: () => Promise<readonly ProposedRecord[]>;
-}
-
-/** What the workspace's files say about its runs. */
-interface WorkspaceFacts {
-  /** The files as read, for the models of a hub's runs. */
-  readonly workspace: LoadedWorkspace;
-  readonly workflows: readonly HubWorkflow[];
-  /** By key, the `trigger.routineId` of the runs each starts. */
-  readonly routines: ReadonlyMap<string, RoutineClock>;
-  /** By id, where each provider the workspace has runs. */
-  readonly providers: ReadonlyMap<string, ProviderKind>;
-  /** The ids of the providers whose file says `type: mock`, the test model. */
-  readonly testModels: ReadonlySet<string>;
-  /** By id, the `name` of each provider whose file gives one. */
-  readonly providerNames: ReadonlyMap<string, string>;
-  /** By id, each agent's name as its file says. */
-  readonly agentNames: ReadonlyMap<string, string>;
-  /** By id, each hub's name as its file says. */
-  readonly hubNames: ReadonlyMap<string, string>;
-  readonly currency: string;
-  readonly monthly: number | undefined;
+  /**
+   * The workspace as it was just loaded on opening, such as by the trust check, which the first
+   * read of the files takes instead of loading them again; `undefined` when there is none.
+   */
+  readonly loaded?: () => LoadedWorkspace | undefined;
 }
 
 /** The real clock: `setInterval`. */
@@ -332,33 +308,9 @@ export class WorkspaceRuns implements RunsSource, InboxRuns {
     if (!this.#factsStale && !this.#watchBroken && this.#facts !== undefined) return;
     // Cleared before the read, so a change during it marks the facts stale again.
     this.#factsStale = false;
-    const workspace = await loadWorkspace(this.#options.definitions);
-    const settings = filesOf(workspace, "workspace")[0]?.value;
-    this.#facts = {
-      workspace,
-      workflows: hubWorkflows(workspace),
-      routines: routineClocks(workspace),
-      providers: new Map(
-        filesOf(workspace, "provider").map(({ value }) => [
-          value.id,
-          providerIsLocal(value) ? "local" : "cloud",
-        ]),
-      ),
-      testModels: testModelsOf(workspace),
-      providerNames: new Map(
-        filesOf(workspace, "provider").flatMap(({ value }) =>
-          value.name === undefined ? [] : [[value.id, value.name] as const],
-        ),
-      ),
-      agentNames: new Map(
-        filesOf(workspace, "agent")
-          .toReversed()
-          .map(({ value }) => [value.id, value.name]),
-      ),
-      hubNames: new Map(filesOf(workspace, "hub").map(({ value }) => [value.id, value.name])),
-      currency: settings?.budget?.currency ?? defaultCurrency,
-      monthly: settings?.budget?.monthly,
-    };
+    // On opening, the trust check has just loaded the files: read them once (HAL-19964).
+    const opened = this.#facts === undefined ? this.#options.loaded?.() : undefined;
+    this.#facts = workspaceFactsOf(opened ?? (await loadWorkspace(this.#options.definitions)));
   }
 
   #startWatching(): void {

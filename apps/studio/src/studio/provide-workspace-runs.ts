@@ -65,6 +65,8 @@ export function provideWorkspaceRuns(
     runs: store,
     definitions: new TauriDefinitionStore(files, location),
     folder: location,
+    // The trust check loaded the files as the folder opened: the runs take that load.
+    loaded: () => trust.loaded,
     onFocus: (listener) => focusOf(window, listener),
     send: (...answer) => engine.send(...answer),
     // From the background engine when one runs the folder, else from the run logs.

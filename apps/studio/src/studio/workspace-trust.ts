@@ -58,6 +58,7 @@ export class WorkspaceTrust {
   #needsNoTrust = false;
   readonly #listeners = new Set<() => void>();
   #name: string | undefined;
+  #loaded: LoadedWorkspace | undefined;
   #latest = 0;
   #assistantAdded: AssistantAddedHosts = new Map();
 
@@ -68,6 +69,14 @@ export class WorkspaceTrust {
   /** The workspace's name from `workspace.yaml`, `undefined` until it is read or when it has none. */
   get name(): string | undefined {
     return this.#name;
+  }
+
+  /**
+   * The workspace the last finished {@link refresh} loaded, `undefined` before one ends and after
+   * one failed, so what opens with the check, such as the runs, needn't load the files again.
+   */
+  get loaded(): LoadedWorkspace | undefined {
+    return this.#loaded;
   }
 
   /**
@@ -206,6 +215,7 @@ export class WorkspaceTrust {
       const name = filesOf(workspace, "workspace")[0]?.value.name;
       if (mine !== this.#latest) return;
       this.#name = name;
+      this.#loaded = workspace;
       this.#check = check;
       this.#subject = subject;
       this.#needsNoTrust = reachesOnlyTheTestModel(subject);
@@ -214,6 +224,7 @@ export class WorkspaceTrust {
       // Fails closed: no check, so no trust.
       if (mine === this.#latest) {
         this.#check = undefined;
+        this.#loaded = undefined;
         this.#subject = undefined;
         this.#needsNoTrust = false;
         this.#failure =
