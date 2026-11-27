@@ -33,7 +33,7 @@ verifies("paperclip.merge-control-security-signoff", () => {
     const decision = pass(snapshot({ pulls: [trustPull()] }));
     expect(enqueued(decision)).toEqual([]);
     expect(reasonsOf(trustPull())).toContain(
-      `security PR: waiting for "Julian: security sign-off on head ${headOf(6418).slice(0, 9)}"`,
+      `security PR (\`packages/core/app/src/trusted-runner-start.ts\`): waiting for "Julian: security sign-off on head ${headOf(6418).slice(0, 9)}"`,
     );
   });
 
@@ -64,19 +64,23 @@ verifies("paperclip.merge-control-security-signoff", () => {
   test("the label or a security-review line marks a PR with no security path (#6431)", () => {
     const labelled = pull(6431, { labels: ["built-on:paperclip", "security"] });
     const described = pull(6431, { body: "Summary\n\nsecurity-review: HAL-19291" });
-    expect(reasonsOf(labelled)).toContain("security PR: waiting for");
-    expect(reasonsOf(described)).toContain("security PR: waiting for");
+    expect(reasonsOf(labelled)).toContain("security PR (the `security` label): waiting for");
+    expect(reasonsOf(described)).toContain(
+      "security PR (a security-review line in its description): waiting for",
+    );
     expect(reasonsOf(pull(6431))).not.toContain("security PR");
   });
 
   test("an indented or spaced security review line, or files past what the gate reads, mark it (HAL-19778)", () => {
     for (const body of ["Summary\n  security review: HAL-1", "Security-Review\nwhy"]) {
-      expect(reasonsOf(pull(6431, { body }))).toContain("security PR: waiting for");
+      expect(reasonsOf(pull(6431, { body }))).toContain("security-review line in its description");
     }
     expect(reasonsOf(pull(6431, { body: "security-reviewed elsewhere" }))).not.toContain(
       "security PR",
     );
-    expect(reasonsOf(pull(6431, { filesTotal: 101 }))).toContain("security PR: waiting for");
+    expect(reasonsOf(pull(6431, { filesTotal: 101 }))).toContain(
+      "security PR (101 changed files, more than the gate reads): waiting for",
+    );
   });
 
   test("Tauri paths count; changesets, lockfiles and workflows don't", () => {
@@ -90,7 +94,31 @@ verifies("paperclip.merge-control-security-signoff", () => {
 
   test("an action catalog path counts (HAL-20215)", () => {
     const files = ["packages/core/action-catalog/src/github/x.ts"];
-    expect(reasonsOf(pull(9, { files, filesTotal: 1 }))).toContain("security PR: waiting for");
+    expect(reasonsOf(pull(9, { files, filesTotal: 1 }))).toContain(
+      "security PR (`packages/core/action-catalog/src/github/x.ts`): waiting for",
+    );
+  });
+
+  test("tests, Markdown and wording files don't count, as for reviewerFor (#6651, #6737; HAL-20402)", () => {
+    const words = [
+      "apps/studio/src-tauri/crates/secrets/README.md",
+      "packages/studio/features/action-steppers/src/ui/stepper-words.ts",
+      "packages/core/app/src/trusted-runner-start.test.ts",
+      "apps/studio/src-tauri/tests/sandbox.rs",
+    ];
+    expect(reasonsOf(pull(6651, { files: words, filesTotal: words.length }))).not.toContain(
+      "security PR",
+    );
+    const docs = ["docs/security/threat-model.md", "SECURITY.md"];
+    for (const file of docs) {
+      expect(reasonsOf(pull(10, { files: [file], filesTotal: 1 }))).toContain(
+        `security PR (\`${file}\`): waiting for`,
+      );
+    }
+    const mixed = [...words, "apps/studio/src-tauri/crates/secrets/src/lib.rs"];
+    expect(reasonsOf(pull(11, { files: mixed, filesTotal: mixed.length }))).toContain(
+      "security PR (`apps/studio/src-tauri/crates/secrets/src/lib.rs`): waiting for",
+    );
   });
 
   test("a queued security PR without the sign-off isn't taken out", () => {

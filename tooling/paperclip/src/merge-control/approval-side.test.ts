@@ -85,7 +85,7 @@ verifies("paperclip.verdicts-gate", () => {
         flagOn,
       );
       expect(waiting.reasons).toContain(
-        `security PR: waiting for Julian's recorded security-ok on head ${headOf(3).slice(0, 9)}`,
+        `security PR (the \`security\` label): waiting for Julian's recorded security-ok on head ${headOf(3).slice(0, 9)}`,
       );
       const signed = { ...liamRecorded, securityOk: true };
       const row = gateRow(
