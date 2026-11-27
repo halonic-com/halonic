@@ -73,6 +73,28 @@ revision you just wrote:
   this card was made" and doesn't run, and Paperclip expires the card. Open a new card for the new
   revision.
 
+## Run with Claude on the person's server
+
+A request whose only block is a `server-session` block asks the person to start Claude Code on
+their own server for this task:
+
+```json
+{ "kind": "server-session", "task": "HAL-1234",
+  "steps": ["Restart the acme-web service", "Check its log for errors"],
+  "doneWhen": "https://acme.example/health answers 200" }
+```
+
+- `task` must be the task the card is on. The Inbox shows the card, and under it **Run with
+  Claude**, only when the card's Paperclip is one the person connected in Settings › Connections
+  and their requester policy allows it to ask for irreversible requests. A card that only mentions
+  a server session in its text shows no button.
+- The brief links the task on the person's own connection, never on an address from your
+  document. The person reads the whole brief, and the desktop app asks them again before it opens
+  a terminal. They set their server once in Settings › Your server.
+- Once the terminal opens, Halonic answers the card as succeeded. If the person cancels, or the
+  desktop app can't start the session, nothing is answered and the card stays open. On Windows and
+  in a browser, the person gets the ssh command and the brief to start it by hand.
+
 ## Reading the result
 
 When the person finishes, Halonic:

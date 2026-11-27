@@ -51,6 +51,7 @@ import {
   WorkflowsHostService,
 } from "@halonicjs/studio-feature-workflows/api";
 import {
+  provideServerSessionShell,
   ShellHttpClient,
   shellKeychain,
   shellKeyOrigins,
@@ -183,6 +184,7 @@ export function provideFolderServices(
   provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
   services.provide(AskWindowService, desktopAskWindow(ipc));
+  provideServerSessionShell(services, window, platform);
   services.provide(
     ProviderCheckService,
     new WorkspaceProviderCheck(new ShellHttpClient(ipc), trust),

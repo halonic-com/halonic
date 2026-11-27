@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ServerSessionOffer } from "../server-session/server-session-offer.ts";
 import type {
   ServerChoice,
@@ -109,7 +109,10 @@ verifies("action-steppers.run-with-claude", () => {
       expect(root.textContent).toContain("Show the commands that will run");
       expect(root.querySelector("b")).toBeNull();
       await press(root, "Run with Claude");
-      expect(requests).toEqual([offer]);
+      // Exactly the task, the brief and the hash: never who asked.
+      expect(requests).toEqual([
+        { task: offer.task, brief: offer.brief, requestHash: offer.requestHash },
+      ]);
       expect(opened).toEqual(["started"]);
       expect(root.textContent).toContain(
         "Claude Code is starting in a terminal. It reports back on HAL-1234.",
@@ -177,18 +180,26 @@ verifies("action-steppers.run-with-claude", () => {
       expect(root.querySelector("h3")).toBeNull();
     });
 
-    it("says the desktop app couldn't open the session when the shell throws", async () => {
+    it("says the desktop app couldn't open the session when the shell throws, and reports why", async () => {
+      const thrown = new Error("bridge down");
       const shell: ServerSessionShell = {
         open: async () => {
-          throw new Error("bridge down");
+          throw thrown;
         },
       };
-      const { root } = show(acmeServer, shell);
+      const reported = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const { root, opened } = show(acmeServer, shell);
       await press(root, "Run with Claude");
       await press(root, "Run with Claude");
       expect(root.textContent).toContain(
         "Halonic didn't start it: the desktop app couldn't open the session.",
       );
+      expect(reported).toHaveBeenCalledWith(
+        "The desktop app couldn't open the server session",
+        thrown,
+      );
+      expect(opened).toEqual([]);
+      reported.mockRestore();
     });
 
     it("moves focus to the started line, which says it once, when the terminal opened", async () => {

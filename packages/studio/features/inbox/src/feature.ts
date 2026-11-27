@@ -5,10 +5,12 @@ import {
   RequesterPolicyService,
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
+import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
 import {
   AgentConnectionsService,
   AgentMessagingService,
   actionStepsKey,
+  serverSessionShellKey,
 } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
@@ -64,6 +66,9 @@ export const inboxFeature = defineFeature({
     AgentConnectionsService,
     // What runs its steps with the user's sign-in, in the desktop app (inbox.agent-action-run).
     actionStepsKey,
+    // "Run with Claude": the shell that opens a terminal, and Settings › Your server (inbox.run-with-claude).
+    serverSessionShellKey,
+    HostSettingsService,
     // The customer's account page, for **See usage** on a run at a plan limit (inbox.plan-limit-card).
     AccountMenuHostService,
     // The served Studio's next step under an empty Needs you (inbox.home-next-step).

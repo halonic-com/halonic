@@ -1,22 +1,16 @@
 import type { AgentMessaging } from "@halonicjs/ports";
 import { AccountMenuHostService } from "@halonicjs/studio-feature-account-menu/api";
 import {
-  ActionCatalogService,
   defaultRequesterPolicy,
   emptyActionCatalog,
   type RequesterPolicy,
-  RequesterPolicyService,
   type StepperCatalog,
-  useConnectedPaperclips,
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { EmptyState, List, useNarrow, usePresentation } from "@halonicjs/studio-kit";
 import {
   type ActionSteps,
   type AgentConnections,
-  AgentConnectionsService,
-  AgentMessagingService,
-  actionStepsKey,
   desktopOnlyActionSteps,
 } from "@halonicjs/studio-services";
 import {
@@ -41,6 +35,7 @@ import type { InboxNotices } from "../notices/inbox-notices.ts";
 import { mergeNotices } from "../notices/merge-notices.ts";
 import type { ProposalDecisions } from "../proposal-decisions.ts";
 import type { InboxRequests } from "../request/inbox-requests.ts";
+import { agentServicesOf } from "./agent-services.ts";
 import { DoneSection } from "./done-proposals.tsx";
 import {
   commandButtons,
@@ -66,6 +61,7 @@ import { OpenCard } from "./open-card.tsx";
 import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import { itemMark } from "./row-marks.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
+import { type ServerSessionHost, useActionChecks } from "./use-action-checks.ts";
 import { useAgentItems } from "./use-agent-items.tsx";
 import { useItemSteps } from "./use-item-steps.ts";
 import { useOpenItem } from "./use-open-item.ts";
@@ -108,11 +104,7 @@ export function InboxPage({ context, framed }: PlaceViewProps & { readonly frame
       announce={(line) => context.announcer.announce(line)}
       requests={context.services.find(InboxRequestsService)}
       proposals={context.services.find(ProposalDecisionsService)}
-      agentMessaging={context.services.find(AgentMessagingService)}
-      actionCatalog={context.services.find(ActionCatalogService)}
-      requesterPolicy={context.services.find(RequesterPolicyService)}
-      actionSteps={context.services.find(actionStepsKey)}
-      agentConnections={context.services.find(AgentConnectionsService)}
+      {...agentServicesOf(context)}
       notices={notices}
       {...commandButtons(context.runCommand)}
       trust={trust}
@@ -180,6 +172,8 @@ export interface InboxViewProps {
   readonly actionSteps?: ActionSteps | undefined;
   /** The user's connections: a Paperclip request runs only on one of them. Without it, none does. */
   readonly agentConnections?: AgentConnections | undefined;
+  /** What "Run with Claude" starts with; without it no server is set up and only the guide shows. */
+  readonly serverSession?: ServerSessionHost | undefined;
   /** The workspace's runs: a phone's request sheet stops waiting when the run it started ends. */
   readonly runs?: RunsList | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
@@ -238,6 +232,7 @@ export function InboxView({
   requesterPolicy = defaultRequesterPolicy,
   actionSteps = desktopOnlyActionSteps,
   agentConnections,
+  serverSession,
   motion = kitMotion,
   seeUsage,
 }: InboxViewProps) {
@@ -246,12 +241,14 @@ export function InboxView({
   const list = useRef<HTMLDivElement>(null);
   const state = useGlidingState(subscribe, read, list, motion);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
-  const paperclips = useConnectedPaperclips(agentConnections);
-  const agent = useAgentItems(
-    agentMessaging,
-    { catalog: actionCatalog, policy: requesterPolicy, steps: actionSteps, paperclips },
-    { list, motion, announce },
-  );
+  const checks = useActionChecks({
+    catalog: actionCatalog,
+    policy: requesterPolicy,
+    steps: actionSteps,
+    connections: agentConnections,
+    serverSession,
+  });
+  const agent = useAgentItems(agentMessaging, checks, { list, motion, announce });
   // An item of the Inbox's own that opens, by hand or on request, takes the pane from an agent's.
   const closeAgent = agent.close;
   useEffect(() => {

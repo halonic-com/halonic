@@ -127,6 +127,13 @@ export {
   shellKeyOrigins,
   tokenStoreKey,
 } from "./shell-secrets.ts";
+export {
+  provideServerSessionShell,
+  type ServerSessionOpened,
+  type ServerSessionOpener,
+  type ServerSessionOpenRequest,
+  serverSessionShellKey,
+} from "./shell-server-session.ts";
 export { type SyncDiagnosticsReader, SyncDiagnosticsService } from "./sync-diagnostics.ts";
 export { TauriChannel } from "./tauri-channel.ts";
 export { onWindowCloseRequested } from "./tauri-close.ts";
