@@ -76,6 +76,21 @@ fn question_of(confirmation: &Map<String, Value>) -> String {
         lines.push(String::new());
         lines.extend(reach_lines(reach));
     }
+    // The note the source acts on, such as a budget override's new limit,
+    // under the option's own label.
+    let note = confirmation.get("note");
+    let note_text = note
+        .and_then(|note| note.get("text"))
+        .and_then(Value::as_str);
+    if let Some(note_text) = note_text.map(one_line).filter(|line| !line.is_empty()) {
+        let label = note
+            .and_then(|note| note.get("label"))
+            .and_then(Value::as_str)
+            .map(one_line)
+            .unwrap_or_else(|| "Note".to_owned());
+        lines.push(String::new());
+        lines.push(format!("{label}: {note_text}"));
+    }
     lines.push(String::new());
     let answer = text("option").unwrap_or_else(|| "your answer".to_owned());
     lines.push(format!(
@@ -134,10 +149,15 @@ fn reach_lines(reach: &Map<String, Value>) -> Vec<String> {
     lines
 }
 
-/// `value` on one line: control characters and runs of white space become
-/// one space, and it is cut to [`LINE_MAX`] characters, ending in "…".
+/// `value` on one line: format characters dropped, control characters and
+/// runs of white space made one space, and cut to [`LINE_MAX`] characters,
+/// ending in "…".
 fn one_line(value: &str) -> String {
-    let words: Vec<&str> = value
+    let kept: String = value
+        .chars()
+        .filter(|&character| !is_format(character))
+        .collect();
+    let words: Vec<&str> = kept
         .split(|character: char| character.is_whitespace() || character.is_control())
         .filter(|word| !word.is_empty())
         .collect();
@@ -148,6 +168,36 @@ fn one_line(value: &str) -> String {
     let mut cut: String = line.chars().take(LINE_MAX - 1).collect();
     cut.push('…');
     cut
+}
+
+/// Whether `character` is a Unicode format character (category Cf), such as
+/// a bidi control or a zero-width one, which can reorder or hide part of a
+/// line next to the shell's own words. Rust's `char` has no category test.
+fn is_format(character: char) -> bool {
+    matches!(
+        character,
+        '\u{00AD}'
+            | '\u{0600}'..='\u{0605}'
+            | '\u{061C}'
+            | '\u{06DD}'
+            | '\u{070F}'
+            | '\u{0890}'..='\u{0891}'
+            | '\u{08E2}'
+            | '\u{180E}'
+            | '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2064}'
+            | '\u{2066}'..='\u{206F}'
+            | '\u{FEFF}'
+            | '\u{FFF9}'..='\u{FFFB}'
+            | '\u{110BD}'
+            | '\u{110CD}'
+            | '\u{13430}'..='\u{1343F}'
+            | '\u{1BCA0}'..='\u{1BCA3}'
+            | '\u{1D173}'..='\u{1D17A}'
+            | '\u{E0001}'
+            | '\u{E0020}'..='\u{E007F}'
+    )
 }
 
 #[cfg(test)]

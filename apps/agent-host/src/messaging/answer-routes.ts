@@ -1,10 +1,15 @@
 import type { ServerResponse } from "node:http";
 import { readInboxAnswer } from "@halonicjs/host-server";
-import type { AnswerResult, InboxAnswer } from "@halonicjs/ports";
+import type { AnswerResult, InboxAnswer, InboxItem } from "@halonicjs/ports";
 import { type Schema, s } from "@halonicjs/schema-kit";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
-import { answerDigest, confirmationOf, needsConfirmation } from "./answer-confirmation.ts";
+import {
+  answerDigest,
+  confirmationOf,
+  needsConfirmation,
+  offeredOption,
+} from "./answer-confirmation.ts";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
 import type { WorkspaceMessaging } from "./workspace-messaging.ts";
 
@@ -74,8 +79,9 @@ export function answerRoutes(deps: AnswerRouteDeps): HostRoute[] {
 }
 
 /**
- * Answers `item` once with `rawAnswer`, after the item read again: a risky approve goes only with
- * the `digest` of that item and answer, which only the shell's confirmed send carries.
+ * Answers `item` once with `rawAnswer`, after the item read again. With a `digest`, which only the
+ * shell's confirmed send carries, any answer goes only while the item and the answer still give
+ * that digest; without one, an answer that needs the person's yes isn't sent.
  */
 async function answerOnce(
   messaging: WorkspaceMessaging,
@@ -85,8 +91,11 @@ async function answerOnce(
 ): Promise<Outcome> {
   const answer: InboxAnswer | null = readInboxAnswer(rawAnswer);
   if (answer === null) return refused("bad-answer");
-  const found = (await messaging.messaging.listInboxItems()).find((each) => each.id === item);
+  const found = await freshItem(messaging, item, digest !== undefined);
   if (found === undefined) return refused("not-found");
+  // An option the item doesn't offer never reaches the shell's dialog, so no page text does.
+  const unoffered = answer.kind === "option" && offeredOption(found, answer.option) === undefined;
+  if (unoffered && needsConfirmation(found, answer)) return refused("bad-answer");
   if (digest !== undefined && digest !== answerDigest(found, answer)) {
     return { status: 409, kind: "item_changed" };
   }
@@ -98,6 +107,26 @@ async function answerOnce(
     };
   }
   return { status: 200, result: await messaging.messaging.answer(found.id, answer) };
+}
+
+/**
+ * The workspace's item `item`. The sources' local copy can lag behind them: an agent can resubmit
+ * an approval with new variables after a revision request. So for a confirmed send, or an item the
+ * copy holds as anything but `normal`, the host reads every source again first, and the person
+ * confirms, and the source gets, what the source holds now.
+ */
+async function freshItem(
+  messaging: WorkspaceMessaging,
+  item: string,
+  confirmed: boolean,
+): Promise<InboxItem | undefined> {
+  const find = async () =>
+    (await messaging.messaging.listInboxItems()).find((each) => each.id === item);
+  const stored = await find();
+  const normal = stored !== undefined && (stored.risk === undefined || stored.risk === "normal");
+  if (!confirmed && (stored === undefined || normal)) return stored;
+  await messaging.refresh();
+  return find();
 }
 
 function refused(reason: "bad-answer" | "not-found"): Outcome {

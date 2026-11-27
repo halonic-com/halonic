@@ -1,9 +1,16 @@
-import type { AnswerResult, InboxAnswer, InboxItem } from "@halonicjs/ports";
+import type { InboxAnswer, InboxItem } from "@halonicjs/ports";
 import { serverPairingSecretName } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { answerDigest } from "./answer-confirmation.ts";
 import { acme, type Desktop, startDesktop, testKey } from "./desktop-messaging.test-helper.ts";
+import {
+  type AnswerRoute,
+  answered,
+  approve,
+  risky,
+  riskyKinds,
+} from "./risky-answer.test-helper.ts";
 
 let desktop: Desktop | undefined;
 
@@ -12,89 +19,7 @@ afterEach(async () => {
   desktop = undefined;
 });
 
-const answered: AnswerResult = { outcome: "answered", answeredAt: "2026-11-27T10:00:00.000Z" };
-const approve: InboxAnswer = { kind: "option", option: "approve" };
-const accept: InboxAnswer = { kind: "option", option: "accept" };
-
-/** A risky item of the provider's `kind`, as the Paperclip provider maps it, with Approve and Reject. */
-function risky(id: string, question: string, extra: Partial<InboxItem> = {}): InboxItem {
-  return {
-    id,
-    source: "paperclip:halonic",
-    from: { kind: "agent", agent: "paperclip:halonic:agent:ada", name: "Ada" },
-    question,
-    options: [
-      { id: "approve", label: "Approve" },
-      { id: "reject", label: "Reject" },
-    ],
-    kind: "approval",
-    risk: "risky",
-    attachments: [],
-    createdAt: "2026-11-27T09:00:00.000Z",
-    state: { kind: "open" },
-    ...extra,
-  };
-}
-
-/** Every kind of item the Paperclip provider marks risky, and the answer that approves it. */
-const riskyKinds: readonly (readonly [string, InboxItem, InboxAnswer])[] = [
-  [
-    "a new secret's proposal",
-    risky("p-new", "New secret: Acme deploy token", {
-      reach: { agent: "Ada", secret: { name: "Acme deploy token" } },
-    }),
-    approve,
-  ],
-  [
-    "a secret binding's proposal",
-    risky("p-bind", "Give Bo access to a secret", {
-      reach: {
-        agent: "Bo",
-        secret: { name: "Acme deploy token", settingPath: "env.ACME_DEPLOY_TOKEN" },
-      },
-    }),
-    approve,
-  ],
-  [
-    "a hire",
-    risky("hire", "Hire an agent", {
-      reach: {
-        agent: "Iris",
-        adapter: "process",
-        env: [{ name: "ACME_DEPLOY_TOKEN", bindsSecret: true }],
-      },
-    }),
-    approve,
-  ],
-  [
-    "an approval of a type nobody knows",
-    risky("unknown", "Approve grant_agent_permissions"),
-    approve,
-  ],
-  [
-    "an agent's join request",
-    risky("join", "Join request: agent Cy", { reach: { agent: "Cy", adapter: "process" } }),
-    approve,
-  ],
-  ["a budget override", risky("budget", "Raise a budget"), { ...approve, note: "200" }],
-  ["the CEO's strategy", risky("strategy", "Approve the CEO's strategy"), approve],
-  [
-    "a confirmation that runs a tool",
-    risky("tool", "Send the launch mail?", {
-      kind: "question",
-      options: [
-        { id: "accept", label: "Yes" },
-        { id: "reject", label: "No" },
-      ],
-    }),
-    accept,
-  ],
-];
-
-/** The page's answer route, or the shell's confirmed one. */
-type AnswerRoute = "POST /v1/messaging/answer" | "POST /v1/messaging/answer-confirmed";
-
-/** The desktop with its workspace listing `items`, its `answer` a spy. */
+/** The desktop with its workspace listing `items`, its `answer` a spy, closed after the test. */
 async function listing(items: readonly InboxItem[]) {
   const started = await startDesktop();
   desktop = started;

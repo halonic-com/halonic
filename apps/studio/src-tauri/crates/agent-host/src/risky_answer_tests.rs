@@ -123,3 +123,45 @@ fn the_confirmed_body_is_the_pages_body_with_the_digest() {
     );
     assert_eq!(risky.confirmed_body(&json!("not an object")), None);
 }
+
+#[test]
+fn the_question_shows_the_note_sent_with_the_option_under_its_label() {
+    let risky = RiskyAnswer::of(
+        409,
+        &ask(|confirmation| {
+            confirmation["title"] = json!("Raise a budget");
+            confirmation["note"] =
+                json!({ "label": "New limit, in dollars", "text": "21474836.47" });
+            confirmation
+                .as_object_mut()
+                .expect("an object")
+                .remove("reach");
+        }),
+    )
+    .expect("an ask");
+    assert_eq!(
+        risky.question(),
+        "Ada asks: Raise a budget\n\n\
+         New limit, in dollars: 21474836.47\n\n\
+         Halonic sends \"Approve\" only if you approve it here."
+    );
+}
+
+#[test]
+fn the_question_drops_format_characters() {
+    let risky = RiskyAnswer::of(
+        409,
+        &ask(|confirmation| {
+            confirmation["from"] = json!("Ada\u{202E}\u{2066}\u{200B}");
+            confirmation["reach"] = json!({ "agent": "Iris\u{FEFF}\u{E0041}" });
+        }),
+    )
+    .expect("an ask");
+    assert!(
+        risky
+            .question()
+            .starts_with("Ada asks: Hire an agent\n\nAgent: Iris\n"),
+        "{}",
+        risky.question()
+    );
+}

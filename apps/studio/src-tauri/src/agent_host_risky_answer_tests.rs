@@ -11,7 +11,9 @@ use std::sync::{Arc, Mutex};
 use halonic_agent_host::{Answer, find_route};
 use serde_json::{Value, json};
 
-use super::super::risky_answer::send_answer;
+use tauri::Manager;
+
+use super::super::risky_answer::{TestAsk, send_answer};
 use super::{AfterHandshake, FakeHost, HostAnswer, HostRefusal, Seen, Shell, as_json, request};
 
 /// The page's approve of `item`.
@@ -140,4 +142,35 @@ fn the_page_cant_send_a_confirmed_answer() {
     assert!(as_json(&refusal).contains(r#""kind":"unknown_route""#));
     // Refused before anything reached a host: none was even started.
     assert_eq!(shell.starts(), 0);
+}
+
+#[test]
+fn the_page_command_asks_the_shell_before_a_risky_approve() {
+    let fake = FakeHost::serve();
+    let shell = Shell::new(&fake, AfterHandshake::WaitForInput);
+    let asked = Arc::new(Mutex::new(None));
+    let recorded = Arc::clone(&asked);
+    shell.handle().manage(TestAsk(Arc::new(move |question| {
+        *recorded.lock().expect("the question") = Some(question);
+        false
+    })));
+
+    let refusal = request(
+        &shell.handle(),
+        "POST /v1/messaging/answer",
+        Some(approve("risky")),
+    )
+    .expect_err("declined");
+
+    assert_eq!(refusal.kind, "declined");
+    let question = asked.lock().expect("the question").take();
+    assert!(
+        question.is_some_and(|question| question.starts_with("Ada asks: Hire an agent\n")),
+        "the shell asked from the host's copy"
+    );
+    assert_eq!(
+        next_request(&fake),
+        ("POST /v1/messaging/answer".to_owned(), approve("risky"))
+    );
+    assert!(saw_nothing_more(&fake), "no confirmed answer was sent");
 }

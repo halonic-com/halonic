@@ -17,6 +17,11 @@ use tauri::{AppHandle, Runtime};
 use super::{HostAnswer, HostRefusal, paperclip_key, read_answer, send};
 use crate::native_dialogs::ask_to_approve_risky;
 
+/// In tests only, app state that answers the shell's question in place of
+/// the native dialog, so a test goes through `agent_host_request` itself.
+#[cfg(test)]
+pub(super) struct TestAsk(pub(super) std::sync::Arc<dyn Fn(String) -> bool + Send + Sync>);
+
 /// Sends the page's call to `route` with `body`: an inbox answer through
 /// [`send_answer`], with the shell's own dialog, any other call through
 /// `paperclip_key`.
@@ -27,6 +32,14 @@ pub(super) async fn send_for_the_page<R: Runtime>(
 ) -> Result<HostAnswer, HostRefusal> {
     if route.path != ANSWER_PATH {
         return paperclip_key::send_for_the_page(app, route, body).await;
+    }
+    #[cfg(test)]
+    {
+        let test_ask = tauri::Manager::try_state::<TestAsk>(app)
+            .map(|test_ask| std::sync::Arc::clone(&test_ask.0));
+        if let Some(ask) = test_ask {
+            return send_answer(app, route, body, move |question| ask(question)).await;
+        }
     }
     let asking = app.clone();
     send_answer(app, route, body, move |question| {

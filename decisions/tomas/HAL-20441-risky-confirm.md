@@ -17,6 +17,15 @@ sends the answer on a route only the shell can name
   `not-found` rather than sent unchecked. Its tests now list the card they
   answer; every `expect` stays as it was.
 
+After the security review on HAL-20469, only options the provider marks
+with the port's `declines` flag skip the window, never an option an agent
+named `reject`; the window shows the note sent with an approve, such as a
+budget override's new limit; the host reads the sources again before a
+risky item's ask and every confirmed send; and an option the item doesn't
+offer is refused with `bad-answer` before anything is asked.
+`risky-answer-confirm.test.ts` now takes its fixtures from
+`risky-answer.test-helper.ts`; every `expect` in it stays as it was.
+
 The user sees a new confirmation window when they approve a risky item in
 Studio desktop. Rejects and normal items go through as before.
 
