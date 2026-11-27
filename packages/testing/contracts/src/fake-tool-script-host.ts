@@ -18,7 +18,7 @@ export interface FakeToolScriptContext {
   readonly input: ToolScriptData;
   log(line: string): void;
   fail(message: string): never;
-  now(): string;
+  now(): Promise<string>;
   readonly [namespace: string]: unknown;
 }
 
@@ -127,7 +127,7 @@ export class FakeToolScriptHost implements ToolScriptHost {
         run.halt("toolscript.failed", message);
         throw failed;
       },
-      now: this.#now,
+      now: async () => this.#now(),
     });
   }
 }

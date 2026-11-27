@@ -74,7 +74,7 @@ verifies("contracts.fake-tool-script-host", () => {
 
     it("answers ctx.now from the given clock", async () => {
       const scripts = new Map([
-        [await sha256Hex(code), async (ctx: { now(): string }) => ctx.now()],
+        [await sha256Hex(code), async (ctx: { now(): Promise<string> }) => ctx.now()],
       ]);
       const now = () => "2026-11-24T16:00:00.000Z";
       const host = new FakeToolScriptHost({ audience: "user", scripts, now });

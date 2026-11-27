@@ -84,8 +84,11 @@ interface SharedContext<H extends HeaderShape> {
   readonly input: InputsOf<H["inputs"]>;
   /** Adds a capped line to the run's log. Shown as "from the script" (S11). */
   log(message: string): void;
-  /** The time the host says it is, so a test replays exactly (P5). */
-  now(): string;
+  /**
+   * The time the host says it is, so a test replays exactly (P5). It answers
+   * through the host like a capability, so it is async on a real isolate.
+   */
+  now(): Promise<string>;
   /** Stops the run with a reason. */
   fail(reason: string): never;
 }
