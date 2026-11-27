@@ -231,4 +231,15 @@ try {
     Write-Output "Authenticode $status`: $($program.Substring($unpacked.Length + 1))"
     if ($status -ne 'NotSigned' -and $status -ne 'Valid') { throw "$program in the installer: signature is $status" }
   }
+  # The WebView2 bootstrapper ships inside the installer (embedBootstrapper),
+  # which runs it on a PC without WebView2. Unsigned would pass above, so it
+  # must be validly signed by Microsoft here (HAL-20166).
+  $bootstrapper = Get-ChildItem $unpacked -Recurse -File -Filter 'MicrosoftEdgeWebview2Setup.exe' | Select-Object -First 1
+  if (-not $bootstrapper) { throw 'the WebView2 bootstrapper is missing from the installer' }
+  $signature = Get-AuthenticodeSignature -LiteralPath $bootstrapper.FullName
+  $signer = if ($signature.SignerCertificate) { $signature.SignerCertificate.GetNameInfo('SimpleName', $false) } else { '' }
+  if ($signature.Status -ne 'Valid' -or $signer -ne 'Microsoft Corporation') {
+    throw "the WebView2 bootstrapper in the installer: signature is $($signature.Status), signer '$signer'"
+  }
+  Write-Output "$($bootstrapper.Name): Authenticode $($signature.Status), signed by $signer"
 } finally { Remove-Item -Recurse -Force $unpacked, "$unpacked.programs.txt" -ErrorAction SilentlyContinue }
