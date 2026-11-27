@@ -32,11 +32,11 @@ async function stale(context: StepContext, text: string): Promise<StepOutcome> {
 /** The Inbox's stale line, which names the load that failed. */
 const staleLine = "//*[@data-failed]";
 
-/** The seeded card's row in the Inbox's plain List: its box, and its avatar's 60px place. */
+/** The seeded card's row in the Inbox's plain List: its box, and its avatar's 48px place. */
 const cardRow = rowContaining(screenText.strategyApproval.text);
 export const cardRowParts = {
   row: `${cardRow}/*[1]`,
-  picture: `${cardRow}//*[contains(concat(' ', normalize-space(@class), ' '), ' size-15 ')]`,
+  picture: `${cardRow}//*[contains(concat(' ', normalize-space(@class), ' '), ' size-12 ')]`,
 } as const;
 
 /**
@@ -57,7 +57,7 @@ async function backToList(
  * Step 9: the Inbox shows the seeded board card, and Approve answers it. The
  * row shows the card's type; the card shows its title, from a fresh read: no
  * line says the Inbox shows what it read last, over the card or over the list after the answer
- * (HAL-19190). The card's row is exactly 80px high with a 60px avatar (HAL-20558). The click must
+ * (HAL-19190). The card's row is exactly 72px high with a 48px avatar (HAL-20558, HAL-20675). The click must
  * reach the test Paperclip: its API says approved, and the card leaves Needs you.
  */
 export const inboxAnswer: Step = {
@@ -69,6 +69,8 @@ export const inboxAnswer: Step = {
     "paperclip-client.approval-fields",
     "studio.desktop-agent-messaging",
     "kit.plain-row-size",
+    "inbox.header-avatar",
+    "inbox.proposal-page",
   ],
   needs: ["connect-paperclip"],
   run: async (context) => {

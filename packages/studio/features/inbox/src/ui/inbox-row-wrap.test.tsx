@@ -95,6 +95,6 @@ verifies("inbox.proposal-page", () => {
     expect(title?.className).toContain("line-clamp-2");
     expect(title?.className).toContain("leading-5");
     const inside = title?.closest('[role="gridcell"]')?.firstElementChild;
-    expect(inside?.className.split(" ")).toContain("h-18");
+    expect(inside?.className.split(" ")).toContain("h-row");
   });
 });

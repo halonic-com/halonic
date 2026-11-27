@@ -174,8 +174,8 @@ export function button(
 export function drawRow(
   studio: FakeStudio,
   parts: { readonly row: string; readonly picture: string },
-  rowHeight = "80px",
-  pictureHeight = "60px",
+  rowHeight = "72px",
+  pictureHeight = "48px",
 ): void {
   studio.elements.set(parts.row, 1);
   studio.heights.set(parts.row, rowHeight);

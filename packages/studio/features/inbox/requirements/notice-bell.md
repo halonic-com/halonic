@@ -2,7 +2,7 @@
 
 - Status: active
 - Since: unreleased
-- Source: Sofia's proposal on HAL-19491, part (c), approved by the board on 26 Nov; built on HAL-20150
+- Source: Sofia's proposal on HAL-19491, part (c), approved by the board on 26 Nov; built on HAL-20150; the new design's 72px rows and 48px pictures (HAL-20675)
 
 The Inbox shall start every row in Notices with the kit's bell (`KindIcon` `notice`, `kit.avatar-badge`) on the same 48px neutral tile as the marks of Needs you's own items (`inbox.row-marks`), with no badge, since Halonic itself tells. The bell is decoration, hidden from screen readers: the row's title says what happened.
 

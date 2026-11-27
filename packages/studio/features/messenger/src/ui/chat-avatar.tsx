@@ -15,14 +15,15 @@ export type ChatAvatarSize = Extract<AvatarSize, "sidebar" | "header">;
  * and the mask that cuts a 2px gap out of the tile behind around the one in front, so the gap
  * shows whatever the row's fill is (the window's frame, a hovered row, the header's panel).
  * The front tile's centre, seen from the back tile's top left, is at `centre`; its radius plus the
- * gap is `gap`.
+ * gap is `gap`. In a list row the header's 40px pair sits centred in the row's 48px place
+ * (HAL-20675): two 28px tiles at the corners of a 48px square would no longer overlap.
  */
 const pairs = {
-  sidebar: { tile: "row", square: "size-12", centre: 34, gap: 16 },
-  header: { tile: "row", square: "size-10", centre: 26, gap: 16 },
+  sidebar: { tile: "row", square: "size-10", centre: 26, gap: 16, place: "size-12" },
+  header: { tile: "row", square: "size-10", centre: 26, gap: 16, place: undefined },
 } as const satisfies Record<
   ChatAvatarSize,
-  { tile: AvatarSize; square: string; centre: number; gap: number }
+  { tile: AvatarSize; square: string; centre: number; gap: number; place: string | undefined }
 >;
 
 /**
@@ -59,7 +60,7 @@ export function ChatAvatar({
   const cut = `radial-gradient(circle at ${pair.centre}px ${pair.centre}px, transparent ${pair.gap}px, #000 ${pair.gap + 0.5}px)`;
   const mask: CSSProperties = { maskImage: cut, WebkitMaskImage: cut };
   // Left and right, not start and end: the mask's cut is drawn from the left in every direction.
-  return (
+  const square = (
     <span aria-hidden="true" data-channel-picture="" className={`relative shrink-0 ${pair.square}`}>
       <span data-member="behind" className="absolute top-0 left-0 flex" style={mask}>
         <MemberTile agent={members.behind} pictures={pictures} size={pair.tile} />
@@ -67,6 +68,12 @@ export function ChatAvatar({
       <span data-member="front" className="absolute right-0 bottom-0 flex">
         <MemberTile agent={members.front} pictures={pictures} size={pair.tile} />
       </span>
+    </span>
+  );
+  if (pair.place === undefined) return square;
+  return (
+    <span aria-hidden="true" className={`grid shrink-0 place-items-center ${pair.place}`}>
+      {square}
     </span>
   );
 }

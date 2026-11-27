@@ -125,7 +125,7 @@ person, with who asks, the work it came from and Approve and Reject, on the lift
 ## Who asks and what kind
 
 `item-pictures-<light|dark>.png` draws who asks as the picture and the item's kind as its badge, at
-the Inbox row's 60 px, the item header's 40 px and Needs you's 28 px (HAL-19666): made-up agents on
+the Inbox row's 48 px, the item header's 40 px and Needs you's 28 px (HAL-19666): made-up agents on
 their tints, one with a picture, a person's initials, a sender nobody named, and the Inbox's own
 items with no badge. The page draws them with the kit's `Avatar` and `KindIcon`.
 

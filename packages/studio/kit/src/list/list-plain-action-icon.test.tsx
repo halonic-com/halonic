@@ -52,7 +52,7 @@ verifies("kit.list-plain-action-icon", () => {
     const place = action.closest('[data-part="row-action"]');
     const classes = place?.className.split(" ") ?? [];
     expect(classes).toEqual(
-      expect.arrayContaining(["absolute", "end-3", "bg-surface-muted", "opacity-0"]),
+      expect.arrayContaining(["absolute", "end-3", "top-3", "bg-surface-muted", "opacity-0"]),
     );
     expect(classes).toEqual(
       expect.arrayContaining(["group-hover:opacity-100", "group-has-[:focus-visible]:opacity-100"]),

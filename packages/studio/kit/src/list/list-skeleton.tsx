@@ -190,7 +190,7 @@ function skeletonSpacing(look: ListLook): string {
 function skeletonHeight(look: ListLook, phone: boolean): string {
   // A sidebar row is exactly 72px, on a phone too (HAL-20675, `kit.plain-row-size`).
   if (look === "plain") {
-    return "h-18 py-1.5";
+    return "h-row py-1.5";
   }
   // A real row with a meta line: 56px, or at least 64px on a phone.
   return phone ? "min-h-16 py-3" : "min-h-14";

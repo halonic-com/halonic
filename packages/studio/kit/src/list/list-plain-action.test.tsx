@@ -68,6 +68,8 @@ verifies("kit.list-plain-action", () => {
     const { action } = renderPlain([notes(() => undefined)]);
     const classes = action("notes").className.split(" ");
     expect(classes).toEqual(expect.arrayContaining(["opacity-0", "pointer-events-none"]));
+    // On the 72px row's first line (HAL-20675).
+    expect(classes).toContain("top-4");
     expect(classes).toEqual(
       expect.arrayContaining(["group-hover:opacity-100", "group-has-[:focus-visible]:opacity-100"]),
     );

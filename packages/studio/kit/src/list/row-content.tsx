@@ -31,11 +31,11 @@ function heightClasses(phone: boolean, dense: boolean, hasMeta: boolean, wrap: b
 
 /**
  * A `plain` row's height: a sidebar's row, exactly 72px with 6px above and below, on a phone too
- * (HAL-19735, the new design's row on HAL-20675, `kit.plain-row-size`). Its title and meta line fit in the 60px between
- * (`kit.plain-row-fit`), so the height is fixed rather than a minimum: the board's correction on
- * HAL-10 (HAL-20019). A row whose text isn't cut (`wrap`, an error's reason), a part under the
- * meta line or text buttons may need more room, so such a row grows: in a fixed row they would
- * spill over the next one.
+ * (HAL-19735, the new design's row on HAL-20675, `kit.plain-row-size`). Its title and meta line
+ * fit in the 60px between (`kit.plain-row-fit`), so the height is fixed rather than a minimum:
+ * the board's correction on HAL-10 (HAL-20019). A row whose text isn't cut (`wrap`, an error's
+ * reason), a part under the meta line or text buttons may need more room, so such a row grows: in
+ * a fixed row they would spill over the next one.
  */
 function plainHeight(row: AnyListRow): string {
   const grows =
@@ -43,7 +43,7 @@ function plainHeight(row: AnyListRow): string {
     showsError(row) ||
     row.under !== undefined ||
     (row.actions !== undefined && row.actions.length > 0);
-  return grows ? "min-h-18 py-1.5" : "h-18 py-1.5";
+  return grows ? "min-h-row py-1.5" : "h-row py-1.5";
 }
 
 /**

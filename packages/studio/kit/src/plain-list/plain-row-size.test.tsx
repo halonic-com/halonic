@@ -61,8 +61,8 @@ verifies("kit.plain-row-size", () => {
     const [titleLine, line] = [...(button.lastElementChild?.children ?? [])];
 
     // A fixed height, not a minimum: the board measured taller rows in Preview .440 (HAL-20558).
-    expect(classesOf(button)).toEqual(expect.arrayContaining(["h-18", "py-1.5"]));
-    expect(classesOf(button)).not.toContain("min-h-18");
+    expect(classesOf(button)).toEqual(expect.arrayContaining(["h-row", "py-1.5"]));
+    expect(classesOf(button)).not.toContain("min-h-row");
     expect(classesOf(button.firstElementChild)).toContain("size-12");
     expect(classesOf(titleLine?.querySelector("bdi")?.parentElement)).toContain("text-reading");
     expect(classesOf(line?.firstElementChild)).toContain("text-body");
@@ -77,14 +77,14 @@ verifies("kit.plain-row-size", () => {
     const button = container.querySelector("button") as HTMLButtonElement;
 
     expect(classesOf(button)).toEqual(expect.arrayContaining(["min-h-14", "py-3"]));
-    expect(classesOf(button)).not.toContain("min-h-18");
+    expect(classesOf(button)).not.toContain("min-h-row");
     expect(classesOf(button)).not.toContain("py-1.5");
   });
 
   it("draws a plain List's row 72px high with a 48px avatar, a 15px title, a 14px line", () => {
     const { inside, leading, title, meta } = renderListRow(true);
 
-    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-18", "py-1.5"]));
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-row", "py-1.5"]));
     expect(classesOf(leading)).toContain("size-12");
     expect(classesOf(title)).toContain("text-reading");
     expect(classesOf(meta)).toContain("text-body");
@@ -94,7 +94,7 @@ verifies("kit.plain-row-size", () => {
     const { inside, leading, title, meta } = renderListRow(false);
 
     expect(classesOf(inside)).toContain("min-h-14");
-    expect(classesOf(inside)).not.toContain("min-h-18");
+    expect(classesOf(inside)).not.toContain("min-h-row");
     expect(classesOf(leading)).toContain("size-7");
     expect(classesOf(title)).toContain("text-body-strong");
     expect(classesOf(meta)).toContain("text-small");
@@ -121,7 +121,7 @@ verifies("kit.plain-row-size", () => {
   it("keeps a plain List's row 72px on a phone, with its 48px avatar", () => {
     const { inside, leading } = renderListRow(true, true);
 
-    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-18", "py-1.5"]));
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-row", "py-1.5"]));
     expect(classesOf(inside)).not.toContain("min-h-14");
     expect(classesOf(leading)).toContain("size-12");
   });
@@ -144,8 +144,8 @@ verifies("kit.plain-row-size", () => {
     const firstRow = (container: HTMLElement) =>
       container.querySelector('[aria-hidden="true"] > div') as HTMLElement;
 
-    expect(classesOf(firstRow(plainList))).toEqual(expect.arrayContaining(["h-18", "py-1.5"]));
-    expect(classesOf(firstRow(plainList))).not.toContain("min-h-18");
+    expect(classesOf(firstRow(plainList))).toEqual(expect.arrayContaining(["h-row", "py-1.5"]));
+    expect(classesOf(firstRow(plainList))).not.toContain("min-h-row");
     expect(classesOf(firstRow(plainList).firstElementChild)).toContain("size-12");
     expect(classesOf(firstRow(boxed))).toContain("min-h-14");
     expect(classesOf(firstRow(boxed).firstElementChild)).toContain("size-7");

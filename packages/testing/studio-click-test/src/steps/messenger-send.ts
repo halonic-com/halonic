@@ -37,7 +37,7 @@ const pictureWaitMs = 10_000;
  * chat's row and its header show Acme Clicky's picture, which Paperclip gives
  * every agent, not its initials (HAL-19151). On the open chat's filled row,
  * the picture's tile keeps a fill of its own, so its circle shows (HAL-19751). The row is exactly
- * 80px high and its picture 60px (HAL-20558).
+ * 72px high and its picture 48px (HAL-20558, HAL-20675).
  */
 export const messengerSend: Step = {
   id: "messenger-send",

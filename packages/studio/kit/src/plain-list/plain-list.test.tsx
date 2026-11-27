@@ -45,6 +45,10 @@ verifies("kit.plain-list", () => {
     expect(classesOf(lineText)).toContain("text-fg");
     expect(button.querySelector("[data-unread]")?.textContent).toBe("2 unread");
     expect(button.textContent).toContain("2 unread");
+    // The new design's 20px badge, at least as wide as it is high (HAL-20675).
+    expect(classesOf(button.querySelector("[data-unread]") as HTMLElement)).toEqual(
+      expect.arrayContaining(["h-5", "min-w-5", "px-1.5", "rounded-full"]),
+    );
   });
 
   it("draws a read row with a regular title, a muted line and no mark", () => {
