@@ -11,8 +11,9 @@ signal in the shell (`shell.place-new-signal`) and the Inbox's new count (`inbox
 Home's Needs you keeps counting every item that waits (`inbox.count` is unchanged).
 
 `inbox.page` said the place's signal is the Inbox's count, heard as "Inbox, 2 waiting". It now
-says the signal is how many items are new, heard as "Inbox, 2 new, 2 waiting", and that the
-sidebar reads it again when a read mark changes too; its example reads "Inbox, 1 new, 1 waiting".
+says the signal is how many of the Inbox's own items are new (an agent's cards count only on the
+page, until HAL-20250), heard as "Inbox, 2 new, 2 waiting", and that the sidebar reads it again
+when a read mark changes too; its example reads "Inbox, 1 new, 1 waiting".
 
 One existing test changes:
 
