@@ -87,6 +87,27 @@ fn is_frame_exe_takes_only_the_apps_own_frame_in_halonics_folder() {
 }
 
 #[test]
+fn started_as_tells_the_frames_from_halonic_by_the_exes_name() {
+    let folder = ["D:", "Apps", "Halonic"];
+    let named = |name: &str| PathBuf::from(format!("{}\\{name}", folder.join("\\")));
+    assert_eq!(
+        started_as(&named("Halonic Inbox.exe")),
+        Some(FrameApp::Inbox)
+    );
+    assert_eq!(
+        started_as(&named("halonic messenger.EXE")),
+        Some(FrameApp::Messenger)
+    );
+    assert_eq!(
+        started_as(&named("halonic-inbox.exe")),
+        Some(FrameApp::Inbox)
+    );
+    assert_eq!(started_as(&named("Halonic.exe")), None);
+    assert_eq!(started_as(&named("halonic-studio.exe")), None);
+    assert_eq!(started_as(Path::new("")), None);
+}
+
+#[test]
 fn frame_exe_and_main_exe_find_the_files_next_to_each_other() {
     let folder = std::env::temp_dir().join(format!("halonic-app-frame-{}", std::process::id()));
     std::fs::create_dir_all(&folder).expect("a test folder");

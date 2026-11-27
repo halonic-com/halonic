@@ -7,15 +7,9 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
-# One small exe per app (HAL-20468). The installer ships them next to
-# Halonic.exe as `Halonic Inbox.exe` and `Halonic Messenger.exe`.
-[[bin]]
-name = "halonic-inbox"
-path = "src/bin/halonic-inbox.rs"
-
-[[bin]]
-name = "halonic-messenger"
-path = "src/bin/halonic-messenger.rs"
+# No exe of its own: the installer hard-links Halonic.exe as `Halonic
+# Inbox.exe` and `Halonic Messenger.exe`, and Halonic's `main` runs the frame
+# when started under one of those names (HAL-20468, `started_as`).
 
 # The Windows calls need `unsafe`. As in window-app-id, this crate turns the
 # workspace's `unsafe_code = "forbid"` off in its own Cargo.toml, every block

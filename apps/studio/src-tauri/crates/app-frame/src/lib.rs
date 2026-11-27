@@ -78,8 +78,8 @@ impl FrameApp {
         }
     }
 
-    /// The names its frame's exe may have: the installed one, then the one
-    /// Cargo builds (`target/<profile>/`).
+    /// The names its frame's exe may have: the installed one, then one a
+    /// developer links next to the Cargo build (`target/<profile>/`).
     pub fn exe_names(self) -> [&'static str; 2] {
         match self {
             FrameApp::Inbox => ["Halonic Inbox.exe", "halonic-inbox.exe"],
@@ -104,6 +104,21 @@ impl FrameApp {
     pub fn named(name: &str) -> Option<FrameApp> {
         FrameApp::ALL.into_iter().find(|app| app.name() == name)
     }
+}
+
+/// The app whose frame `exe` is, by its file name, or `None` for Halonic
+/// itself. The frames are hard links to Halonic's exe that the installer
+/// makes, so one exe is built and signed, and its name says what to run.
+/// Windows names don't tell case apart, so neither does this. The path is
+/// read as a Windows path on every platform, so the tests run anywhere.
+pub fn started_as(exe: &Path) -> Option<FrameApp> {
+    let path = windows_path(exe);
+    let name = path.rsplit('\\').next()?;
+    FrameApp::ALL.into_iter().find(|app| {
+        app.exe_names()
+            .iter()
+            .any(|expected| expected.to_lowercase() == name)
+    })
 }
 
 /// The frame window a start's `arguments` hand over, or `None` when they
