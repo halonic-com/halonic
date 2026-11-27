@@ -40,8 +40,8 @@ export class RailStore {
         guard("rail.add");
         rejectUnknownEntry(entry, featureId);
         this.rejectTakenEntry(entry, featureId);
-        this.entries.add(featureId, entry);
         checkEntryLabel(entry, featureId);
+        this.entries.add(featureId, entry);
       },
     };
   }

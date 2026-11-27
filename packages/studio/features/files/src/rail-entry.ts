@@ -8,5 +8,8 @@ export const codeRailEntry: RailEntryContribution = {
   label: "Code",
   icon: "code",
   order: 10,
+  holds: ["file"],
+  // Code's page comes with Noah's designs (P5); until then the entry opens nothing.
+  opens: undefined,
   shows: (facts) => facts.kind === "code-folder" || facts.hasCodeFolderInside,
 };

@@ -8,5 +8,20 @@ export const libraryRailEntry: RailEntryContribution = {
   label: "Library",
   icon: "library",
   order: 20,
+  // Agents, Workflows and Routines are sections of Library's list (HAL-20673 rail flows, line 2a).
+  holds: [
+    "library",
+    "agents",
+    "workflows",
+    "routines",
+    "agent",
+    "workflow",
+    "routine",
+    "skill",
+    "knowledge",
+    "collection",
+    "connector",
+  ],
+  opens: "library",
   shows: (facts) => facts.hasItems,
 };

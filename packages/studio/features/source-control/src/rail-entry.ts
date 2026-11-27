@@ -8,5 +8,8 @@ export const changesRailEntry: RailEntryContribution = {
   label: "Changes",
   icon: "changes",
   order: 60,
+  // Pull requests is a section of Changes' list (HAL-20673 rail flows, line 2a).
+  holds: ["changes", "pull-requests"],
+  opens: "changes",
   shows: () => true,
 };

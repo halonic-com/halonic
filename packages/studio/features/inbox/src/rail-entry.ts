@@ -8,5 +8,7 @@ export const inboxRailEntry: RailEntryContribution = {
   label: "Inbox",
   icon: "inbox",
   order: 40,
+  holds: ["inbox"],
+  opens: "inbox",
   shows: (facts) => facts.hasItems || facts.waitingCount > 0,
 };

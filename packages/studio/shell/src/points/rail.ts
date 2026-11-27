@@ -59,6 +59,17 @@ export interface RailEntry extends Ordered {
    * keeps Home first and Settings at the bottom whatever the orders.
    */
   readonly order: number;
+  /**
+   * The tabs the sub-app holds, by the first part of a tab's key: a place such as `library`, or
+   * an item kind such as `agent` for `agent/acme/sorter`. The entry is selected while the active
+   * tab shows one of them (`shell.rail`).
+   */
+  readonly holds: readonly string[];
+  /**
+   * The key of the page a click opens, such as `inbox`, or `undefined` while the sub-app has no
+   * page of its own yet.
+   */
+  readonly opens: string | undefined;
   /** Whether the entry shows for a folder with these facts. */
   shows(facts: FolderFacts): boolean;
 }
@@ -74,6 +85,8 @@ export const homeRailEntry: RailEntry = {
   label: "Home",
   icon: "home",
   order: 0,
+  holds: ["home"],
+  opens: "home",
   shows: () => true,
 };
 
@@ -83,5 +96,8 @@ export const settingsRailEntry: RailEntry = {
   label: "Settings",
   icon: "settings",
   order: 0,
+  // Settings opens a dialog over the page, so no tab is ever in it.
+  holds: [],
+  opens: undefined,
   shows: () => true,
 };

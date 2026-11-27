@@ -22,7 +22,7 @@ function entry(
   order: number,
   shows: (facts: FolderFacts) => boolean = () => true,
 ): RailEntryContribution {
-  return { id, label: id, icon: id, order, shows };
+  return { id, label: id, icon: id, order, holds: [id], opens: id, shows };
 }
 
 function feature(id: string, register: (studio: Studio) => void) {
