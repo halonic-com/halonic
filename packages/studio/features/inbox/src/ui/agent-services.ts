@@ -1,4 +1,4 @@
-import type { AgentMessaging } from "@halonicjs/ports";
+import type { AgentMessaging, ServiceSignIn } from "@halonicjs/ports";
 import {
   ActionCatalogService,
   type RequesterPolicy,
@@ -13,6 +13,7 @@ import {
   AgentMessagingService,
   actionStepsKey,
   serverSessionShellKey,
+  serviceSignInKey,
 } from "@halonicjs/studio-services";
 import type { PlaceViewProps } from "@halonicjs/studio-shell";
 import type { ServerSessionHost } from "./use-action-checks.ts";
@@ -25,6 +26,8 @@ export interface AgentServices {
   readonly actionSteps: ActionSteps | undefined;
   readonly agentConnections: AgentConnections | undefined;
   readonly serverSession: ServerSessionHost;
+  /** Runs a request's sign-in steps; only the desktop app has it. */
+  readonly serviceSignIn: ServiceSignIn | undefined;
 }
 
 /**
@@ -45,5 +48,6 @@ export function agentServicesOf(context: PlaceViewProps["context"]): AgentServic
       settings: services.find(HostSettingsService),
       openSettings: context.openSettings,
     },
+    serviceSignIn: services.find(serviceSignInKey),
   };
 }

@@ -38,7 +38,7 @@ import {
   stepOutcome,
   stoppedOutcome,
 } from "./record-fold.ts";
-import { hasSignIn, type SignInRun, signInRunOf } from "./sign-in-run.ts";
+import { hasSignIn, type SignInRun, signInRunOf, signInSteps } from "./sign-in-run.ts";
 import { endedStage, signInStage } from "./stages.ts";
 import { setsSecret, stepRequest } from "./step-request.ts";
 import type { StepperRunOptions } from "./stepper-run-options.ts";
@@ -305,11 +305,7 @@ export class StepperRun {
   private withSignIn(view: StepperView, stage: StepperStage = { kind: "ready" }): StepperView {
     const signIn = this.signInRun;
     if (signIn === undefined) return { ...view, stage: { kind: "not-available" } };
-    const steps = view.steps.map((step) =>
-      step.action.kind === "sign-in"
-        ? { ...step, outcome: signIn.outcome(step.action.phase, step.outcome) }
-        : step,
-    );
+    const steps = signInSteps(view.steps, signIn);
     return { ...view, steps, stage, serviceSignIn: signIn.panel() };
   }
 

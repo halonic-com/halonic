@@ -13,7 +13,7 @@ import type {
   SignInConnectionRef,
   SignInRevoke,
 } from "@halonicjs/ports";
-import type { ServiceSignInView, StepOutcome, StepperView } from "../stepper-view.ts";
+import type { ServiceSignInView, StepOutcome, StepperView, StepView } from "../stepper-view.ts";
 
 /** What a stepper needs to run a sign-in: Studio's `ServiceSignIn` and the shell's way to open a page. */
 export interface StepperSignIn {
@@ -35,7 +35,7 @@ export const signInRunWords = {
   "no-connection": "This workspace has no such Paperclip connection.",
   "other-host": "The sign-in didn't stay on the connection's own Paperclip address.",
   "already-signed-in":
-    "This connection is already signed in. Disconnect it first to test a new sign-in.",
+    "This connection is already signed in. Disconnect it in Settings › Connections first, then try again.",
   unreachable: "Paperclip couldn't be reached. Try again in a moment.",
   "too-many-sign-ins": "Paperclip has too many sign-ins waiting. Try again in a few minutes.",
   notSignedIn: "Paperclip doesn't accept this connection's key.",
@@ -98,8 +98,12 @@ export class SignInRun {
     };
   }
 
-  /** How a part stands in this window, over what the record says. */
-  outcome(phase: SignInPhase, recorded: StepOutcome): StepOutcome {
+  /**
+   * How a part stands in this window, over what the record says. `tested` is whether the record
+   * has the test part: until it has, a test sign-in's first three parts from an earlier window
+   * count as not done, because closing that window revoked the key they kept.
+   */
+  outcome(phase: SignInPhase, recorded: StepOutcome, tested: boolean): StepOutcome {
     if (this.#done.has(phase)) {
       const signedInAs = this.#account === undefined ? undefined : `Signed in as ${this.#account}.`;
       if (phase === "start") return { kind: "succeeded", result: `Code ${this.#code}` };
@@ -109,10 +113,11 @@ export class SignInRun {
         result: signedInAs === undefined ? undefined : signedInAs + revoked,
       };
     }
+    const keyRevoked = this.#test && !tested && phase !== "test";
     // A part recorded in an earlier window stays done; this window's failure shows otherwise.
-    if (recorded.kind === "succeeded") return recorded;
+    if (recorded.kind === "succeeded" && !keyRevoked) return recorded;
     if (this.#failed?.phase === phase) return { kind: "failed", message: this.#failed.message };
-    return recorded;
+    return keyRevoked ? { kind: "pending" } : recorded;
   }
 
   /** Runs one part; answers the parts the record may keep now, which may be none. */
@@ -242,6 +247,24 @@ export class SignInRun {
     this.#failed = { phase, message };
     return [];
   }
+}
+
+/**
+ * The steps with each sign-in part as `run` has it in this window, over what the record says. A
+ * test sign-in's first three parts count as not done until its test part is recorded.
+ */
+export function signInSteps(steps: readonly StepView[], run: SignInRun): StepView[] {
+  const tested = steps.some(
+    (step) =>
+      step.action.kind === "sign-in" &&
+      step.action.phase === "test" &&
+      step.outcome.kind === "succeeded",
+  );
+  return steps.map((step) =>
+    step.action.kind === "sign-in"
+      ? { ...step, outcome: run.outcome(step.action.phase, step.outcome, tested) }
+      : step,
+  );
 }
 
 /** Whether the request's definition has `sign-in` steps. */

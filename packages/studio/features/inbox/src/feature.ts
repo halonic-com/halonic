@@ -11,6 +11,7 @@ import {
   AgentMessagingService,
   actionStepsKey,
   serverSessionShellKey,
+  serviceSignInKey,
 } from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
@@ -69,6 +70,8 @@ export const inboxFeature = defineFeature({
     // "Run with Claude": the shell that opens a terminal, and Settings › Your server (inbox.run-with-claude).
     serverSessionShellKey,
     HostSettingsService,
+    // The stepper's Paperclip sign-in, in the desktop app (action-steppers.paperclip-sign-in-run).
+    serviceSignInKey,
     // The customer's account page, for **See usage** on a run at a plan limit (inbox.plan-limit-card).
     AccountMenuHostService,
     // The served Studio's next step under an empty Needs you (inbox.home-next-step).

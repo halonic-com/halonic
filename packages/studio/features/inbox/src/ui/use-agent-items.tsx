@@ -117,6 +117,7 @@ function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: 
       steps={checks.steps}
       answer={read.perBlock ? answersPerBlock(card.answer) : card.answer}
       paperclips={checks.paperclips}
+      serviceSignIn={checks.serviceSignIn}
     />
   );
 }

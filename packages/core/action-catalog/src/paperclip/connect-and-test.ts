@@ -40,6 +40,8 @@ export const definition: StepperDefinition<Record<string, string | number>> = {
       manual: {
         url: paperclipPage,
         instructions: [
+          // The request names the host; the connection file is what the user trusts (Julian, HAL-17545).
+          "Check that the address matches the one in **Settings › Connections**.",
           "In Studio, open **Settings › Connections**, find {connection} and click **Sign in**. Studio shows a short code and a 10-minute countdown.",
         ],
       },

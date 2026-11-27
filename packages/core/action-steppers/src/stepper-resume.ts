@@ -20,9 +20,14 @@ export type ResumePlan =
  * recorded as succeeded or skipped isn't run again. Every `input` step before
  * the first step left is asked again, because its value is never kept and a
  * later step may need it. A failed `guided` step runs again: the user redoes
- * it on the page. A sign-in with any part left runs again from its first
- * part, because its key and its code lived only while the stepper was open. A failed API step has no `check` yet to show whether it
+ * it on the page. A failed API step has no `check` yet to show whether it
  * happened, so the stepper stops there rather than repeat it.
+ *
+ * A sign-in with any part left runs again from its first part, because its
+ * code lived only while the stepper was open, unless its `keep` part is
+ * recorded and the sign-in isn't a test (`signInTest`): that key is still in
+ * the keychain, so only the parts left run, and no second key is made. A test
+ * key is revoked when the stepper closes, so a test sign-in starts again.
  *
  * @example
  * planResume(steps, new Map([[1, "succeeded"], [2, "failed"]]));
@@ -31,6 +36,7 @@ export type ResumePlan =
 export function planResume(
   steps: readonly Step[],
   outcomes: ReadonlyMap<number, StepOutcome>,
+  options: { readonly signInTest?: boolean } = {},
 ): ResumePlan {
   const firstLeft = steps.findIndex((step, index) => !isDone(step, outcomes.get(index + 1)));
   if (firstLeft === -1) return { kind: "finished" };
@@ -50,14 +56,22 @@ export function planResume(
     };
   }
 
-  // A sign-in holds its key only while the stepper is open (6.7): if any part is left, it starts again at its first part.
+  // A sign-in's code lives only while the stepper is open (6.7): with any part left, it starts
+  // again at its first part, unless the key it kept is still in the keychain.
   const signInLeft = steps.some(
     (step, index) => step.kind === "sign-in" && !isDone(step, outcomes.get(index + 1)),
   );
+  const keyKept =
+    options.signInTest !== true &&
+    steps.some(
+      (step, index) =>
+        step.kind === "sign-in" && step.phase === "keep" && isDone(step, outcomes.get(index + 1)),
+    );
+  const restartsSignIn = signInLeft && !keyKept;
   const toRun: number[] = [];
   steps.forEach((step, index) => {
     const isInput = step.kind === "input";
-    const isSignIn = signInLeft && step.kind === "sign-in";
+    const isSignIn = restartsSignIn && step.kind === "sign-in";
     const isLeft = index >= firstLeft && !isDone(step, outcomes.get(index + 1));
     if (isInput || isSignIn || isLeft) toRun.push(index + 1);
   });

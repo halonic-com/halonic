@@ -63,6 +63,14 @@ verifies("action-steppers.paperclip-sign-in-review", () => {
         "Waits for your approval, then keeps the key in this computer's keychain",
         "Says who is signed in, and revokes the key of a test sign-in",
       ]);
+      // The address is the connection file's, which the user trusts, not the request's.
+      expect(reviewed.view.touches).toEqual([
+        {
+          kind: "target",
+          service: "Paperclip",
+          target: "paperclip.acme.example, from this workspace's connection file",
+        },
+      ]);
     });
   });
 });

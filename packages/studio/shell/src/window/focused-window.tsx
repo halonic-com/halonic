@@ -4,6 +4,9 @@ import {
   framedPanelClass,
   ModalRegionsProvider,
   NarrowProvider,
+  type OpenExternal,
+  OpenExternalProvider,
+  openInNewTab,
   PresentationProvider,
   ToastRegion,
   ToastStoreProvider,
@@ -253,7 +256,9 @@ export interface MountedFocusedWindow {
 
 /**
  * Draws a {@link FocusedWindow} into an element of the page, in React's strict mode as every Studio
- * page, so `apps/studio` only starts it.
+ * page, so `apps/studio` only starts it. Every outside link in it, and every page its app opens,
+ * such as a sign-in's approval page, opens with `openExternal`: the desktop app's own, or a new
+ * browser tab when it gives none.
  *
  * @example
  * const focused = mountFocusedWindow(root, { shell, app, workspace: undefined, language: "en", openStudio });
@@ -262,12 +267,15 @@ export interface MountedFocusedWindow {
 export function mountFocusedWindow(
   element: Element,
   props: FocusedWindowProps,
+  openExternal: OpenExternal = openInNewTab,
 ): MountedFocusedWindow {
   const root = createRoot(element);
   const render = (shown: FocusedWindowProps) =>
     root.render(
       <StrictMode>
-        <FocusedWindow {...shown} />
+        <OpenExternalProvider openExternal={openExternal}>
+          <FocusedWindow {...shown} />
+        </OpenExternalProvider>
       </StrictMode>,
     );
   render(props);

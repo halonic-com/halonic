@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { TimeStamp, useNarrow } from "@halonicjs/studio-kit";
+import { ExternalLink, TimeStamp, useNarrow } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -250,5 +250,48 @@ verifies("kit.time-stamp", () => {
 
     act(() => chosen.choose(undefined));
     expect(element.querySelector("time")?.textContent).toBe("9:41 AM");
+  });
+});
+
+/** The Acme Inbox with one outside link, as a sign-in's approval page or a docs link. */
+function AcmeLinkInbox() {
+  return <ExternalLink href="https://paperclip.acme.example/approve">Approve</ExternalLink>;
+}
+
+const linkApp: FocusedAppContribution = {
+  id: "inbox",
+  title: "Inbox",
+  view: "AcmeLinkInbox",
+  load: async () => ({ AcmeLinkInbox }),
+  panel: true,
+};
+
+verifies("kit.external-link", () => {
+  it("opens the focused app's outside links with the openExternal the window was mounted with", async () => {
+    const shell = shellWith(linkApp);
+    const services = new MapTarget();
+    shell.services.instantiate(services);
+    const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name: "Acme" });
+    const [app] = shell.contributions.focusedApps.list();
+    if (app === undefined) throw new Error("The Acme Inbox added no focused app.");
+    const opened: string[] = [];
+    const tabs = vi.spyOn(window, "open").mockReturnValue(null);
+    let focused: ReturnType<typeof mountFocusedWindow> | undefined;
+    await act(async () => {
+      focused = mountFocusedWindow(
+        element,
+        { shell, app, workspace, language: "en", openStudio: () => undefined },
+        async (address) => {
+          opened.push(await address);
+        },
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await act(async () => element.querySelector("a")?.click());
+
+    expect(opened).toEqual(["https://paperclip.acme.example/approve"]);
+    expect(tabs).not.toHaveBeenCalled();
+    act(() => focused?.unmount());
   });
 });

@@ -1,4 +1,5 @@
 import type { HostSettings } from "@halonicjs/app";
+import type { ServiceSignIn } from "@halonicjs/ports";
 import {
   type ConnectionsRead,
   type RequesterPolicy,
@@ -44,6 +45,8 @@ export interface ActionChecks {
   readonly steps: ActionSteps;
   readonly paperclips: ConnectionsRead;
   readonly serverSession: ServerSessionChecks;
+  /** Runs a request's sign-in steps; only the desktop app has it. */
+  readonly serviceSignIn?: ServiceSignIn | undefined;
 }
 
 /** What {@link useActionChecks} builds the checks from. */
@@ -53,6 +56,7 @@ export interface ActionCheckParts {
   readonly steps: ActionSteps;
   readonly connections: AgentConnections | undefined;
   readonly serverSession: ServerSessionHost | undefined;
+  readonly serviceSignIn?: ServiceSignIn | undefined;
 }
 
 /** The section of Settings that keeps the user's server. */
@@ -63,7 +67,7 @@ const serverSection = "server-session";
  * Your server change.
  */
 export function useActionChecks(parts: ActionCheckParts): ActionChecks {
-  const { catalog, policy, steps, connections, serverSession } = parts;
+  const { catalog, policy, steps, connections, serverSession, serviceSignIn } = parts;
   const paperclips = useConnectedPaperclips(connections);
   const origins = useRequesterOrigins(connections);
   const server = useServerChoice(serverSession?.settings);
@@ -79,6 +83,7 @@ export function useActionChecks(parts: ActionCheckParts): ActionChecks {
       openSettings: () => openSettings?.(serverSection),
       originOf: (source) => origins.get(source),
     },
+    serviceSignIn,
   };
 }
 

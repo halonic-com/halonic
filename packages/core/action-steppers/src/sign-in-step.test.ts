@@ -104,7 +104,7 @@ verifies("action-steppers.sign-in-step", () => {
       expect(
         manualFormProblems(definitionWith([missing, http, empty, signInSteps[3] as SignInStep])),
       ).toEqual([
-        "paperclip.sign-in-example@1 step 1: an API step needs a manual form",
+        "paperclip.sign-in-example@1 step 1: a sign-in step needs a manual form",
         "paperclip.sign-in-example@1 step 2: the manual form's page must be an https address",
         "paperclip.sign-in-example@1 step 3: the manual form needs at least one instruction",
       ]);

@@ -3,6 +3,7 @@ import {
   type PaperclipConnectionList,
   type PaperclipConnectionRow,
 } from "@halonicjs/adapter-agent-host-client";
+import { serviceKey } from "@halonicjs/app";
 import type {
   ActionAccount,
   ServiceSignIn,
@@ -21,6 +22,12 @@ import {
   type SignInResult,
   signInLimitMs,
 } from "./agent-connections.ts";
+
+/**
+ * The app service the stepper's Paperclip sign-in runs through: a {@link HostServiceSignIn}, only
+ * in the desktop app. Without it, a request with `sign-in` steps can't run, as in a browser.
+ */
+export const serviceSignInKey = serviceKey<ServiceSignIn>("platform.service-sign-in");
 
 /** What {@link HostServiceSignIn} needs. */
 export interface HostServiceSignInOptions {

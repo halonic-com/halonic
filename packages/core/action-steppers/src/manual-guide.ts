@@ -234,7 +234,7 @@ export function manualFormProblems(definition: StepperDefinition): string[] {
     // The type requires `manual`, but a definition built from JSON or with a cast can still lack it.
     const manual: unknown = step.manual;
     if (manual === undefined || manual === null)
-      return [`${where}: an API step needs a manual form`];
+      return [`${where}: ${stepKindName(step)} needs a manual form`];
     if (!step.manual.url.startsWith("https://")) {
       return [`${where}: the manual form's page must be an https address`];
     }
@@ -243,4 +243,9 @@ export function manualFormProblems(definition: StepperDefinition): string[] {
     }
     return [];
   });
+}
+
+/** How a problem names a step that needs a manual form: a sign-in part isn't an API step. */
+function stepKindName(step: Step): string {
+  return step.kind === "sign-in" ? "a sign-in step" : "an API step";
 }

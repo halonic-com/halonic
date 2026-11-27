@@ -14,6 +14,7 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { reviewActionItem } from "../review/action-item-review.ts";
+import { nextStep } from "../stepper-view.ts";
 import { acmeSource } from "../test-support/acme-catalog.test-helper.ts";
 import { allowsAcme } from "../test-support/acme-run.test-helper.ts";
 import {
@@ -242,8 +243,35 @@ verifies("action-steppers.paperclip-sign-in-run", () => {
       } as const;
       expect(await fake.whoAmI(ref)).toBeUndefined();
       const resumed = await open();
-      await runStep(resumed, 1);
+      // The revoked key's parts count as not done, so the reopened screen offers step 1, not 4.
+      expect(nextStep(resumed.current())?.number).toBe(1);
+      expect(outcomes(resumed).slice(0, 3)).toEqual([
+        { kind: "pending" },
+        { kind: "pending" },
+        { kind: "pending" },
+      ]);
+      await runStep(resumed, nextStep(resumed.current())?.number ?? 0);
       expect(outcomes(resumed)[0]).toEqual({ kind: "succeeded", result: "Code acme-code-2" });
+    });
+
+    it("resumes a connect sign-in whose key was kept at step 4, and makes no second key", async () => {
+      const { open, fake } = signInRunOf({ mode: "connect" });
+      const run = await open();
+      await runStep(run, 1);
+      await runStep(run, 2);
+      run.actions.runStep(3);
+      fake.approve("sign-in-1");
+      await run.idle();
+      await run.close();
+      expect(fake.keychain.has("acme")).toBe(true);
+      const resumed = await open();
+      expect(nextStep(resumed.current())?.number).toBe(4);
+      await runStep(resumed, 4);
+      expect(outcomes(resumed)[3]).toEqual({
+        kind: "succeeded",
+        result: "Signed in as Acme Board.",
+      });
+      expect(fake.started).toBe(1);
     });
 
     it("says so when the stepper closes and the kept test key can't be revoked", async () => {

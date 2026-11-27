@@ -78,6 +78,7 @@ export {
   HostServiceSignIn,
   type HostServiceSignInOptions,
   isApprovalPage,
+  serviceSignInKey,
 } from "./host-service-sign-in.ts";
 export { MessageReactionsService } from "./message-reactions.ts";
 export {
