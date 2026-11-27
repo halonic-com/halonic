@@ -3,7 +3,6 @@
 - Task: HAL-19450
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19450 (Julian's review of #6460 asked for this wording)
 - Kind: internal
-- Signature:
 
 ## What changes
 
