@@ -41,7 +41,7 @@ function fakeHost() {
     ...input,
   }));
   const update = vi.fn(async () => ({}));
-  const createComment = vi.fn(async () => ({}));
+  const createComment = vi.fn(async (_task: string, _body: string, _companyId: string) => ({}));
   const requestWakeup = vi.fn(async () => ({}));
   const statuses = new Map<string, string>();
   // A made task by its id, with the status the fake keeps; anything else is the author's task.
