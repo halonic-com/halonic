@@ -47,6 +47,7 @@ export { RunCardReceipt, type RunCardReceiptProps } from "./run-view/card-receip
 export { type RunLogRead, useRunLog } from "./run-view/every-step.tsx";
 export { openModelsOf } from "./run-view/open-models.ts";
 export { type RunEnd, runFailureLine, useRunEnd } from "./run-view/run-end.ts";
+export { RunTitleOnPhone } from "./run-view/run-layout.tsx";
 export { RunView } from "./run-view/run-page.tsx";
 export { RunsList, RunsListService, type RunsListState } from "./runs-list.ts";
 export { cantRunWords } from "./sandbox-cant-run/cant-run-words.ts";
@@ -59,6 +60,8 @@ export {
   type SandboxStart,
   useSandboxStart,
 } from "./sandbox-cant-run/use-sandbox-start.ts";
+// The Runs page's two columns, for the e2e page that photographs them (`runs.list-column`).
+export { RunsAppView } from "./ui/runs-app-view.tsx";
 
 /** One run as the Runs list reads it: its summary. */
 export interface SourcedRun {
