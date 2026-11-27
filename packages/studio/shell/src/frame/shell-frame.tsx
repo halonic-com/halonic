@@ -107,8 +107,9 @@ export interface ShellFrameProps {
 
 /**
  * The Studio window's frame. On the desktop (design direction 2) it has the 40px title bar on the
- * halo, then the framed sidebar the Messenger and the Inbox share (`kit.framed-sidebar`,
- * HAL-19923): the sidebar on the halo, full height, and 8px beside it the framed panel with the
+ * app frame the Messenger and the Inbox have (`bg-app-frame`, HAL-20499), then the framed sidebar
+ * they share (`kit.framed-sidebar`, HAL-19923): the sidebar on the frame, full height, and 8px
+ * beside it the framed panel with the
  * page over the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
  * shows the phone's top bar, the page and the bottom navigation, with no window tabs and no
  * status bar (component specs 15.1, 15.2).
@@ -201,7 +202,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
   return (
     <div
       data-layout={props.presentation}
-      className={`flex h-dvh flex-col text-fg ${desktop ? "bg-halo-frame px-2 pb-2" : "bg-surface"}`}
+      className={`flex h-dvh flex-col text-fg ${desktop ? "bg-app-frame px-2 pb-2" : "bg-surface"}`}
     >
       {desktop ? (
         <header className="flex h-titlebar shrink-0 items-end gap-0.5 ps-1">

@@ -1,6 +1,6 @@
 # settings.appearance-frame-colours
 
-- Status: active
+- Status: retired
 - Since: unreleased
 - Source: HAL-1294 (T11); HAL-6655; req-settings `settings.appearance.frame-colours` (HAL-110); flow-settings 5 (HAL-646); ux-checklists-t4-t5-t11 3.7 and 3.8 (HAL-1185)
 

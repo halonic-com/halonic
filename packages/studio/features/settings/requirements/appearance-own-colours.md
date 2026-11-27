@@ -1,6 +1,6 @@
 # settings.appearance-own-colours
 
-- Status: active
+- Status: retired
 - Since: unreleased
 - Source: HAL-1294 (T11); flow-settings 5 and 10 (HAL-646); g5-frames T11-F14 (HAL-1143); ux-checklists-t4-t5-t11 3.8 (HAL-1185); microcopy 13.1 and 19.8 (HAL-751)
 
