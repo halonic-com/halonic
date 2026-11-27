@@ -3,6 +3,7 @@
 - Approval: HAL-19399 G13, after Noah's house-style check of #6831's follow-up (HAL-20644); a team
   decision on a detail of an approved screen, no board card
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:WtSJ6WCKlOrD4/rFtt/hFjnuu03fAwC8o9oy6vr2LC3V4b36sxyhKvrbxHvofBchaVXP8TjoaEYDnpysXOFBCw==
 
 ## Covers
 
