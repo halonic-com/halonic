@@ -158,7 +158,14 @@ pub fn matches_pin(path: &Path, pin: &PartPin) -> io::Result<bool> {
         return Ok(false);
     }
     let mut hasher = Sha256::new();
-    io::copy(&mut file, &mut hasher)?;
+    let mut buffer = vec![0_u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..read]);
+    }
     Ok(hex(&hasher.finalize()) == pin.sha256)
 }
 
