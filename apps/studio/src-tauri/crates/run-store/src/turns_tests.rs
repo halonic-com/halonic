@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
 use std::thread;
 
-use super::Turns;
+use super::{TurnEnd, Turns};
 
 #[test]
 fn run_store_turns_forget_a_run_once_its_turns_end() {
@@ -60,4 +60,25 @@ fn run_store_turns_forget_a_run_once_overlapping_turns_end() {
         assert_eq!(waiting.join().unwrap(), "second");
     });
     assert_eq!(turns.runs_with_turns(), 0);
+}
+
+#[test]
+fn run_store_turns_forget_a_run_whose_turns_end_together() {
+    // HAL-20427: two turns end at the same moment, so each ends while the
+    // other still holds the run's mutex. `take` drops its mutex only after
+    // its turn has ended; this replays that order without threads.
+    let turns = Turns::default();
+    let lock_file = Path::new("r1.lock");
+    let first = turns.count_turn(lock_file);
+    let second = turns.count_turn(lock_file);
+    drop(TurnEnd {
+        runs: &turns.runs,
+        lock_file,
+    });
+    drop(TurnEnd {
+        runs: &turns.runs,
+        lock_file,
+    });
+    assert_eq!(turns.runs_with_turns(), 0);
+    drop((first, second));
 }
