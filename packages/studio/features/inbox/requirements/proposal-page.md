@@ -46,7 +46,7 @@ When a run proposal is opened from Needs you, the Inbox shall show its title as 
 - Given a window that can't accept or reject,
   when run `01JD8Q`'s proposal opens,
   then it has no Accept or Reject, and its changes end with "Studio can't accept or reject these changes here. To see them and decide, use the desktop app, or run this in a terminal on your computer:" and `halonic proposals show 01JD8Q` with Copy command.
-- Given the row of run `01JD8Q`'s proposal to *Support triage* in the 360 px list,
+- Given the row of run `01JD8Q`'s proposal to *Support triage* in the list column,
   then its title wraps rather than being cut.
-- Given the row "Approve the refund for the Acme order from last week" in the Inbox's 360 px list,
+- Given the row "Approve the refund for the Acme order from last week" in the Inbox's list column,
   then its title takes at most two lines, then is cut, and the row stays 72px high.

@@ -58,7 +58,7 @@ export function InboxPanes({
 }
 
 /** The list column's size beside the open item: 34 % of the page, at most 380 px. */
-export const listColumnClass = "flex w-[34%] max-w-95 shrink-0";
+const listColumnClass = "flex w-[34%] max-w-95 shrink-0";
 
 /**
  * The list's column: 34 % of the page, at most 380 px, beside the card, as the new design's list

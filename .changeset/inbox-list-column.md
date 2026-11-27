@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-Inbox: the list column is 34 % of the window, at most 380px, beside the open item, as in the new design.
+In the Inbox, the list now takes 34 % of the Inbox's width, at most 380px, beside the open item.
