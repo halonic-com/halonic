@@ -24,9 +24,9 @@ use serde::{Deserialize, Serialize};
 /// `gatewayMaxMessageBytes` (65,519).
 pub const GATEWAY_MAX_MESSAGE_BYTES: usize = MAX_MESSAGE_BYTES;
 
-/// The thirteen messages a phone may send (`ports.remote-gateway-protocol`,
-/// message version 4).
-pub const PHONE_MESSAGE_TYPES: [&str; 13] = [
+/// The fourteen messages a phone may send (`ports.remote-gateway-protocol`,
+/// message version 5).
+pub const PHONE_MESSAGE_TYPES: [&str; 14] = [
     "hello",
     "list-sessions",
     "watch",
@@ -37,6 +37,7 @@ pub const PHONE_MESSAGE_TYPES: [&str; 13] = [
     "msg-search",
     MSG_ANSWER,
     "msg-send",
+    "msg-react",
     "msg-watch",
     "msg-unwatch",
     "team-read",
@@ -63,7 +64,7 @@ const fn required(keys: &'static [&'static str]) -> Keys {
 /// `parseGatewayClientMessage` checks them, in [`PHONE_MESSAGE_TYPES`]
 /// order. `msg-read` and `team-read` take a different key set for each
 /// `what`; the host checks which goes with which, so this allows their union.
-const MESSAGE_KEYS: [(&str, Keys); 13] = [
+const MESSAGE_KEYS: [(&str, Keys); 14] = [
     ("hello", required(&["id", "version"])),
     ("list-sessions", required(&["id"])),
     ("watch", required(&["id", "sessionId", "afterSeq"])),
@@ -88,6 +89,12 @@ const MESSAGE_KEYS: [(&str, Keys); 13] = [
             required: &["id", "conversation", "body"],
             optional: &["to"],
         },
+    ),
+    // A reaction isn't an answer and wakes nobody, so it needs no owner
+    // check (message version 5, HAL-20259).
+    (
+        "msg-react",
+        required(&["id", "conversation", "message", "emoji", "on"]),
     ),
     ("msg-watch", required(&["id"])),
     ("msg-unwatch", required(&["id"])),

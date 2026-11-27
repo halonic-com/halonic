@@ -242,3 +242,29 @@ fn phone_tunnel_messages_refuse_other_version_4_types_and_keys() {
         );
     }
 }
+
+/// Message version 5 (HAL-20259): a reaction, and the read of a message's
+/// reactions, pass as plain messages, with no owner check.
+#[test]
+fn phone_tunnel_messages_allow_the_version_5_messages() {
+    let plain = [
+        r#"{"type":"msg-react","id":"x1","conversation":"c1","message":"m1","emoji":"👍","on":true}"#,
+        r#"{"type":"msg-read","id":"r1","what":"reactions","conversation":"c1","cursor":"40"}"#,
+    ];
+    for message in plain {
+        assert_eq!(check_message(message), PLAIN, "{message}");
+    }
+    let refused = [
+        // No `on`.
+        r#"{"type":"msg-react","id":"x1","conversation":"c1","message":"m1","emoji":"👍"}"#,
+        // A key `msg-react` doesn't take.
+        r#"{"type":"msg-react","id":"x1","conversation":"c1","message":"m1","emoji":"👍","on":true,"to":["b"]}"#,
+        // Any key twice.
+        r#"{"type":"msg-react","id":"x1","conversation":"c1","message":"m1","emoji":"👍","on":true,"on":false}"#,
+        r#"{"type":"msg-react","id":"x1","conversation":"c1","message":"m1","message":"m2","emoji":"👍","on":true}"#,
+        r#"{"type":"msg-react","id":"x1","conversation":"c1","message":"m1","emoji":"👍","emoji":"👎","on":true}"#,
+    ];
+    for message in refused {
+        assert_eq!(check_message(message), NOT_ALLOWED, "{message}");
+    }
+}
