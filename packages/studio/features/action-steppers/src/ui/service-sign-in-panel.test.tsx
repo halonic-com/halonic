@@ -40,6 +40,25 @@ verifies("action-steppers.paperclip-sign-in-run", () => {
       expect(panel.textContent).toContain("The time to approve is up.");
     });
 
+    it("keeps the countdown out of the status line and announces only that the time is up", () => {
+      vi.useFakeTimers({ now: startedAt });
+      const expiresAt = new Date(startedAt + 5 * 60 * 1000);
+      const signIn = { code: "acme code", expiresAt, kept: false, account: null };
+      const counting = render(<ServiceSignInPanel signIn={signIn} />);
+      act(() => vi.advanceTimersByTime(1000));
+      expect(counting.textContent).toContain("4:59 left to approve");
+      expect(counting.querySelector('[role="status"]')?.textContent).toBe("");
+      unmountAll();
+
+      const later = startedAt + 6 * 60 * 1000;
+      const expired = render(<ServiceSignInPanel signIn={signIn} now={() => later} />);
+      const status = expired.querySelector('[role="status"]');
+      expect(status?.textContent).toBe(
+        "The time to approve is up. Try the step again for a new code.",
+      );
+      expect(status?.textContent).not.toContain("left to approve");
+    });
+
     it("stops the countdown and says who is signed in once the key is kept", () => {
       const panel = render(
         <ServiceSignInPanel

@@ -251,7 +251,7 @@ export const serviceSignInWords = {
     const shown = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
     return `${shown} left to approve`;
   },
-  timeUp: "The time to approve is up.",
+  timeUp: "The time to approve is up. Try the step again for a new code.",
   signedInAs: (account: string) => `Signed in as ${account}.`,
 } as const;
 
