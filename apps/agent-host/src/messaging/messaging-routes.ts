@@ -1,9 +1,7 @@
 import type { ServerResponse } from "node:http";
 import type { SyncScheduler } from "@halonicjs/host-paperclip-sync";
-import { readInboxAnswer } from "@halonicjs/host-server";
 import {
   type AgentMessaging,
-  type AnswerResult,
   type AttachmentRead,
   reactionEmoji,
   type TeamRunsQuery,
@@ -13,6 +11,7 @@ import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-route
 import type { WorkspaceMayStart } from "../paperclip/workspace-may-start.ts";
 import { type HostRoute, sendError, sendJson } from "../server/host-server.ts";
 import { readCheckedBody } from "../server/json-body.ts";
+import { answerRoutes } from "./answer-routes.ts";
 import type { DesktopMessaging } from "./desktop-messaging.ts";
 import type { ReplyWatch } from "./reply-watch.ts";
 import { serverEngineMessage } from "./server-engine.ts";
@@ -29,10 +28,6 @@ const readBody = s
     text: s.string().max(1024).optional(),
   })
   .strict();
-
-// Any answer the port takes, read as the server engine reads it, so Submit's `answers` and a
-// stepper's `action-result` reach the source too (HAL-19350). Whether it fits the item, the port decides.
-const answerBody = s.object({ workspace, item: id, answer: s.unknown() }).strict();
 
 const sendBody = s
   .object({ workspace, conversation: id, body: s.string().min(1).max(20_000) })
@@ -84,9 +79,10 @@ type ReadBody = Infer<typeof readBody>;
  *
  * - `POST /v1/messaging/read` with `{ list }` (and `conversation` for
  *   `messages`, `text` for `search`) answers `{ items }`.
- * - `POST /v1/messaging/answer` with `{ item, answer }`, any answer the port
- *   takes (an answer it doesn't is refused with `bad-answer`), and
- *   `POST /v1/messaging/send` with `{ conversation, body }` answer
+ * - `POST /v1/messaging/answer` and the shell's `POST /v1/messaging/answer-confirmed`
+ *   answer an inbox item (`answer-routes.ts`): a risky approve waits for the
+ *   person's yes in the shell (`agent-host.risky-answer-confirm`).
+ * - `POST /v1/messaging/send` with `{ conversation, body }` answers
  *   `{ result }`: the source answers or refuses, and offline nothing is kept
  *   to send later. A message sent makes the sync poll every 5 seconds
  *   while its conversation waits for the agent (`agent-host.paperclip-polling`).
@@ -174,15 +170,7 @@ export function messagingRoutes(deps: MessagingRouteDeps): HostRoute[] {
     inWorkspace("/v1/messaging/react", reactBody, async (messaging, body) => ({
       result: await messaging.reactions.react(body.message, body.emoji, body.on),
     })),
-    inWorkspace("/v1/messaging/answer", answerBody, async (messaging, body) => {
-      const answer = readInboxAnswer(body.answer);
-      return {
-        result:
-          answer === null
-            ? ({ outcome: "refused", reason: "bad-answer" } satisfies AnswerResult)
-            : await messaging.messaging.answer(body.item, answer),
-      };
-    }),
+    ...answerRoutes(deps),
     inWorkspace("/v1/messaging/send", sendBody, async (messaging, body) => {
       const result = await messaging.messaging.send(body.conversation, body.body);
       if (result.outcome === "sent") {

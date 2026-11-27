@@ -66,6 +66,8 @@ export class FakePaperclip {
    * answer empty lists, so a whole poll works and fills the local copy (`agent-host.paperclip-sync`).
    */
   servesInbox = false;
+  /** What the secret proposals list answers while {@link FakePaperclip.servesInbox} is set. */
+  secretProposals: unknown[] = [];
   /** The company's open tasks, which the Inbox reads cards on; none unless a test sets them. */
   tasks: unknown[] = [];
   /** Each open task's cards, by task ID. */
@@ -157,7 +159,8 @@ export class FakePaperclip {
     if (path === `${company}/issues`) return this.tasks;
     if (path === `${company}/live-runs`) return this.liveRuns;
     if (path === `${company}/heartbeat-runs`) return this.runs;
-    return this.servesInbox && inboxLists.has(path) ? [] : undefined;
+    if (!this.servesInbox || !inboxLists.has(path)) return undefined;
+    return path.endsWith("/secret-proposals") ? this.secretProposals : [];
   }
 }
 
@@ -213,6 +216,8 @@ export class FakeServer {
   readonly seen: SeenRequest[] = [];
   /** The device token it accepts. */
   token = "acme-device-token-for-tests-only";
+  /** What its inbox list answers. */
+  inboxItems: unknown[] = [];
 
   readonly fetch = async (request: Request): Promise<Response> => {
     const authorization = request.headers.get("authorization");
@@ -227,7 +232,7 @@ export class FakeServer {
     if (path === "/api/messaging/agents") {
       return json({ items: [{ id: "server-cy", source, name: "Cy", activity: "idle" }] });
     }
-    return json({ items: [] });
+    return json({ items: path === "/api/messaging/inbox-items" ? this.inboxItems : [] });
   };
 }
 

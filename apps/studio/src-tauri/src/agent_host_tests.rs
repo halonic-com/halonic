@@ -38,6 +38,14 @@ const WAIT: Duration = Duration::from_secs(20);
 /// The fake host's answer to every sign-in poll: approved, with its key.
 const APPROVED_POLL: &str = r#"{"status":"connected","connection":"acme","address":"https://paperclip.acme.test","company":"company-acme","workspace":"/work/acme","key":"pk-from-the-host"}"#;
 
+/// The fake host's answer to an inbox answer for the item `risky`: the
+/// person's yes is needed, with the host's copy and its digest.
+const RISKY_ASK: &str = r#"{"error":{"kind":"needs_confirmation","message":"Approving this needs your yes."},"confirmation":{"title":"Hire an agent","from":"Ada","option":"Approve","reach":{"agent":"Iris","adapter":"process","env":[{"name":"ACME_DEPLOY_TOKEN","bindsSecret":true}]},"digest":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}}"#;
+
+/// The fake host's answer to any inbox answer it sends on.
+const ANSWERED: &str =
+    r#"{"result":{"outcome":"answered","answeredAt":"2026-11-27T10:00:00.000Z"}}"#;
+
 /// What the fake host saw.
 #[derive(Debug, PartialEq, Eq)]
 enum Seen {
@@ -130,6 +138,12 @@ fn answer(connection: TcpStream, seen: &Sender<Seen>, released: &Mutex<Receiver<
             respond(&mut connection, 200, &connections_list(&body).to_string());
         }
         "/v1/paperclip/key" => respond(&mut connection, 200, r#"{"kept":true}"#),
+        "/v1/messaging/answer" if String::from_utf8_lossy(&body).contains(r#""item":"risky""#) => {
+            respond(&mut connection, 409, RISKY_ASK);
+        }
+        "/v1/messaging/answer" | "/v1/messaging/answer-confirmed" => {
+            respond(&mut connection, 200, ANSWERED);
+        }
         "/v1/sandbox/sessions/blocked" => respond(
             &mut connection,
             404,
@@ -440,3 +454,6 @@ mod paperclip_key;
 
 #[path = "agent_host_paperclip_restore_tests.rs"]
 mod paperclip_restore;
+
+#[path = "agent_host_risky_answer_tests.rs"]
+mod risky_answer;

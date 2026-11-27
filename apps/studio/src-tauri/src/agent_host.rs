@@ -19,7 +19,7 @@ use std::process::Command;
 use std::sync::Mutex;
 use std::time::Duration;
 
-use halonic_agent_host::{AgentHost, Answer, LineSplitter, Method, Route, find_route};
+use halonic_agent_host::{AgentHost, Answer, Method, Route, find_route};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::ipc::Channel;
@@ -54,6 +54,12 @@ mod remote_asks;
 
 #[path = "agent_host_paperclip_key.rs"]
 pub mod paperclip_key;
+
+#[path = "agent_host_risky_answer.rs"]
+mod risky_answer;
+
+#[path = "agent_host_stream_lines.rs"]
+mod stream_lines;
 
 #[path = "agent_host_life.rs"]
 mod life;
@@ -236,7 +242,7 @@ pub async fn agent_host_request<R: Runtime>(
     let route = named_route(&route, Answer::Json)?;
     unfenced_allow::ask_before_allow(&app, route).await?;
     remote_asks::ask_before_remote_save(&app, route, body.as_ref()).await?;
-    paperclip_key::send_for_the_page(&app, route, body).await
+    risky_answer::send_for_the_page(&app, route, body).await
 }
 
 /// Calls a stream route of the host, as the page's stream `stream`. Its
@@ -424,55 +430,11 @@ async fn forward_lines<R: Runtime>(
     mut response: reqwest::Response,
     channel: Channel<StreamMessage>,
 ) {
-    let ending = read_lines(&mut response, &channel).await;
+    let ending = stream_lines::read_lines(&mut response, &channel).await;
     drop(response);
     // The page may have gone; then nobody hears how it ended.
     let _ = channel.send(ending);
     app.state::<AgentHostState>().streams.forget(&key, serial);
-}
-
-/// Sends each line until the stream ends, and answers how it ended.
-async fn read_lines(
-    response: &mut reqwest::Response,
-    channel: &Channel<StreamMessage>,
-) -> StreamMessage {
-    let mut splitter = LineSplitter::new(ANSWER_LIMIT);
-    loop {
-        let chunk = match response.chunk().await {
-            Ok(Some(chunk)) => chunk,
-            Ok(None) => break,
-            Err(_) => return failed("the agent host's stream broke off"),
-        };
-        let Ok(lines) = splitter.push(&chunk) else {
-            return failed("the agent host sent a line longer than the shell reads");
-        };
-        for line in lines {
-            if let Some(ending) = send_line(channel, &line) {
-                return ending;
-            }
-        }
-    }
-    match splitter.finish() {
-        Some(line) => send_line(channel, &line).unwrap_or(StreamMessage::End),
-        None => StreamMessage::End,
-    }
-}
-
-/// Sends one line; answers how the stream ends when it can't go on.
-fn send_line(channel: &Channel<StreamMessage>, line: &[u8]) -> Option<StreamMessage> {
-    let Ok(line) = serde_json::from_slice::<Value>(line) else {
-        return Some(failed("the agent host sent a line that isn't JSON"));
-    };
-    match channel.send(StreamMessage::Line { line }) {
-        Ok(()) => None,
-        Err(_) => Some(failed("the page stopped listening")),
-    }
-}
-
-fn failed(message: &str) -> StreamMessage {
-    StreamMessage::Failed {
-        message: message.to_owned(),
-    }
 }
 
 #[cfg(test)]

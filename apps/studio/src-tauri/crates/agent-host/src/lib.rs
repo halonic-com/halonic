@@ -26,6 +26,7 @@ mod paperclip_restore;
 mod paperclip_routes;
 pub mod parts;
 mod relay;
+mod risky_answer;
 mod route_kinds;
 mod routes;
 mod runtime_status;
@@ -58,8 +59,9 @@ pub use paperclip_keep::{
 };
 pub use paperclip_key_kept::{KeptRefusal, is_connection_name, paperclip_key_kept};
 pub use paperclip_restore::{HandOver, RestoreChecks, RestoreHost, restore_paperclip_keys};
-pub use paperclip_routes::{KEY_HAND_OVER, SIGN_IN_CANCEL, SIGN_IN_CONFIRM};
+pub use paperclip_routes::{ANSWER_CONFIRMED, KEY_HAND_OVER, SIGN_IN_CANCEL, SIGN_IN_CONFIRM};
 use relay::Relay;
+pub use risky_answer::{ANSWER_PATH, RiskyAnswer};
 pub use route_kinds::{Answer, Method, Route};
 pub use routes::find_route;
 pub use runtime_status::{current_runtime, runtime_installed};

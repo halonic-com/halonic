@@ -115,6 +115,14 @@ const SEND_STEP_TITLE: &str = "Send this request?";
 #[cfg(desktop)]
 const SEND_STEP_BUTTON: &str = "Send";
 
+/// The title of the confirmation before a risky inbox answer is sent.
+#[cfg(desktop)]
+const RISKY_ANSWER_TITLE: &str = "Approve this?";
+
+/// The button that sends the risky answer.
+#[cfg(desktop)]
+const RISKY_ANSWER_BUTTON: &str = "Approve";
+
 /// Shows the folder picker; `None` when the person cancels it.
 #[cfg(desktop)]
 pub fn pick_folder<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
@@ -236,6 +244,15 @@ pub fn ask_to_allow_pairing<R: Runtime>(app: &AppHandle<R>) -> bool {
 #[cfg(desktop)]
 pub fn ask_to_send_step<R: Runtime>(app: &AppHandle<R>, question: &str) -> bool {
     ask(app, SEND_STEP_TITLE, question, SEND_STEP_BUTTON)
+}
+
+/// Shows the confirmation before an answer that approves or accepts a risky
+/// inbox item is sent, with the question the shell built from the agent
+/// host's own copy of the item; `true` only when the person presses
+/// Approve, answered as [`ask_to_trust`] answers.
+#[cfg(desktop)]
+pub fn ask_to_approve_risky<R: Runtime>(app: &AppHandle<R>, question: &str) -> bool {
+    ask(app, RISKY_ANSWER_TITLE, question, RISKY_ANSWER_BUTTON)
 }
 
 /// Shows a warning with `yes` and Cancel; `true` only for `yes`.
@@ -365,6 +382,11 @@ pub fn ask_to_allow_risky_remotely<R: Runtime>(_app: &AppHandle<R>) -> bool {
 
 #[cfg(mobile)]
 pub fn ask_to_allow_pairing<R: Runtime>(_app: &AppHandle<R>) -> bool {
+    false
+}
+
+#[cfg(mobile)]
+pub fn ask_to_approve_risky<R: Runtime>(_app: &AppHandle<R>, _question: &str) -> bool {
     false
 }
 
