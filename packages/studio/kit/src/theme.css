@@ -379,6 +379,7 @@
     --color-fg-subtle: light-dark(rgb(16 16 46 / 0.74), rgb(242 242 255 / 0.74));
     --color-border: var(--color-border-control);
     --color-border-strong: var(--color-border-control);
+    --color-border-prompt: var(--color-border-control);
     --shade-edge: var(--color-border-control);
     --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 5px var(--color-accent);
     --focus-ring-inset: inset 0 0 0 3px var(--color-accent);
