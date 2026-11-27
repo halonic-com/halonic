@@ -11,7 +11,14 @@ const replyFile =
 export function setup(
   extra: Pick<
     WorkspaceAgentsParts,
-    "newAgents" | "liveness" | "answerChat" | "detectHarness" | "versionDialog" | "trust" | "hasKey"
+    | "newAgents"
+    | "liveness"
+    | "answerChat"
+    | "detectHarness"
+    | "versionDialog"
+    | "trust"
+    | "hasKey"
+    | "connectorKeys"
   > = {},
 ) {
   const store: Record<string, string> = {

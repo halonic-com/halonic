@@ -15,9 +15,11 @@ import {
   type AgentToolList,
   type AgentToolOption,
   agentToolLists,
+  type ConnectorKeys,
 } from "../api.ts";
 import { useLoad } from "../page/use-load.ts";
 import { configurationWords as words } from "./configuration-words.ts";
+import { AsksFirst, ConnectorKeyLines } from "./connector-parts.tsx";
 
 /** Props for {@link ToolsPage}. */
 export interface ToolsPageProps {
@@ -100,6 +102,7 @@ export function ToolsPage({
           options={ready?.[list]}
           save={(next) => save({ [list]: next })}
           openLibrary={openLibrary && (() => openLibrary(list))}
+          keys={host.connectorKeys}
         />
       ))}
     </div>
@@ -114,22 +117,26 @@ interface ToolListProps {
   readonly options: readonly AgentToolOption[] | undefined;
   readonly save: (next: readonly string[]) => Promise<boolean>;
   readonly openLibrary: (() => void) | undefined;
+  /** For the connectors' secrets; absent where keys can't be changed here. */
+  readonly keys: ConnectorKeys | undefined;
 }
 
 /**
  * One list of the Tools page: a chip per item with its ✕, and the Add picker. An id the hub
  * can't use (a file edited by hand) still shows as a chip, by its id, with a danger edge and a
  * line that says so, and ✕ removes it. While the Library can't be read there is no picker and
- * no such line, as the page can't know an item is missing.
+ * no such line, as the page can't know an item is missing. A connector's chip shows the approval
+ * hand, and its secrets are named under the list (flow-agents 5.2).
  */
-function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
+function ToolList({ list, chosen, options, save, openLibrary, keys }: ToolListProps) {
   const [ids, setIds] = useState(chosen);
   useEffect(() => setIds(chosen), [chosen]);
   const section = useRef<HTMLElement>(null);
   const openLibraryButton = useRef<HTMLButtonElement>(null);
   const headingId = `agent-tools-${list}`;
   const lineIds = useId();
-  const nameOf = (id: string) => options?.find((option) => option.id === id)?.name ?? id;
+  const optionOf = (id: string) => options?.find((option) => option.id === id);
+  const nameOf = (id: string) => optionOf(id)?.name ?? id;
   const missing = (id: string) =>
     options !== undefined && !options.some((option) => option.id === id);
   /** The id of the line that says the hub can't use `id`. */
@@ -177,6 +184,7 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
               }`}
             >
               {nameOf(id)}
+              <AsksFirst withoutAsking={optionOf(id)?.toolsWithoutAsking} />
               <Button
                 variant="ghost"
                 size="sm"
@@ -190,6 +198,7 @@ function ToolList({ list, chosen, options, save, openLibrary }: ToolListProps) {
           ))}
         </ul>
       )}
+      {list === "connectors" && <ConnectorKeyLines chosen={ids} options={options} keys={keys} />}
       {ids.filter(missing).map((id) => (
         <p key={id} id={missingLineId(id)} className="text-small text-danger">
           {words.missingTool[list](id)}

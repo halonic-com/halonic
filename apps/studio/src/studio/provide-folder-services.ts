@@ -275,6 +275,11 @@ export function provideFolderServices(
           .get(ModelKeysService)
           .stored(secret)
           .catch(() => false),
+      // The Tools page's Change key: the connectors' secrets share the keychain with the models'.
+      connectorKeys: {
+        stored: (secret) => services.get(ModelKeysService).stored(secret),
+        change: (secret, key) => services.get(ModelKeysService).save(secret, key),
+      },
       budgetReached: async () => {
         const use = await monthBudget();
         return monthBudgetUsedUp(use) ? monthBudgetLine(use, new Date()) : undefined;

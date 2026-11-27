@@ -12,6 +12,7 @@ import type { AgentHarnessId, HarnessReadiness, HarnessSignIn } from "./harness-
 import type { AliasSummary, MissingModelKey } from "./model-api.ts";
 import type { AgentPlacementState, ThisComputerChoice } from "./placement-api.ts";
 import type { AgentTeamMember } from "./team.ts";
+import type { AgentToolList, AgentToolOption, ConnectorKeysHost } from "./tool-api.ts";
 
 export {
   type AgentHarnessId,
@@ -153,23 +154,13 @@ export interface NewAgentStep {
  */
 export type AgentLiveState = "never-versioned" | "live" | "not-live";
 
-/** The lists of the Tools page: what an agent uses of the Library. */
-export type AgentToolList = "skills" | "knowledge" | "connectors";
-
-/** The Tools page's lists, in the order it shows them. */
-export const agentToolLists: readonly AgentToolList[] = ["skills", "knowledge", "connectors"];
-
-/** A Library item an agent can be given: its id, as the agent's file names it, and its name. */
-export interface AgentToolOption {
-  readonly id: string;
-  readonly name: string;
-  /**
-   * For a connector: how many of its tools can run without a person's approval, by the engine's
-   * rule (the ones `tools.read` marks as only reading); every other tool asks first, so 0 means
-   * every tool does. Absent for a skill or knowledge.
-   */
-  readonly toolsWithoutAsking?: number | undefined;
-}
+export {
+  type AgentToolList,
+  type AgentToolOption,
+  agentToolLists,
+  type ConnectorKeys,
+  type ConnectorKeysHost,
+} from "./tool-api.ts";
 
 /** A change to an agent's settings; a field left out stays as it is. */
 export interface AgentChange {
@@ -284,7 +275,7 @@ export interface SavedChatsPlace {
  * The workspace's agents, as the app reads and changes them. The app saves to the workspace's files
  * itself, so listing and creating work while the engine is stopped.
  */
-export interface AgentsHost {
+export interface AgentsHost extends ConnectorKeysHost {
   /** The hubs an agent can be created in, in the workspace's order. */
   hubs(): readonly AgentHub[];
   /** Every agent in the workspace's hubs. Rejects with the reason it couldn't read them. */

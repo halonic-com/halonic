@@ -81,11 +81,14 @@ export class WorkspaceAgents implements AgentsHost {
   missingModelKey?: NonNullable<AgentsHost["missingModelKey"]>;
   /** Present only where the budget can be read; see {@link AgentsHost.budgetReached}. */
   budgetReached?: NonNullable<AgentsHost["budgetReached"]>;
+  /** Present only where keys can be changed; see {@link AgentsHost.connectorKeys}. */
+  readonly connectorKeys?: NonNullable<AgentsHost["connectorKeys"]>;
 
   constructor(parts: WorkspaceAgentsParts) {
     this.#parts = parts;
-    const { versionDialog, trust, savedChats, hasKey, budgetReached } = parts;
+    const { versionDialog, trust, savedChats, hasKey, budgetReached, connectorKeys } = parts;
     if (savedChats !== undefined) this.savedChats = savedChats;
+    if (connectorKeys !== undefined) this.connectorKeys = connectorKeys;
     if (budgetReached !== undefined) this.budgetReached = budgetReached;
     if (hasKey !== undefined) {
       this.missingModelKey = async (ref) => {
