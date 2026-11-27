@@ -48,6 +48,12 @@ export const webCryptoDigest: Digest = {
  * changed; the store reads them and reports only those whose text differs,
  * leaving out its own writes and removes.
  *
+ * `version()` keeps the text it read for {@link versionTextsMs}, and the
+ * next `read()` of each of those files takes it from there, once: a load
+ * asks for the version, then reads the same files, and each file then
+ * crosses the IPC once (HAL-19964). A write or remove through the store, and
+ * a change its watch hears of, drops the kept text of that file.
+ *
  * With `folder: "review"` the store keeps the workspace's review records
  * instead, in its folder in the profile, as `openWorkspace` asks for
  * `reviewRecords`. Nothing outside Halonic edits them, so that store's watch
@@ -68,20 +74,26 @@ export class TauriDefinitionStore implements DefinitionStore {
   readonly #folder: TauriFileFolder;
   readonly #writes = new KeyedQueue();
   readonly #watches = new Set<DigestWatch>();
+  readonly #now: () => number;
+  /** The texts the last `version()` read, by path, until each is read or they get too old. */
+  #versionTexts = new Map<string, string>();
+  #versionTextsAt = 0;
 
   /**
    * @param shell - the shell's IPC with a way to open channels, built from `window.__TAURI_INTERNALS__`
    * @param workspace - the workspace folder, as the person opened it in the shell
    * @param options.folder - which of the workspace's folders the store keeps: `"workspace"` (the default), `"review"` or `"discarded"`
+   * @param options.now - the clock the kept version texts age by, in ms; `Date.now` by default
    */
   constructor(
     shell: TauriFileShell,
     workspace: string,
-    options: { readonly folder?: TauriFileFolder } = {},
+    options: { readonly folder?: TauriFileFolder; readonly now?: () => number } = {},
   ) {
     this.#shell = shell;
     this.location = workspace;
     this.#folder = options.folder ?? "workspace";
+    this.#now = options.now ?? Date.now;
   }
 
   /**
@@ -111,6 +123,11 @@ export class TauriDefinitionStore implements DefinitionStore {
 
   async read(path: string): Promise<string | null> {
     checkPublicWorkspacePath(path);
+    return this.#takeVersionText(path) ?? (await this.#readFromShell(path));
+  }
+
+  /** The file's text as the shell reads it now, never a kept one. */
+  async #readFromShell(path: string): Promise<string | null> {
     const answer = await this.#call(fileCommands.read, { path });
     if (answer !== null && typeof answer !== "string") {
       throw noAnswer();
@@ -120,6 +137,7 @@ export class TauriDefinitionStore implements DefinitionStore {
 
   async write(path: string, content: string, options: WriteOptions = {}): Promise<WriteResult> {
     checkPublicWorkspacePath(path);
+    this.#versionTexts.delete(path);
     // One write to a path at a time, so the watches know which of their own changes is on disk.
     return await this.#writes.run(path, async () => {
       let result: WriteResult = { status: "written" };
@@ -139,6 +157,7 @@ export class TauriDefinitionStore implements DefinitionStore {
 
   async remove(path: string, options: RemoveOptions = {}): Promise<RemoveResult> {
     checkPublicWorkspacePath(path);
+    this.#versionTexts.delete(path);
     return await this.#writes.run(path, async () => {
       let result: RemoveResult = { status: "removed" };
       // A remove the shell refused as changed on disk left the file alone: the watches still report that change.
@@ -162,18 +181,36 @@ export class TauriDefinitionStore implements DefinitionStore {
    * version in all three.
    */
   async version(options: VersionOptions = {}): Promise<string> {
+    const paths = await this.list(undefined, options);
+    // Read side by side, as a load reads them: one at a time, each IPC call's wait adds up.
+    const texts = await Promise.all(paths.map((path) => this.#readFromShell(path)));
     const parts: string[] = [];
-    for (const path of await this.list(undefined, options)) {
-      const content = await this.read(path);
-      if (content !== null) {
+    const kept = new Map<string, string>();
+    paths.forEach((path, index) => {
+      const content = texts[index];
+      if (typeof content === "string") {
         parts.push(`${path}\n${content}`);
+        kept.set(path, content);
       }
-    }
+    });
+    this.#versionTexts = kept;
+    this.#versionTextsAt = this.#now();
     const digest = await crypto.subtle.digest(
       "SHA-256",
       new TextEncoder().encode(parts.join("\n\0")),
     );
     return `sha256:${bytesToHex(new Uint8Array(digest)).slice(0, 16)}`;
+  }
+
+  /** The text the last `version()` read of `path`, once, while it is fresh; `undefined` otherwise. */
+  #takeVersionText(path: string): string | undefined {
+    if (this.#now() - this.#versionTextsAt > versionTextsMs) {
+      this.#versionTexts.clear();
+      return undefined;
+    }
+    const text = this.#versionTexts.get(path);
+    this.#versionTexts.delete(path);
+    return text;
   }
 
   /**
@@ -187,7 +224,17 @@ export class TauriDefinitionStore implements DefinitionStore {
     // The watch is in `#watches` from before it first reads the workspace until it closes or fails.
     return await ShellWatch.open(
       {
-        files: this,
+        // The watch reads what is on disk now, and a file it hears of may have changed.
+        files: {
+          location: this.location,
+          list: this.list.bind(this),
+          read: async (path) => {
+            checkPublicWorkspacePath(path);
+            this.#versionTexts.delete(path);
+            return await this.#readFromShell(path);
+          },
+          version: this.version.bind(this),
+        },
         digest: webCryptoDigest,
         openWatches: this.#watches,
         events: {
@@ -214,6 +261,12 @@ export class TauriDefinitionStore implements DefinitionStore {
     }
   }
 }
+
+/**
+ * How long, in ms, the texts `version()` read stay for the reads that follow it: long enough for
+ * a load, which lists once in between, and short enough that a later read sees the disk.
+ */
+export const versionTextsMs = 2_000;
 
 /** How a surface should respond to each refusal that isn't a path the port refuses or an unreadable folder. */
 const errorKinds: Readonly<

@@ -64,6 +64,8 @@ export function provideWorkspaceRuns(
     runs: new TauriRunStore(ipc, location),
     definitions: new TauriDefinitionStore(files, location),
     folder: location,
+    // The trust check loaded the files as the folder opened: the runs take that load.
+    loaded: () => trust.loaded,
     onFocus: (listener) => focusOf(window, listener),
     // Looked up on the first answer: the page's engine is provided after the runs.
     send: (...answer) => (remoteEngine ?? services.get(engineServiceKey)).send(...answer),
