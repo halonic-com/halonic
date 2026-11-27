@@ -302,6 +302,21 @@ type_address() {
   fail "the address field never held \"$address\"."
 }
 
+# Taps "Not listed? Enter its address" until the connect screen shows. The
+# picker can still be laying out after "No computers found yet", so a tap can
+# land beside the link and change nothing (HAL-20623); while the link is still
+# on screen, it is tapped again where it is now.
+open_connect_screen() {
+  local link="Not listed? Enter its address" attempt
+  for attempt in 1 2 3; do
+    tap_text "$link"
+    shows_within "Connect to Halonic" 5 && return
+    screen_shows "$link" || break
+    echo "The connect screen didn't open (try $attempt); tapping \"$link\" again."
+  done
+  wait_for_text "Connect to Halonic" 10
+}
+
 # The next minor version after the app's, which the app is too old for.
 IFS=. read -r major minor _ <<<"${app_version%%[-+]*}"
 newer_computer="$major.$((minor + 1)).0"
@@ -323,8 +338,7 @@ launch_app
 wait_for_text "Type a code instead" 60
 tap_text "Type a code instead"
 wait_for_text "No computers found yet" 20
-tap_text "Not listed? Enter its address"
-wait_for_text "Connect to Halonic" 15
+open_connect_screen
 type_address
 if keyboard_shown; then
   fail "the on-screen keyboard is open over the connect screen. Keyboards on: $(adb_ shell ime list -s | tr -d '\r')"
