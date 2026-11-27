@@ -12,7 +12,7 @@ import {
 } from "./test/theme-colours.spec.ts";
 import { lightDarkPair } from "./test/theme-file.spec.ts";
 
-/** Every surface text sits on in the WhatsApp layout: the frame, the sidebar, panels and menus. */
+/** Every surface text sits on in the two-column layout: the frame, the sidebar, panels and menus. */
 const surfaces = [
   "canvas",
   "surface",
@@ -34,13 +34,13 @@ function moreContrastColour(name: string, mode: Mode): Rgba {
   return parseColour(pair[mode]);
 }
 
-verifies("kit.whatsapp-theme", () => {
-  describe("theme.css WhatsApp surfaces", () => {
+verifies("kit.new-design-theme", () => {
+  describe("theme.css new design surfaces", () => {
     it("keeps none of Studio's old blue-violet ink", () => {
       expect(css).not.toMatch(/16 16 46|242 242 255/);
     });
 
-    it("takes WhatsApp's frame, panels and ink in our blue's hue", () => {
+    it("takes the new design's frame, panels and ink in our blue's hue", () => {
       expect(themeTokens.get("--color-canvas")).toBe("light-dark(#f3f5fa, #0a1630)");
       expect(themeTokens.get("--color-app-frame")).toBe("light-dark(#f3f5fa, #0a1630)");
       expect(themeTokens.get("--color-surface")).toBe("light-dark(#ffffff, #060d1d)");
