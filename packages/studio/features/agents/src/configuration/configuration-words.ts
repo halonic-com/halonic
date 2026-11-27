@@ -153,6 +153,8 @@ export const configurationWords = {
     /** The Add chip's box, named like the options' "New option". */
     newSite: "New site",
     removeSite: (site: string) => `Remove ${site}`,
+    /** Under Allowed sites while the list is empty: none means no site (team decision on HAL-20406). */
+    noSites: "None. The agent's program can't reach any site.",
   },
   /**
    * Harness › Where it runs (microcopy 8.5 and 23.4; checklist 3.8). The board approved these

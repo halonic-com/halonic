@@ -54,6 +54,15 @@ async function changeFolder(page: HTMLElement, folder: string, key: "Enter" | "E
   await press(box, key);
 }
 
+const noSitesLine = "None. The agent's program can't reach any site.";
+
+/** Chooses On this computer for Sorter, for its file as it is now. */
+async function chooseThisComputer(host: AgentsHost) {
+  const placement = await host.placement(ref);
+  if (placement === undefined) throw new Error("this host can't choose");
+  await host.chooseThisComputer(ref, placement.fingerprint);
+}
+
 /** Opens Add site, types `site`, presses Enter, then Esc to close the box. */
 async function addSite(page: HTMLElement, site: string) {
   await act(async () => named(page, "Add site")?.click());
@@ -81,6 +90,25 @@ verifies("agents.configuration.sandbox-fields", () => {
     const page = await openHarness(hostWith({}));
     expect(page.textContent).toContain("files/agents/sorter");
     expect(chipsOf(page)).toEqual([]);
+  });
+
+  it("labels both fields like the page's other labels and shows the folder as code", async () => {
+    const page = await openHarness(hostWith({ workingFolder: "files/work/sorter" }));
+    const headings = [...page.querySelectorAll("h2")].filter((heading) =>
+      ["Working folder", "Allowed sites"].includes(heading.textContent ?? ""),
+    );
+    expect(headings).toHaveLength(2);
+    for (const heading of headings) {
+      expect(heading.classList).toContain("text-caption");
+      expect(heading.classList).toContain("text-fg-muted");
+    }
+    const folder = [...page.querySelectorAll("code")].find(
+      (code) => code.textContent === "files/work/sorter",
+    );
+    expect(folder?.classList).toContain("font-mono");
+    expect(folder?.classList).toContain("text-code");
+    await act(async () => buttonNamed(page, "Change…")?.click());
+    expect(named(page, "Working folder")?.classList).toContain("font-mono");
   });
 
   it("saves a changed working folder through the save model and puts Change… back", async () => {
@@ -179,6 +207,55 @@ verifies("agents.configuration.sandbox-fields", () => {
 
     await act(async () => refuseHeldSave());
     expect(chipsOf(page)).toEqual(newer);
+  });
+
+  it("says an empty list of sites means no site, until one is added", async () => {
+    const page = await openHarness(hostWith({}));
+    const line = [...page.querySelectorAll("p")].find((p) => p.textContent === noSitesLine);
+    expect(line).toBeDefined();
+    expect(named(page, "Add site")?.getAttribute("aria-describedby")).toBe(line?.id);
+    await addSite(page, "api.example.com");
+    expect(page.textContent).not.toContain(noSitesLine);
+    expect(named(page, "Add site")?.hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("doesn't say no site once On this computer is confirmed, where the list doesn't apply", async () => {
+    const host = hostWith({});
+    await chooseThisComputer(host);
+    const page = await openHarness(host);
+    expect(page.textContent).toContain("Allowed sites");
+    expect(page.textContent).not.toContain(noSitesLine);
+    expect(named(page, "Add site")?.hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("still says no site while a choice of On this computer is on hold", async () => {
+    const host = hostWith({});
+    await chooseThisComputer(host);
+    await host.update(ref, { workingFolder: "files/out" });
+    expect((await host.placement(ref))?.runsOn).toBe("on-hold");
+    const page = await openHarness(host);
+    expect(page.textContent).toContain(noSitesLine);
+  });
+
+  it("doesn't say no site for Halonic's own loop, which starts no program", async () => {
+    const host = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [{ ...ref, name: "Sorter", harness: "halonic" }],
+    });
+    const page = await openHarness(host);
+    expect(page.textContent).toContain("Allowed sites");
+    expect(page.textContent).not.toContain(noSitesLine);
+  });
+
+  it("doesn't say no site where Studio can't tell where the agent runs", async () => {
+    const host = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [{ ...ref, name: "Sorter", harness: "claude-code" }],
+      placement: false,
+    });
+    const page = await openHarness(host);
+    expect(page.textContent).toContain("Allowed sites");
+    expect(page.textContent).not.toContain(noSitesLine);
   });
 
   it("saves the whole list of sites when one is added or removed", async () => {
