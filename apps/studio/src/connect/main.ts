@@ -1,4 +1,4 @@
-import type { ComputerId } from "@halonicjs/studio-feature-remote/phone";
+import { type ComputerId, openInBrowserTab } from "@halonicjs/studio-feature-remote/phone";
 import { tauriChannelIpc, tauriIpc } from "@halonicjs/studio-services/tauri-ipc";
 import { type ConnectBridge, localAddressStore } from "./bridge.ts";
 import { type PairingScanner, tauriPairingScanner } from "./pair-scan.ts";
@@ -30,7 +30,10 @@ const noScanner: PairingScanner = {
 const noScreens: PhoneScreens = {
   openSettings: () => undefined,
   openTailscale: () => undefined,
-  openLink: () => undefined,
+  // A chat's link opens in a new tab rather than looking tappable and doing nothing (HAL-20070).
+  openLink: (link) => {
+    openInBrowserTab(link, window);
+  },
 };
 
 // Set by the Android shell; missing when the page opens in a browser.

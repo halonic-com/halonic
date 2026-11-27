@@ -63,7 +63,13 @@ export function PhoneChat(props: PhoneChatProps) {
   return (
     <div className="flex grow flex-col">
       <header className="flex min-h-14 items-center gap-2 border-b border-border px-2">
-        <Button variant="ghost" size="touch" icon={<BackIcon />} label="Back" onClick={onBack} />
+        <Button
+          variant="ghost"
+          size="touch"
+          icon={<BackIcon />}
+          label={words.back}
+          onClick={onBack}
+        />
         <h2 className="min-w-0 flex-1 truncate text-heading text-fg">{conversation.title}</h2>
         {members.length > 0 ? (
           <Button variant="ghost" size="touch" onClick={() => setSheet("members")}>
@@ -206,14 +212,19 @@ function MessageBody({
           // Parts never reorder, so the index is the key.
           <span key={index}>{part.text}</span>
         ) : (
-          <button
+          // A real link, so a screen reader says "Link"; the tap goes through `openChecked`.
+          <a
             key={index}
-            type="button"
-            className="break-all text-left text-accent-text underline focus-ring"
-            onClick={() => openChecked(part.link, undefined, onOpenLink)}
+            href={part.link}
+            className="break-all text-accent-text underline focus-ring"
+            onClick={(event) => {
+              event.preventDefault();
+              openChecked(part.link, undefined, onOpenLink);
+            }}
           >
             {part.link}
-          </button>
+            <span className="sr-only">{words.opensInBrowser}</span>
+          </a>
         ),
       )}
     </p>
