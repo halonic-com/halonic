@@ -2,6 +2,7 @@
 import type { InboxItem, InboxQuestion } from "@halonicjs/ports";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { byText, openChat, openMessenger, press, said } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
@@ -44,7 +45,7 @@ const decisions: readonly InboxQuestion[] = [
 ];
 
 /** Acme's Chief with a chat and one card asking `decisions`, open unless `state` says otherwise. */
-function chiefAsks(state?: InboxItem["state"]) {
+function chiefAsks(state?: InboxItem["state"], questions = decisions) {
   const clock = { now: new Date(2026, 10, 24, 10, 0) };
   const messaging = new FakeAgentMessaging({ now: () => clock.now });
   const acme = messaging.addSource({ label: "Paperclip · Acme" });
@@ -55,7 +56,7 @@ function chiefAsks(state?: InboxItem["state"]) {
     question: "Three open decisions",
     from: { kind: "agent", agent: chief.id, name: "Chief" },
     options: [],
-    questions: decisions,
+    questions,
     ...(state === undefined ? {} : { state }),
   });
   return { messaging, clock, card };
@@ -143,5 +144,35 @@ verifies("messenger.question-cards", () => {
       await press(page.querySelector("[data-cards-bar] button"));
       expect(document.activeElement).toBe(option(page, "Separate repo"));
     });
+  });
+});
+
+verifies("kit.question-form-written", () => {
+  it("sends what is written for a free-text option as the answer's text", async () => {
+    const [repo] = decisions;
+    if (repo === undefined) throw new Error("the fixture asks a question");
+    const fork = { id: "fork", label: "A fork of…", freeText: true };
+    const { messaging, card } = chiefAsks(undefined, [
+      { ...repo, options: [...repo.options, fork] },
+    ]);
+    const answer = vi.spyOn(messaging, "answer");
+    const page = await openMessenger(messaging);
+    await openChat(page, "Chief");
+
+    await press(option(page, "A fork of…"));
+    const field = page.querySelector<HTMLTextAreaElement>("main fieldset textarea");
+    if (field === null) throw new Error("no Your answer field");
+    await act(async () => {
+      const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+      setValue?.call(field, "acme/app");
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await press(submit(page));
+
+    expect(answer).toHaveBeenCalledWith(card.id, {
+      kind: "answers",
+      answers: [{ question: "repo", options: ["fork"], text: "acme/app" }],
+    });
+    expect(said(page)).toBe("Answered: A fork of…, acme/app.");
   });
 });

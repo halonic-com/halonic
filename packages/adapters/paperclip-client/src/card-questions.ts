@@ -1,6 +1,7 @@
 // Paperclip's `ask_user_questions` cards that ask several questions, or one
-// answered with several options (requirement `paperclip-client.question-cards`).
-// A card with one single-select question stays a plain item with `options`.
+// answered with several options or in writing (requirement
+// `paperclip-client.question-cards`). A card with one single-select question
+// and no written answer stays a plain item with `options`.
 import {
   type InboxItemOption,
   type InboxQuestion,
@@ -11,27 +12,34 @@ import {
 } from "@halonicjs/ports";
 import { asList, asRecords, field, type JsonRecord, text } from "./json.ts";
 
-/** The options one question of a card offers, skipping any without an ID or a label. */
+/**
+ * The options one question of a card offers, skipping any without an ID or a label. One that
+ * Paperclip marks `freeText: true` keeps `freeText`.
+ */
 export function questionOptions(question: JsonRecord | undefined): InboxItemOption[] {
   return asRecords(field(question, "options"))
     .slice(0, inboxQuestionOptionsMax)
     .flatMap((option) => {
       const id = text(option, "id");
       const label = text(option, "label");
-      return id === undefined || label === undefined ? [] : [{ id, label }];
+      if (id === undefined || label === undefined) {
+        return [];
+      }
+      return field(option, "freeText") === true ? [{ id, label, freeText: true }] : [{ id, label }];
     });
 }
 
 /**
  * The questions of an `ask_user_questions` card's payload, or `undefined` when
- * it asks one single-select question (or none), which stays in `options`.
- * A question without an ID is skipped, since no answer could name it; one
- * whose `required` is missing is required.
+ * it asks one single-select question with no written answer (or none), which
+ * stays in `options`. A question without an ID is skipped, since no answer
+ * could name it; one whose `required` is missing is required; one with
+ * `allowOther: true` keeps `allowOther`.
  */
 export function cardQuestions(payload: JsonRecord | undefined): InboxQuestion[] | undefined {
   const records = asRecords(field(payload, "questions"));
-  const multiple = records.some(isMultiSelect);
-  if (records.length < 2 && !multiple) {
+  const asksMore = records.some((record) => isMultiSelect(record) || takesWriting(record));
+  if (records.length < 2 && !asksMore) {
     return undefined;
   }
   return records.slice(0, inboxQuestionsMax).flatMap((record) => {
@@ -42,7 +50,8 @@ export function cardQuestions(payload: JsonRecord | undefined): InboxQuestion[] 
     const selection = isMultiSelect(record) ? "multiple" : "single";
     const prompt = text(record, "prompt") ?? "";
     const required = field(record, "required") !== false;
-    return [{ id, prompt, selection, options: questionOptions(record), required }];
+    const asked = { id, prompt, selection, options: questionOptions(record), required } as const;
+    return [field(record, "allowOther") === true ? { ...asked, allowOther: true } : asked];
   });
 }
 
@@ -50,6 +59,14 @@ export function cardQuestions(payload: JsonRecord | undefined): InboxQuestion[] 
 // in 2026.1117.0); anything else is single-select, as Paperclip reads it.
 function isMultiSelect(question: JsonRecord): boolean {
   return text(question, "selectionMode") === "multi";
+}
+
+// A plain item's options have no text field, so a question answered in writing asks `questions`.
+function takesWriting(question: JsonRecord): boolean {
+  return (
+    field(question, "allowOther") === true ||
+    asRecords(field(question, "options")).some((option) => field(option, "freeText") === true)
+  );
 }
 
 /** An answered card's `answers` result as an `answers` answer: every question's options, and its written text. */

@@ -1,14 +1,21 @@
 import { useId, useState } from "react";
 import { Button } from "../button/button.tsx";
 import { Checkbox } from "../checkbox/checkbox.tsx";
+import { Field } from "../field/field.tsx";
+import { TextArea } from "../input/text-area.tsx";
 import { RadioGroup, type RadioOption } from "../radio/radio-group.tsx";
 import { type MarkdownInline, readMarkdown } from "../text/markdown.ts";
 import { calendarDay } from "../text/waiting-time.ts";
 import {
   everyRequiredPicked,
   type FormAnswer,
+  type FormPicks,
   type FormQuestion,
   formAnswers,
+  otherChoice,
+  picksFrom,
+  toggledChoice,
+  writesIn,
 } from "./question-answers.ts";
 
 /** The words the form shows. */
@@ -22,6 +29,10 @@ export const questionFormWords = {
   clear: "Clear answer",
   /** What screen readers hear for it: which question it clears. */
   clearName: (prompt: string) => `Clear answer to ${prompt}`,
+  /** The extra choice of a question that allows an answer of the person's own. */
+  other: "Other",
+  /** The label of the text field under a picked "Other" or free-text choice. */
+  yourAnswer: "Your answer",
 } as const;
 
 /** The props of `QuestionForm`. */
@@ -47,12 +58,14 @@ export interface QuestionFormProps {
   readonly unavailable?: { readonly reason: string } | undefined;
 }
 
-type Picked = ReadonlyMap<string, ReadonlySet<string>>;
+type ReadOnly = { readonly reason: string } | undefined;
 
 /**
  * A card's questions as a form: each prompt a `fieldset` and `legend`, its options radios for a
  * `single` question and checkboxes for a `multiple` one, then **Submit**, off until every required
- * question has a pick. An optional `single` question's pick can be taken back with **Clear
+ * question has a pick. A question with `allowOther` adds an **Other** choice; picking it, or an
+ * option with `freeText`, shows a **Your answer** field under the choices, which Submit sends as
+ * the answer's `text` and which must not be blank. An optional `single` question's pick can be taken back with **Clear
  * answer**. Once `answered`, the picks stay ticked, every control is off and greyed,
  * and "Answered 24 Nov" takes Submit's place.
  *
@@ -66,15 +79,18 @@ export function QuestionForm({
   busy = false,
   unavailable,
 }: QuestionFormProps) {
-  const [picking, setPicking] = useState<Picked>(new Map());
+  const [picking, setPicking] = useState<FormPicks>({ picked: new Map(), written: new Map() });
   const answeredId = useId();
   const hintId = useId();
-  const picked = answered === undefined ? picking : pickedFrom(answered.answers);
+  const picks = answered === undefined ? picking : picksFrom(questions, answered.answers);
   const readOnly = answered === undefined ? undefined : { reason: answered.reason ?? answeredId };
-  const ready = everyRequiredPicked(questions, picked);
+  const ready = everyRequiredPicked(questions, picks);
 
   const pick = (question: string, options: ReadonlySet<string>) => {
-    setPicking((before) => new Map(before).set(question, options));
+    setPicking((before) => ({ ...before, picked: new Map(before.picked).set(question, options) }));
+  };
+  const write = (question: string, text: string) => {
+    setPicking((before) => ({ ...before, written: new Map(before.written).set(question, text) }));
   };
 
   return (
@@ -84,7 +100,7 @@ export function QuestionForm({
       onSubmit={(event) => {
         event.preventDefault();
         if (ready && answered === undefined && unavailable === undefined && !busy) {
-          onSubmit(formAnswers(questions, picked));
+          onSubmit(formAnswers(questions, picks));
         }
       }}
     >
@@ -92,9 +108,11 @@ export function QuestionForm({
         <QuestionFieldset
           key={question.id}
           question={question}
-          chosen={picked.get(question.id) ?? new Set()}
+          chosen={picks.picked.get(question.id) ?? new Set()}
+          written={picks.written.get(question.id) ?? ""}
           readOnly={readOnly}
           onPick={(options) => pick(question.id, options)}
+          onWrite={(text) => write(question.id, text)}
         />
       ))}
       {answered === undefined ? null : <AnsweredLine id={answeredId} answered={answered} />}
@@ -135,17 +153,24 @@ function AnsweredLine({
   );
 }
 
-/** One question: its prompt as the legend, then a radio or a checkbox per option. */
+/**
+ * One question: its prompt as the legend, then a radio or a checkbox per option, and "Other" when
+ * it allows one. A picked written-text choice shows the Your answer field under them.
+ */
 function QuestionFieldset({
   question,
   chosen,
+  written,
   readOnly,
   onPick,
+  onWrite,
 }: {
   readonly question: FormQuestion;
   readonly chosen: ReadonlySet<string>;
-  readonly readOnly: { readonly reason: string } | undefined;
+  readonly written: string;
+  readonly readOnly: ReadOnly;
   readonly onPick: (options: ReadonlySet<string>) => void;
+  readonly onWrite: (text: string) => void;
 }) {
   return (
     // On a phone or touch screen the rows are tall enough on their own, as in the radio stack.
@@ -162,17 +187,27 @@ function QuestionFieldset({
       {question.selection === "single" ? (
         <SingleChoice question={question} chosen={chosen} readOnly={readOnly} onPick={onPick} />
       ) : (
-        question.options.map((option) => (
+        choices(question).map((choice) => (
           <Checkbox
-            key={option.id}
-            checked={chosen.has(option.id)}
+            key={choice.id}
+            checked={chosen.has(choice.id)}
             unavailable={readOnly}
-            onChange={(on) => onPick(toggled(chosen, option.id, on))}
+            onChange={(on) => onPick(toggledChoice(question, chosen, choice.id, on))}
           >
-            {option.label}
+            {choice.label}
           </Checkbox>
         ))
       )}
+      {writesIn(question, chosen) ? (
+        <Field label={questionFormWords.yourAnswer}>
+          <TextArea
+            value={written}
+            disabled={readOnly !== undefined}
+            {...(readOnly === undefined ? {} : { describedBy: readOnly.reason })}
+            onChange={(event) => onWrite(event.target.value)}
+          />
+        </Field>
+      ) : null}
     </fieldset>
   );
 }
@@ -189,7 +224,7 @@ function SingleChoice({
 }: {
   readonly question: FormQuestion;
   readonly chosen: ReadonlySet<string>;
-  readonly readOnly: { readonly reason: string } | undefined;
+  readonly readOnly: ReadOnly;
   readonly onPick: (options: ReadonlySet<string>) => void;
 }) {
   const prompt = promptText(question.prompt);
@@ -200,14 +235,14 @@ function SingleChoice({
         label={prompt}
         value={[...chosen][0] ?? null}
         onChange={(option) => onPick(new Set([option]))}
-        options={question.options.map(
-          (option): RadioOption =>
+        options={choices(question).map(
+          (choice): RadioOption =>
             readOnly === undefined
-              ? { value: option.id, label: option.label }
+              ? { value: choice.id, label: choice.label }
               : // An answered card's radios are native `disabled`, described by the answered line.
                 {
-                  value: option.id,
-                  label: option.label,
+                  value: choice.id,
+                  label: choice.label,
                   unavailable: true,
                   note: null,
                   reason: readOnly.reason,
@@ -237,15 +272,12 @@ function SingleChoice({
   );
 }
 
-function pickedFrom(answers: readonly FormAnswer[]): Picked {
-  return new Map(answers.map((each) => [each.question, new Set(each.options)]));
-}
-
-function toggled(chosen: ReadonlySet<string>, option: string, on: boolean): ReadonlySet<string> {
-  const next = new Set(chosen);
-  if (on) next.add(option);
-  else next.delete(option);
-  return next;
+/** A question's options, then "Other" when it allows one. */
+function choices(
+  question: FormQuestion,
+): readonly { readonly id: string; readonly label: string }[] {
+  if (question.allowOther !== true) return question.options;
+  return [...question.options, { id: otherChoice, label: questionFormWords.other }];
 }
 
 /**
