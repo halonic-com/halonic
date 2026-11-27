@@ -9,7 +9,7 @@ import { ModelKeysService } from "@halonicjs/studio-feature-models/api";
 import { RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import type { KeyboardPlatform } from "@halonicjs/studio-shell";
 import { loadWorkspace } from "@halonicjs/workspace";
-import type { RemoteEngine } from "../engine/remote-engine.ts";
+import type { LateEngine } from "../engine/late-engine.ts";
 import { halonicVersion } from "../studio/open-trusts.ts";
 import { aboutHalonic } from "../studio/start-watch.ts";
 import { googleSetupFacts } from "./google-setups.ts";
@@ -25,8 +25,8 @@ export interface CheckComputerParts {
   readonly platform: KeyboardPlatform;
   /** The agent host, which runs the checks that need Node; `undefined` outside the desktop shell. */
   readonly transport: AgentHostTransport | undefined;
-  /** The background engine, when the shell runs one for the folder. */
-  readonly remoteEngine: RemoteEngine | undefined;
+  /** The engine that runs the folder: the background engine, once the shell answered, when it runs one. */
+  readonly engine: Pick<LateEngine, "background">;
 }
 
 /**
@@ -36,7 +36,7 @@ export interface CheckComputerParts {
  * the CLI agree on which providers the aliases use.
  */
 export function provideCheckComputer(services: ServiceRegistry, parts: CheckComputerParts): void {
-  const { files, location, name, transport, remoteEngine } = parts;
+  const { files, location, name, transport, engine } = parts;
   const workspace = () => loadWorkspace(new TauriDefinitionStore(files, location));
   const sample = services.get(SampleWorkspaceService);
   const keys = services.get(ModelKeysService);
@@ -48,7 +48,7 @@ export function provideCheckComputer(services: ServiceRegistry, parts: CheckComp
       about: aboutHalonic(halonicVersion, parts.platform),
       isDemo: () => sample.isSample(),
       // Without a background engine the page runs its own, which is there while the window is.
-      engineAnswers: async () => (remoteEngine === undefined ? true : remoteEngine.answers()),
+      engineAnswers: async () => (await engine.background())?.answers() ?? true,
       hostDoctor:
         transport === undefined ? undefined : () => new AgentHostDoctor(transport).doctor(location),
       readModels: async () => {

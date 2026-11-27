@@ -65,6 +65,13 @@ export interface ShellEngine {
    */
   supervise(launcher: EngineLauncher): EngineSupervisor;
   /**
+   * Says the engine is `starting` until `ready` settles, then `connected`: a workspace shows from
+   * its files while the shell still opens its engine (HAL-19965). Only the newest call settles the
+   * state, so a workspace opened after another keeps saying it waits. Does nothing while the shell
+   * follows an executor or supervises an engine, which say the state themselves.
+   */
+  startingUntil(ready: Promise<unknown>): void;
+  /**
    * Listens to `engine.connection`, sent once for each change of state.
    * Returns a function that stops listening.
    */
@@ -91,6 +98,8 @@ export function createShellEngine(
   let answered = false;
   let stale = false;
   const slot = new FollowSlot();
+  // The open `startingUntil` waits on; an older one that settles later changes nothing.
+  let waitingFor: Promise<unknown> | undefined;
   const listeners = new Set<EngineConnectionListener>();
 
   const change = (next: EngineConnectionEvent): void => {
@@ -148,6 +157,17 @@ export function createShellEngine(
         stop,
       };
     },
+    startingUntil(ready) {
+      if (slot.taken) return;
+      waitingFor = ready;
+      change({ state: "starting", attempt: 1, since: timers.now() });
+      const settle = () => {
+        if (waitingFor !== ready || slot.taken) return;
+        waitingFor = undefined;
+        change({ state: "connected" });
+      };
+      ready.then(settle, settle);
+    },
     on(_event, listener) {
       listeners.add(listener);
       return () => {
@@ -190,6 +210,11 @@ class FollowSlot {
     };
     this.stopFollowing = stop;
     return stop;
+  }
+
+  /** Whether an executor or an engine holds the slot now. */
+  get taken(): boolean {
+    return this.stopFollowing !== undefined;
   }
 
   /** Whether `stop` is the one that holds the slot now. */

@@ -8,6 +8,7 @@ import type { RunExecutor } from "@halonicjs/ports";
 import type { RefusalsFeed } from "@halonicjs/studio-feature-library/api";
 import { EngineNotAnswering, isUntrustedRefusal } from "@halonicjs/studio-shell";
 import type { EngineService } from "./engine-service.ts";
+import { LateEngine } from "./late-engine.ts";
 import { RemoteEngine } from "./remote-engine.ts";
 
 /** Opens the executor a chat's turns go to, or throws why nothing may start now. */
@@ -18,11 +19,13 @@ export type OpenChatExecutor = () => Promise<Pick<RunExecutor, "chatTurn">>;
  * check a start passes, so it is refused as `denied` before any model turn when the workspace may
  * start nothing now. On the background engine, each turn is the engine's `POST /api/chat-turn`,
  * which checks trust and the turn's model settings itself and refuses a workspace that isn't
- * trusted as `WorkspaceUntrusted`, as the page's engine does.
+ * trusted as `WorkspaceUntrusted`, as the page's engine does. On a {@link LateEngine}, each answer
+ * first waits until the engine that runs it is chosen.
  */
 export function chatExecutorOf(
-  engine: Pick<EngineService, "openForStart"> | RemoteEngine,
+  engine: Pick<EngineService, "openForStart"> | RemoteEngine | LateEngine,
 ): OpenChatExecutor {
+  if (engine instanceof LateEngine) return async () => chatExecutorOf(await engine.chosen())();
   if (engine instanceof RemoteEngine) return async () => engine.chats;
   return async () => (await engine.openForStart()).executor;
 }
