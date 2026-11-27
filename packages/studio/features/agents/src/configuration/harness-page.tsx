@@ -11,6 +11,7 @@ import { ReviewMark } from "../review/review-marks.tsx";
 import { configurationWords as words } from "./configuration-words.ts";
 import { type HarnessCheck, harnessSetupPages, harnessStrip } from "./harness-strip.ts";
 import { HarnessStripCallout } from "./harness-strip-callout.tsx";
+import { SandboxFields } from "./sandbox-fields.tsx";
 import { useHarnessCheck } from "./use-harness-check.ts";
 import { WhereItRuns } from "./where-it-runs.tsx";
 
@@ -89,7 +90,8 @@ function useFocusFollowsCheckAgain(
 /**
  * The Harness page (`agents.configuration.harness`): which program the agent runs in, with what
  * the host found of each on this computer under its option, and one strip when the chosen one
- * can't run. The choice saves at once, and goes back to the saved one when the save fails.
+ * can't run, then Where it runs and the agent's working folder and allowed sites. The choice saves
+ * at once, and goes back to the saved one when the save fails.
  */
 export function HarnessPage({ host, settings, save }: HarnessPageProps) {
   const [harness, setHarness] = useState(settings.harness);
@@ -153,6 +155,9 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
       </ReviewMark>
       <div className="mt-6">
         <WhereItRuns host={host} settings={settings} />
+      </div>
+      <div className="mt-6">
+        <SandboxFields settings={settings} save={save} />
       </div>
     </div>
   );

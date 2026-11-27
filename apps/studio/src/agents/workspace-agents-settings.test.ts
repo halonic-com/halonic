@@ -87,3 +87,45 @@ verifies("studio.workspace-agents-params", () => {
     });
   });
 });
+
+verifies("studio.workspace-agents-sandbox-fields", () => {
+  describe("WorkspaceAgents working folder and allowed sites", () => {
+    it("reads and saves the working folder and allowed sites in place", async () => {
+      const { host, store } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      const path = "hubs/acme/agents/writer.agent.yaml";
+      const before = await host.settings(ref);
+      expect(before.workingFolder).toBe("files/agents/writer");
+      expect(before.allowedSites).toEqual([]);
+
+      await host.update(ref, {
+        workingFolder: "files/out",
+        allowedSites: ["registry.npmjs.org", "*.example.com"],
+      });
+      expect(store[path]).toContain("description: Drafts replies.");
+      const after = await host.settings(ref);
+      expect(after.workingFolder).toBe("files/out");
+      expect(after.allowedSites).toEqual(["registry.npmjs.org", "*.example.com"]);
+    });
+
+    it("refuses a folder or site the sandbox can't give and writes nothing", async () => {
+      const { host, changes } = setup();
+      const ref = { hubId: "acme", id: "writer" };
+      await expect(host.update(ref, { workingFolder: ".git/hooks" })).rejects.toMatchObject({
+        kind: "invalid_input",
+        message: expect.stringContaining("'.git'"),
+      });
+      for (const site of ["localhost", "https://example.com"]) {
+        await expect(host.update(ref, { allowedSites: [site] })).rejects.toMatchObject({
+          kind: "invalid_input",
+          message: "Enter a site like registry.npmjs.org.",
+        });
+      }
+      const tooMany = Array.from({ length: 51 }, (_, index) => `s${index}.example.com`);
+      await expect(host.update(ref, { allowedSites: tooMany })).rejects.toMatchObject({
+        kind: "invalid_input",
+      });
+      expect(changes).toHaveLength(0);
+    });
+  });
+});

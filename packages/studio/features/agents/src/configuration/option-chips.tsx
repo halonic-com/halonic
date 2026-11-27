@@ -2,6 +2,26 @@ import { Button, CloseIcon, Input, PlusIcon } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, type Ref, useEffect, useRef, useState } from "react";
 import { configurationWords as words } from "./configuration-words.ts";
 
+/** What a chip list says on its Add chip, its box and each ✕. */
+export interface ChipWords {
+  /** On the Add chip: "Add". */
+  readonly add: string;
+  /** The Add chip's name for screen readers, which starts with what it shows: "Add option". */
+  readonly addName: string;
+  /** The box's name: "New option". */
+  readonly newItem: string;
+  /** Each ✕'s name: "Remove reply". */
+  readonly remove: (item: string) => string;
+}
+
+/** The words of the options of "One of a list" (checklist 2.4 and 2.9). */
+const optionWords: ChipWords = {
+  add: words.addOption,
+  addName: words.addOptionName,
+  newItem: words.newOption,
+  remove: words.removeOption,
+};
+
 /** Props for {@link OptionChips}. */
 export interface OptionChipsProps {
   /** The list's name for screen readers: "One of a list". */
@@ -10,6 +30,8 @@ export interface OptionChipsProps {
   readonly onChange: (next: readonly string[]) => void;
   /** The `id` of the error line under the list, while it has one. */
   readonly describedBy?: string | undefined;
+  /** What the list says; the options' words when left out. */
+  readonly chipWords?: ChipWords | undefined;
 }
 
 const chipClasses =
@@ -19,11 +41,17 @@ const addChipClasses =
   "inline-flex h-7 items-center gap-1 rounded-full border border-dashed border-accent px-3 text-body text-accent hover:bg-accent-soft focus-ring";
 
 /**
- * The options of "One of a list" as a chip list (UX checklist 2.9): a chip per option with its ✕,
- * then the dashed Add chip, which opens a box for the next option. After a remove, focus goes to
- * the next chip's ✕, else the Add chip.
+ * A chip list (UX checklist 2.9), such as the options of "One of a list": a chip per option with
+ * its ✕, then the dashed Add chip, which opens a box for the next option. After a remove, focus
+ * goes to the next chip's ✕, else the Add chip.
  */
-export function OptionChips({ label, options, onChange, describedBy }: OptionChipsProps) {
+export function OptionChips({
+  label,
+  options,
+  onChange,
+  describedBy,
+  chipWords = optionWords,
+}: OptionChipsProps) {
   const list = useRef<HTMLUListElement>(null);
   const addChip = useRef<HTMLButtonElement>(null);
   const [adding, setAdding] = useState(false);
@@ -53,7 +81,7 @@ export function OptionChips({ label, options, onChange, describedBy }: OptionChi
                 variant="ghost"
                 size="sm"
                 icon={<CloseIcon />}
-                label={words.removeOption(option)}
+                label={chipWords.remove(option)}
                 onClick={() => remove(index)}
               />
             </li>
@@ -68,9 +96,15 @@ export function OptionChips({ label, options, onChange, describedBy }: OptionChi
           leave={() => setAdding(false)}
           cancel={cancel}
           describedBy={describedBy}
+          name={chipWords.newItem}
         />
       ) : (
-        <AddChip ref={addChip} describedBy={describedBy} open={() => setAdding(true)} />
+        <AddChip
+          ref={addChip}
+          describedBy={describedBy}
+          chipWords={chipWords}
+          open={() => setAdding(true)}
+        />
       )}
     </div>
   );
@@ -79,24 +113,25 @@ export function OptionChips({ label, options, onChange, describedBy }: OptionChi
 interface AddChipProps {
   readonly ref: Ref<HTMLButtonElement>;
   readonly describedBy: string | undefined;
+  readonly chipWords: ChipWords;
   readonly open: () => void;
 }
 
 /** The last chip, dashed and in accent text: it opens the box for a new option. */
-function AddChip({ ref, describedBy, open }: AddChipProps) {
+function AddChip({ ref, describedBy, chipWords, open }: AddChipProps) {
   return (
     <button
       ref={ref}
       type="button"
       className={addChipClasses}
-      aria-label={words.addOptionName}
+      aria-label={chipWords.addName}
       aria-describedby={describedBy}
       onClick={open}
     >
       <span className="inline-grid size-icon-sm *:size-full">
         <PlusIcon />
       </span>
-      {words.addOption}
+      {chipWords.add}
     </button>
   );
 }
@@ -109,13 +144,15 @@ interface AddOptionBoxProps {
   /** The person pressed Esc. */
   readonly cancel: () => void;
   readonly describedBy: string | undefined;
+  /** The box's name for screen readers: "New option". */
+  readonly name: string;
 }
 
 /**
  * The Add chip's box, focused when it opens. Enter adds the option and keeps the box open for one
  * more; leaving the box adds what was typed and closes it; Esc closes it without adding.
  */
-function AddOptionBox({ add, leave, cancel, describedBy }: AddOptionBoxProps) {
+function AddOptionBox({ add, leave, cancel, describedBy, name }: AddOptionBoxProps) {
   const box = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState("");
   // The blur that closing the box on Esc may cause must not add what was typed.
@@ -149,7 +186,7 @@ function AddOptionBox({ add, leave, cancel, describedBy }: AddOptionBoxProps) {
       <Input
         ref={box}
         size="sm"
-        aria-label={words.newOption}
+        aria-label={name}
         {...(describedBy === undefined ? {} : { describedBy })}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}

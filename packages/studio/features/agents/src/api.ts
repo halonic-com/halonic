@@ -105,6 +105,10 @@ export interface AgentSettings extends AgentListing {
   readonly params: AgentModelParams;
   /** The program the agent runs in; `halonic` when its file names none. */
   readonly harness: AgentHarnessId;
+  /** The one workspace folder a harness program writes to; `files/agents/<id>` when its file names none. */
+  readonly workingFolder: string;
+  /** The sites a harness program may reach besides Halonic, in the file's order; none when it names none. */
+  readonly allowedSites: readonly string[];
   /** The ids of the skills it uses, in the file's order. */
   readonly skills: readonly string[];
   /** The ids of the knowledge sources it searches, in the file's order. */
@@ -178,6 +182,10 @@ export interface AgentChange {
   readonly params?: AgentModelParamsChange | undefined;
   /** The program the agent runs in. */
   readonly harness?: AgentHarnessId | undefined;
+  /** The working folder, a path in the workspace; the host refuses one the sandbox can't give. */
+  readonly workingFolder?: string | undefined;
+  /** The whole list of allowed sites; the host refuses one that isn't a host name. */
+  readonly allowedSites?: readonly string[] | undefined;
   /** The whole list of skill ids. */
   readonly skills?: readonly string[] | undefined;
   /** The whole list of knowledge source ids. */

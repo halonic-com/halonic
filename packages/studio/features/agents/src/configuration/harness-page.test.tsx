@@ -59,6 +59,8 @@ function Switchable({ host }: { host: Parameters<typeof HarnessPage>[0]["host"] 
     id,
     name: id,
     harness: "codex",
+    workingFolder: `files/agents/${id}`,
+    allowedSites: [],
     instructions: "",
     output: { type: "text" },
     maxSteps: 6,
