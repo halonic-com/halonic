@@ -1,7 +1,4 @@
-import type {
-  ConnectedPaperclip,
-  StepperView,
-} from "@halonicjs/studio-feature-action-steppers/api";
+import type { ConnectionsRead, StepperView } from "@halonicjs/studio-feature-action-steppers/api";
 import {
   type ActionItem,
   ActionStepper,
@@ -11,7 +8,7 @@ import {
   useStepperRun,
 } from "@halonicjs/studio-feature-action-steppers/api";
 import type { ActionSteps } from "@halonicjs/studio-services";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
 import { FailedLine, failureDetailOf } from "./card-parts.tsx";
 
@@ -24,8 +21,11 @@ export interface ActionItemCardProps extends AgentItemCardProps {
   readonly policy: RequesterPolicy;
   /** Runs the request's steps with the user's sign-in; in a browser it runs nothing. */
   readonly steps: ActionSteps;
-  /** The Paperclips the user connected: a Paperclip request runs only on one whose key this computer holds. */
-  readonly paperclips: readonly ConnectedPaperclip[];
+  /**
+   * The connections as this window read them: a Paperclip request runs only on one whose key this
+   * computer holds, and waits in review mode while they are still being read.
+   */
+  readonly paperclips: ConnectionsRead;
 }
 
 /**
@@ -66,7 +66,7 @@ interface ActionRunProps {
   readonly catalog: StepperCatalog;
   readonly policy: RequesterPolicy;
   readonly steps: ActionSteps;
-  readonly paperclips: readonly ConnectedPaperclip[];
+  readonly paperclips: ConnectionsRead;
 }
 
 /** The stepper of one open request, run until it ends; an item answered elsewhere shows as answered. */
@@ -86,6 +86,15 @@ function ActionRun({ reviewed, card, catalog, policy, steps, paperclips }: Actio
     now,
     paperclips: paperclipsNow,
   });
+  // A request that waited for the connections checks again once they are read, in the same card,
+  // so the stepper's heading keeps the focus (`action-steppers.paperclip-host`).
+  const { recheck } = run;
+  const loading = paperclips.kind === "loading";
+  const waited = useRef(loading);
+  useEffect(() => {
+    if (waited.current && !loading) recheck();
+    waited.current = loading;
+  }, [loading, recheck]);
   const stage = run.view.stage.kind;
   // Ended here, the stepper keeps saying how; answered by someone else, the card says by whom.
   // It was already open, so its title doesn't take the focus: its line may have, as the stepper went.

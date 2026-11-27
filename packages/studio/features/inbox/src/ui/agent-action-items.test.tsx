@@ -98,7 +98,9 @@ verifies("inbox.agent-action-items", () => {
       });
       const root = await openAction(messaging, allowsAcme);
       const normal = card(root, "The release of acme/app is ready.");
-      expect(normal.textContent).toContain("This card has a stepper Halonic can't read:");
+      expect(normal.querySelector("p.text-body-strong")?.textContent).toBe(
+        "Halonic can't run this card's stepper:",
+      );
       // The quoted name is set in code type, not shown with its backticks.
       expect(normal.textContent).toContain("github.delete-repo@1 isn't in this Halonic's catalog");
       expect(normal.textContent).not.toContain("`");

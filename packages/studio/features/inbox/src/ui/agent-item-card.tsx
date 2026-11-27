@@ -370,14 +370,14 @@ interface CannotRunProps {
 }
 
 /**
- * An action request Halonic can't read: the reasons as plain text, never Markdown, and **Decline**,
+ * An action request Halonic can't run: the reasons as plain text, never Markdown, and **Decline**,
  * so the agent hears it won't run. Nothing here can run it. Without reasons it shows nothing.
  */
 function CannotRun({ reasons, unavailable, busy, onDecline }: CannotRunProps) {
   if (reasons.length === 0) return null;
   return (
     <>
-      <Callout tone="attention" title="This card has a stepper Halonic can't read:">
+      <Callout tone="attention" title="Halonic can't run this card's stepper:">
         <ul className="list-disc pl-5">
           {reasons.map((reason) => (
             <li key={reason} className="wrap-break-word">

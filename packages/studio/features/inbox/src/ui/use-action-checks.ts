@@ -1,6 +1,6 @@
 import type { HostSettings } from "@halonicjs/app";
 import {
-  type ConnectedPaperclip,
+  type ConnectionsRead,
   type RequesterPolicy,
   type ServerChoice,
   type ServerSessionShell,
@@ -42,7 +42,7 @@ export interface ActionChecks {
   readonly catalog: StepperCatalog;
   readonly policy: RequesterPolicy;
   readonly steps: ActionSteps;
-  readonly paperclips: readonly ConnectedPaperclip[];
+  readonly paperclips: ConnectionsRead;
   readonly serverSession: ServerSessionChecks;
 }
 
