@@ -3,6 +3,7 @@
 - Task: HAL-19756
 - Approval: the board approved the rounder, prominent style of Sofia's sketches (HAL-19142) for the Messenger box, the Ctrl+K search, Quick ask and the Studio chat on HAL-19132 (https://paperclip.halonic.com/HAL/issues/HAL-19132), 26 Nov 13:24 UTC.
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:Yuso+4327KcvEffykinsOquoBD8rCl0Fma7hIJtv+44pXFHpUDPNtGmz200LAlzjIfQzFCHWajzHaMswNpflCw==
 
 ## What changes
 
