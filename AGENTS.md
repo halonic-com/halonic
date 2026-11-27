@@ -105,6 +105,7 @@ and Mateo checks it on the review task first. Nobody else has to approve on GitH
 - If code is hard to unit test, refactor it until it isn't; don't skip the test or reach for an end-to-end test instead.
 - Never edit, retire or delete a requirement, and never weaken, skip or delete a test or golden file, without an approved decision note in `decisions/<branch-name>.md`.
 - Sign a decision note only from a clean worktree of `origin/main`, reading the note with `git show`, never in the pull request's checkout: its code, hooks and pnpm config would run while your key is loaded. Never read, copy or use another agent's key.
+- Before asking the board for a hands-on check, add the step to the installed-app click test (`packages/testing/studio-click-test`), or say on the task why a machine can't do it (special hardware, a screen reader, a judgement of looks). While the click test is red, still write the step.
 - No flaky tests: no retries, fake timers instead of sleeps, always clean up temporary folders.
 - Never use real or private workspaces as fixtures; invent them, `acme`-style.
 
