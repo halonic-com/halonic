@@ -59,23 +59,28 @@ async function runOf(updatedAt: () => string, expectations?: InboxActionRequest[
   const item = actionItem(
     expectations === undefined ? request : { ...request, expect: expectations },
   );
-  const review = reviewActionItem(item, acmeSource, { catalog, policy: allowsAcme, now: clock });
-  if (review.kind !== "stepper") throw new Error(`unreadable: ${review.reasons.join("; ")}`);
-  const run = new StepperRun(review.view, {
-    item,
-    source: acmeSource,
-    catalog,
-    policy: allowsAcme,
-    steps,
-    answer,
-    now: () => clock,
-  });
-  await run.open();
+  /** Opens the request in a new stepper over the same record, as a later window does. */
+  const open = async (): Promise<StepperRun> => {
+    const review = reviewActionItem(item, acmeSource, { catalog, policy: allowsAcme, now: clock });
+    if (review.kind !== "stepper") throw new Error(`unreadable: ${review.reasons.join("; ")}`);
+    const opened = new StepperRun(review.view, {
+      item,
+      source: acmeSource,
+      catalog,
+      policy: allowsAcme,
+      steps,
+      answer,
+      now: () => clock,
+    });
+    await opened.open();
+    return opened;
+  };
+  const run = await open();
   /** Moves the clock on, as the user takes their time on GitHub's page. */
   const later = () => {
     clock = checkedAt;
   };
-  return { fake, records, answers, run, later };
+  return { fake, records, answers, run, later, open };
 }
 
 /** Opens GitHub's page at 09:00, says it's done, and runs the check at 09:05. */
@@ -249,6 +254,59 @@ verifies("action-steppers.changed-after-start-run", () => {
 });
 
 verifies("action-steppers.changed-after-start-run", () => {
+  describe("a secret's check when the request is opened again", () => {
+    it("still fails a time from before the page opened, and sends no answer", async () => {
+      const { answers, run, later, open } = await runOf(() => "2026-11-26T18:30:05Z");
+      await saveAndCheck(run, later);
+      const again = await open();
+      expect(answers).toEqual([]);
+      expect(again.current().stage).toEqual({ kind: "ready" });
+      expect(outcomes(again)).toEqual([
+        { kind: "succeeded" },
+        { kind: "failed", message: "It hasn't changed since this stepper opened." },
+      ]);
+    });
+
+    it("shows step 1 to do again when it was marked done by hand without opening it", async () => {
+      const { fake, answers, run, open } = await runOf(() => "2026-11-27T09:03:41Z");
+      run.actions.markDoneByHand(1);
+      await run.idle();
+      run.actions.runStep(2);
+      await run.idle();
+      const again = await open();
+      expect(fake.opened).toEqual([]);
+      expect(answers).toEqual([]);
+      expect(outcomes(again)).toEqual([
+        { kind: "pending" },
+        { kind: "failed", message: "Open the page from this stepper first, then check again." },
+      ]);
+    });
+
+    it("offers that page only once the user has signed in to GitHub again", async () => {
+      const { fake, answers, run, later, open } = await runOf(() => "2026-11-27T09:03:41Z");
+      run.actions.markDoneByHand(1);
+      await run.idle();
+      run.actions.runStep(2);
+      await run.idle();
+      await fake.signOut("github");
+      const again = await open();
+      expect(again.current().stage.kind).toBe("sign-in");
+      expect(outcomes(again)).toEqual([
+        { kind: "succeeded" },
+        { kind: "failed", message: "Open the page from this stepper first, then check again." },
+      ]);
+      again.actions.signIn();
+      await again.idle();
+      expect(again.current().stage).toEqual({ kind: "ready" });
+      expect(outcomes(again)[0]).toEqual({ kind: "pending" });
+      await saveAndCheck(again, later);
+      expect(fake.opened).toEqual([secretsPage]);
+      expect(answers[0]).toMatchObject({ outcome: "succeeded" });
+    });
+  });
+});
+
+verifies("action-steppers.changed-after-start-run", () => {
   describe("the start a check is judged against", () => {
     const at = (time: string) => `2026-11-27T${time}Z`;
     const base = { request: "paperclip:acme/item-1" };
@@ -272,6 +330,27 @@ verifies("action-steppers.changed-after-start-run", () => {
       expect(check.get(2)).toEqual({
         message: "It hasn't changed since this stepper opened.",
         reopen: undefined,
+      });
+    });
+
+    it("has no start, and offers the page again, when the shell refused its only opening", () => {
+      const check = unchangedChecks(definition, [
+        { ...base, type: "action.step.started", at: at("09:00:00"), step: 1 },
+        { ...base, type: "action.step.failed", at: at("09:00:00"), step: 1, failure: "refused" },
+        { ...base, type: "action.step.succeeded", at: at("09:04:00"), step: 1, kept: {} },
+        { ...base, type: "action.step.started", at: at("09:05:00"), step: 2 },
+        {
+          ...base,
+          type: "action.step.succeeded",
+          at: at("09:05:00"),
+          step: 2,
+          status: 200,
+          kept: { name: "DEPLOY_TOKEN", updated_at: at("09:03:00") },
+        },
+      ]);
+      expect(check.get(2)).toEqual({
+        message: "Open the page from this stepper first, then check again.",
+        reopen: 1,
       });
     });
   });
