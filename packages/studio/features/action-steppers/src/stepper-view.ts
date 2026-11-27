@@ -127,10 +127,20 @@ export type StepperSignIn =
       readonly permissions: readonly string[];
     };
 
+/** One value the request expected that its check read differently today. */
+export interface StepperChange {
+  readonly name: string;
+  /** What the requester saw when they asked. */
+  readonly expected: string | number | boolean;
+  /** What the check read today, or `undefined` when it read nothing for that name. */
+  readonly current: string | number | boolean | null | undefined;
+}
+
 /**
  * What the screen as a whole shows besides the request. `ready` is the review and the run, step
  * by step; the others say why nothing (more) can run. `blocked` is a request the user's requester
- * policy doesn't let run (HAL-17491 6.5).
+ * policy doesn't let run (HAL-17491 6.5). `changed` is a request whose check read a state other
+ * than the one the requester saw, so none of its later steps runs (HAL-17491 6.2).
  */
 export type StepperStage =
   | { readonly kind: "ready" }
@@ -141,6 +151,13 @@ export type StepperStage =
   | { readonly kind: "not-available" }
   | { readonly kind: "desktop-only" }
   | { readonly kind: "blocked" }
+  | {
+      readonly kind: "changed";
+      /** "This changed since the request: …", naming the changed values, never quoting them. */
+      readonly message: string;
+      /** Each changed value, which the screen shows apart from the sentence, as data. */
+      readonly changes: readonly StepperChange[];
+    }
   | { readonly kind: "finished" };
 
 /** One action request as the stepper shows it. */
@@ -176,7 +193,10 @@ export interface StepperActions {
   readonly openPage: (address: string) => void;
   /** The user says a browser step is done, with what they pasted back, if it asks for anything. */
   readonly confirmBrowserStep: (number: number, result: string | undefined) => void;
-  /** The user did a step by hand and it has a check: run the check (HAL-17491 7.8). */
+  /**
+   * The user did a step by hand and it has a check that confirms it (HAL-17491 7.8). Not a
+   * definition's own `check` step, which runs through {@link runStep} like any other step.
+   */
   readonly checkStep: (number: number) => void;
   /** The user did a step by hand and it has no check: record it as not checked. */
   readonly markDoneByHand: (number: number) => void;

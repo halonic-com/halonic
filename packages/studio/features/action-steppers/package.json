@@ -24,6 +24,7 @@
     "react": "catalog:"
   },
   "devDependencies": {
+    "@halonicjs/action-catalog": "workspace:*",
     "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",

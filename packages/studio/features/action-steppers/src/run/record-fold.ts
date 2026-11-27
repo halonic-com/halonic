@@ -49,6 +49,12 @@ const failureWords: Readonly<Record<ActionStepFailure, string>> = {
   "state-changed": "What the requester saw has changed since they asked.",
 };
 
+/** How the step the stepper didn't send shows, once its check read a state the requester didn't see. */
+export const stateChangedOutcome: StepOutcome = {
+  kind: "failed",
+  message: failureWords["state-changed"],
+};
+
 /** A failure with the service's own message quotes it with the status; otherwise it says why in Halonic's words. */
 function failedOutcome(event: ActionStepFailedEvent): StepOutcome {
   if (event.error !== undefined) {
@@ -114,20 +120,28 @@ function resultStep(
  * "set on <day>". Declined and expired requests list no steps, as the answer's check demands.
  *
  * @param day - the day the stepper ended, such as "25 Nov 2026", from the injected clock
+ * @param changedAt - the step the stepper didn't send because its check read a state other than
+ *   the requester's `expect`; it is listed as failed with `state-changed`
  */
 export function resultAnswer(
   state: RecordState,
   outcome: ActionOutcome,
   secretSteps: ReadonlySet<number>,
   day: string,
+  changedAt?: number,
 ): ActionResultAnswer {
   if (outcome === "declined" || outcome === "expired")
     return { kind: "action-result", outcome, steps: [] };
   const steps = [...state.steps.values()]
+    .filter((event) => event.step !== changedAt)
     .sort((first, second) => first.step - second.step)
     .flatMap(
       (event) => resultStep(event, secretSteps.has(event.step) ? `set on ${day}` : undefined) ?? [],
     );
+  if (changedAt !== undefined) {
+    steps.push({ step: changedAt, outcome: "failed", failure: "state-changed" });
+    steps.sort((first, second) => first.step - second.step);
+  }
   return { kind: "action-result", outcome, steps };
 }
 

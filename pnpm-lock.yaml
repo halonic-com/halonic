@@ -3786,6 +3786,9 @@ importers:
         specifier: 'catalog:'
         version: 19.3.1
     devDependencies:
+      '@halonicjs/action-catalog':
+        specifier: workspace:*
+        version: link:../../../core/action-catalog
       '@halonicjs/testing-contracts':
         specifier: workspace:*
         version: link:../../../testing/contracts

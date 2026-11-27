@@ -7,7 +7,12 @@ import {
   type StepperView,
 } from "../stepper-view.ts";
 import { ManualGuide } from "./manual-guide.tsx";
-import { IrreversibleWarnings, RequestCalls, RequestFacts } from "./request-review.tsx";
+import {
+  ChangedValues,
+  IrreversibleWarnings,
+  RequestCalls,
+  RequestFacts,
+} from "./request-review.tsx";
 import { RunBar } from "./run-bar.tsx";
 import { MissingPermission, SignInPanel } from "./sign-in-panel.tsx";
 import { StepList } from "./step-list.tsx";
@@ -27,6 +32,7 @@ const stageTones: Partial<Record<StepperStage["kind"], CalloutTone>> = {
   expired: "attention",
   "not-available": "attention",
   blocked: "attention",
+  changed: "attention",
 };
 
 /** The newest result for the status region, counted so the same words are read again. */
@@ -99,6 +105,7 @@ export function ActionStepper({ view, actions, focusOnOpen = true }: ActionStepp
         </h2>
         {/* Right under the title, so a closed request says so before anything has to scroll. */}
         {line === null ? null : <Callout tone={stageTones[stage.kind] ?? "info"}>{line}</Callout>}
+        {stage.kind === "changed" ? <ChangedValues changes={stage.changes} /> : null}
         <RequestFacts view={view} />
         <IrreversibleWarnings view={view} />
         {stage.kind === "sign-in" ? (

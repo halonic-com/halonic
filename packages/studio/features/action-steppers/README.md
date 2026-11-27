@@ -28,9 +28,14 @@ did on the page or by hand, and answers the item through `AgentMessaging` when t
 with only "set on <day>" for a value typed in the shell's secret dialog. A result pasted back into
 a browser step's field is checked against the step's pattern and for key shapes
 (`checkPastedResult`, requirement `action-steppers.pasted-result`) and kept as `kept.result`; one
-that fails says why under the field and records nothing. Outside the desktop app it
-runs nothing and **Decline** still answers. Without the services, the catalog is empty and the
-default policy holds.
+that fails says why under the field and records nothing. Once a `check` step has succeeded, each
+step's line shows the definition's preview with today's values next to the change, and the
+request's `expect` is compared with what the check kept (`checkExpect`, requirement
+`action-steppers.expect-stop`): a difference sends none of the later steps, ends the request as
+failed with the next step `state-changed`, and shows "This changed since the request: …" with the
+values apart from it. Both come from the record, so a request opened again stops the same way.
+Outside the desktop app it runs nothing and **Decline** still answers. Without the services, the
+catalog is empty and the default policy holds.
 
 | State | What the user sees |
 | --- | --- |
@@ -41,6 +46,7 @@ default policy holds.
 | `not-available` | the request's definition isn't in this version; no steps |
 | `desktop-only` | "Open it in the desktop app to run it.", **Copy instructions** on each browser step, and **Decline** |
 | `blocked` | "Blocked by your settings. This requester may only ask for steps marked Routine." and **Decline** |
+| `changed` | "This changed since the request: …", then each changed value with what the requester saw and what the check read today; no buttons |
 
 Every sentence is in `src/ui/stepper-words.ts`.
 
