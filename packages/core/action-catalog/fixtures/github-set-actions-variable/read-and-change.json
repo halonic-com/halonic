@@ -1,0 +1,75 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/actions/variables/RELEASE_CHANNEL"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "name": "RELEASE_CHANNEL",
+            "value": "beta",
+            "created_at": "2026-10-02T08:14:00Z",
+            "updated_at": "2026-11-20T16:40:12Z"
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    },
+    {
+      "request": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "value": "stable"
+          }
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "content-type": "application/json",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "PATCH",
+        "url": "https://api.github.com/repos/acme/app/actions/variables/RELEASE_CHANNEL"
+      },
+      "response": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {},
+        "status": 204
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1",
+  "integration": "github-set-actions-variable",
+  "scenario": "read-and-change",
+  "scrubReport": [
+    {
+      "count": 1,
+      "path": "exchanges[0].request.headers.authorization",
+      "rule": "secret-header"
+    },
+    {
+      "count": 1,
+      "path": "exchanges[1].request.headers.authorization",
+      "rule": "secret-header"
+    }
+  ]
+}

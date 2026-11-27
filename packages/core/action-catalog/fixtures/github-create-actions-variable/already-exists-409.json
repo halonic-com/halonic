@@ -1,0 +1,48 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "name": "RELEASE_CHANNEL",
+            "value": "stable"
+          }
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "content-type": "application/json",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "POST",
+        "url": "https://api.github.com/repos/acme/app/actions/variables"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "documentation_url": "https://docs.github.com/rest",
+            "message": "Already exists - Variable already exists",
+            "status": "409"
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 409
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1",
+  "integration": "github-create-actions-variable",
+  "scenario": "already-exists-409",
+  "scrubReport": [
+    {
+      "count": 1,
+      "path": "exchanges[0].request.headers.authorization",
+      "rule": "secret-header"
+    }
+  ]
+}
