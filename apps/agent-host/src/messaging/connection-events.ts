@@ -75,6 +75,19 @@ export class ConnectionEvents {
     }
   }
 
+  /**
+   * The connections, among those followed now, whose live events (by their {@link liveIdOf} names
+   * in `ids`) touched the local copy (`agent-host.paperclip-event-notice`). The workspace names
+   * them on `changes` before the read the events bring ends, which can take seconds: Studio then
+   * reads an open chat's messages, a live read, at once, and the lists again once the read ends.
+   */
+  heard(ids: readonly string[]): string[] {
+    if (this.#closed) return [];
+    return [...this.#made.keys()].filter((connection) =>
+      ids.includes(liveIdOf(this.#options, connection)),
+    );
+  }
+
   /** {@link followEvents}, reporting a failure instead of throwing it; without events the sync polls. */
   async #followReported(
     connection: string,

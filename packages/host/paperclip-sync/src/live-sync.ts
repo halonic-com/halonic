@@ -5,6 +5,7 @@ import type {
   SyncConnection,
   SyncSource,
 } from "@halonicjs/ports";
+import { EventNotice } from "./event-notice.ts";
 import { type EventsSignal, LiveEventsKeeper, type OpenEvents } from "./live-events-keeper.ts";
 import type { EventsState } from "./poll-rates.ts";
 import type { SyncCounters } from "./sync-counters.ts";
@@ -27,6 +28,13 @@ export interface LiveSyncOptions {
   sync: Pick<SyncScheduler, "pollNow" | "setEvents">;
   /** Hears whether events reach the engine, for diagnostics. */
   counters?: Pick<SyncCounters, "setConnection">;
+  /**
+   * Hears, when a batch of events ends and before the read it brings, the sources whose events
+   * touched their local copy. A full read can take seconds, and what Studio reads live (a chat's
+   * messages) needs none of it, so the host tells Studio at once (`agent-host.paperclip-event-notice`),
+   * at most once a second per source.
+   */
+  onEvents: (ids: readonly string[]) => void;
   /** Hears a failure of a socket's timer or of the poll a signal brings; nothing is thrown. */
   report: (error: unknown) => void;
   /** For the reconnect waits' jitter; `Math.random` by default. */
@@ -36,7 +44,8 @@ export interface LiveSyncOptions {
 /**
  * Every connected source's live events, joined to the sync (requirement
  * `agent-host.paperclip-live-events`). An event that touches a local copy brings a read
- * {@link eventsBatchMs} later, gathering the ones that follow, and so does a `resync`, so a server
+ * {@link eventsBatchMs} later, gathering the ones that follow, and is told to
+ * {@link LiveSyncOptions.onEvents} just before that read starts; a `resync` brings a read too, so a server
  * that repeats it can't bring reads back to back; a (re)connect reads at once, since events can't
  * be replayed. Adding and removing a source run one at a time per source. Events count as
  * connected only while every source's socket is open; otherwise the sync polls at the rates
@@ -52,6 +61,9 @@ export class LiveSync {
   readonly #announced = new Map<string, { source: SyncSource; heard: number }>();
   #heardCount = 0;
   #batching = false;
+  /** The sources whose events touched their local copy in the batch still gathering. */
+  readonly #changedInBatch = new Set<string>();
+  readonly #notice: EventNotice;
   /** Per source, the add or remove still running, which the next one waits for. */
   readonly #changing = new Map<string, Promise<void>>();
   #combined: SyncConnection = "polling-only";
@@ -60,6 +72,12 @@ export class LiveSync {
   constructor(options: LiveSyncOptions) {
     this.#options = options;
     this.#random = options.random ?? Math.random;
+    this.#notice = new EventNotice({
+      scheduler: options.scheduler,
+      clock: options.clock,
+      tell: options.onEvents,
+      report: options.report,
+    });
   }
 
   /**
@@ -97,6 +115,8 @@ export class LiveSync {
     const keeper = this.#keepers.get(id);
     this.#keepers.delete(id);
     this.#announced.delete(id);
+    this.#changedInBatch.delete(id);
+    this.#notice.forget(id);
     await keeper?.stop();
     await this.#combine();
   }
@@ -145,14 +165,16 @@ export class LiveSync {
     }
   }
 
-  /** Handles the batch's timer and each source's reconnect timer; `false` for any other. */
+  /** Handles the batch's timer, the deferred notices' and each source's reconnect timer; `false` for any other. */
   async onTimer(timer: ScheduledTimer): Promise<boolean> {
     const batch = liveSyncTimers.batch;
     if (timer.key === batch.key && timer.timerId === batch.timerId) {
       this.#batching = false;
+      await this.#tellChanged();
       await this.#options.sync.pollNow();
       return true;
     }
+    if (await this.#notice.onTimer(timer)) return true;
     if (timer.key !== liveSyncTimers.reconnectKey) return false;
     await this.#keepers.get(timer.timerId)?.onTimer(timer);
     return true;
@@ -168,6 +190,7 @@ export class LiveSync {
     const keepers = [...this.#keepers.values()];
     this.#keepers.clear();
     await Promise.all(keepers.map((keeper) => keeper.stop()));
+    await this.#notice.stop();
     const batch = liveSyncTimers.batch;
     await this.#options.scheduler.cancel(batch.key, batch.timerId);
   }
@@ -176,6 +199,7 @@ export class LiveSync {
     switch (signal.kind) {
       case "change":
         this.#announce(id, "event");
+        this.#changedInBatch.add(id);
         await this.#batch();
         return;
       case "resync":
@@ -201,6 +225,21 @@ export class LiveSync {
       source: known === "catch-up" ? known : source,
       heard: this.#heardCount,
     });
+  }
+
+  /**
+   * Tells {@link LiveSyncOptions.onEvents} the batch's changed sources, at most once a second per
+   * source. A failure is reported, so the read the batch brings still runs.
+   */
+  async #tellChanged(): Promise<void> {
+    const ids = [...this.#changedInBatch];
+    this.#changedInBatch.clear();
+    if (ids.length === 0) return;
+    try {
+      await this.#notice.notice(ids);
+    } catch (error) {
+      this.#options.report(error);
+    }
   }
 
   async #batch(): Promise<void> {

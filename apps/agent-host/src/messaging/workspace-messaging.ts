@@ -310,6 +310,12 @@ export class WorkspaceMessaging {
     return this.#hub.refresh();
   }
 
+  /** Names on `changes` each connection whose events in `ids` touched its local copy; see {@link ConnectionEvents.heard}. */
+  heardEvents(ids: readonly string[]): void {
+    for (const connection of this.#events.heard(ids))
+      this.#changes.note(paperclipSourceId(connection));
+  }
+
   /** The sources that changed after `after`, for Studio's next look. */
   changesSince(after: number): ChangesSince {
     return this.#changes.since(after);

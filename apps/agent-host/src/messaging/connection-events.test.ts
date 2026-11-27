@@ -61,3 +61,44 @@ verifies("agent-host.paperclip-live-events", () => {
     });
   });
 });
+
+verifies("agent-host.paperclip-event-notice", () => {
+  describe("which connections an early notice names", () => {
+    const live = {
+      add: async () => {},
+      remove: async () => {},
+      countersFor: () => ({ applied: () => undefined }),
+    };
+    const options = { cacheFolder: "acme-cache", live, openEvents: () => open, report: () => {} };
+
+    it("names a followed connection whose events are in the batch, and no other", async () => {
+      const events = new ConnectionEvents(options, false);
+      await events.follow("halonic", madeFor("halonic"));
+      await events.follow("support", madeFor("support"));
+
+      expect(events.heard(["acme-cache/halonic"])).toEqual(["halonic"]);
+    });
+
+    it("names nothing while the workspace's engine is a server", async () => {
+      const events = new ConnectionEvents(options, true);
+      await events.follow("halonic", madeFor("halonic"));
+
+      expect(events.heard(["acme-cache/halonic"])).toEqual([]);
+    });
+
+    it("names no connection that was disconnected", async () => {
+      const events = new ConnectionEvents(options, false);
+      await events.follow("halonic", madeFor("halonic"));
+      await events.follow("halonic", undefined);
+
+      expect(events.heard(["acme-cache/halonic"])).toEqual([]);
+    });
+
+    it("names nothing for the same connection's events in another workspace", async () => {
+      const events = new ConnectionEvents(options, false);
+      await events.follow("halonic", madeFor("halonic"));
+
+      expect(events.heard(["other-cache/halonic"])).toEqual([]);
+    });
+  });
+});

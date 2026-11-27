@@ -39,13 +39,16 @@ function settle(): Promise<void> {
 }
 
 /** The sync and its live events on a fake scheduler, with the first full load done. */
-async function startLive(random = () => 0.5) {
+async function startLive(random = () => 0.5, failTell?: Error) {
   const scheduler = new FakeScheduler("2026-11-26T10:00:00.000Z");
   let polls = 0;
   const applied: SyncSource[] = [];
   const connections: string[] = [];
   const counters = { applied: (source: SyncSource) => void applied.push(source) };
   const errors: unknown[] = [];
+  /** Each `onEvents` call, with how many reads had run when it came and when, in ms from the start. */
+  const told: { ids: readonly string[]; pollsBefore: number; at: number }[] = [];
+  const startedAt = scheduler.clock.now().getTime();
   let live: LiveSync | undefined;
   const sync = new SyncScheduler({
     scheduler,
@@ -60,6 +63,10 @@ async function startLive(random = () => 0.5) {
     clock: scheduler.clock,
     sync,
     counters: { setConnection: (state) => void connections.push(state) },
+    onEvents: (ids) => {
+      if (failTell !== undefined) throw failTell;
+      told.push({ ids, pollsBefore: polls, at: scheduler.clock.now().getTime() - startedAt });
+    },
     report: (error) => void errors.push(error),
     random,
   });
@@ -85,6 +92,7 @@ async function startLive(random = () => 0.5) {
     applied,
     connections,
     errors,
+    told,
     pollDueIn,
     reconnectDueIn,
   };
@@ -350,7 +358,13 @@ verifies("agent-host.paperclip-live-events", () => {
       const scheduler = new FakeScheduler("2026-11-26T10:00:00.000Z");
       let held: Promise<void> | undefined;
       const sync = { pollNow: async () => {}, setEvents: () => held ?? Promise.resolve() };
-      const live = new LiveSync({ scheduler, clock: scheduler.clock, sync, report: () => {} });
+      const live = new LiveSync({
+        scheduler,
+        clock: scheduler.clock,
+        sync,
+        onEvents: () => {},
+        report: () => {},
+      });
       const refused = new FakeEvents();
       await live.add("acme", refused.open);
       await refused.current.say({ kind: "closed", refused: true });
@@ -384,6 +398,82 @@ verifies("agent-host.paperclip-live-events", () => {
       expect(combinedState(["connected", "polling-only"])).toBe("polling-only");
       expect(combinedState(["connected", "not-allowed"])).toBe("not-allowed");
       expect(combinedState(["not-allowed", "polling-only"])).toBe("polling-only");
+    });
+  });
+});
+
+verifies("agent-host.paperclip-event-notice", () => {
+  describe("events are told before their read", () => {
+    it("a batch of events names its source once, 300 ms after the first, before the read starts", async () => {
+      const on = await startLive();
+      await on.events.current.say({ kind: "open" });
+      await on.scheduler.pass(0);
+      const before = on.polls();
+
+      for (let event = 0; event < 10; event += 1) {
+        await on.events.current.say({ kind: "change" });
+        await on.scheduler.pass(25);
+      }
+      expect(on.told).toEqual([]);
+      await on.scheduler.pass(50);
+
+      expect(on.told.map(({ ids, pollsBefore }) => ({ ids, pollsBefore }))).toEqual([
+        { ids: ["acme"], pollsBefore: before },
+      ]);
+      expect(on.polls()).toBe(before + 1);
+      expect(on.errors).toEqual([]);
+    });
+
+    it("a resync, an open and a removed source name nothing early", async () => {
+      const on = await startLive();
+      await on.events.current.say({ kind: "open" });
+      await on.events.current.say({ kind: "resync" });
+      await on.scheduler.pass(300);
+      expect(on.told).toEqual([]);
+
+      await on.events.current.say({ kind: "change" });
+      await on.live.remove("acme");
+      await on.scheduler.pass(300);
+
+      expect(on.told).toEqual([]);
+      expect(on.errors).toEqual([]);
+    });
+
+    it("a steady stream of events names its source at most once a second, and its last event still early", async () => {
+      const on = await startLive();
+      await on.events.current.say({ kind: "open" });
+      await on.scheduler.pass(0);
+      const start = on.told.length;
+
+      // An event every 100 ms for 3 seconds, then quiet.
+      for (let event = 0; event < 30; event += 1) {
+        await on.events.current.say({ kind: "change" });
+        await on.scheduler.pass(100);
+      }
+      await on.scheduler.pass(2_000);
+
+      const times = on.told.slice(start).map((notice) => notice.at);
+      expect(times.length).toBeGreaterThanOrEqual(3);
+      const gaps = times.slice(1).map((at, index) => at - (times[index] ?? 0));
+      expect(gaps.every((gap) => gap >= 1_000)).toBe(true);
+      // The last event came 2,900 ms in; its notice is deferred, not dropped.
+      expect(times.at(-1)).toBeGreaterThanOrEqual(2_900);
+      expect(times.at(-1)).toBeLessThanOrEqual(2_900 + 1_000);
+      expect(on.errors).toEqual([]);
+    });
+
+    it("an onEvents that throws is reported, and the read still runs", async () => {
+      const failure = new Error("Studio's changes are gone");
+      const on = await startLive(() => 0.5, failure);
+      await on.events.current.say({ kind: "open" });
+      await on.scheduler.pass(0);
+      const before = on.polls();
+
+      await on.events.current.say({ kind: "change" });
+      await on.scheduler.pass(300);
+
+      expect(on.errors).toEqual([failure]);
+      expect(on.polls()).toBe(before + 1);
     });
   });
 });
