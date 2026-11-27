@@ -90,6 +90,16 @@ verifies("messenger.activity-widths", () => {
       expect(document.activeElement).toBe(button(page));
       expect(localStorage.getItem("halonic.messenger.activity-open")).toBeNull();
     });
+
+    it("leaves the focus on the sheet's close button after Show activity, not on its title", async () => {
+      mediumWindow();
+      const { messaging, activity } = acme({ agentWorking: true });
+      const page = await openMessenger(messaging, [], false, now, activity);
+      await openChat(page, "Chief");
+      await press(byText(page, "main [data-typing] button", "Show activity"));
+      expect(panel(page)?.className).toContain("absolute");
+      expect(document.activeElement?.getAttribute("aria-label")).toBe("Close activity");
+    });
   });
 
   describe("the activity panel in a narrow window", () => {
