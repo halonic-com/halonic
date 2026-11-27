@@ -2,10 +2,11 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { shippedDefinitions } from "@halonicjs/action-catalog";
-import type { ActionCallRoute, ActionRoute } from "@halonicjs/ports";
+import type { ActionBodyField, ActionCallRoute, ActionRoute } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  type ActionRouteList,
   actionRouteList,
   actionRoutesFile,
   shellServices,
@@ -29,23 +30,56 @@ const callOnlyFields = ["method", "path", "body", "keep", "target"];
 // A body field name (`template.rs`, `is_name`): a letter, then letters, digits or `_`.
 const bodyFieldName = /^[A-Za-z][A-Za-z0-9_]*$/;
 
+// The keys the reader's structs name (`routes.rs`, `ListFile`, `WebOriginFile`,
+// `RouteFile` and `BodyFieldFile`); each is read with `deny_unknown_fields`.
+const listKeys = new Set(["format", "webOrigins", "routes"]);
+const webOriginKeys = new Set(["service", "host", "pathPrefixes"]);
+const routeKeys = new Set([
+  ...["kind", "definition", "version", "step", "service", "risk", "placeholders"],
+  ...["method", "path", "body", "keep", "address", "target"],
+]);
+const bodyFieldKeys = new Set(["name", "kind", "pattern", "value"]);
+
 /**
  * The shape rules of the shell's reader (`routes.rs`, `call_route`,
  * `body_field` and `guided_route`), which refuses the whole list for one
- * route that breaks them: only an irreversible call has a target, and it must
- * have one; a GET has no body; no body field twice; every body field has a
- * plain name and a constant one a value (serde reads `null` as missing); no
- * kept field without a name; a guided route has only an address.
+ * route that breaks them: no key the reader doesn't know; only an
+ * irreversible call has a target, and it must have one; a GET has no body; no
+ * body field twice; every body field has a plain name and the shape of its
+ * kind, and a constant one a value (serde reads `null` as missing); no kept
+ * field without a name; a guided route has only an address. It reads the
+ * routes as written, since a key set to `undefined` never reaches the file.
  */
 function shapeProblems(routes: readonly ActionRoute[]): string[] {
-  return routes.flatMap((route) => {
+  const written: ActionRoute[] = JSON.parse(JSON.stringify(routes));
+  return written.flatMap((route) => {
     const where = whereOf(route);
+    const unknown = unknownKeys(route, routeKeys, where);
     if (route.kind === "guided") {
       const extra = callOnlyFields.filter((field) => Object.hasOwn(route, field));
-      return extra.length > 0 ? [`${where}: a guided step has only an address`] : [];
+      return extra.length > 0
+        ? [...unknown, `${where}: a guided step has only an address`]
+        : unknown;
     }
-    return callProblems(route).map((problem) => `${where}: ${problem}`);
+    return [...unknown, ...callProblems(route).map((problem) => `${where}: ${problem}`)];
   });
+}
+
+/** The keys outside the routes the reader refuses: the list's own and each web origin's. */
+function listKeyProblems(list: ActionRouteList): string[] {
+  const written: ActionRouteList = JSON.parse(JSON.stringify(list));
+  return [
+    ...unknownKeys(written, listKeys, "the list"),
+    ...written.webOrigins.flatMap((origin) =>
+      unknownKeys(origin, webOriginKeys, `the web origin ${origin.host}`),
+    ),
+  ];
+}
+
+function unknownKeys(value: object, known: ReadonlySet<string>, where: string): string[] {
+  return Object.keys(value)
+    .filter((key) => !known.has(key))
+    .map((key) => `${where}: the reader doesn't know the key \`${key}\``);
 }
 
 function callProblems(route: ActionCallRoute): string[] {
@@ -57,14 +91,43 @@ function callProblems(route: ActionCallRoute): string[] {
   if (route.method === "GET" && route.body.length > 0) problems.push("a GET has no body");
   const names = route.body.map((field) => field.name);
   if (new Set(names).size !== names.length) problems.push("a body field is listed twice");
-  for (const field of route.body) {
-    if (!bodyFieldName.test(field.name)) problems.push(`\`${field.name}\` isn't a body field name`);
-    if (field.kind === "constant" && (field.value === undefined || field.value === null)) {
-      problems.push(`the constant body field \`${field.name}\` has no value`);
-    }
-  }
+  problems.push(...route.body.flatMap(bodyFieldProblems));
   if (route.keep.some((name) => name === "")) problems.push("a kept field has no name");
   return problems;
+}
+
+function bodyFieldProblems(field: ActionBodyField): string[] {
+  const problems: string[] = [];
+  if (!bodyFieldName.test(field.name)) problems.push(`\`${field.name}\` isn't a body field name`);
+  if (field.kind === "constant" && (field.value === undefined || field.value === null)) {
+    problems.push(`the constant body field \`${field.name}\` has no value`);
+  }
+  problems.push(...unknownKeys(field, bodyFieldKeys, `the body field \`${field.name}\``));
+  if (!fitsItsKind(field)) {
+    problems.push(`the body field \`${field.name}\` of kind \`${field.kind}\` has the wrong shape`);
+  }
+  return problems;
+}
+
+// `body_field` in `routes.rs`: a `string` has a pattern and no value, a
+// `constant` a scalar value and no pattern (a missing value is reported
+// above), every other kind neither. The reader reads a `null` as absent.
+function fitsItsKind(field: ActionBodyField): boolean {
+  const hasPattern = field.pattern !== undefined && field.pattern !== null;
+  const hasValue = field.value !== undefined && field.value !== null;
+  switch (field.kind) {
+    case "string":
+      return hasPattern && !hasValue;
+    case "constant":
+      return !hasPattern && (!hasValue || typeof field.value !== "object");
+    case "integer":
+    case "boolean":
+    case "integer-list":
+    case "secret-input":
+      return !hasPattern && !hasValue;
+    default:
+      return false;
+  }
 }
 
 /** The first call route the shipped catalog writes, for the tests that break one rule on it. */
@@ -108,7 +171,9 @@ verifies("discover.action-routes", () => {
     });
 
     it("writes only routes the shell's reader takes", () => {
-      expect(shapeProblems(actionRouteList(shipped).routes)).toEqual([]);
+      const list = actionRouteList(shipped);
+      expect(shapeProblems(list.routes)).toEqual([]);
+      expect(listKeyProblems(list)).toEqual([]);
     });
 
     // Until `routesOf` writes targets, an irreversible definition with a call
@@ -155,6 +220,42 @@ verifies("discover.action-routes", () => {
       const call = shippedCall();
       const broken = { ...call, keep: [...call.keep, ""] };
       expect(shapeProblems([broken])).toContain(`${whereOf(call)}: a kept field has no name`);
+    });
+
+    it("catches a key the reader doesn't know", () => {
+      const call = shippedCall();
+      const reviewers = { name: "reviewers", kind: "integer-list" as const, parameter: "ids" };
+      const broken = { ...call, body: [...call.body, reviewers], retries: 2 };
+      expect(shapeProblems([broken])).toEqual(
+        expect.arrayContaining([
+          `${whereOf(call)}: the body field \`reviewers\`: the reader doesn't know the key \`parameter\``,
+          `${whereOf(call)}: the reader doesn't know the key \`retries\``,
+        ]),
+      );
+      const list = actionRouteList(shipped);
+      expect(listKeyProblems({ ...list, generatedAt: "today" } as ActionRouteList)).toEqual([
+        "the list: the reader doesn't know the key `generatedAt`",
+      ]);
+    });
+
+    it("catches a body field whose shape doesn't fit its kind", () => {
+      const call = shippedCall();
+      const broken = {
+        ...call,
+        body: [
+          ...call.body,
+          { name: "title", kind: "string" as const },
+          { name: "draft", kind: "boolean" as const, value: true },
+          { name: "labels", kind: "constant" as const, value: "acme", pattern: "^acme$" },
+        ],
+      };
+      expect(shapeProblems([broken])).toEqual(
+        expect.arrayContaining(
+          ["title` of kind `string", "draft` of kind `boolean", "labels` of kind `constant"].map(
+            (field) => `${whereOf(call)}: the body field \`${field}\` has the wrong shape`,
+          ),
+        ),
+      );
     });
 
     it("names each guided host once, with no browser prefixes", () => {
