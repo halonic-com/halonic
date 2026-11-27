@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20396
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:J4DL5pfpbFoEV451v6wrq+syYTavEgvmbndU4Gy6pNKET2rQsEAFnOidjvDC2JJ/iiZkiwDWxnzmbkg7sPMDAg==
 
 The board approved the HAL-19192 sketches for the Inbox. Sofia's final design check of the built
 Inbox (HAL-20395) found that its rows differ from them: the wait sat at the end of the second line
