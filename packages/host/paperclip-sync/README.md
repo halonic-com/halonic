@@ -19,7 +19,7 @@ events reach the engine (requirement `agent-host.paperclip-live-events`). The pr
 socket and cuts each event down to an `EventsSignal`; no event's content reaches this package.
 Just before that read starts, `onEvents` hears which sources' events touched their copy, so the host
 can tell Studio at once rather than after a read that can take seconds
-(`agent-host.paperclip-event-notice`).
+(`agent-host.paperclip-event-notice`), at most once a second per source (`EventNotice`).
 
 - **Layer:** host
 - **Owner:** tomas
