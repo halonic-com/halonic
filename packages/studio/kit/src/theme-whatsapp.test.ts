@@ -31,8 +31,9 @@ verifies("kit.whatsapp-theme", () => {
       expect(themeTokens.get("--spacing-rail")).toBe("64px");
       expect(themeTokens.get("--spacing-row")).toBe("72px");
       expect(themeTokens.get("--radius-panel")).toBe("8px");
-      expect(themeTokens.get("--ease-press")).toBeDefined();
-      expect(themeTokens.get("--ease-menu")).toBeDefined();
+      expect(themeTokens.get("--ease-press")).toBe("var(--ease-standard)");
+      expect(themeTokens.get("--ease-standard")).toBe("cubic-bezier(0.2, 0, 0, 1)");
+      expect(themeTokens.get("--ease-menu")).toBe("cubic-bezier(0.17, 0.17, 0, 1)");
     });
 
     for (const mode of ["light", "dark"] as const) {

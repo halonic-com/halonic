@@ -74,9 +74,9 @@
   --color-surface-subtle: light-dark(#f3f5fa, #081124); /* sidebar, table header, row hover */
   --color-surface-muted: light-dark(#e9edf5, #0d1c3e); /* button and menu hover, neutral badge */
   --color-surface-raised: light-dark(#ffffff, #0a1630); /* menus, dialogs, toasts */
-  /* The focused Halonic Inbox and Messenger windows (HAL-17358): slate-75 and white, slate-950 and
-     slate-900. Slate-75 is halfway between slate-50 and slate-100, so the frame and the list on it
-     stand apart from the white panel (HAL-18691). */
+  /* The focused Halonic Inbox and Messenger windows (HAL-17358): WhatsApp's frame and panel, as
+     canvas and surface (HAL-20674). In light the grey-blue frame and the list on it stand apart
+     from the white panel; in dark the frame is the lighter one. */
   --color-app-frame: light-dark(#f3f5fa, #0a1630); /* a focused app's window frame */
   --color-app-panel: light-dark(#ffffff, #060d1d); /* a focused app's one content panel */
   --color-overlay: light-dark(rgb(16 16 46 / 0.32), rgb(0 0 0 / 0.56)); /* behind a dialog */
@@ -285,7 +285,7 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* things that move on screen */
   --ease-enter: cubic-bezier(0.22, 1, 0.36, 1); /* things that appear */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* things that leave */
-  --ease-press: cubic-bezier(0.2, 0, 0, 1); /* a pressed button shrinking, 120ms */
+  --ease-press: var(--ease-standard); /* a pressed button shrinking, 120ms: WhatsApp's curve */
   --ease-menu: cubic-bezier(0.17, 0.17, 0, 1); /* a menu opening, 300ms */
   --default-transition-duration: 120ms; /* --duration-fast, so `transition-colors` is enough */
   --default-transition-timing-function: var(--ease-standard);

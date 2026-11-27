@@ -3,7 +3,6 @@
 - Task: HAL-20674
 - Approval: Liam signs this note for HAL-20674 (build plan P1 on HAL-20617, approved). A team decision on an approved plan.
 - Kind: user-visible
-- Signature: (pending)
 
 ## What changes
 
