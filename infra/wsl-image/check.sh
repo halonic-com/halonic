@@ -63,7 +63,38 @@ image="$(cat "$(dirname "$0")/image-version")"
 [ "$(cat "$root/usr/share/doc/halonic-image/IMAGE")" = "$image" ] || fail "IMAGE isn't image-version ($image)"
 grep -q '^halonic:' "$root/etc/passwd" || fail "user halonic is missing"
 grep -q '^root:[!*]' "$root/etc/shadow" || fail "root password is not locked"
-[ -e "$root/usr/share/doc/bubblewrap/copyright" ] || fail "no copyright file for bubblewrap"
+# No translations, man pages or docs (HAL-20583), but every package's copyright
+# file (the licences ask for it), and a package dpkg installs later (as
+# security-update does) brings none either.
+doc="$root/usr/share/doc"
+left="$(find "$root/usr/share/locale" "$root/usr/share/man" -mindepth 1 -print -quit)"
+[ -z "$left" ] || fail "translations or man pages left: ${left#"$root"}"
+left="$(find "$doc" -mindepth 2 ! -type d ! -name copyright ! -path "$doc/halonic-image/*" -print -quit)"
+[ -z "$left" ] || fail "docs left: ${left#"$root"}"
+while IFS=$'\t' read -r pkg _; do
+  [ -f "$doc/$pkg/copyright" ] || fail "no copyright file for $pkg"
+done < "$doc/halonic-image/packages.txt"
+# acme-libs' doc folder is a link to acme-docs', as libgcc-s1's is to gcc-14-base.
+acme="$root/tmp/acme"
+for pkg in acme-docs acme-libs; do
+  mkdir -p "$acme/$pkg/DEBIAN" "$acme/$pkg/usr/share/doc"
+  printf 'Package: %s\nVersion: 1\nArchitecture: all\nMaintainer: Acme <dev@acme.example>\nDescription: docs\n' "$pkg" > "$acme/$pkg/DEBIAN/control"
+done
+mkdir -p "$acme/acme-docs/usr/share/doc/acme-docs" "$acme/acme-docs/usr/share/man/man1" "$acme/acme-docs/usr/share/locale/nl/LC_MESSAGES"
+touch "$acme/acme-docs/usr/share/doc/acme-docs/"{copyright,README} "$acme/acme-docs/usr/share/man/man1/acme.1" \
+  "$acme/acme-docs/usr/share/locale/nl/LC_MESSAGES/acme.mo"
+ln -s acme-docs "$acme/acme-libs/usr/share/doc/acme-libs"
+for pkg in acme-docs acme-libs; do
+  chroot "$root" dpkg-deb --build "/tmp/acme/$pkg" "/tmp/acme/$pkg.deb" >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
+done
+chroot "$root" dpkg -i /tmp/acme/acme-docs.deb /tmp/acme/acme-libs.deb >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
+[ -f "$doc/acme-docs/copyright" ] || fail "dpkg left out a new package's copyright file"
+if [ ! -L "$doc/acme-libs" ] || [ ! -f "$doc/acme-libs/copyright" ]; then fail "dpkg left out a new package's doc folder link"; fi
+for gone in doc/acme-docs/README man/man1/acme.1 locale/nl/LC_MESSAGES/acme.mo; do
+  [ ! -e "$root/usr/share/$gone" ] || fail "dpkg installed /usr/share/$gone"
+done
+chroot "$root" dpkg --purge acme-libs acme-docs >/dev/null
+rm -rf "$acme"
 
 for pkg in bubblewrap socat ripgrep git ca-certificates; do
   grep -q "^$pkg	" "$root/usr/share/doc/halonic-image/packages.txt" || fail "package $pkg missing"
