@@ -4,9 +4,8 @@ import type {
   MessagingProject,
   MessagingSource,
 } from "@halonicjs/ports";
-import { actionItemOf } from "@halonicjs/studio-feature-action-steppers/api";
+import { actionItemOf, answersPerBlock } from "@halonicjs/studio-feature-action-steppers/api";
 import { Button, type ListRow, waitingFor } from "@halonicjs/studio-kit";
-import { desktopOnlyActionSteps } from "@halonicjs/studio-services";
 import {
   type ReactNode,
   useCallback,
@@ -98,7 +97,7 @@ export const agentLoadFailed = "Couldn't load the items from your agents.";
 
 /**
  * An agent's card, or for an action item the stepper in review mode (`inbox.agent-action-items`).
- * A stored stepper request opens as its one stepper, review only for now
+ * A stored stepper request opens as its one stepper, answered for its one block
  * (`action-steppers.stepper-items`), or as the card with the reasons it can't; a server-session
  * request opens as its card with **Run with Claude** when it offers one (`inbox.run-with-claude`).
  */
@@ -115,7 +114,8 @@ function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: 
       item={read.item}
       catalog={checks.catalog}
       policy={checks.policy}
-      steps={read.runs ? checks.steps : desktopOnlyActionSteps}
+      steps={checks.steps}
+      answer={read.perBlock ? answersPerBlock(card.answer) : card.answer}
       paperclips={checks.paperclips}
     />
   );

@@ -23,7 +23,7 @@ const storedItem = (blocks: readonly unknown[] = [approveBlock]) =>
 
 verifies("action-steppers.stepper-items", () => {
   describe("actionItemOf", () => {
-    it("opens a request of one `use` block as its stepper, for review only, expiring 24 hours after the card", () => {
+    it("opens a request of one `use` block as its stepper, answered per block, expiring 24 hours after the card", () => {
       const read = actionItemOf(storedItem());
 
       expect(read).toEqual({
@@ -38,7 +38,7 @@ verifies("action-steppers.stepper-items", () => {
             expires: "2026-11-26T09:00:00.000Z",
           },
         }),
-        runs: false,
+        perBlock: true,
       });
       // The item carries the request one way only, as the port has it.
       expect(read?.kind === "action" && read.item.stepper).toBeUndefined();
@@ -62,6 +62,13 @@ verifies("action-steppers.stepper-items", () => {
       expect(actionItemOf(storedItem([restartBlock]))).toBeUndefined();
     });
 
+    it("can't read a server-session block next to another block, which the request format refuses", () => {
+      expect(actionItemOf(storedItem([restartBlock, approveBlock]))).toEqual({
+        kind: "unreadable",
+        reasons: [stepperItemReasons.unreadable],
+      });
+    });
+
     it("says the request changed when the document has a newer revision than the card pins", () => {
       const item = storedItem();
       if (item.stepper === undefined) throw new Error("a stepper item expected");
@@ -82,7 +89,7 @@ verifies("action-steppers.stepper-items", () => {
 
     it("opens an action item as it is, to run, and leaves any other item alone", () => {
       const item = actionItem();
-      expect(actionItemOf(item)).toEqual({ kind: "action", item, runs: true });
+      expect(actionItemOf(item)).toEqual({ kind: "action", item, perBlock: false });
       const { stepper: _, ...plain } = storedItem();
       expect(actionItemOf(plain)).toBeUndefined();
     });
