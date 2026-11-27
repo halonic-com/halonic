@@ -26,6 +26,7 @@ mod device_flow;
 mod kinds;
 mod opens;
 mod pattern;
+mod private_file;
 mod record_check;
 mod record_files;
 mod routes;

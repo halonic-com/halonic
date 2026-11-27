@@ -2,16 +2,22 @@
 //! folder only the user can read (architecture note on HAL-17491, 4.2;
 //! the `ActionRecords` port). The file is named by the SHA-256 of the
 //! request's id, so no id can name a path. Only events the allow-list
-//! takes are written, and only those are read back. A finished request's
-//! record is deleted 90 days after its `action.finished`.
+//! takes are written, and only those are read back. A link, a hard link
+//! or anything but a plain file or folder in a record's place is refused,
+//! never followed (`private_file`). A finished request's record is deleted
+//! 90 days after its `action.finished`.
 
-use std::fs::{self, DirBuilder, OpenOptions};
-use std::io::{ErrorKind, Write};
+use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
+use crate::private_file::{
+    FileRefusal, is_missing, make_private_folder, open_for_append, read_unlinked,
+    refuse_linked_folder,
+};
 use crate::record_check::{check_record_event, check_request_id, seconds_of, text_field};
 
 /// How long a finished request's record is kept after its `action.finished`.
@@ -62,6 +68,17 @@ fn storage(step: &str) -> impl Fn(std::io::Error) -> RecordError + '_ {
     move |error| RecordError::Storage(format!("{step}: {error}"))
 }
 
+/// A refusal of the records folder or a record file, as a storage failure:
+/// a link there is refused, never followed.
+fn refused(step: &str) -> impl Fn(FileRefusal) -> RecordError + '_ {
+    move |refusal| match refusal {
+        FileRefusal::Linked => RecordError::Storage(format!(
+            "{step}: its place holds a link or something that isn't a plain file or folder"
+        )),
+        FileRefusal::Io(error) => storage(step)(error),
+    }
+}
+
 /// A request's events read back, and how many lines were dropped because
 /// the allow-list no longer takes them (a hand edit, or a broken write).
 #[derive(Debug, Default, PartialEq)]
@@ -106,16 +123,11 @@ impl RecordFiles {
             RecordError::Storage(format!("the event can't be written: {error}"))
         })?;
         line.push('\n');
-        make_private_folder(&self.folder)?;
-        let size = plain_file_size(&file)?.unwrap_or(0);
+        make_private_folder(&self.folder).map_err(refused("make the records folder"))?;
+        let (mut opened, size) = open_for_append(&file).map_err(refused("open the record"))?;
         if size + line.len() as u64 > MAX_RECORD_BYTES {
             return Err(RecordError::Full);
         }
-        let mut options = OpenOptions::new();
-        options.append(true).create(true);
-        #[cfg(unix)]
-        std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-        let mut opened = options.open(&file).map_err(storage("open the record"))?;
         opened
             .write_all(line.as_bytes())
             .and_then(|()| opened.sync_data())
@@ -133,6 +145,7 @@ impl RecordFiles {
     pub fn read(&self, request: &str, now: u64) -> Result<Record, RecordError> {
         check_request_id(request).map_err(|problem| RecordError::Refused(vec![problem]))?;
         let file = self.file_of(request);
+        refuse_linked_folder(&self.folder).map_err(refused("read the records folder"))?;
         let record = read_file(&file, Some(request))?;
         if is_expired(&record.events, now) {
             remove_file(&file)?;
@@ -148,9 +161,13 @@ impl RecordFiles {
     /// How many were deleted, and a line for each file that couldn't be
     /// read or deleted.
     pub fn sweep(&self, now: u64) -> (usize, Vec<String>) {
+        if let Err(error) = refuse_linked_folder(&self.folder).map_err(refused("sweep the records"))
+        {
+            return (0, vec![error.to_string()]);
+        }
         let entries = match fs::read_dir(&self.folder) {
             Ok(entries) => entries,
-            Err(error) if error.kind() == ErrorKind::NotFound => return (0, Vec::new()),
+            Err(error) if is_missing(&error) => return (0, Vec::new()),
             Err(error) => return (0, vec![format!("read the records folder: {error}")]),
         };
         let mut deleted = 0;
@@ -180,12 +197,15 @@ impl RecordFiles {
 }
 
 /// Reads a record file's lines that the allow-list takes, and, when
-/// `request` is given, that belong to it.
+/// `request` is given, that belong to it. It reads at most
+/// [`MAX_RECORD_BYTES`], the most the shell writes, so a file planted
+/// there can't fill the memory.
 fn read_file(file: &Path, request: Option<&str>) -> Result<Record, RecordError> {
-    if plain_file_size(file)?.is_none() {
+    let Some(bytes) = read_unlinked(file, MAX_RECORD_BYTES).map_err(refused("read the record"))?
+    else {
         return Ok(Record::default());
-    }
-    let text = fs::read_to_string(file).map_err(storage("read the record"))?;
+    };
+    let text = String::from_utf8_lossy(&bytes);
     let mut record = Record::default();
     for line in text.lines().filter(|line| !line.is_empty()) {
         match serde_json::from_str::<Value>(line) {
@@ -217,43 +237,9 @@ fn is_expired(events: &[Value], now: u64) -> bool {
     finished.is_some_and(|at| now.saturating_sub(at) >= KEEP_FINISHED_SECONDS)
 }
 
-/// The file's size, `None` when it isn't there. Anything but a plain file
-/// in its place, such as a link, is refused rather than followed.
-fn plain_file_size(file: &Path) -> Result<Option<u64>, RecordError> {
-    match fs::symlink_metadata(file) {
-        Ok(found) if found.file_type().is_file() => Ok(Some(found.len())),
-        Ok(_) => Err(RecordError::Storage(
-            "a record's place holds something that isn't a plain file".to_owned(),
-        )),
-        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(storage("look up the record")(error)),
-    }
-}
-
 fn remove_file(file: &Path) -> Result<(), RecordError> {
     match fs::remove_file(file) {
-        Err(error) if error.kind() != ErrorKind::NotFound => {
-            Err(storage("delete the record")(error))
-        }
+        Err(error) if !is_missing(&error) => Err(storage("delete the record")(error)),
         _ => Ok(()),
     }
-}
-
-/// Makes the folder and its parents, and keeps the folder readable by the
-/// user only on Unix, also when it was made wider before.
-fn make_private_folder(folder: &Path) -> Result<(), RecordError> {
-    let mut builder = DirBuilder::new();
-    builder.recursive(true);
-    #[cfg(unix)]
-    std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
-    builder
-        .create(folder)
-        .map_err(storage("make the records folder"))?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(folder, fs::Permissions::from_mode(0o700))
-            .map_err(storage("make the records folder private"))?;
-    }
-    Ok(())
 }

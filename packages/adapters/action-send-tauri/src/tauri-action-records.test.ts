@@ -4,6 +4,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { ActionShellError } from "./action-shell-error.ts";
 import { FakeRecordShell } from "./fake-record-shell.test-helper.ts";
+import golden from "./golden/record-events.json" with { type: "json" };
 import { TauriActionRecords } from "./tauri-action-records.ts";
 
 // The port's contract against a mocked Tauri `invoke` that keeps JSON lines
@@ -39,6 +40,21 @@ verifies("action-send-tauri.records", () => {
       ]);
     });
 
+    // The shell's `tests/records.rs` checks the same cases with its own
+    // allow-list, so the two can't drift apart.
+    it("takes and refuses the cases the shell's allow-list is checked against", async () => {
+      for (const { case: name, event } of golden.taken) {
+        const { shell, records } = setUp();
+        await records.append(event as ActionRecordEvent);
+        expect(shell.calls, name).toHaveLength(1);
+      }
+      for (const { case: name, event } of golden.refused) {
+        const { shell, records } = setUp();
+        await expect(records.append(event as ActionRecordEvent), name).rejects.toThrow(RangeError);
+        expect(shell.calls, name).toEqual([]);
+      }
+    });
+
     it("never sends an event the allow-list refuses", async () => {
       const { shell, records } = setUp();
       const smuggled = { ...started, authorization: "acme-fake-token" };
@@ -46,7 +62,7 @@ verifies("action-send-tauri.records", () => {
       expect(shell.calls).toEqual([]);
     });
 
-    it("rejects with a RangeError when the shell's allow-list refuses the event", async () => {
+    it("rejects with a RangeError when the shell's allow-list refuses the event or the id", async () => {
       const { shell, records } = setUp();
       shell.refusals.set("action_record_append", {
         kind: "refused-event",
@@ -55,6 +71,15 @@ verifies("action-send-tauri.records", () => {
       await expect(records.append(started)).rejects.toThrow(
         new RangeError(
           "Action event refused by the shell: action event refused: step: out of range",
+        ),
+      );
+      shell.refusals.set("action_record_read", {
+        kind: "refused-event",
+        message: "action event refused: request: has a control character",
+      });
+      await expect(records.read("req\n1")).rejects.toThrow(
+        new RangeError(
+          "Request id refused by the shell: action event refused: request: has a control character",
         ),
       );
     });
@@ -74,10 +99,16 @@ verifies("action-send-tauri.records", () => {
         kind: "refused-event",
         message: "action event refused",
       });
-      await expect(
-        shell.invoke("action_record_read", { request: "req-1", path: "../escape" }),
-      ).rejects.toMatchObject({ kind: "invalid_args" });
-      expect(await shell.invoke("action_record_read", { request: "req-1" })).toEqual([]);
+      await expect(shell.invoke("action_record_read", { path: "../escape" })).rejects.toMatchObject(
+        {
+          kind: "invalid_args",
+        },
+      );
+      // Tauri reads each argument by name, so the real command ignores an
+      // extra one, and so does the fake.
+      expect(
+        await shell.invoke("action_record_read", { request: "req-1", path: "../escape" }),
+      ).toEqual([]);
     });
 
     it("refuses a read the shell answers with something it doesn't know", async () => {

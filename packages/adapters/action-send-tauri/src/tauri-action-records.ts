@@ -17,8 +17,9 @@ const refusedEvent = "refused-event";
  * each event it reads back, so an event the allow-list refuses never
  * reaches the shell, and one the shell hands back never reaches the page.
  *
- * An event the allow-list refuses rejects with a `RangeError`, as the port
- * says; any other failure of the shell rejects with an `ActionShellError`.
+ * An event the allow-list refuses, or a request id the shell refuses,
+ * rejects with a `RangeError`, as the port says; any other failure of the
+ * shell rejects with an `ActionShellError`.
  *
  * @example
  * const records = new TauriActionRecords(shell);
@@ -39,10 +40,7 @@ export class TauriActionRecords implements ActionRecords {
     try {
       await this.#shell.invoke(command, { event });
     } catch (error) {
-      if (isPlainObject(error) && error["kind"] === refusedEvent) {
-        throw new RangeError(`Action event refused by the shell: ${String(error["message"])}`);
-      }
-      throw shellFailure(command, error);
+      throw refusalOf(command, error, "Action event");
     }
   }
 
@@ -52,7 +50,7 @@ export class TauriActionRecords implements ActionRecords {
     try {
       answer = await this.#shell.invoke(command, { request });
     } catch (error) {
-      throw shellFailure(command, error);
+      throw refusalOf(command, error, "Request id");
     }
     if (!Array.isArray(answer)) throw malformedAnswer(command);
     const events: ActionRecordEvent[] = [];
@@ -65,6 +63,18 @@ export class TauriActionRecords implements ActionRecords {
     }
     return events;
   }
+}
+
+/**
+ * What a failed record call rejects with: a `RangeError` when the shell's
+ * allow-list refused the event or the request id, as for one the adapter
+ * refuses itself, and an `ActionShellError` for anything else.
+ */
+function refusalOf(command: string, error: unknown, what: string): Error {
+  if (isPlainObject(error) && error["kind"] === refusedEvent) {
+    return new RangeError(`${what} refused by the shell: ${String(error["message"])}`);
+  }
+  return shellFailure(command, error);
 }
 
 /** Why `value` can't go in a record: the allow-list's problems, or that a request is a run event. */

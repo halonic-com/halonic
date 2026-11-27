@@ -12,8 +12,9 @@ export interface RecordCall {
  * `action_record_append` and `action_record_read`
  * (`apps/studio/src-tauri/src/action_records.rs`): it keeps each request's
  * events as JSON lines, refuses what `halonic-action-send`'s allow-list
- * refuses as `refused-event` without writing it, refuses any other argument
- * as serde would, and sends every answer through JSON, as the IPC does.
+ * refuses as `refused-event` without writing it, and sends every answer
+ * through JSON, as the IPC does. Like Tauri, it reads each argument by name:
+ * a missing one is refused as `invalid_args`, an extra one is ignored.
  * `answers` replaces a command's answer and `refusals` rejects it, so a test
  * can give the adapter what a broken or newer shell would.
  */
@@ -31,13 +32,11 @@ export class FakeRecordShell implements Pick<ActionShell, "invoke"> {
   }
 
   #run(command: string, args: Record<string, unknown>): unknown {
-    const names = Object.keys(args);
-    const name = names.length === 1 ? names[0] : undefined;
-    if (command === "action_record_append" && name === "event") return this.#append(args[name]);
-    if (command === "action_record_read" && name === "request") {
-      return (this.#lines.get(String(args[name])) ?? []).map((line) => JSON.parse(line));
+    if (command === "action_record_append" && "event" in args) return this.#append(args["event"]);
+    if (command === "action_record_read" && typeof args["request"] === "string") {
+      return (this.#lines.get(args["request"]) ?? []).map((line) => JSON.parse(line));
     }
-    throw { kind: "invalid_args", message: `${command} doesn't take ${Object.keys(args)}` };
+    throw { kind: "invalid_args", message: `${command} is missing an argument` };
   }
 
   #append(event: unknown): undefined {

@@ -4,7 +4,7 @@
 //! takes. These tests write to a scratch folder of their own.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use halonic_action_send::{
     KEEP_FINISHED_SECONDS, MAX_RECORD_BYTES, RecordError, RecordFiles, check_record_event,
@@ -102,49 +102,27 @@ fn an_event_with_an_extra_field_is_refused_and_nothing_is_written() {
     );
 }
 
+/// The cases `checkActionEvent` is checked against in the adapter's tests.
+fn shared_cases(group: &str) -> Vec<(String, Value)> {
+    let golden: Value = serde_json::from_str(include_str!(
+        "../../../../../../packages/adapters/action-send-tauri/src/golden/record-events.json"
+    ))
+    .expect("the shared cases are JSON");
+    golden[group]
+        .as_array()
+        .expect("a list of cases")
+        .iter()
+        .map(|case| (case["case"].to_string(), case["event"].clone()))
+        .collect()
+}
+
 #[test]
 fn the_allow_list_matches_check_action_event() {
-    let refused = [
-        json!({"type": "action.requested", "request": "req-1", "at": AT}),
-        json!({"type": "action.step.started", "request": "req-1", "at": AT}),
-        json!({"type": "action.step.started", "request": "req-1", "at": "25 Nov", "step": 1}),
-        json!({"type": "action.step.started", "request": "", "at": AT, "step": 1}),
-        json!({"type": "action.step.started", "request": "req\n1", "at": AT, "step": 1}),
-        json!({"type": "action.step.started", "request": "r".repeat(201), "at": AT, "step": 1}),
-        json!({"type": "action.step.started", "request": "req-1", "at": AT, "step": 101}),
-        json!({"type": "action.step.started", "request": "req-1", "at": AT, "step": 1.5}),
-        json!({"type": "action.step.succeeded", "request": "req-1", "at": AT, "step": 1,
-               "kept": {"body": {"token": "x"}}}),
-        json!({"type": "action.step.succeeded", "request": "req-1", "at": AT, "step": 1,
-               "kept": {"1st": 1}}),
-        json!({"type": "action.step.succeeded", "request": "req-1", "at": AT, "step": 1,
-               "kept": {"name": "x".repeat(1001)}}),
-        json!({"type": "action.step.failed", "request": "req-1", "at": AT, "step": 1,
-               "failure": "exploded"}),
-        json!({"type": "action.step.failed", "request": "req-1", "at": AT, "step": 1,
-               "failure": "service-error", "error": "e".repeat(301)}),
-        json!({"type": "action.finished", "request": "req-1", "at": AT, "outcome": "done"}),
-        json!(["action.finished"]),
-    ];
-    for event in &refused {
-        assert!(check_record_event(event).is_err(), "refused: {event}");
+    for (case, event) in shared_cases("refused") {
+        assert!(check_record_event(&event).is_err(), "refused: {case}");
     }
-    let taken = [
-        json!({"type": "action.reviewed", "request": "req-1", "at": "2026-11-25T09:00:00Z",
-               "decision": "opened", "digest": "sha256-acme"}),
-        json!({"type": "action.signed-in", "request": "req-1", "at": AT,
-               "service": "github", "account": "acme-dev"}),
-        json!({"type": "action.step.succeeded", "request": "req-1", "at": AT, "step": 1,
-               "kept": {"runId": 123_456, "name": "release", "draft": false, "gone": null}}),
-        json!({"type": "action.step.succeeded", "request": "req-1", "at": AT, "step": 2,
-               "status": 201, "kept": {}}),
-        json!({"type": "action.step.failed", "request": "req-1", "at": AT, "step": 1,
-               "failure": "service-error", "status": 422, "error": "Validation failed"}),
-        json!({"type": "action.step.skipped", "request": "req-1", "at": AT, "step": 100}),
-        finished("req-1"),
-    ];
-    for event in &taken {
-        assert_eq!(check_record_event(event), Ok(()), "taken: {event}");
+    for (case, event) in shared_cases("taken") {
+        assert_eq!(check_record_event(&event), Ok(()), "taken: {case}");
     }
 }
 
@@ -173,6 +151,7 @@ fn a_request_id_never_names_a_path() {
 #[test]
 fn the_folder_and_the_files_are_the_users_only() {
     use std::os::unix::fs::PermissionsExt;
+    use std::path::Path;
 
     let scratch = Scratch::new("private");
     fs::create_dir_all(scratch.records()).expect("made");
@@ -210,6 +189,108 @@ fn a_link_in_a_records_place_is_refused_not_followed() {
         "storage"
     );
     assert_eq!(fs::read_to_string(&elsewhere).expect("read"), "");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_hard_link_in_a_records_place_is_refused_not_written() {
+    let scratch = Scratch::new("hard-link");
+    let files = scratch.files();
+    files.append(&started("req-1", 1)).expect("written");
+    let file = scratch.records().join(&scratch.names()[0]);
+    let elsewhere = scratch.0.join("workspace-file.jsonl");
+    fs::write(&elsewhere, "").expect("written");
+    fs::remove_file(&file).expect("removed");
+    fs::hard_link(&elsewhere, &file).expect("linked");
+    assert_eq!(
+        files
+            .append(&started("req-1", 2))
+            .expect_err("refused")
+            .kind(),
+        "storage"
+    );
+    assert_eq!(
+        files.read("req-1", now()).expect_err("refused").kind(),
+        "storage"
+    );
+    assert_eq!(fs::read_to_string(&elsewhere).expect("read"), "");
+}
+
+#[cfg(unix)]
+#[test]
+fn a_named_pipe_in_a_records_place_is_refused_without_waiting() {
+    let scratch = Scratch::new("pipe");
+    let files = scratch.files();
+    files.append(&started("req-1", 1)).expect("written");
+    let file = scratch.records().join(&scratch.names()[0]);
+    fs::remove_file(&file).expect("removed");
+    let made = std::process::Command::new("mkfifo")
+        .arg(&file)
+        .status()
+        .expect("mkfifo runs");
+    assert!(made.success(), "mkfifo makes the pipe");
+    // An open that waited on the pipe would hang the records lock forever,
+    // so the calls run on their own thread and the test gives them five
+    // seconds.
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let appended = files.append(&started("req-1", 2)).map_err(|e| e.kind());
+        let read = files.read("req-1", now()).map_err(|e| e.kind());
+        let _ = sender.send((appended, read.map(|record| record.events.len())));
+    });
+    let (appended, read) = receiver
+        .recv_timeout(std::time::Duration::from_secs(5))
+        .expect("refused without waiting");
+    assert_eq!(appended, Err("storage"));
+    assert_eq!(read, Err("storage"));
+}
+
+#[cfg(unix)]
+#[test]
+fn a_linked_records_folder_is_refused_not_followed() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let scratch = Scratch::new("linked-folder");
+    let elsewhere = scratch.0.join("workspace");
+    fs::create_dir_all(&elsewhere).expect("made");
+    fs::set_permissions(&elsewhere, fs::Permissions::from_mode(0o755)).expect("set");
+    std::os::unix::fs::symlink(&elsewhere, scratch.records()).expect("linked");
+    let files = scratch.files();
+    assert_eq!(
+        files
+            .append(&started("req-1", 1))
+            .expect_err("refused")
+            .kind(),
+        "storage"
+    );
+    assert_eq!(
+        files.read("req-1", now()).expect_err("refused").kind(),
+        "storage"
+    );
+    let (deleted, problems) = files.sweep(now());
+    assert_eq!((deleted, problems.len()), (0, 1));
+    assert_eq!(fs::read_dir(&elsewhere).expect("there").count(), 0);
+    let mode = fs::metadata(&elsewhere)
+        .expect("there")
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, 0o755, "the link's target is left as it was");
+}
+
+#[test]
+fn a_planted_record_is_read_only_up_to_the_limit() {
+    let scratch = Scratch::new("planted");
+    let files = scratch.files();
+    files.append(&started("req-1", 1)).expect("written");
+    let file = scratch.records().join(&scratch.names()[0]);
+    let mut text = fs::read_to_string(&file).expect("read");
+    let padding = usize::try_from(MAX_RECORD_BYTES).expect("fits");
+    text.push_str(&" ".repeat(padding));
+    text.push_str(&format!("\n{}\n", started("req-1", 2)));
+    fs::write(&file, text).expect("written");
+    let record = files.read("req-1", now()).expect("read");
+    assert_eq!(record.events, [started("req-1", 1)]);
 }
 
 #[test]
