@@ -64,7 +64,8 @@ export type ToolScriptIsolateFunction = (
 
 /**
  * `ctx`'s host functions: `ctx.<name>` for a function, `ctx.<namespace>.<method>`
- * for a namespace. `input` and `log` are the isolate's own and can't be named.
+ * for a namespace. `input`, `log` and `fail` are the isolate's own and can't
+ * be named.
  */
 export type ToolScriptIsolateFunctions = Readonly<
   Record<string, ToolScriptIsolateFunction | Readonly<Record<string, ToolScriptIsolateFunction>>>
@@ -137,7 +138,10 @@ export function isToolScriptStop(value: unknown): value is ToolScriptStop {
  * Worker implement it, and every implementation passes the same fence suite.
  *
  * Each run gets a new isolate with no state from an earlier run, and
- * `ctx` holds only `input`, `log` and the given functions, frozen. `run`
+ * `ctx` holds only `input`, `log`, `fail` and the given functions, frozen;
+ * no given function may take one of the isolate's own names.
+ * `ctx.fail(message)` ends the run at once with `toolscript.failed`, awaited
+ * or not. `run`
  * rejects only for request limits that `effectiveToolScriptLimits` refuses,
  * the caller's own bug. Otherwise a thrown script error is
  * `toolscript.script-error`, a tripped limit

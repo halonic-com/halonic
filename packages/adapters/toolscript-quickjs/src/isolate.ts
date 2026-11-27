@@ -25,7 +25,7 @@ export interface QuickJsToolScriptIsolateOptions {
  * context of its own, with the pinned intrinsics, the checked eval prelude,
  * the memory, stack and CPU limits, and no module loader, so `import()`
  * is refused. Nothing carries over from one run to the next. A host
- * function named `input` or `log`, the names of `ctx`'s own members, ends
+ * function named `input`, `log` or `fail`, the names of `ctx`'s own members, ends
  * the run with `toolscript.failed` before the script runs; an aborted
  * `signal` ends it with `toolscript.cancelled`, and one aborted before the
  * run starts means the script never runs. It runs on any
