@@ -26,7 +26,7 @@ verifies("action-steppers.expect-stop", () => {
         .map((row) => [...row.children].map((line) => line.textContent));
       expect(rows).toEqual([
         ["When asked: 3", "Today: 1"],
-        ['When asked: "main"', "Today: not read"],
+        ['When asked: "main"', "Today: nothing found"],
       ]);
       const names = [...root.querySelectorAll("dt code")].map((name) => name.textContent);
       expect(names).toEqual(["required_approving_review_count", "branch"]);
