@@ -2,7 +2,7 @@
  * Reads a stored stepper request (`InboxItem.stepper`, such as a Paperclip card pinned to its
  * `stepper-request` document) as the action item the review already knows
  * (`action-steppers.stepper-items`). For now only a request of one `use` block reads: it names
- * one whole reviewed stepper and its parameters, as an action item does.
+ * one whole reviewed stepper and its parameters, as an action item does, and runs as one.
  */
 import { requestExpiresAt, splitReference, stepperRequestSchema } from "@halonicjs/action-steppers";
 import type { InboxItem } from "@halonicjs/ports";
@@ -18,25 +18,29 @@ export const stepperItemReasons = {
 
 /**
  * How an Inbox item opens: as an action item for the stepper, or as a card that says why it can't.
- * `runs` is `false` for a stored stepper request, whose result is written per block, so it stays
- * in review mode with **Decline** until the run maps a definition's steps onto its block.
+ * `perBlock` is `true` for a stored stepper request: its result is written per block, so the run's
+ * answer goes through `blockAnswer` first.
  */
 export type ActionItemRead =
-  | { readonly kind: "action"; readonly item: ActionItem; readonly runs: boolean }
+  | { readonly kind: "action"; readonly item: ActionItem; readonly perBlock: boolean }
   | { readonly kind: "unreadable"; readonly reasons: readonly string[] };
 
 /**
  * The item as the stepper opens it, or `undefined` when it isn't an action item. An item with
- * `action` opens as it is. A request of one `server-session` block isn't one either: it opens as
- * its card with **Run with Claude** (`inbox.run-with-claude`). An item with `stepper` opens as its one `use` block's definition, with
+ * `action` opens as it is. An item with `stepper` opens as its one `use` block's definition, with
  * the default lifetime counted from when the item was made, since the document names no expiry.
  *
+ * A stored request of exactly one `server-session` block returns `undefined` too: it isn't a
+ * stepper, so the Inbox opens it as its card with **Run with Claude** (`inbox.run-with-claude`).
+ * The request format takes a `server-session` block only alone, so one next to any other block
+ * doesn't parse, and the item says its request document can't be read.
+ *
  * @example
- * actionItemOf(item); // { kind: "action", item: { ...item, action: { definition: "github.upload-social-preview", … } }, runs: false }
+ * actionItemOf(item); // { kind: "action", item: { ...item, action: { definition: "github.upload-social-preview", … } }, perBlock: true }
  */
 export function actionItemOf(item: InboxItem): ActionItemRead | undefined {
   if (item.action !== undefined) {
-    return { kind: "action", item: { ...item, action: item.action }, runs: true };
+    return { kind: "action", item: { ...item, action: item.action }, perBlock: false };
   }
   const { stepper, ...rest } = item;
   if (stepper === undefined) return undefined;
@@ -55,7 +59,7 @@ export function actionItemOf(item: InboxItem): ActionItemRead | undefined {
     parameters: block.parameters,
     expires: expiresOf(item),
   };
-  return { kind: "action", item: { ...rest, action }, runs: false };
+  return { kind: "action", item: { ...rest, action }, perBlock: true };
 }
 
 function unreadable(reason: string): ActionItemRead {
