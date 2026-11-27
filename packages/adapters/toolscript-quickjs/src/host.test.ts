@@ -50,6 +50,8 @@ async function run(
       version: 1,
       audience: "user",
       uses: capabilities.map((capability) => capability.id),
+      // Empty entries allow any target; a test about `touches` sets its own (S14).
+      touches: Object.fromEntries(capabilities.map((capability) => [capability.id, {}])),
       ...header,
     },
     code,
