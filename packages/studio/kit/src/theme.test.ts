@@ -364,6 +364,7 @@ describe("theme.css scales", () => {
       "--radius-segment",
       "--radius-md",
       "--radius-lg",
+      "--radius-prompt",
       "--radius-full",
     ]);
     expect(namesStartingWith(themeTokens, "--spacing")).toEqual([
@@ -389,6 +390,8 @@ describe("theme.css scales", () => {
       "--shadow-1",
       "--shadow-2",
       "--shadow-3",
+      "--shadow-prompt",
+      "--shadow-prompt-focus",
     ]);
     expect(namesStartingWith(themeTokens, "--animate-")).toEqual([
       "--animate-spin",

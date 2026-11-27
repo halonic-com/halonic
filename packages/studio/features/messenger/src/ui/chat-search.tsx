@@ -50,7 +50,7 @@ export function useChatSearch(messenger: Messenger, rows: readonly ConversationR
 
 /**
  * Over the list: "Chats", the search icon (Ctrl+K) and **New ▾**; while the search is open, its
- * field and "Esc" in their place, and how many chats it found under them (Sofia's sketch A on
+ * field with "Esc" in it in their place, and how many chats it found under them (Sofia's sketch A on
  * HAL-19134). Escape closes it and puts focus back on the icon.
  */
 export function ListHeader({
@@ -95,27 +95,25 @@ export function ListHeader({
   }
   return (
     <div className="flex flex-col gap-2 px-2 pt-2">
-      <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <Input
-            ref={field}
-            size="sm"
-            type="search"
-            leadingIcon={<SearchIcon />}
-            autoFocus
-            aria-label={words.label}
-            placeholder={words.label}
-            value={search}
-            onChange={(event) => onSearch(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") onSearch(undefined);
-            }}
-          />
-        </div>
-        <kbd className="rounded-xs border border-border px-1 text-caption text-fg-muted">
-          {words.close}
-        </kbd>
-      </div>
+      <Input
+        ref={field}
+        look="prompt"
+        type="search"
+        leadingIcon={<SearchIcon />}
+        autoFocus
+        aria-label={words.label}
+        placeholder={words.label}
+        value={search}
+        onChange={(event) => onSearch(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onSearch(undefined);
+        }}
+        trailing={
+          <kbd className="rounded-xs border border-border px-1 text-caption text-fg-muted">
+            {words.close}
+          </kbd>
+        }
+      />
       <p role="status" className="px-1 text-small text-fg-muted">
         {found === undefined || search.trim() === "" ? "" : foundLine(found)}
       </p>

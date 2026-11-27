@@ -31,15 +31,16 @@ verifies("quick-ask.box", () => {
       expect(chip?.textContent).toBe("CChief");
     });
 
+    // Quiet is the kit's soft round button since the prompt look (HAL-19756).
     it("keeps Ask quiet while the box is empty, and makes it primary once there's text", async () => {
       const { page } = await openBox(new FakeMessenger([chat(chief)]));
 
-      expect(askButton(page).className).toContain("bg-surface-muted");
+      expect(askButton(page).className).toContain("bg-surface-soft");
       expect(askButton(page).className).not.toContain("bg-primary");
       await typeIn(textBox(page), "Where are we?");
       expect(askButton(page).className).toContain("bg-primary");
       await typeIn(textBox(page), "  ");
-      expect(askButton(page).className).toContain("bg-surface-muted");
+      expect(askButton(page).className).toContain("bg-surface-soft");
     });
 
     it("shows each agent's role after its name and what it's doing on the right", async () => {

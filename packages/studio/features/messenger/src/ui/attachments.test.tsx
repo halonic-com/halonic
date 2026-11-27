@@ -171,8 +171,8 @@ verifies("messenger.files", () => {
       );
       expect(chip?.textContent).toBe(`${name} · 1 byte`);
       expect(chip?.innerHTML).not.toContain("truncate");
-      // The list isn't in the row with Attach a file and Ask for an update, so neither drops below it.
-      const attachButton = byText(page, "main button", "Attach a file");
+      // The list isn't in the box with Attach a file, nor in Ask for an update's row, so neither moves.
+      const attachButton = page.querySelector('main button[aria-label="Attach a file"]');
       expect(attachButton?.parentElement?.contains(chip ?? null)).toBe(false);
       const remove = chip?.querySelector("button");
       expect(remove?.getAttribute("aria-label")).toBe(`Remove ${name}`);
@@ -196,7 +196,9 @@ verifies("messenger.files", () => {
       await press(removeOf("c.txt"));
       expect(document.activeElement).toBe(removeOf("b.txt"));
       await press(removeOf("b.txt"));
-      expect(document.activeElement).toBe(byText(page, "main button", "Attach a file"));
+      expect(document.activeElement).toBe(
+        page.querySelector('main button[aria-label="Attach a file"]'),
+      );
       expect(page.textContent).toContain("b.txt removed.");
     });
 

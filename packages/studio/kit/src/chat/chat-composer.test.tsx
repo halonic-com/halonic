@@ -43,7 +43,7 @@ verifies("kit.chat-composer", () => {
     const box = container.querySelector("textarea") as HTMLTextAreaElement;
     expect(box.getAttribute("aria-label")).toBe("Message Sorter");
     expect(box.placeholder).toBe("Message Sorter…");
-    expect(container.querySelector("button")?.textContent).toBe("Send");
+    expect(container.querySelector("button")?.getAttribute("aria-label")).toBe("Send");
   });
 
   it("draws its header inside the box's frame, above the text", () => {
@@ -114,14 +114,14 @@ verifies("kit.chat-composer", () => {
     rerender(<ChatComposer {...props} answering />);
     const stop = container.querySelector("button") as HTMLButtonElement;
     expect(stop).toBe(send);
-    expect(stop.textContent).toBe("Stop");
+    expect(stop.getAttribute("aria-label")).toBe("Stop");
     expect(document.activeElement).toBe(stop);
     await click(stop);
     expect(props.onStop).toHaveBeenCalledTimes(1);
     expect(props.onSend).not.toHaveBeenCalled();
     rerender(<ChatComposer {...props} answering={false} />);
     expect(container.querySelector("button")).toBe(send);
-    expect(send.textContent).toBe("Send");
+    expect(send.getAttribute("aria-label")).toBe("Send");
     expect(document.activeElement).toBe(send);
   });
 

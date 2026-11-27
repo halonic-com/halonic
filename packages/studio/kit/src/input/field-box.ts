@@ -57,13 +57,19 @@ export const shortTextClasses = "w-input-short";
  * The text inside the box: the value, the placeholder, and 16px on a phone or under a touch
  * pointer, so it doesn't zoom and stays in step with the taller box.
  */
-export const fieldTextClasses = [
-  "min-w-0 flex-1 bg-transparent text-body outline-none phone:text-input-touch",
+const textShared = [
+  "min-w-0 flex-1 bg-transparent outline-none phone:text-input-touch",
   "touch:text-input-touch",
   "placeholder:text-fg-subtle disabled:text-fg-disabled disabled:placeholder:text-fg-disabled",
   // The browser draws the cursor of the element under the pointer, so the text needs it too.
   "disabled:cursor-not-allowed",
 ].join(" ");
+
+/** A field's text: 14px, and 16px on a phone or under a touch pointer. */
+export const fieldTextClasses = `text-body ${textShared}`;
+
+/** A prompt's text: the 15px of chat messages, on the 24px lines its round buttons need. */
+export const promptTextClasses = `text-reading ${textShared}`;
 
 /**
  * The box's `onMouseDown`: a press anywhere in the box puts the caret in its text, as in a native
@@ -88,12 +94,16 @@ export function focusTextOnPress(event: MouseEvent<HTMLElement>): void {
   text.focus();
 }
 
-/** How the box lines up its content: `center` for one line, `start` for a TextArea's lines. */
-export type FieldBoxAlign = "center" | "start";
+/**
+ * How the box lines up its content: `center` for one line, `start` for a TextArea's lines, `end`
+ * for a prompt's, whose round buttons stay by its last line.
+ */
+export type FieldBoxAlign = "center" | "start" | "end";
 
 const alignClasses: Record<FieldBoxAlign, string> = {
   center: "items-center",
   start: "items-start",
+  end: "items-end",
 };
 
 /** The box's classes for a state, a size, an alignment and a width. */
@@ -104,6 +114,29 @@ export function fieldBoxClasses(
   width: FieldWidth = "full",
 ): string {
   return `${shared} ${widthClasses[width]} ${alignClasses[align]} ${stateClasses[state]} ${sizeClasses[size]}`;
+}
+
+/**
+ * `field`, the default, is a form field's clear edge. `prompt` is only for the boxes where you type
+ * to an agent (the chat composer, the chat search): the board's rounder search-box look, with a
+ * soft edge and shadow, so it reads as "start here" (HAL-19142).
+ */
+export type FieldLook = "field" | "prompt";
+
+const promptStateClasses: Record<FieldBoxState, string> = {
+  default: "border-border-prompt bg-surface-prompt shadow-prompt focus-prompt",
+  invalid: "border-danger bg-surface-prompt shadow-prompt focus-field-danger",
+  "read-only": "border-border-prompt bg-surface-subtle shadow-prompt focus-prompt",
+  disabled: "cursor-not-allowed border-border bg-surface-subtle text-fg-disabled",
+};
+
+/**
+ * A prompt box's classes for a state. It has no size: its height comes from what's in it, the round
+ * buttons or the text, so one line is a full pill and the 24px corners stay as it grows.
+ */
+export function promptBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "center"): string {
+  const box = "flex w-full gap-2 rounded-prompt border transition";
+  return `${box} ${alignClasses[align]} ${promptStateClasses[state]}`;
 }
 
 /** Which look a field has, from its props and its Field. Disabled wins, then an error. */

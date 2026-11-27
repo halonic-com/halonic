@@ -12,7 +12,21 @@ import {
 import { describedBy } from "../field/control.ts";
 import { useFieldControl } from "../field/field.tsx";
 import { isComposing } from "../keyboard/is-composing.ts";
-import { fieldBoxClasses, fieldBoxState, fieldTextClasses, focusTextOnPress } from "./field-box.ts";
+import {
+  type FieldLook,
+  fieldBoxClasses,
+  fieldBoxState,
+  fieldTextClasses,
+  focusTextOnPress,
+  promptBoxClasses,
+  promptTextClasses,
+} from "./field-box.ts";
+
+const fieldTextAreaClasses = `${fieldTextClasses} max-h-rows`;
+
+// A margin, not padding: the textarea is border-box, so padding would come out of its line limit
+// and cut the last line in half. A press on the margin still puts the caret in the text.
+const promptTextAreaClasses = `${promptTextClasses} my-1.5 max-h-rows-reading`;
 
 type OwnedAttributes =
   | "className"
@@ -43,6 +57,12 @@ export interface TextAreaProps
    * press on it outside a button puts the caret in the text, as a press on the padding does.
    */
   readonly header?: ReactNode;
+  /** `prompt` only for a chat's box, with its round buttons in `leading` and `trailing`. */
+  readonly look?: FieldLook;
+  /** Inside the box, before the text and at its last line: a chat's round Attach. */
+  readonly leading?: ReactNode;
+  /** Inside the box, after the text and at its last line: a chat's round Send. */
+  readonly trailing?: ReactNode;
   readonly ref?: Ref<HTMLTextAreaElement>;
 }
 
@@ -69,6 +89,9 @@ export function TextArea({
   submitOnCtrlEnter = false,
   describedBy: extraDescription,
   header,
+  look = "field",
+  leading,
+  trailing,
   ref,
   onKeyDown,
   onInput,
@@ -129,7 +152,7 @@ export function TextArea({
       rows={minRows}
       data-field-text=""
       data-text-entry=""
-      className={`${fieldTextClasses} max-h-rows resize-none overflow-y-auto`}
+      className={`${look === "prompt" ? promptTextAreaClasses : fieldTextAreaClasses} resize-none overflow-y-auto`}
       // The limit in lines of the text's own height, so it follows the text size
       // (theme-utilities.css).
       style={{ "--max-rows": maxRows } as CSSProperties}
@@ -144,12 +167,17 @@ export function TextArea({
     />
   );
 
+  // A prompt's 7px round its 36px buttons makes one line 52px tall, and the text starts clear of
+  // a round end that holds no button.
+  const promptPadding = `p-[7px] ${leading === undefined ? "ps-4" : ""} ${trailing === undefined ? "pe-4" : ""}`;
+  const boxClasses =
+    look === "prompt"
+      ? `${promptBoxClasses(state, "end")} ${promptPadding}`
+      : `${fieldBoxClasses(state, "md", "start")} py-2 phone:py-3`;
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a mouse convenience only; the keyboard reaches the text itself.
-    <div
-      className={`${fieldBoxClasses(state, "md", "start")} py-2 phone:py-3`}
-      onMouseDown={focusTextOnPress}
-    >
+    <div className={boxClasses} onMouseDown={focusTextOnPress}>
+      {leading}
       {header === undefined ? (
         text
       ) : (
@@ -159,6 +187,7 @@ export function TextArea({
           {text}
         </div>
       )}
+      {trailing}
     </div>
   );
 }

@@ -17,10 +17,12 @@ export interface PaletteBoxProps {
 
 /**
  * The box sits 96px from the top over the overlay and fades in, like a Dialog's. It's a flex
- * column only while open, so a closed `<dialog>` stays hidden.
+ * column only while open, so a closed `<dialog>` stays hidden. It has the prompt look's 24px
+ * corners and edge, but keeps the dialogs' deeper shadow, because it floats over the page
+ * (HAL-19142).
  */
 const frame = [
-  "palette-frame w-palette flex-col overflow-hidden rounded-lg border border-transparent p-0",
+  "palette-frame w-palette flex-col overflow-hidden rounded-prompt border border-border-prompt p-0",
   "bg-surface-raised text-fg shadow-3 open:flex",
   "transition-opacity duration-(--duration-base) ease-(--ease-enter) starting:opacity-0",
   "backdrop:bg-overlay backdrop:transition-opacity backdrop:duration-(--duration-base)",

@@ -1,6 +1,6 @@
 import type { MessagingRefusal } from "@halonicjs/ports";
 import { Button, ChatBoxLine, type ChatBoxLineTone, ChatComposer } from "@halonicjs/studio-kit";
-import { type Ref, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { isChannel } from "../channel.ts";
 import { channelWords } from "../channel-words.ts";
@@ -39,7 +39,7 @@ interface BoxLine {
 }
 
 /**
- * A chat's box: "Attach a file" and "Ask for an update", the files waiting
+ * A chat's box: "Ask for an update" over it, "Attach a file" inside it, the files waiting
  * in it on their own row, the text, and
  * the line saying why something wasn't sent. A screenshot pasted anywhere in
  * it waits with the files (requirements `messenger.files`,
@@ -83,9 +83,7 @@ export function ChatBox({ messenger, row, onSending, onSent, onChanged }: ChatBo
         box.addFiles(pasted);
       }}
     >
-      <BoxButtons
-        onAdd={box.addFiles}
-        attach={attach}
+      <AskForUpdate
         onAskForUpdate={() => {
           void box.askForUpdate().catch(report("The chat couldn't ask for an update:"));
         }}
@@ -108,6 +106,7 @@ export function ChatBox({ messenger, row, onSending, onSent, onChanged }: ChatBo
         line={boxLine(box.line)}
         picker={channel ? address.picker : undefined}
         header={channel ? <ChannelAddressBar address={address} onUnname={unname} /> : undefined}
+        leading={<AttachFileButton onAdd={box.addFiles} buttonRef={attach} />}
       />
     </div>
   );
@@ -129,19 +128,10 @@ function focusAfterRemove(
   (left?.[index] ?? left?.[index - 1] ?? last)?.focus();
 }
 
-/** The buttons above the box: "Attach a file" and "Ask for an update". */
-function BoxButtons({
-  onAdd,
-  attach,
-  onAskForUpdate,
-}: {
-  readonly onAdd: (files: readonly DraftFile[]) => void;
-  readonly attach: Ref<HTMLButtonElement>;
-  readonly onAskForUpdate: () => void;
-}) {
+/** The button above the box: "Ask for an update". Attach a file is inside the box. */
+function AskForUpdate({ onAskForUpdate }: { readonly onAskForUpdate: () => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <AttachFileButton onAdd={onAdd} buttonRef={attach} />
       <Button variant="secondary" size="sm" onClick={onAskForUpdate}>
         {messengerWords.askForUpdate}
       </Button>

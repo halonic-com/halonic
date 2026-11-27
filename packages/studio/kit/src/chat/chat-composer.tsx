@@ -1,5 +1,6 @@
 import type { KeyboardEvent, ReactNode, Ref } from "react";
 import { Button, type ButtonUnavailable } from "../button/button.tsx";
+import { ArrowUpIcon, StopIcon } from "../icons/prompt-icons.tsx";
 import { TextArea } from "../input/text-area.tsx";
 import { type ChatComposerPicker, ChatPickerList, useChatPicker } from "./chat-picker.tsx";
 
@@ -34,18 +35,21 @@ export interface ChatComposerProps {
   readonly picker?: ChatComposerPicker | undefined;
   /** A line inside the box's frame, above the text: a channel's To line and its chips. */
   readonly header?: ReactNode;
+  /** A round 36px button inside the box, before the text: the Messenger's Attach a file. */
+  readonly leading?: ReactNode;
 }
 
 /** The box grows to this many lines, then scrolls. */
 const MAX_ROWS = 8;
 
 /**
- * A chat's message box with its Send button, and the line under it. Enter sends and Shift Enter
+ * A chat's message box, in the prompt look (HAL-19142), with its round Send inside it at the
+ * right, and the line under it. Send is grey while there's nothing to send and blue once there is. Enter sends and Shift Enter
  * adds a line; neither does anything while an input method is composing (the TextArea's rule).
  * Enter sends nothing while a reply is being written, while Send waits, or when the message is
  * blank, and the text stays.
  *
- * While `answering`, the button is **Stop**. It's the same button, so focus stays on it, and
+ * While `answering`, the button is **Stop**, a square in the same place. It's the same button, so focus stays on it, and
  * after the reply it's **Send** again, still focused.
  *
  * With a `picker` open, ↑↓ move its active row, Enter picks it instead of sending, and Esc
@@ -87,31 +91,44 @@ export function ChatComposer(props: ChatComposerProps) {
   return (
     <div className="flex flex-col gap-2">
       {props.picker === undefined ? null : <ChatPickerList picker={props.picker} state={picker} />}
-      <div className="flex items-end gap-2">
-        <div className="min-w-0 flex-1">
-          <TextArea
-            ref={props.textRef ?? null}
-            aria-label={props.label}
-            placeholder={props.placeholder}
-            value={value}
-            maxRows={MAX_ROWS}
-            onChange={(event) => props.onChange(event.target.value)}
-            onKeyDown={handleKeyDown}
-            header={props.header}
-            {...picker.boxAttributes}
-          />
-        </div>
-        {/* One key for both, so React keeps the one button and focus stays on it. */}
-        {answering ? (
-          <Button key="send-or-stop" variant="secondary" onClick={props.onStop}>
-            Stop
-          </Button>
-        ) : (
-          <Button key="send-or-stop" variant="primary" unavailable={sendUnavailable} onClick={send}>
-            Send
-          </Button>
-        )}
-      </div>
+      <TextArea
+        ref={props.textRef ?? null}
+        look="prompt"
+        aria-label={props.label}
+        placeholder={props.placeholder}
+        value={value}
+        maxRows={MAX_ROWS}
+        onChange={(event) => props.onChange(event.target.value)}
+        onKeyDown={handleKeyDown}
+        header={props.header}
+        leading={props.leading}
+        trailing={
+          // One key for both, so React keeps the one button and focus stays on it.
+          answering ? (
+            <Button
+              key="send-or-stop"
+              variant="soft"
+              size="prompt"
+              round
+              icon={<StopIcon />}
+              label="Stop"
+              onClick={props.onStop}
+            />
+          ) : (
+            <Button
+              key="send-or-stop"
+              variant={value.trim() === "" ? "soft" : "primary"}
+              size="prompt"
+              round
+              icon={<ArrowUpIcon />}
+              label="Send"
+              unavailable={sendUnavailable}
+              onClick={send}
+            />
+          )
+        }
+        {...picker.boxAttributes}
+      />
       <div role="status">{props.line}</div>
     </div>
   );

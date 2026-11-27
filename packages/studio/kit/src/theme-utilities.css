@@ -261,6 +261,25 @@
   }
 }
 
+/* A prompt box's focus (HAL-19142): the edge turns accent and its shadow deepens; a 3px ring
+   looks heavy round a pill. More contrast and high contrast get the field's lines. */
+@utility focus-prompt {
+  @variant field-focus {
+    outline: 2px solid transparent;
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-prompt-focus);
+
+    @media (prefers-contrast: more) {
+      box-shadow: 0 0 0 1px var(--color-accent);
+    }
+
+    @media (forced-colors: active) {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+  }
+}
+
 /* The same for a field with an error: the edge stays danger and the ring is danger-soft. */
 @utility focus-field-danger {
   @variant field-focus {
@@ -286,6 +305,25 @@
  */
 @utility max-h-rows {
   max-height: calc(var(--max-rows) * var(--text-body--line-height));
+  max-height: calc(var(--max-rows) * 1lh);
+
+  @variant touch {
+    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
+    max-height: calc(var(--max-rows) * 1lh);
+  }
+
+  @variant phone {
+    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
+    max-height: calc(var(--max-rows) * 1lh);
+  }
+}
+
+/*
+ * A prompt TextArea's height limit: the same, but its fallback line is the reading text's 24px,
+ * since a prompt's text is the 15px of chat messages (kit.prompt-look).
+ */
+@utility max-h-rows-reading {
+  max-height: calc(var(--max-rows) * var(--text-reading--line-height));
   max-height: calc(var(--max-rows) * 1lh);
 
   @variant touch {
