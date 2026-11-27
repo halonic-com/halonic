@@ -10,7 +10,6 @@ import {
   type FocusedAppContribution,
   type FocusedWindowProps,
   type KeyboardPlatform,
-  type MountedFocusedWindow,
   mountFocusedWindow,
   type Registered,
   type Shell,
@@ -55,61 +54,127 @@ export function focusedAppOf(
 }
 
 /**
+ * How long a focused app's window waits for its workspace before it says to open Halonic
+ * (`studio.focused-app-start`): a minute, as long as Welcome waits for Halonic's engine.
+ */
+export const focusedOpenLimitMs = 60_000;
+
+/** The workspace a focused app's window opened, where, and what the window showed before. */
+interface FoundWorkspace {
+  readonly opened: OpenedWorkspace;
+  readonly location: string;
+  readonly content: WindowContent;
+}
+
+/**
  * Starts a focused app's window (`studio.focused-app-window`): only that app, on the approved
  * frame, for the workspace it showed before, or else the one Studio last had open, opened as a
- * Recent row opens it (`studio.window-content`). With no workspace in Recent, or one that can't
- * be opened, the window says to open Halonic, its button brings Studio's window forward, and the
- * reason it couldn't open goes to the console. Its times follow the system's region format, as
- * Studio's window's do, and it hears the feedback shortcut as Studio's window does, sending
- * through the workspace it opened. It never opens the workspace's engine for routines: Studio's
- * window does, and engine locks are held per window. Quick ask's box starts through
- * `startAskBox` instead, which opens no engine at all.
+ * Recent row opens it (`studio.window-content`). The window is drawn at once, saying it reads the
+ * workspace, before the shell is asked anything (`studio.focused-app-start`, HAL-20489), so the
+ * page's own "Starting Halonic…" text never stays. With no workspace in Recent, one that can't be
+ * opened, or one still opening after {@link focusedOpenLimitMs}, the window says to open Halonic,
+ * its button brings Studio's window forward, and the reason goes to the console; a workspace that
+ * opens later still shows. Its times follow the system's region format, as Studio's window's do,
+ * and it hears the feedback shortcut as Studio's window does, sending through the workspace it
+ * opened. It never opens the workspace's engine for routines: Studio's window does, and engine
+ * locks are held per window. Quick ask's box starts through `startAskBox` instead, which opens no
+ * engine at all.
  */
 export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): StartedStudio {
   const { shell, ipc, app, language, display } = parts;
   const stopAppearance = watchAppearance(display, page.element.ownerDocument.documentElement);
   const document = page.element.ownerDocument;
   const stopFrameColour = followFrameColour(ipc, document, () => appFrameColour(document));
+  let windowProps: FocusedWindowProps = {
+    shell,
+    app,
+    workspace: undefined,
+    opening: true,
+    language,
+    chosenFormat: chosenFormatOf(display),
+    openStudio: () => showStudio(ipc),
+  };
+  const mounted = mountFocusedWindow(page.element, windowProps);
+  let stopped = false;
+  const redraw = (change: Partial<FocusedWindowProps>) => {
+    windowProps = { ...windowProps, ...change };
+    if (!stopped) mounted.update(windowProps);
+  };
+  // The app's times follow the system's region format once the shell has read it, as Studio's do.
+  const stopRegion = followSystemRegion(ipc, (regionFormat) => redraw({ regionFormat }));
+  const limit = setTimeout(() => {
+    console.error(`The focused app's workspace hasn't opened after ${focusedOpenLimitMs} ms.`);
+    redraw({ opening: false });
+  }, focusedOpenLimitMs);
+  let settled = false;
+  const opening = openFocusedWorkspace(page, parts).catch((error: unknown) => {
+    console.error("The focused app couldn't open its workspace:", error);
+    return undefined;
+  });
+  const shown = opening.then((found) => {
+    settled = true;
+    clearTimeout(limit);
+    redraw({ workspace: found?.opened.workspace, opening: false });
+    return found;
+  });
+  const keeping = keepShownContent(ipc, app, shown);
+  const feedback = startFeedback(page, parts, shown);
+  const close = async (opened: OpenedWorkspace | undefined) => {
+    (await feedback)();
+    (await keeping)();
+    await opened?.dispose();
+  };
+  return {
+    host: "desktop-app",
+    stop: async () => {
+      clearTimeout(limit);
+      stopRegion();
+      stopped = true;
+      mounted.unmount();
+      stopFrameColour();
+      stopAppearance();
+      // An open still under way isn't waited for: it may never end. It is closed once it does.
+      if (!settled) {
+        shown
+          .then((found) => close(found?.opened))
+          .catch((error: unknown) => {
+            console.error("The focused app's workspace didn't close:", error);
+          });
+        return;
+      }
+      await close((await shown)?.opened);
+    },
+  };
+}
+
+/** Opens the workspace the window showed, or the first in Recent; `undefined` when there is none. */
+async function openFocusedWorkspace(
+  page: StudioPage,
+  parts: FocusedAppParts,
+): Promise<FoundWorkspace | undefined> {
+  const { shell, ipc, display } = parts;
   const device: DeviceMemory = {
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     storage: page.storage ?? noStorage,
     platform: parts.platform,
   };
-  let mounted: MountedFocusedWindow | undefined;
-  let windowProps: FocusedWindowProps | undefined;
-  let regionFormat: string | undefined;
-  // The app's times follow the system's region format once the shell has read it, as Studio's do.
-  const stopRegion = followSystemRegion(ipc, (region) => {
-    regionFormat = region;
-    if (windowProps === undefined) return;
-    windowProps = { ...windowProps, regionFormat };
-    mounted?.update(windowProps);
-  });
-  const opening = readWindowContent(ipc).then(async (content) => {
-    const location = locationToOpen(device.recent.list(), content);
-    if (location === undefined) return undefined;
-    const open =
-      parts.openWorkspace ?? ((at: string) => openFolder(shell, page.window, at, display, device));
-    const opened = await openLast(ipc, location, open);
-    return opened === undefined ? undefined : { opened, location, content };
-  });
-  const shown = opening.then((found) => {
-    windowProps = {
-      shell,
-      app,
-      workspace: found?.opened.workspace,
-      language,
-      regionFormat,
-      chosenFormat: chosenFormatOf(display),
-      openStudio: () => showStudio(ipc),
-    };
-    mounted = mountFocusedWindow(page.element, windowProps);
-    return found?.opened;
-  });
-  // The chat or item is asked for once the page shows, while the page is listening.
-  const keeping = opening
-    .then(async (found) => {
-      await shown;
+  const content = await readWindowContent(ipc);
+  const location = locationToOpen(device.recent.list(), content);
+  if (location === undefined) return undefined;
+  const open =
+    parts.openWorkspace ?? ((at: string) => openFolder(shell, page.window, at, display, device));
+  const opened = await openLast(ipc, location, open);
+  return opened === undefined ? undefined : { opened, location, content };
+}
+
+/** Keeps the chat or item the window shows once it shows it; the way to stop keeping. */
+function keepShownContent(
+  ipc: TauriIpc,
+  app: Registered<FocusedAppContribution>,
+  shown: Promise<FoundWorkspace | undefined>,
+): Promise<() => void> {
+  return shown
+    .then((found) => {
       if (found === undefined) return () => {};
       const { opened, location, content } = found;
       const inApp = shownInApp(app.id, opened.workspace.services);
@@ -123,17 +188,25 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
       console.error("This window won't reopen on what it shows:", error);
       return () => {};
     });
-  // Send feedback goes through the folder the window opened, so its shortcut starts once the page
-  // shows it, with the toasts in view (`studio.feedback-window`).
-  const feedback = opening
-    .then(async (found) => {
-      await shown;
+}
+
+/**
+ * Send feedback goes through the folder the window opened, so its shortcut starts once the page
+ * shows it, with the toasts in view (`studio.feedback-window`).
+ */
+function startFeedback(
+  page: StudioPage,
+  parts: FocusedAppParts,
+  shown: Promise<FoundWorkspace | undefined>,
+): Promise<() => void> {
+  return shown
+    .then((found) => {
       if (found === undefined) return () => {};
       const openExternal = desktopOpenExternal(page.window);
       return startFocusedWindowFeedback(page, {
-        ipc,
+        ipc: parts.ipc,
         platform: parts.platform,
-        toasts: shell.toasts,
+        toasts: parts.shell.toasts,
         opened: { location: found.location, value: found.opened },
         openTask: (taskUrl) => void openExternal?.(taskUrl),
       });
@@ -142,19 +215,6 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
       console.error("The feedback shortcut won't work in this window:", error);
       return () => {};
     });
-  return {
-    host: "desktop-app",
-    stop: async () => {
-      const opened = await shown;
-      stopRegion();
-      (await feedback)();
-      (await keeping)();
-      mounted?.unmount();
-      stopFrameColour();
-      stopAppearance();
-      await opened?.dispose();
-    },
-  };
 }
 
 /**

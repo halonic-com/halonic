@@ -173,6 +173,41 @@ verifies("shell.focused-apps", () => {
   });
 });
 
+verifies("shell.focused-app-opening", () => {
+  it("says it reads the workspace while it opens, then shows the app once it has", async () => {
+    vi.useFakeTimers();
+    const shell = shellWith(inboxApp);
+    const services = new MapTarget();
+    shell.services.instantiate(services);
+    const [app] = shell.contributions.focusedApps.list();
+    if (app === undefined) throw new Error("The Acme Inbox added no focused app.");
+    const props = { shell, app, language: "en", openStudio: () => undefined };
+    let focused: ReturnType<typeof mountFocusedWindow> | undefined;
+    act(() => {
+      focused = mountFocusedWindow(element, { ...props, workspace: undefined, opening: true });
+    });
+
+    await act(() => vi.advanceTimersByTimeAsync(3_000));
+
+    expect(element.querySelector('[role="status"]')?.textContent).toContain(
+      "Reading the workspace…",
+    );
+    expect(element.textContent).toContain("3 s");
+    expect(element.textContent).not.toContain("Open Halonic");
+    const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name: "Acme" });
+    await act(async () => {
+      focused?.update({ ...props, workspace, opening: false });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    vi.useRealTimers();
+    await vi.waitFor(() =>
+      expect(element.querySelector("main h1")?.textContent).toBe("Inbox for desktop-app"),
+    );
+    expect(element.textContent).not.toContain("Reading the workspace…");
+    act(() => focused?.unmount());
+  });
+});
+
 /** The Acme Messenger's view: one chat row's time, 09:41 today, with no locale of its own. */
 function AcmeMessenger() {
   return <TimeStamp at={new Date(2026, 10, 26, 9, 41)} now={new Date(2026, 10, 26, 12, 0)} />;
