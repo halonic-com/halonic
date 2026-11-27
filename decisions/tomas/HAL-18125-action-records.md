@@ -12,7 +12,9 @@ gains the two record commands of user-only action steppers on desktop: `action_r
 computer serves still gets no native access, and `served_page_is_refused_every_app_and_plugin_command`
 now also covers the two commands, since it reads them from the build's ACL manifests. The
 capability check in `served_page_tests/capabilities.rs` lists the two new permissions of
-`desktop-actions.json`. No test was weakened or skipped.
+`desktop-actions.json`. A new golden, `record-events.json` in `action-send-tauri`, holds the record
+events both the adapter's tests and the shell's `tests/records.rs` read, so the two allow-lists
+can't drift apart. No test was weakened or skipped.
 
 ## Why
 
@@ -27,3 +29,4 @@ The capability `desktop-actions.json` grants them to the app's own windows only,
 
 - studio.src-tauri.served-page
 - apps/studio/src-tauri/src/served_page_tests/capabilities.rs
+- packages/adapters/action-send-tauri/src/golden/record-events.json

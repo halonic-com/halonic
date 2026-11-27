@@ -218,6 +218,10 @@ fn a_hard_link_in_a_records_place_is_refused_not_written() {
 
 #[cfg(unix)]
 #[test]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "a Unix-only test: mkfifo opens no console window"
+)]
 fn a_named_pipe_in_a_records_place_is_refused_without_waiting() {
     let scratch = Scratch::new("pipe");
     let files = scratch.files();
