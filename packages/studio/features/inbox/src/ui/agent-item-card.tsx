@@ -73,6 +73,15 @@ export interface AgentItemCardProps {
   readonly cannotRun?: readonly string[];
 }
 
+/**
+ * Whether the item is an action request: one reviewed stepper, or a stored stepper request the
+ * stepper couldn't read. A stored server-session request keeps its own answers
+ * (`inbox.run-with-claude`).
+ */
+function asksForAStepper(item: AgentItem, cannotRun: readonly string[] | undefined): boolean {
+  return item.action !== undefined || cannotRun !== undefined;
+}
+
 /** How an action request ends when the user declines it: it never ran, so no step is listed. */
 const declined: InboxAnswer = { kind: "action-result", outcome: "declined", steps: [] };
 
@@ -115,7 +124,7 @@ export function AgentItemCard({
   answer,
   readAttachment,
   focusOnOpen = true,
-  cannotRun = [],
+  cannotRun,
   onEndedRead,
 }: AgentItemCardProps) {
   useEveryMinute();
@@ -145,6 +154,7 @@ export function AgentItemCard({
   const busy = (chosen: InboxAnswer) => sent.kind === "sending" && sameChoice(sent.answer, chosen);
   const since = item.state.kind === "open" ? waitingSince(new Date(item.createdAt), now()) : null;
   const label = source?.label;
+  const stepper = asksForAStepper(item, cannotRun);
 
   return (
     <section aria-labelledby={titleId} className={cardClasses}>
@@ -175,9 +185,9 @@ export function AgentItemCard({
           detail={sent.kind === "failed" ? failureDetailOf(sent.error) : null}
           manual={sent.kind === "bad-answer" ? badAnswerLine : null}
         />
-        {item.action === undefined || ended !== undefined ? null : (
+        {!stepper || ended !== undefined ? null : (
           <CannotRun
-            reasons={cannotRun}
+            reasons={cannotRun ?? []}
             unavailable={unavailable}
             busy={busy(declined)}
             onDecline={() => void send(declined)}
@@ -185,6 +195,7 @@ export function AgentItemCard({
         )}
         <AnswerControls
           item={item}
+          stepper={stepper}
           sent={sent}
           ended={ended !== undefined}
           unavailable={unavailable}
@@ -200,6 +211,8 @@ export function AgentItemCard({
 
 interface AnswerControlsProps {
   readonly item: AgentItem;
+  /** It's an action request, answered through the stepper or its **Decline**. */
+  readonly stepper: boolean;
   readonly sent: Sent;
   /** It ended elsewhere: the buttons and the reply field go, a form of questions stays, ticked. */
   readonly ended: boolean;
@@ -217,6 +230,7 @@ interface AnswerControlsProps {
  */
 function AnswerControls({
   item,
+  stepper,
   sent,
   ended,
   unavailable,
@@ -225,7 +239,7 @@ function AnswerControls({
   send,
 }: AnswerControlsProps) {
   const [reply, setReply] = useState("");
-  if (item.action !== undefined) return null;
+  if (stepper) return null;
   if (item.questions === undefined && ended) return null;
   if (item.questions !== undefined) {
     return (

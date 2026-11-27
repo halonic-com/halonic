@@ -312,6 +312,9 @@ importers:
 
   apps/agent-host:
     dependencies:
+      '@halonicjs/action-catalog':
+        specifier: workspace:*
+        version: link:../../packages/core/action-catalog
       '@halonicjs/adapter-agent-messaging-cache':
         specifier: workspace:*
         version: link:../../packages/adapters/agent-messaging-cache
@@ -493,6 +496,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@halonicjs/action-catalog':
+        specifier: workspace:*
+        version: link:../../packages/core/action-catalog
       '@halonicjs/action-steppers':
         specifier: workspace:*
         version: link:../../packages/core/action-steppers
@@ -692,6 +698,9 @@ importers:
 
   apps/studio:
     dependencies:
+      '@halonicjs/action-catalog':
+        specifier: workspace:*
+        version: link:../../packages/core/action-catalog
       '@halonicjs/adapter-agent-host-client':
         specifier: workspace:*
         version: link:../../packages/adapters/agent-host-client
@@ -855,6 +864,9 @@ importers:
       '@halonicjs/adapter-fs-node':
         specifier: workspace:*
         version: link:../../packages/adapters/fs-node
+      '@halonicjs/adapter-paperclip-client':
+        specifier: workspace:*
+        version: link:../../packages/adapters/paperclip-client
       '@halonicjs/app-agent-host':
         specifier: workspace:*
         version: link:../agent-host

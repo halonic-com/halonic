@@ -16,6 +16,7 @@ export {
   reviewActionItem,
 } from "./review/action-item-review.ts";
 export type { ConnectedPaperclip, ConnectionsRead } from "./review/paperclip-host.ts";
+export { type ActionItemRead, actionItemOf, stepperItemReasons } from "./review/stepper-item.ts";
 export { StepperRun } from "./run/stepper-run.ts";
 export type { StepperRunOptions } from "./run/stepper-run-options.ts";
 export {

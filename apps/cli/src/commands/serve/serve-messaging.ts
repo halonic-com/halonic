@@ -4,6 +4,7 @@
 
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { shippedCatalog } from "@halonicjs/action-catalog";
 import { CachedAgentMessaging } from "@halonicjs/adapter-agent-messaging-cache";
 import {
   type PaperclipAnswer,
@@ -149,6 +150,8 @@ async function storedKeyProvider(
     connection,
     company: madeFor.company,
     label: `Paperclip · ${file.label}`,
+    // A card pinned to a stepper request this Halonic ships becomes an action item.
+    stepperCatalog: shippedCatalog,
     warn: options.warn,
     ...(options.fetch === undefined ? {} : { fetch: options.fetch }),
     ...(options.now === undefined ? {} : { now: options.now }),

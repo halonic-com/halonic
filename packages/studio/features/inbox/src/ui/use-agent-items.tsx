@@ -4,8 +4,9 @@ import type {
   MessagingProject,
   MessagingSource,
 } from "@halonicjs/ports";
-import type { ActionItem } from "@halonicjs/studio-feature-action-steppers/api";
+import { actionItemOf } from "@halonicjs/studio-feature-action-steppers/api";
 import { Button, type ListRow, waitingFor } from "@halonicjs/studio-kit";
+import { desktopOnlyActionSteps } from "@halonicjs/studio-services";
 import {
   type ReactNode,
   useCallback,
@@ -95,28 +96,26 @@ const nothing: AgentInboxState = {
 /** Couldn't read the agents' items; said over the list, with **Try again**. */
 export const agentLoadFailed = "Couldn't load the items from your agents.";
 
-function isActionItem(item: AgentItem): item is ActionItem {
-  return item.action !== undefined;
-}
-
 /**
- * An agent's card, or for an action item the stepper in review mode (`inbox.agent-action-items`),
- * or for a stored stepper request its card with **Run with Claude** when it offers a server
- * session (`inbox.run-with-claude`).
+ * An agent's card, or for an action item the stepper in review mode (`inbox.agent-action-items`).
+ * A stored stepper request opens as its one stepper, review only for now
+ * (`action-steppers.stepper-items`), or as the card with the reasons it can't; a server-session
+ * request opens as its card with **Run with Claude** when it offers one (`inbox.run-with-claude`).
  */
 function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: ActionChecks }) {
-  const { item } = card;
-  if (!isActionItem(item)) {
-    if (item.stepper !== undefined) return <StepperItemCard {...card} checks={checks} />;
+  const read = actionItemOf(card.item);
+  if (read?.kind === "unreadable") return <AgentItemCard {...card} cannotRun={read.reasons} />;
+  if (read === undefined) {
+    if (card.item.stepper !== undefined) return <StepperItemCard {...card} checks={checks} />;
     return <AgentItemCard {...card} />;
   }
   return (
     <ActionItemCard
       {...card}
-      item={item}
+      item={read.item}
       catalog={checks.catalog}
       policy={checks.policy}
-      steps={checks.steps}
+      steps={read.runs ? checks.steps : desktopOnlyActionSteps}
       paperclips={checks.paperclips}
     />
   );
