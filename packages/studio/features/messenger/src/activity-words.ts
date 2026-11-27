@@ -9,6 +9,11 @@ import type { RunOutcome } from "./activity.ts";
 export const activityWords = {
   /** The panel's landmark and heading: "Chief's activity". */
   title: (name: string) => `${name}'s activity`,
+  /**
+   * A channel's panel heading while it lists its agents: "Activity in Launch". A channel's title
+   * is free text, not a name, so it takes no 's (Noah's copy check, HAL-19933).
+   */
+  activityIn: (channel: string) => `Activity in ${channel}`,
   /** The chat header's button: its tooltip, and its name while the agent works. */
   button: "Activity (Ctrl+I)",
   buttonWorking: (name: string) => `${name}'s activity, working`,
@@ -22,7 +27,8 @@ export const activityWords = {
   workingOn: (task: string) => `Working on ${task}`,
   /** An agent's view in a channel's panel goes back to the channel's list: "‹ Channel". */
   channel: "Channel",
-  backToChannel: "Back to the channel's agents",
+  /** Holds the visible word "Channel", as WCAG 2.5.3 asks (HAL-19933). */
+  backToChannel: "Back to the channel",
   forMinutes: (minutes: number) => `for ${duration(minutes)}`,
   lastActivityNow: "Last activity just now",
   lastActivity: (minutes: number) => `Last activity ${duration(minutes)} ago`,

@@ -81,6 +81,7 @@ verifies("messenger.activity-channel", () => {
       const page = await openMessenger(messaging, [], false, now, activity);
       await openChat(page, "Launch");
       expect(activity.runs).toHaveBeenCalledWith({ since: expect.any(String) });
+      expect(panel(page)?.querySelector("h2")?.textContent).toBe("Activity in Launch");
       expect(lines(page)).toEqual(["Liam · Working on ACME-7", "Noah · Idle"]);
       await press(panel(page)?.querySelector("[data-agent-line]"));
       expect(panel(page)?.textContent).toContain("Liam's activity");
@@ -89,6 +90,7 @@ verifies("messenger.activity-channel", () => {
       expect(panel(page)?.textContent).not.toContain("Answering you");
       const back = document.activeElement;
       expect(back?.textContent).toBe("‹ Channel");
+      expect(back?.getAttribute("aria-label")).toBe("Back to the channel");
       await press(back);
       expect(lines(page)).toHaveLength(2);
       expect(document.activeElement?.textContent).toBe("Liam · Working on ACME-7");
@@ -101,6 +103,24 @@ verifies("messenger.activity-channel", () => {
       const found = [...(panel(page)?.querySelectorAll("button[data-agent-line]") ?? [])];
       expect(found).toHaveLength(2);
       expect(found.every((line) => line.classList.contains("focus-ring-inset"))).toBe(true);
+    });
+
+    it("reads each agent's runs on its own when the workspace's newest runs leave some out", async () => {
+      const { messaging, activity } = acme();
+      const own = await activity.runs({ since: "" });
+      // A busy day: the workspace's newest runs leave out Liam's ACME-7, and say some are missing.
+      const isLiams = (run: TeamRun) => run.task?.identifier === "ACME-7";
+      vi.mocked(activity.runs).mockImplementation(async ({ agent }) =>
+        own.map((each) => {
+          if (agent === undefined) {
+            return { ...each, runs: each.runs.filter((run) => !isLiams(run)), complete: false };
+          }
+          return { ...each, runs: each.runs.filter((run) => run.agent === agent) };
+        }),
+      );
+      const page = await openMessenger(messaging, [], false, now, activity);
+      await openChat(page, "Launch");
+      expect(lines(page)).toEqual(["Liam · Working on ACME-7", "Noah · Idle"]);
     });
 
     it("shows the header button's dot while one of its agents works", async () => {

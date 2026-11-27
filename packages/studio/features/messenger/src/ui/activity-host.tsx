@@ -14,7 +14,7 @@ import { flushSync } from "react-dom";
 import type { ActivityTask, ActivityView } from "../activity.ts";
 import { activityWords } from "../activity-words.ts";
 import { isChannel } from "../channel.ts";
-import { agentRow, channelAgentLines } from "../channel-activity.ts";
+import { agentRow, type ChannelAgentLine, channelAgentLines } from "../channel-activity.ts";
 import { chatAgent } from "../chat-name.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { ChannelAgents } from "./activity-channel.tsx";
@@ -87,7 +87,7 @@ export function ActivityHost({
         <div className={open && place === "place" ? "hidden" : "contents"}>{children}</div>
         {open ? (
           <ActivityPanel
-            name={shown.name}
+            title={shown.title}
             chat={name}
             shows={shown.activity === undefined ? "agents" : shown.activity.view?.kind}
             place={place}
@@ -121,7 +121,7 @@ function ShownBody({
   now,
   words,
 }: {
-  readonly shown: ReturnType<typeof useShownAgent>;
+  readonly shown: ShownAgent;
   readonly now: Date;
   readonly words: EngineWords;
 }) {
@@ -131,14 +131,31 @@ function ShownBody({
   return <ActivityBody name={shown.name} activity={shown.activity} now={now} words={words} />;
 }
 
+/** Whose activity the panel shows, and how to move between a channel's agents. */
+interface ShownAgent {
+  /** "Chief", for the announcements and the body's words; a channel's title while it lists its agents. */
+  readonly name: string;
+  /** The panel's heading: "Chief's activity", or "Activity in Launch" while a channel lists its agents. */
+  readonly title: string;
+  /** The shown agent's activity; none while a channel lists its agents. */
+  readonly activity: ActivityRead | undefined;
+  /** The header button's dot: the agent, or one of the channel's agents, is working. */
+  readonly working: boolean;
+  readonly lines: readonly ChannelAgentLine[];
+  readonly pick: (agent: MessagingId) => void;
+  /** Back to the channel's agents; none outside a channel's agent view. */
+  readonly back: (() => void) | undefined;
+}
+
 /**
  * Whose activity the panel shows: a chat's agent; in a channel, its agents' lines until the
  * person picks one, then that agent, with `back` to the lines. A channel reads every agent's runs
  * at once. Its header button's dot shows while any of its agents works.
  */
-function useShownAgent(messenger: Messenger, row: ConversationRow, open: boolean) {
+function useShownAgent(messenger: Messenger, row: ConversationRow, open: boolean): ShownAgent {
   const channel = isChannel(row);
-  const reads = useActivityReads(messenger, channel ? undefined : row.conversation.agent, open);
+  const agents = channel ? row.agents.map((agent) => agent.id) : [row.conversation.agent];
+  const reads = useActivityReads(messenger, agents, open);
   const [picked, setPicked] = useState<MessagingId | undefined>(undefined);
   const now = messenger.now();
   const pick = useCallback((agent: MessagingId) => setPicked(agent), []);
@@ -148,6 +165,7 @@ function useShownAgent(messenger: Messenger, row: ConversationRow, open: boolean
     const name = chatAgent(row)?.name ?? row.conversation.title;
     return {
       name,
+      title: activityWords.title(name),
       activity,
       working: activity.view?.kind === "working",
       lines: [],
@@ -160,11 +178,26 @@ function useShownAgent(messenger: Messenger, row: ConversationRow, open: boolean
   const working = lines.some((line) => line.working);
   const agent = row.agents.find((each) => each.id === picked);
   if (agent === undefined) {
-    const activity: ActivityRead | undefined = undefined;
-    return { name: row.conversation.title, activity, working, lines, pick, back: undefined };
+    return {
+      name: row.conversation.title,
+      title: activityWords.activityIn(row.conversation.title),
+      activity: undefined,
+      working,
+      lines,
+      pick,
+      back: undefined,
+    };
   }
   const activity = activityFor(reads, agentRow(row, agent.id), now);
-  return { name: agent.name, activity, working, lines, pick, back };
+  return {
+    name: agent.name,
+    title: activityWords.title(agent.name),
+    activity,
+    working,
+    lines,
+    pick,
+    back,
+  };
 }
 
 /**
