@@ -72,6 +72,8 @@ fn a_mistyped_name_is_shown_next_to_the_field_and_the_request_scrolls_by_keyboar
     let page = ask_page(&sheet(Some(r#"a"b$(c)"#), &[]));
     assert!(page.contains(r#"pattern="a&quot;b\$\(c\)""#));
     assert!(page.contains(r#"<pre tabindex="0" role="region" aria-label="The request">"#));
+    // HAL-20442: the focusable request box gets the same ring as every other control.
+    assert!(page.contains("pre:focus-visible"));
 }
 
 #[test]

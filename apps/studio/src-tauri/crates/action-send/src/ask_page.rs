@@ -258,6 +258,6 @@ pre { margin: 0; padding: 8px; border: 1px solid GrayText; border-radius: 6px; f
 input { font: 13px ui-monospace, monospace; padding: 6px 8px; }
 nav { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
 a, button { padding: 6px 16px; border: 1px solid GrayText; border-radius: 6px; color: CanvasText; background: Canvas; text-decoration: none; font: inherit; }
-a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, pre:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
 button { background: Highlight; color: HighlightText; border-color: Highlight; }
 ";
