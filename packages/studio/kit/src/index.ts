@@ -1,7 +1,6 @@
 /**
  * The Studio's shared kit: the design tokens and the base components. The tokens are CSS, not
- * TypeScript: import them from CSS with `@import "@halonicjs/studio-kit";` (see README.md). The
- * components arrive here one by one, each with its own named export.
+ * TypeScript: import them from CSS with `@import "@halonicjs/studio-kit";` (see README.md).
  */
 
 export {
@@ -359,6 +358,7 @@ export {
   type RadioOption,
 } from "./radio/radio-group.tsx";
 export { RailButton, type RailButtonProps } from "./rail-button/rail-button.tsx";
+export { SearchField, type SearchFieldProps } from "./search-field/search-field.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
 export { Select, type SelectOption, type SelectProps } from "./select/select.tsx";
 export { MAX_SERIES, OTHER_NAME, type Series } from "./series-chart/series.ts";

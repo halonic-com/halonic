@@ -33,7 +33,19 @@ verifies("kit.tooltip-beside", () => {
   it("keeps 8px from the window's edges and lands on whole pixels", () => {
     expect(placeBeside(railButton(12, 0), tooltip, view, leftToRight).top).toBe(8);
     expect(placeBeside(railButton(12, 580), tooltip, view, leftToRight).top).toBe(568);
+    // Above the window's top edge, the centred place would be at -12.
+    expect(placeBeside(railButton(12, -20), tooltip, view, leftToRight).top).toBe(8);
     const odd = { width: 60, height: 23 };
     expect(placeBeside(railButton(12, 54), odd, view, leftToRight).top).toBe(63);
+  });
+
+  it("stays 8px from both sides when it fits on neither", () => {
+    const narrow = { width: 100, height: 600 };
+    const wide = { width: 90, height: 24 };
+    // After the button it would end at 146 in a 100px window; before it, start at -82.
+    expect(placeBeside(railButton(12, 54), wide, narrow, leftToRight).left).toBe(8);
+    expect(placeBeside(railButton(12, 54), wide, narrow, rightToLeft).left).toBe(8);
+    // A button past the left edge: before it the tooltip would start at -154.
+    expect(placeBeside(railButton(-60, 54), wide, view, rightToLeft).left).toBe(8);
   });
 });
