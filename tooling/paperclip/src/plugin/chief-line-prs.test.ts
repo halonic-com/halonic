@@ -100,6 +100,7 @@ function setup() {
     webhookHosts: ["hooks.acme.test"],
     maxPerHour: 3,
     prOutcomes: true,
+    noPostTasks: [],
   };
   const github = fakeGitHub();
   const pass = (snapshot: Snapshot) =>
@@ -210,6 +211,7 @@ verifies("paperclip.chief-line-prs", () => {
         webhookHosts: [],
         maxPerHour: 3,
         prOutcomes: false,
+        noPostTasks: [],
       },
       snapshot: snapshotOf(pull(6085, "69f553a7c", "merged")),
       get: fakeGitHub().get,
