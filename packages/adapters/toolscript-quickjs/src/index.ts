@@ -1,3 +1,4 @@
+export { createQuickJsToolScriptHost, type QuickJsToolScriptHostOptions } from "./host.ts";
 export {
   createQuickJsToolScriptIsolate,
   type QuickJsToolScriptIsolateOptions,

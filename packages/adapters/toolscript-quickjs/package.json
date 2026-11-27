@@ -14,11 +14,13 @@
   },
   "dependencies": {
     "@halonicjs/ports": "workspace:*",
+    "@halonicjs/toolscript-host": "workspace:*",
     "quickjs-emscripten-core": "catalog:"
   },
   "devDependencies": {
     "@halonicjs/adapter-memory": "workspace:*",
     "@halonicjs/engine": "workspace:*",
+    "@halonicjs/testing-contracts": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",
     "@halonicjs/testing-toolscript-fence": "workspace:*",
     "@halonicjs/tooling-config": "workspace:*",
