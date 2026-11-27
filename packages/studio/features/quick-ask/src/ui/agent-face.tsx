@@ -17,7 +17,8 @@ function still(element: HTMLElement): boolean {
  * The agent button's face (design HAL-19384): while the agents are read, a skeleton circle the
  * avatar's size, drawn after 300 ms (the kit's `SKELETON_AFTER_MS`, so a fast read doesn't flash),
  * breathing at most 3 times and read out as "Loading your agents"; once they're there, the picked
- * agent's avatar, fading in over 120 ms. Either way the button keeps its size.
+ * agent's avatar, fading in over 120 ms. Either way the face keeps the avatar's size, so the row
+ * keeps its height; the chip around the avatar adds the name once the agents arrive.
  */
 export function AgentFace({ name }: { readonly name: string | undefined }) {
   return name === undefined ? <AgentSkeleton /> : <ArrivingAvatar name={name} />;

@@ -66,6 +66,8 @@ verifies("quick-ask.box-states", () => {
 
       await typeIn(textBox(page), "Where are we?");
       expect(textBox(page).value).toBe("Where are we?");
+      // Ask stays quiet with text in the box, since it can't send until the agents arrive.
+      expect(page.querySelector('button[aria-label="Ask"]')?.className).not.toContain("bg-primary");
       await press(page.querySelector('button[aria-label="Ask"]'));
       await pressKey(textBox(page), "Enter");
       expect(messenger.messagesOf.size).toBe(0);
@@ -76,6 +78,7 @@ verifies("quick-ask.box-states", () => {
       expect(textBox(page).value).toBe("Where are we?");
       expect(page.querySelector("[data-agent-skeleton]")).toBeNull();
       expect(page.querySelector('button[aria-label="Ask Chief. Change agent."]')).not.toBeNull();
+      expect(page.querySelector('button[aria-label="Ask"]')?.className).toContain("bg-primary");
     });
   });
 
@@ -139,14 +142,15 @@ verifies("quick-ask.box-states", () => {
       messenger.refuse = "offline";
       const { page } = await openBox(messenger);
       await ask(page, "Where are we?");
+      const bubble = () => page.querySelector("[data-question-bubble]");
+      expect(bubble()?.className).toContain("border-danger");
       messenger.refuse = undefined;
       const send = new Held();
       messenger.sendHeld = send;
       await press(byText(page, "button", "Try again"));
-      const question = page.querySelector("[data-question]");
 
       expect(page.querySelector("[data-sending]")?.textContent).toBe("Sending…");
-      expect(question?.className).not.toContain("border-danger");
+      expect(bubble()?.className).not.toContain("border-danger");
       expect(byText(page, "button", "Try again")).toBeUndefined();
       await act(async () => send.release());
       await settle();

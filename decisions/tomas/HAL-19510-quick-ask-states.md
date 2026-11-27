@@ -2,7 +2,6 @@
 
 - Approval: the designer decided the wording on HAL-19570, and the opening state was designed on HAL-19384 for HAL-19510; team decisions on details of an approved screen (HAL-2282 rule); Liam signs this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5taJKays8AaOedivkZ6xaw2E4I8u1tqhfm22DJbiHFgdxgEkLXihckaVatSot8JPmT3b3Mtust3PTQsuaS3/DA==
 
 Settings → Keyboard showed one refusal in two wordings: Send feedback's row says
 "{shortcut} is taken by another app. Choose another." and Quick ask's row, right
@@ -21,8 +20,10 @@ the box twice. The focused text box also lets Esc close the box while it opens
 `quick-ask.box-states`, which keeps its "Loading your agents" announcement after
 300 ms, and its test file goes with the view it tested. That includes the
 alignment test #6628 (HAL-19950) added: the skeleton circle now sits in the
-agent button's own `p-0.5` box next to the real text box, so nothing can shift
-when the agents arrive.
+agent button's own `p-0.5` box next to the real text box, so the row keeps its
+height when the agents arrive. Since #6340 (HAL-19083) the agent button is a
+chip with the agent's name, wider than the circle, so the text box moves right
+by the name's width when the agents arrive.
 
 ## Covers
 
