@@ -40,6 +40,8 @@ export function madeUpAgentsHost(
         maxSteps: 6,
         params: {},
         harness: "halonic",
+        workingFolder: `files/agents/${found.id}`,
+        allowedSites: [],
         skills: [],
         knowledge: [],
         connectors: [],
