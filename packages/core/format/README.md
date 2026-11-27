@@ -65,9 +65,11 @@ don't make the file fail.
 | `routine` | `workflows/routines/<id>.routine.yaml` |
 | `integration` | `integration.yaml`, next to the integration's code (not in a workspace) |
 | `plugin` | `plugin.yaml`, at the root of a plugin folder (not in a workspace) |
+| `workspaceTemplate` | `template.yaml`, at the workspace root; commands read it, the workspace loader doesn't |
 
 Most kinds can also sit inside a hub folder; `fileKinds[kind].places` has the
-exact places (`integration` and `plugin` have none: they live outside workspaces).
+exact places (`integration` and `plugin` have none: they live outside workspaces;
+`workspaceTemplate` has none either, so a template that fails never fails the workspace).
 `kindNames()` lists the kinds and `isKindName(text)` tells whether a text names one. Each kind's
 folder in `src/kinds/` holds its schema and its tests. Checks between files belong to the loader,
 not here.

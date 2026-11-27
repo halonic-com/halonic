@@ -29,7 +29,7 @@ verifies("workspace.acme-example", () => {
 
     it("loads with no error and no warning", () => {
       expect(workspace.issues).toEqual([]);
-      expect(workspace.ignored).toEqual(["README.md", "examples/refund-question.json"]);
+      expect(workspace.ignored).toEqual(["README.md", "examples/refund-question.json", "template.yaml"]);
     });
 
     it("has the hubs, agents, workflows and routine the texts count", () => {

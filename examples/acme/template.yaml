@@ -1,0 +1,10 @@
+# How the Acme demo presents itself when someone copies or serves it.
+# Studio and the CLI only show what it says; nothing here runs or trusts anything.
+id: halonic/acme-demo
+title: Acme demo
+summary: An invented shop that answers its customers' email.
+kind: demo
+tryFirst:
+  - workflow: support-reply
+    input: examples/refund-question.json
+    hint: Run the Support reply workflow in Studio.

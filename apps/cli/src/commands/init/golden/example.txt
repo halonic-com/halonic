@@ -53,6 +53,7 @@ stdout:
       "library/tools/task-get.tool.yaml",
       "models.yaml",
       "providers/mock.yaml",
+      "template.yaml",
       "workspace.yaml"
     ],
     "counts": {
