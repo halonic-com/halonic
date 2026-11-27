@@ -10,4 +10,12 @@ S9 and S14 to S17).
 - **Owner:** priya
 - **Public API:** `@halonicjs/toolscript-host`
 
-The host follows in the next pull request; this one adds the package and its `coreOrder` entry.
+## Example
+
+```ts
+import { createToolScriptHost } from "@halonicjs/toolscript-host";
+
+const host = createToolScriptHost({ audience: "user", isolate });
+const result = await host.run({ runId, artifact, registry, input, confirm });
+if (!result.ok) record.fail(result.reason);
+```

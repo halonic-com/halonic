@@ -25,5 +25,9 @@
       "lines": 90,
       "branches": 85
     }
+  },
+  "dependencies": {
+    "@halonicjs/ports": "workspace:*",
+    "@halonicjs/std": "workspace:*"
   }
 }
