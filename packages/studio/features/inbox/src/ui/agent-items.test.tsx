@@ -146,8 +146,9 @@ verifies("inbox.agent-inbox-items", () => {
         { kind: "option", option: "no" },
       );
       await click(button(root, "Yes"));
-      expect(root.textContent).toContain("Answered elsewhere by Liam at 10:00: No.");
-      expect(button(root, "Yes").getAttribute("aria-disabled")).toBe("true");
+      // Read again, it shows its final state, with how under it (`inbox.final-state-open`).
+      expect(root.textContent).toContain("Answered by Liam · 10:00No");
+      expect(() => button(root, "Yes")).toThrow();
     });
 
     it("turns an open card answered elsewhere as soon as the source says so", async () => {
@@ -158,7 +159,7 @@ verifies("inbox.agent-inbox-items", () => {
         messaging.answerElsewhere(item.id, { kind: "me" }, { kind: "reply", text: "Tomorrow" });
       });
       await settled();
-      expect(root.textContent).toContain("Answered elsewhere by you at 10:00: “Tomorrow”.");
+      expect(root.textContent).toContain("Answered by you · 10:00“Tomorrow”");
     });
 
     it("says an answer failed and sends it again on Try again", async () => {
