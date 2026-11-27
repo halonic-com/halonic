@@ -4,6 +4,7 @@ import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { acmeActionCatalog, approveAcmeApp } from "../agent/acme-actions.test-helper.ts";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -36,6 +37,33 @@ async function openCard() {
       inbox={new Inbox(fakeRuns([]).runs)}
       now={() => asked}
       agentMessaging={messaging}
+      announce={announce}
+    />,
+  );
+  await settled();
+  const cell = root.querySelector<HTMLElement>('[role="grid"] tr [role="gridcell"]');
+  await act(async () => cell?.click());
+  await settled();
+  return { root, messaging, item, announce };
+}
+
+/** The Inbox with Chief's action request open in its pane, as its stepper. */
+async function openAction() {
+  const messaging = new FakeAgentMessaging({ now: () => asked });
+  const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+  const chief = messaging.addAgent(source.id, { name: "Chief" });
+  const item = messaging.addInboxItem(source.id, {
+    question: "The release of acme/app is ready.",
+    from: { kind: "agent", agent: chief.id, name: "Chief" },
+    action: approveAcmeApp,
+  });
+  const announce = vi.fn<(line: string) => void>();
+  const root = render(
+    <InboxView
+      inbox={new Inbox(fakeRuns([]).runs)}
+      now={() => asked}
+      agentMessaging={messaging}
+      actionCatalog={acmeActionCatalog}
       announce={announce}
     />,
   );
@@ -118,6 +146,19 @@ verifies("inbox.final-state-open", () => {
     it("isn't read out again by the page once its line took the focus", async () => {
       const { root, messaging, item, announce } = await openCard();
       buttons(root, "Yes")[0]?.closest("button")?.focus();
+
+      await act(async () => messaging.closeElsewhere(item.id, "cancelled"));
+      await settled();
+
+      expect(document.activeElement?.textContent).toBe("Cancelled · 10:00");
+      expect(announce.mock.calls).toEqual([]);
+    });
+
+    it("isn't read out again once its line took the focus from an action item's stepper", async () => {
+      const { root, messaging, item, announce } = await openAction();
+      const decline = buttons(root, "Decline")[0]?.closest("button");
+      decline?.focus();
+      expect(document.activeElement).toBe(decline);
 
       await act(async () => messaging.closeElsewhere(item.id, "cancelled"));
       await settled();

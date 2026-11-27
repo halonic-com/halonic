@@ -351,7 +351,7 @@ function answeredWith(
 
 /**
  * The line once the item is answered by this card, else as the refusal said until the item is read
- * again; an item the source says ended shows its final state instead ({@link EndedLine}).
+ * again; an item the source says ended shows its final state instead (`EndedLine`).
  */
 function decidedLine(item: AgentItem, sent: Sent): string | null {
   if (sent.kind === "answered") {
