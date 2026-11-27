@@ -18,6 +18,7 @@ function idsRun(changed: readonly string[] | undefined): string[] {
 }
 
 const shortCheck = ["engine-answers"];
+const cardSteps = ["card-yes-no", "card-plan", "card-one-question"];
 const everyStep = clickTestSteps.map((step) => step.id);
 
 verifies("studio-click-test.affected-steps", () => {
@@ -25,7 +26,13 @@ verifies("studio-click-test.affected-steps", () => {
     it("runs the short check and the Messenger steps for a change only to Messenger", () => {
       const changed = ["packages/studio/features/messenger/src/view.tsx"];
       // Sending a message needs a connected Paperclip, so Connect Paperclip runs too.
-      const run = [...shortCheck, "messenger-empty", "connect-paperclip", "messenger-send"];
+      const run = [
+        ...shortCheck,
+        "messenger-empty",
+        "connect-paperclip",
+        "messenger-send",
+        ...cardSteps,
+      ];
       expect(idsRun(changed)).toEqual(run);
       // Every other step is named as left out, whatever steps main has added since.
       expect(
@@ -38,6 +45,24 @@ verifies("studio-click-test.affected-steps", () => {
         shortCheck,
       );
       expect(idsRun([])).toEqual(shortCheck);
+    });
+
+    // The card steps run nightly, and on a build only for the code their cards go through
+    // (Liam on HAL-19002).
+    it("runs the card steps for a change to the Inbox or the Paperclip provider, not to Settings", () => {
+      const needs = [...shortCheck, "connect-paperclip"];
+      expect(idsRun(["packages/studio/features/inbox/src/ui/agent-item-card.tsx"])).toEqual([
+        ...needs,
+        "inbox-answer",
+        ...cardSteps,
+        "places-open",
+      ]);
+      expect(idsRun(["packages/adapters/paperclip-client/src/cards.ts"])).toEqual(
+        expect.arrayContaining([...needs, "card-one-question"]),
+      );
+      expect(idsRun(["packages/studio/features/settings/src/feature.ts"])).not.toEqual(
+        expect.arrayContaining(["card-yes-no"]),
+      );
     });
 
     it("runs a step whose requirement file changed", () => {

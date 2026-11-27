@@ -1,5 +1,6 @@
 import type { Step } from "./runner.ts";
 import { addAccount } from "./steps/add-account.ts";
+import { cardOneQuestion, cardPlan, cardYesNo } from "./steps/card-kinds.ts";
 import { closeWorkspace } from "./steps/close-workspace.ts";
 import { connectPaperclip } from "./steps/connect-paperclip.ts";
 import { accountSwitcher, connectionRow, httpsOnly } from "./steps/connections.ts";
@@ -22,8 +23,9 @@ import { windowTabs } from "./steps/window-tabs.ts";
  * The click test's steps, in the order a person takes them: HAL-17897's phase 1 list up to
  * Connect Paperclip, then Connections (HAL-18868), with a full restart that must keep the
  * sign-in after the connection row (HAL-19839), and the rest of the phase 1 list on the
- * connected Paperclip (HAL-18354), with Disconnect last of them, then the Studio basics
- * (HAL-18866), with Close workspace last of them because it leaves the window on Welcome, then
+ * connected Paperclip (HAL-18354), with the card kinds after the Start menu shortcuts, which want
+ * the Inbox empty, each seeding its own cards (HAL-19002), and Disconnect last of them, then the
+ * Studio basics (HAL-18866), with Close workspace last of them because it leaves the window on Welcome, then
  * Settings (HAL-18867), whose steps open the demo again first, then the Try it steps (HAL-18869),
  * which read step 1's chat in the reopened demo, then Writer's Model page in Codex (HAL-18930),
  * on Writer's page as Try it leaves it, then the other places (HAL-18870). The
@@ -45,6 +47,9 @@ export const clickTestSteps: readonly Step[] = [
   searchTask,
   overviewRecap,
   startMenuShortcuts,
+  cardYesNo,
+  cardPlan,
+  cardOneQuestion,
   disconnect,
   demoWorkspace,
   windowTabs,

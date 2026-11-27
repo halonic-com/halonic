@@ -193,8 +193,11 @@ export function lastWords(text: string): string {
   return flat.length <= 200 ? flat : `…${flat.slice(-200)}`;
 }
 
-// XPath 1.0 has no escape for quotes, so a text holding both kinds goes in concat().
-function xpathString(text: string): string {
+/**
+ * `text` as an XPath string literal. XPath 1.0 has no escape for quotes, so a text holding both
+ * kinds goes in concat().
+ */
+export function xpathString(text: string): string {
   if (!text.includes("'")) return `'${text}'`;
   if (!text.includes('"')) return `"${text}"`;
   return `concat('${text.replaceAll("'", `', "'", '`)}')`;

@@ -36,6 +36,7 @@ export const words = {
   openApproval: connections.OPEN_APPROVAL,
   switcher: connections.accountSwitcherWords,
   messengerComposer: messengerWords.composerLabel,
+  messengerNeedsNote: messengerWords.card.needsNoteInInbox,
 };
 
 /**
@@ -58,6 +59,9 @@ export const buttonLabels = {
     text: "Approve",
     file: "packages/adapters/paperclip-client/src/approval-words.ts",
   },
+  // A yes/no card's buttons, Paperclip's own words when the card names none (HAL-19002).
+  accept: { text: "Accept", file: "packages/adapters/paperclip-client/src/cards.ts" },
+  reject: { text: "Reject", file: "packages/adapters/paperclip-client/src/approval-words.ts" },
 } as const;
 
 const welcomeFile = "packages/studio/shell/src/welcome/welcome.tsx";
@@ -138,6 +142,11 @@ export const screenText = {
   agentLoadFailed: {
     text: "Couldn't load the items from your agents.",
     file: "packages/studio/features/inbox/src/ui/use-agent-items.tsx",
+  },
+  // The field a card's Reject opens when the card needs a reason (HAL-19002).
+  rejectReason: {
+    text: "Why are you rejecting this?",
+    file: "packages/adapters/paperclip-client/src/approval-words.ts",
   },
   search: { text: "Search", file: "packages/studio/shell/src/palette/command-palette.tsx" },
   overview: { text: "Overview", file: "packages/studio/features/overview/src/feature.ts" },

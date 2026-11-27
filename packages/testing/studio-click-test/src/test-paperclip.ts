@@ -1,3 +1,16 @@
+import { writeFile } from "node:fs/promises";
+import { setTimeout as wait } from "node:timers/promises";
+import type { CardFixture } from "./card-fixtures.ts";
+import {
+  type CardRecord,
+  type CardRef,
+  cardAgentConfig,
+  readCard,
+  type SeededCard,
+  seedCard,
+} from "./card-seed.ts";
+import { api, idOf, stringField } from "./paperclip-api.ts";
+
 /** The names the seed gives the throwaway Paperclip's records, which the steps look for. */
 export const seedNames = {
   company: "Acme Click Test",
@@ -12,6 +25,8 @@ export interface Seeded {
   readonly companyId: string;
   readonly approvalId: string;
   readonly chatId: string;
+  /** The file the seeded agent reads the cards it posts on its chat from (`card-agent.ts`). */
+  readonly cardsFile: string;
 }
 
 /** What the steps read back from the throwaway Paperclip, past Studio, to check a click landed. */
@@ -23,25 +38,31 @@ export interface TestPaperclip {
   chatComments(): Promise<readonly string[]>;
   /** Whether the key Studio signed in with still works; undefined when Studio sent none. */
   studioKeyWorks(): Promise<boolean | undefined>;
+  /** Seeds a card kind's Inbox and Messenger copies (HAL-19002). */
+  seedCard(fixture: CardFixture): Promise<SeededCard>;
+  /** One seeded copy as Paperclip has it now. */
+  card(ref: CardRef): Promise<CardRecord>;
 }
 
 /**
  * Seeds the throwaway Paperclip at `target` (loopback, `local_trusted`, so no
  * key) with a company, a task, a board card on that task and a chat with an
- * agent. Agent Chat is an experimental setting, so the seed turns it on.
+ * agent. Agent Chat is an experimental setting, so the seed turns it on. The agent's command
+ * posts the cards the card steps ask for in `cardsFile`, none yet.
  */
-export async function seedPaperclip(target: string): Promise<Seeded> {
+export async function seedPaperclip(target: string, cardsFile: string): Promise<Seeded> {
+  await writeFile(cardsFile, "[]");
   const call = api(target);
   await call("PATCH", "/api/instance/settings/experimental", { enableAgentChat: true });
   const company = await call("POST", "/api/companies", { name: seedNames.company });
   const companyId = idOf(company);
   const companyPath = `/api/companies/${companyId}`;
   await call("PATCH", companyPath, { requireBoardApprovalForNewAgents: false });
-  // The agent never runs anything: a message wakes it, and its command only exits.
+  // A message wakes the agent, and its command posts only the cards a card step asked for.
   const agent = await call("POST", `${companyPath}/agents`, {
     name: seedNames.agent,
     adapterType: "process",
-    adapterConfig: { command: "cmd.exe", args: ["/c", "exit", "0"] },
+    adapterConfig: cardAgentConfig(cardsFile),
   });
   const task = await call("POST", `${companyPath}/issues`, { title: seedNames.task });
   const approval = await call("POST", `${companyPath}/approvals`, {
@@ -50,7 +71,7 @@ export async function seedPaperclip(target: string): Promise<Seeded> {
     issueIds: [idOf(task)],
   });
   const chat = await call("POST", `${companyPath}/chats/${idOf(agent)}`);
-  return { companyId, approvalId: idOf(approval), chatId: idOf(chat) };
+  return { companyId, approvalId: idOf(approval), chatId: idOf(chat), cardsFile };
 }
 
 /** The checks on the seeded records, with the key Studio last sent through the proxy. */
@@ -82,31 +103,7 @@ export function testPaperclip(
       // answers 200, as the implicit local board. Only `board_key` says the key itself worked.
       return stringField(await answer.json(), "source") === "board_key";
     },
+    seedCard: (fixture) => seedCard(call, seeded, fixture, (ms) => wait(ms)),
+    card: (ref) => readCard(call, ref),
   };
-}
-
-type Call = (method: string, path: string, body?: unknown) => Promise<unknown>;
-
-function api(target: string): Call {
-  const base = target.replace(/\/$/, "");
-  return async (method, path, body) => {
-    const init: RequestInit = { method, headers: { "content-type": "application/json" } };
-    if (body !== undefined) init.body = JSON.stringify(body);
-    const answer = await fetch(`${base}${path}`, init);
-    if (!answer.ok) {
-      throw new Error(`${method} ${path}: HTTP ${answer.status} ${await answer.text()}`);
-    }
-    return answer.json();
-  };
-}
-
-function idOf(record: unknown): string {
-  return stringField(record, "id");
-}
-
-function stringField(record: unknown, key: string): string {
-  const value =
-    typeof record === "object" && record !== null ? Reflect.get(record, key) : undefined;
-  if (typeof value !== "string") throw new Error(`the answer has no ${key}`);
-  return value;
 }
