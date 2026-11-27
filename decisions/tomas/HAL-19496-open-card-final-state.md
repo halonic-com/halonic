@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-19496
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lcbt+vPyAqljSJjyrWFS7PFAaSJ8EnqVfaWKWrlbNdhA89hVDoUs25HSsC8UVhsrC4+3NcsgXpm7A8RutKWWAQ==
 
 On HAL-10 the board asked for cards processed in Paperclip to update here and animate to their
 final state (comment 20e30d36, 26 Nov). Liam approved the plan on HAL-19496: one final-state line,
