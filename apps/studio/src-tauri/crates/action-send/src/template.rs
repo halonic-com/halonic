@@ -80,6 +80,86 @@ pub fn placeholder_names(segments: &[Segment]) -> Result<Vec<&str>, String> {
     Ok(names)
 }
 
+/// One pair of a call's query: a fixed key, filled with one placeholder's
+/// value. The key comes from the route list, never from the page.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueryPair {
+    pub key: String,
+    pub placeholder: String,
+}
+
+/// Reads a call's template: a path as [`parse_path`] reads it, then an
+/// optional query of `key={name}` pairs joined by `&`, such as
+/// `/zones/{zone}/dns_records?type={type}&name.exact={name}`. Each key is
+/// fixed text and each value a whole placeholder, so a definition can't add
+/// a key and a value can't add a pair (plan on HAL-17530).
+pub fn parse_call_path(template: &str) -> Result<(Vec<Segment>, Vec<QueryPair>), String> {
+    let Some((path, query)) = template.split_once('?') else {
+        return Ok((parse_path(template)?, Vec::new()));
+    };
+    let pairs = query
+        .split('&')
+        .map(|pair| {
+            let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+            let placeholder = value
+                .strip_prefix('{')
+                .and_then(|rest| rest.strip_suffix('}'))
+                .filter(|name| is_name(name));
+            match placeholder {
+                Some(name) if is_fixed(key) => Ok(QueryPair {
+                    key: key.to_owned(),
+                    placeholder: name.to_owned(),
+                }),
+                _ => Err(format!(
+                    "`{pair}` in `{template}` isn't a fixed key and one placeholder"
+                )),
+            }
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok((parse_path(path)?, pairs))
+}
+
+/// The placeholders a call's path and query name, each once at most.
+pub fn call_placeholder_names<'a>(
+    segments: &'a [Segment],
+    query: &'a [QueryPair],
+) -> Result<Vec<&'a str>, String> {
+    let mut names = placeholder_names(segments)?;
+    for pair in query {
+        let name = pair.placeholder.as_str();
+        if names.contains(&name) {
+            return Err(format!("`{{{name}}}` is used twice"));
+        }
+        names.push(name);
+    }
+    Ok(names)
+}
+
+/// Builds a call's address: the service's base path, then the route's path
+/// as [`fill`] does, then each query pair with its value form-encoded. The
+/// values must already have passed their checks.
+pub fn fill_call(
+    origin: &Url,
+    base_path: &str,
+    segments: &[Segment],
+    query: &[QueryPair],
+    values: &BTreeMap<String, String>,
+) -> Option<Url> {
+    let base = base_path
+        .split('/')
+        .filter(|segment| !segment.is_empty())
+        .map(|segment| Segment::Fixed(segment.to_owned()));
+    let whole: Vec<Segment> = base.chain(segments.iter().cloned()).collect();
+    let mut address = fill(origin, &whole, values)?;
+    if !query.is_empty() {
+        let mut pairs = address.query_pairs_mut();
+        for pair in query {
+            pairs.append_pair(&pair.key, values.get(&pair.placeholder)?);
+        }
+    }
+    (address.origin() == origin.origin()).then_some(address)
+}
+
 /// Builds the address: the origin, then each segment, a placeholder's value
 /// percent-encoded as one segment. The values must already have passed
 /// their checks; a missing one is a bug in the caller, refused here too.

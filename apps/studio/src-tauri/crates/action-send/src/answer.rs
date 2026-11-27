@@ -8,6 +8,7 @@ use halonic_shell_log::find_key_shape;
 use serde_json::{Map, Value};
 
 use crate::send::Answer;
+use crate::services::AnswerShape;
 
 /// The most characters of error text that go back: `maxActionErrorLength`
 /// in `@halonicjs/events`.
@@ -21,21 +22,74 @@ const REMOVED: &str = "[removed]";
 /// prefix.
 const LONG_KEY_CHARS: usize = 32;
 
-/// The route's kept fields that the answer has as plain values. Nothing
-/// when the answer isn't a JSON object. A text value that holds the token
-/// or looks like a key is left out, in case the service echoes one back.
-pub fn kept_fields(answer: &Answer, keep: &[String], token: &str) -> Map<String, Value> {
+/// The text for a list answer with more than one item: a step reads or
+/// changes exactly one thing, so the shell keeps nothing from it.
+pub const MORE_THAN_ONE: &str =
+    "The service found more than one match, and this step works on exactly one. Nothing was kept.";
+
+/// A list answer held more than one item.
+#[derive(Debug, PartialEq, Eq)]
+pub struct MoreThanOne;
+
+/// The answer's body as JSON, or `None` when it isn't JSON.
+fn json_body(answer: &Answer) -> Option<Value> {
     let is_json = answer
         .content_type
         .as_deref()
         .is_some_and(|content_type| content_type.to_ascii_lowercase().contains("json"));
-    let Some(Value::Object(fields)) = is_json
+    is_json
         .then(|| serde_json::from_slice::<Value>(&answer.body).ok())
         .flatten()
-    else {
-        return Map::new();
+}
+
+/// The fields kept fields are taken from. A plain answer is the object
+/// itself. An envelope's are its `result` object's; when `result` is a list,
+/// they are its one item's, if any, plus `total_count` from `result_info`,
+/// and a list of more than one is refused (Liam's conditions on HAL-20239).
+fn answer_fields(body: Value, shape: AnswerShape) -> Result<Map<String, Value>, MoreThanOne> {
+    let Value::Object(mut fields) = body else {
+        return Ok(Map::new());
     };
-    keep.iter()
+    if shape == AnswerShape::Plain {
+        return Ok(fields);
+    }
+    match fields.remove("result") {
+        Some(Value::Object(result)) => Ok(result),
+        Some(Value::Array(items)) => {
+            let total_count = fields
+                .get("result_info")
+                .and_then(|info| info.get("total_count"))
+                .and_then(Value::as_u64)
+                .unwrap_or_else(|| u64::try_from(items.len()).unwrap_or(u64::MAX));
+            if items.len() > 1 || total_count > 1 {
+                return Err(MoreThanOne);
+            }
+            let mut one = match items.into_iter().next() {
+                Some(Value::Object(item)) => item,
+                _ => Map::new(),
+            };
+            one.insert("total_count".to_owned(), Value::from(total_count));
+            Ok(one)
+        }
+        _ => Ok(Map::new()),
+    }
+}
+
+/// The route's kept fields that the answer has as plain values. Nothing
+/// when the answer isn't a JSON object. A text value that holds the token
+/// or looks like a key is left out, in case the service echoes one back.
+pub fn kept_fields(
+    answer: &Answer,
+    shape: AnswerShape,
+    keep: &[String],
+    token: &str,
+) -> Result<Map<String, Value>, MoreThanOne> {
+    let Some(body) = json_body(answer) else {
+        return Ok(Map::new());
+    };
+    let fields = answer_fields(body, shape)?;
+    Ok(keep
+        .iter()
         .filter_map(|name| {
             let value = fields.get(name)?;
             let plain = match value {
@@ -47,7 +101,7 @@ pub fn kept_fields(answer: &Answer, keep: &[String], token: &str) -> Map<String,
             };
             plain.then(|| (name.clone(), value.clone()))
         })
-        .collect()
+        .collect())
 }
 
 /// The text for an answer that redirected: the shell doesn't follow it,
@@ -56,12 +110,31 @@ pub fn redirect_text() -> String {
     "The service answered with a redirect, which Halonic doesn't follow.".to_owned()
 }
 
+/// An envelope's `errors`, each as `message (code N)`, joined with `; `.
+fn envelope_errors(body: &Value) -> Option<String> {
+    let errors: Vec<String> = body
+        .get("errors")?
+        .as_array()?
+        .iter()
+        .filter_map(|error| {
+            let message = error.get("message")?.as_str()?;
+            Some(match error.get("code").and_then(Value::as_i64) {
+                Some(code) => format!("{message} (code {code})"),
+                None => message.to_owned(),
+            })
+        })
+        .collect();
+    (!errors.is_empty()).then(|| errors.join("; "))
+}
+
 /// The service's message for a failed status, cleaned, with the permission
 /// GitHub says the call needs. `None` when there is neither.
-pub fn failure_text(answer: &Answer, token: &str) -> Option<String> {
-    let message = serde_json::from_slice::<Value>(&answer.body)
-        .ok()
-        .and_then(|body| body.get("message")?.as_str().map(str::to_owned));
+pub fn failure_text(answer: &Answer, shape: AnswerShape, token: &str) -> Option<String> {
+    let body = serde_json::from_slice::<Value>(&answer.body).ok();
+    let message = body.and_then(|body| match shape {
+        AnswerShape::Plain => body.get("message")?.as_str().map(str::to_owned),
+        AnswerShape::Envelope => envelope_errors(&body),
+    });
     let needs = answer
         .accepted_permissions
         .as_deref()

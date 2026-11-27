@@ -1,0 +1,36 @@
+{
+  "format": "halonic.action-routes/1",
+  "webOrigins": [],
+  "routes": [
+    {
+      "kind": "call",
+      "definition": "acme.find-dns-record",
+      "version": 1,
+      "step": 1,
+      "service": "cloudflare",
+      "risk": "routine",
+      "placeholders": {
+        "zone_id": "^[0-9a-f]{32}$",
+        "type": "^[A-Z]{1,5}$",
+        "name": "^[a-z0-9.&=_-]{1,253}$"
+      },
+      "method": "GET",
+      "path": "/zones/{zone_id}/dns_records?type={type}&name.exact={name}",
+      "body": [],
+      "keep": ["id", "content", "total_count"]
+    },
+    {
+      "kind": "call",
+      "definition": "acme.read-zone",
+      "version": 1,
+      "step": 1,
+      "service": "cloudflare",
+      "risk": "routine",
+      "placeholders": { "zone_id": "^[0-9a-f]{32}$" },
+      "method": "GET",
+      "path": "/zones/{zone_id}",
+      "body": [],
+      "keep": ["name", "status"]
+    }
+  ]
+}

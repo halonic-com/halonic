@@ -10,7 +10,7 @@ use url::Url;
 
 use crate::pattern::Pattern;
 use crate::routes::{BodyField, BodyKind, CallRoute, Method, RouteList, StepKey};
-use crate::template::fill;
+use crate::template::fill_call;
 
 /// The most items an `integer-list` body field may hold.
 pub const MAX_LIST_ITEMS: usize = 100;
@@ -174,6 +174,22 @@ pub fn is_sendable(route: &CallRoute) -> bool {
             .any(|field| field.kind == BodyKind::SecretInput)
 }
 
+/// Refuses a query value holding `&` or `=`. The value is form-encoded
+/// anyway, so it can't add a pair; this refuses it before that matters
+/// (Liam's conditions on HAL-20239).
+fn check_query_values(route: &CallRoute, values: &BTreeMap<String, String>) -> Result<(), Refusal> {
+    let adds_a_pair = route.query.iter().any(|pair| {
+        values
+            .get(&pair.placeholder)
+            .is_none_or(|value| value.contains(['&', '=']))
+    });
+    if adds_a_pair {
+        Err(Refusal::BadValue)
+    } else {
+        Ok(())
+    }
+}
+
 /// Finds the request's route and checks every value the page gave.
 pub fn prepare<'a>(
     list: &'a RouteList,
@@ -190,12 +206,20 @@ pub fn prepare<'a>(
         .filter(|route| is_sendable(route))
         .ok_or(Refusal::NotInCatalog)?;
     check_placeholders(&route.placeholders, &request.placeholders)?;
+    check_query_values(route, &request.placeholders)?;
     let body = check_body(route, &request.body)?;
     if route.method == Method::Get && body.is_some() {
         return Err(Refusal::BadValue);
     }
     let origin = Url::parse(route.service.api_origin).map_err(|_| Refusal::NotInCatalog)?;
-    let address = fill(&origin, &route.path, &request.placeholders).ok_or(Refusal::BadValue)?;
+    let address = fill_call(
+        &origin,
+        route.service.base_path,
+        &route.path,
+        &route.query,
+        &request.placeholders,
+    )
+    .ok_or(Refusal::BadValue)?;
     Ok(PreparedCall {
         route,
         address,
