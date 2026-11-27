@@ -48,14 +48,14 @@ const decisions: readonly InboxQuestion[] = [
 ];
 
 /** The card "Three open decisions" from "Paperclip · Acme", open unless `state` says otherwise. */
-async function decisionsCard(state?: InboxItem["state"]) {
+async function decisionsCard(state?: InboxItem["state"], questions = decisions) {
   const clock = { now: asked };
   const messaging = new FakeAgentMessaging({ now: () => clock.now });
   const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
   const item = messaging.addInboxItem(source.id, {
     question: "Three open decisions",
     options: [],
-    questions: decisions,
+    questions,
     ...(state === undefined ? {} : { state }),
   });
   const [read] = await messaging.listSources();
@@ -150,5 +150,30 @@ verifies("inbox.question-cards", () => {
       expect(callout).toBeDefined();
       expect(option(root, "Dark").getAttribute("aria-describedby")).toContain(callout?.id);
     });
+  });
+});
+
+verifies("kit.question-form-written", () => {
+  it("sends what is written for Other as the answer's text, and says it once answered", async () => {
+    const [repo] = decisions;
+    if (repo === undefined) throw new Error("the fixture asks a question");
+    const { root, answer, clock } = await decisionsCard(undefined, [{ ...repo, allowOther: true }]);
+
+    await press(option(root, "Other"));
+    const field = root.querySelector<HTMLTextAreaElement>("fieldset textarea");
+    if (field === null) throw new Error("no Your answer field");
+    await act(async () => {
+      const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+      setValue?.call(field, "A fork of the app");
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    clock.now = answeredAt;
+    await press(submit(root));
+
+    expect(answer).toHaveBeenCalledWith({
+      kind: "answers",
+      answers: [{ question: "repo", options: [], text: "A fork of the app" }],
+    });
+    expect(root.textContent).toContain("Answered at 18:43: A fork of the app.");
   });
 });

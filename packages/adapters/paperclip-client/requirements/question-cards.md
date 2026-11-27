@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-18762 (board report on HAL-10: a card with three questions showed nothing to tick); plan approved by Liam; task HAL-18788
+- Source: HAL-18762 (board report on HAL-10: a card with three questions showed nothing to tick); plan approved by Liam; task HAL-18788; written answers HAL-20648
 
-The Paperclip provider shall map an `ask_user_questions` card that asks two or more questions, or any question with `selectionMode: "multi"` (Paperclip's multi-select), to an inbox item with `questions` and no `options`, each question keeping its ID, prompt, selection and options, and being required unless the card says `required: false`. A card with one single-select question shall keep its plain `options`. When the person answers such a card with an `answers` answer that fits its questions, the provider shall send Paperclip one `respondToCard` request with one entry per answered question, `{ questionId, optionIds }`, with the answer's text as `otherText`; it shall send nothing for an option, a reply or answers that don't fit. An answered card with questions shall read back as an `answers` answer that names every question's options and keeps its `otherText` as `text`.
+The Paperclip provider shall map an `ask_user_questions` card that asks two or more questions, or any question with `selectionMode: "multi"` (Paperclip's multi-select) or answered in writing (`allowOther: true`, or an option with `freeText: true`), to an inbox item with `questions` and no `options`, each question keeping its ID, prompt, selection and options, keeping `allowOther` and each option's `freeText` when Paperclip sets them `true`, and being required unless the card says `required: false`. A card with one single-select question and no written answer shall keep its plain `options`. When the person answers such a card with an `answers` answer that fits its questions, the provider shall send Paperclip one `respondToCard` request with one entry per answered question, `{ questionId, optionIds }`, with the answer's text as `otherText`; it shall send nothing for an option, a reply or answers that don't fit. An answered card with questions shall read back as an `answers` answer that names every question's options and keeps its `otherText` as `text`.
 
 ## Examples
 
@@ -23,3 +23,6 @@ The Paperclip provider shall map an `ask_user_questions` card that asks two or m
 - Given the three-question card answered in Paperclip with `mono`, `tests` and `docs` with the text "And a demo", and `ada`,
   when the inbox is read,
   then the item's answer is an `answers` answer naming all of them, with "And a demo" as the second question's text.
+- Given a pending card with one single-select question that has `allowOther: true` and a `freeText` option,
+  when the inbox is read and the person answers it with no option and the text "Both",
+  then the item has that one question with `allowOther` and the option's `freeText`, and no options, and Paperclip gets `{ questionId, optionIds: [], otherText: "Both" }`.

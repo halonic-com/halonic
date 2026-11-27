@@ -189,4 +189,57 @@ verifies("paperclip-client.question-cards", () => {
       },
     });
   });
+
+  it("asks one single-select question answered in writing as questions, and sends its text as otherText", async () => {
+    const writing = "f0000000-0000-4000-8000-000000000012";
+    const question = {
+      id: "repo",
+      prompt: "Where does the code live?",
+      allowOther: true,
+      options: [
+        { id: "mono", label: "The monorepo" },
+        { id: "fork", label: "A fork of…", freeText: true },
+      ],
+    };
+    paperclip
+      .serveAcme()
+      .on("GET", `/api/issues/${plainTask}/interactions`, {
+        body: [
+          {
+            id: writing,
+            kind: "ask_user_questions",
+            status: "pending",
+            createdByAgentId: agentBo,
+            payload: { version: 1, questions: [question] },
+            createdAt: "2026-11-24T10:00:00.000Z",
+          },
+        ],
+      })
+      .on("POST", `/api/issues/${plainTask}/interactions/${writing}/respond`, {
+        body: { resolvedAt: "2026-11-24T10:11:00.000Z" },
+      });
+    const [item] = await client().listInboxItems();
+    expect(item?.options).toEqual([]);
+    expect(item?.questions).toEqual([
+      {
+        id: "repo",
+        prompt: "Where does the code live?",
+        selection: "single",
+        required: true,
+        allowOther: true,
+        options: [
+          { id: "mono", label: "The monorepo" },
+          { id: "fork", label: "A fork of…", freeText: true },
+        ],
+      },
+    ]);
+    const other: InboxAnswer = {
+      kind: "answers",
+      answers: [{ question: "repo", options: [], text: "Both" }],
+    };
+    await client().answer(card(plainTask, writing), other);
+    expect(paperclip.seen.at(-1)?.body).toEqual({
+      answers: [{ questionId: "repo", optionIds: [], otherText: "Both" }],
+    });
+  });
 });
