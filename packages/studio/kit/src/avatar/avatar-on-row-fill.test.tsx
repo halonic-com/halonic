@@ -103,14 +103,20 @@ verifies("kit.avatar-on-row-fill", () => {
   });
 
   it("marks a plain List row muted on hover at rest, and while current", () => {
+    // The marked element is compared with toBe: toMatchObject walks an element's own keys, which
+    // hold React's fiber, and took seconds under load (HAL-20255).
     const rest = renderListRow(true);
+    const restMark = fillMarkOf(rest.tile);
     expect(classesOf(rest.cell)).toContain("group-hover:bg-surface-muted");
-    expect(fillMarkOf(rest.tile)).toMatchObject({ marked: rest.row, fill: null, hover: "muted" });
+    expect(restMark.marked).toBe(rest.row);
+    expect(restMark).toMatchObject({ fill: null, hover: "muted" });
     unmountAll();
 
     const current = renderListRow(true, {}, "notes");
+    const currentMark = fillMarkOf(current.tile);
     expect(classesOf(current.cell)).toContain("bg-surface-muted");
-    expect(fillMarkOf(current.tile)).toMatchObject({ marked: current.row, fill: "muted" });
+    expect(currentMark.marked).toBe(current.row);
+    expect(currentMark.fill).toBe("muted");
   });
 
   it("marks a plain List row muted on keyboard focus, where its row is filled too", () => {
