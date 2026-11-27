@@ -12,6 +12,18 @@ import { type MapContext, newestFirst, toConversation } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
 import { bodyOf } from "./transport.ts";
 
+/** The person's chats in `company`, as Paperclip lists them. */
+export async function readChats(
+  reader: PaperclipReader,
+  company: string,
+): Promise<readonly JsonRecord[]> {
+  const answer = await reader.send("listChats", { path: { company } });
+  // Paperclip answers 404 when Agent Chat is off: there are no chats, which isn't an error.
+  return answer.kind === "failed" && answer.failure === "not-found"
+    ? []
+    : asRecords(bodyOf("listChats", answer));
+}
+
 /**
  * Reads the person's chats and channels, and remembers each chat task's agent as last read, for
  * its messages' `readAt`.
@@ -27,8 +39,7 @@ export class PaperclipConversations {
   constructor(
     reader: PaperclipReader,
     ids: PaperclipIds,
-    company: string,
-    userId: string | undefined,
+    { company, userId }: { company: string; userId?: string | undefined },
   ) {
     this.#reader = reader;
     this.#ids = ids;
@@ -41,8 +52,15 @@ export class PaperclipConversations {
     return this.#chatAgents.get(task);
   }
 
-  /** The person's chats and the channels among `tasks`, newest first. */
-  async list(context: MapContext, tasks: readonly JsonRecord[]): Promise<Conversation[]> {
+  /**
+   * The person's chats and the channels among `tasks`, newest first. `chatList` is the chat list
+   * when the caller already read it in this poll, so one poll reads it once.
+   */
+  async list(
+    context: MapContext,
+    tasks: readonly JsonRecord[],
+    chatList?: readonly JsonRecord[],
+  ): Promise<Conversation[]> {
     // A channel the person left shows in Browse instead.
     const channels = tasks.flatMap((record) => {
       const userId = this.#userId;
@@ -50,12 +68,7 @@ export class PaperclipConversations {
       const left = userId !== undefined && !channel?.people.includes(userId);
       return channel === undefined || left ? [] : [toChannel(context, channel)];
     });
-    const answer = await this.#reader.send("listChats", { path: { company: this.#company } });
-    // Paperclip answers 404 when Agent Chat is off: there are no chats, which isn't an error.
-    const records =
-      answer.kind === "failed" && answer.failure === "not-found"
-        ? []
-        : asRecords(bodyOf("listChats", answer));
+    const records = chatList ?? (await readChats(this.#reader, this.#company));
     this.#chatAgents = new Map(
       records.flatMap((record) => {
         const [task, agent] = [text(record, "id"), text(record, "conversationAgentId")];

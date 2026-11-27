@@ -115,7 +115,7 @@ Checked against our server's Paperclip version (commit `c0f1328`, 18 Nov 2026).
 | `listTasks` with `parentId=` | `GET /api/companies/{company}/issues?parentId={task}&limit=200` | a channel's child tasks, for its work lines and replies |
 | `searchTasks` | `GET /api/companies/{company}/issues?q={query}&limit=50` | search: Paperclip's matching tasks, as work or as a chat |
 | `listProjects` | `GET /api/companies/{company}/projects` | each inbox item's project, from its task |
-| `listChats` | `GET /api/companies/{company}/chats` | the signed-in user's chats; 404 when Agent Chat is off |
+| `listChats` | `GET /api/companies/{company}/chats` | the signed-in user's chats, and the chats whose cards are read, since `listTasks` leaves every chat out; 404 when Agent Chat is off |
 | `listComments` | `GET /api/issues/{task}/comments?order=desc&limit=100`, then `?after={comment}&order=asc&limit=100` | a chat's newest messages, then only the new ones |
 | `listTaskCards` | `GET /api/issues/{task}/interactions` | a task's cards |
 | `listApprovals` | `GET /api/companies/{company}/approvals?status=pending`, then `?status=revision_requested` | pending approvals, and those waiting on the agent after Request changes, company-wide |
@@ -215,8 +215,10 @@ haven't tested with a board key yet. So the provider reads the open tasks and th
 reads a task's cards again only when the task's `updatedAt` changed: Paperclip touches a task whenever a
 card on it is made or answered. The first read of a company with about 400 open tasks makes about 400 card
 reads, 4 at a time; later polls read only the tasks that changed. A task without `updatedAt` has its cards
-read on every poll. Each poll reads the open tasks once, for both the Inbox and the work list, and an
-approval's linked task is read once while it is pending.
+read on every poll. Paperclip's task list leaves out every chat, so the provider reads the chats' cards
+the same way, from `listChats`: an agent asks the person something on its own chat. Each poll reads the
+open tasks once, for both the Inbox and the work list, and the chats once, for both the Inbox and the chat
+list, and an approval's linked task is read once while it is pending.
 
 **Delta reads** (`paperclip-client.delta-reads`, HAL-19334). The provider keeps the open tasks in memory.
 The first read loads them with `view=index`, in pages of 1000 by task ID. Every later read asks only for

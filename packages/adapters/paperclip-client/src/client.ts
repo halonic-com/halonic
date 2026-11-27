@@ -28,7 +28,7 @@ import { PaperclipChannelSender } from "./channel-send.ts";
 import { PaperclipChannelWork } from "./channel-work.ts";
 import { withReadAt } from "./chat-signals.ts";
 import { PaperclipCommentThreads } from "./comment-threads.ts";
-import { PaperclipConversations } from "./conversations.ts";
+import { PaperclipConversations, readChats } from "./conversations.ts";
 import { PaperclipFullAnswers } from "./full-answers.ts";
 import { PaperclipIds } from "./ids.ts";
 import { PaperclipInbox } from "./inbox.ts";
@@ -124,12 +124,7 @@ export class PaperclipMessaging implements AgentMessaging {
     this.#fullAnswers = new PaperclipFullAnswers(this.#reader, options.warn);
     this.#botNotes = new PaperclipBotNotes(this.#reader, options.company, options.warn, now);
     this.#threads = new PaperclipCommentThreads(this.#reader);
-    this.#conversations = new PaperclipConversations(
-      this.#reader,
-      this.#ids,
-      options.company,
-      options.userId,
-    );
+    this.#conversations = new PaperclipConversations(this.#reader, this.#ids, options);
     this.#refreshReads = new RefreshReads(now);
   }
 
@@ -195,7 +190,7 @@ export class PaperclipMessaging implements AgentMessaging {
   }
 
   async listInboxItems(): Promise<readonly InboxItem[]> {
-    return this.#refreshReads.take("inboxItems") ?? this.#inboxFrom(undefined);
+    return this.#refreshReads.take("inboxItems") ?? this.#inboxFrom();
   }
 
   async listWork(): Promise<readonly WorkItem[]> {
@@ -345,12 +340,13 @@ export class PaperclipMessaging implements AgentMessaging {
    */
   async refresh(): Promise<void> {
     const reading = this.#refreshReads.start();
-    // One read of the open tasks serves the Inbox, the chats, the work and the channels.
+    // One read of the open tasks, and one of the chats, serve the Inbox, chats, work and channels.
     const tasks = await this.#inbox.openTasks();
+    const chats = await readChats(this.#reader, this.#company);
     const agents = this.#agentNames.size === 0 ? await this.#readAgents() : undefined;
     const lists: RefreshLists = {
-      inboxItems: await this.#inboxFrom(tasks),
-      conversations: await this.#conversations.list(this.#context(), tasks),
+      inboxItems: await this.#inboxFrom(tasks, chats),
+      conversations: await this.#conversations.list(this.#context(), tasks, chats),
       work: workOf(this.#context(), tasks),
       channels: this.#browseFrom(tasks),
       ...(agents === undefined ? {} : { agents }),
@@ -431,18 +427,22 @@ export class PaperclipMessaging implements AgentMessaging {
     const tasks = await this.#inbox.openTasks();
     // Every sync reads the agents, so a renamed agent's name is right in the lists mapped next.
     const agents = await this.#readAgents();
-    const inbox = await this.#inboxFrom(tasks);
-    const conversations = await this.#conversations.list(this.#context(), tasks);
+    const chats = await readChats(this.#reader, this.#company);
+    const inbox = await this.#inboxFrom(tasks, chats);
+    const conversations = await this.#conversations.list(this.#context(), tasks, chats);
     const asOf = this.#inbox.tasksAsOf() ?? this.#now().toISOString();
     return { agents, conversations, inbox, work: workOf(this.#context(), tasks), asOf };
   }
 
-  async #inboxFrom(tasks: readonly JsonRecord[] | undefined): Promise<InboxItem[]> {
+  async #inboxFrom(
+    tasks?: readonly JsonRecord[],
+    chats?: readonly JsonRecord[],
+  ): Promise<InboxItem[]> {
     await this.#knowAgents();
     // A host that names no user, such as the server engine, may poll before any chat is read, and
     // the `task` items need the user's ID (`paperclip-client.board-tasks`).
     await this.#user.know();
-    const items = await this.#inbox.list(this.#context(), tasks);
+    const items = await this.#inbox.list(this.#context(), tasks, chats);
     this.#lastInbox = items;
     return items;
   }
