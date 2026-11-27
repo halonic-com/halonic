@@ -1,5 +1,4 @@
 import { ServiceRegistry } from "@halonicjs/app";
-import { FakeActionRecords } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { FakeShell } from "./fake-shell.test-helper.ts";
@@ -17,8 +16,7 @@ verifies("services.action-steps", () => {
   describe("provideActionSteps", () => {
     it("in a browser build, runs no step, signs in nowhere and writes nothing", async () => {
       const services = new ServiceRegistry();
-      const records = new FakeActionRecords();
-      expect(provideActionSteps(services, {}, records)).toBe(false);
+      expect(provideActionSteps(services, {})).toBe(false);
       const steps = services.get(actionStepsKey);
       expect(steps.canRun).toBe(false);
       expect(await steps.runStep("req-1", step)).toEqual({ outcome: "desktop-only" });
@@ -29,11 +27,17 @@ verifies("services.action-steps", () => {
       expect(await steps.account("github")).toBeUndefined();
       await steps.signOut("github");
       await steps.cancelSignIn();
-      expect(await records.read("req-1")).toEqual([]);
+      expect(await steps.history("req-1")).toEqual([]);
     });
 
-    it("in the desktop app, signs in and runs a step through the shell's action commands", async () => {
+    it("in the desktop app, signs in, runs a step and records it all through the shell's action commands", async () => {
+      const written: unknown[] = [];
       const shell = new FakeShell()
+        .answer("action_record_append", (args) => {
+          written.push(args["event"]);
+          return null;
+        })
+        .answer("action_record_read", () => written)
         .answer("action_sign_in", (args) => {
           shell.send(String(args["code"]), { index: 0, message: code });
           return { outcome: "signed-in", account: { service: "github", name: "acme-dev" } };
@@ -44,19 +48,20 @@ verifies("services.action-steps", () => {
           kept: { name: "ACME_MODE" },
         }));
       const services = new ServiceRegistry();
-      const records = new FakeActionRecords();
-      expect(provideActionSteps(services, { __TAURI_INTERNALS__: shell }, records)).toBe(true);
+      expect(provideActionSteps(services, { __TAURI_INTERNALS__: shell })).toBe(true);
       const steps = services.get(actionStepsKey);
       const shown: unknown[] = [];
       await steps.signIn("req-1", "github", (shownCode) => shown.push(shownCode));
       expect(shown).toEqual([code]);
       await steps.runStep("req-1", step);
       expect(shell.callsOf("action_send")).toEqual([{ request: step }]);
-      expect((await records.read("req-1")).map((event) => event.type)).toEqual([
-        "action.signed-in",
-        "action.step.started",
-        "action.step.succeeded",
+      const appended = shell.callsOf("action_record_append").map((args) => args["event"]);
+      expect(appended).toMatchObject([
+        { type: "action.signed-in", request: "req-1", service: "github", account: "acme-dev" },
+        { type: "action.step.started", request: "req-1", step: 1 },
+        { type: "action.step.succeeded", request: "req-1", step: 1, status: 201 },
       ]);
+      expect(await steps.history("req-1")).toEqual(appended);
     });
   });
 });

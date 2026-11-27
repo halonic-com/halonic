@@ -117,6 +117,8 @@ verifies("action-send-tauri.commands", () => {
       expect((await failureOf(sender.signOut("github"))).failure).toBe("denied");
       shell.refusals.set("action_sign_in_cancel", { kind: 3 });
       expect((await failureOf(sender.cancelSignIn())).failure).toBe("ipc");
+      shell.refusals.set("action_sign_out", { kind: "exploded", message: "a newer shell's kind" });
+      expect((await failureOf(sender.signOut("github"))).failure).toBe("malformed-answer");
     });
 
     it("says nobody is signed in to a service the shell has no sign-in for", async () => {

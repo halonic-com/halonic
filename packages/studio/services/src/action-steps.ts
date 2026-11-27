@@ -41,7 +41,7 @@ export type ActionRecordResult = Recorded | DesktopOnly | RequestClosed;
 
 /**
  * The app service the stepper screen calls to run a request's steps with
- * the user's own sign-in (requirement `studio-services.action-steps`). It
+ * the user's own sign-in (requirement `services.action-steps`). It
  * runs a step through the `ActionSender` and writes what happened to the
  * request's record, through `ActionRecords`. Every call comes from the
  * user's click; agents only file requests and never reach it.

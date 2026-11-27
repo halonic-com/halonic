@@ -98,7 +98,9 @@ fn served_page_test_sees_the_action_commands_granted_to_the_local_windows_only()
             "allow-action-sign-out",
             "allow-action-account",
             "allow-action-open-guided",
-            "allow-action-open-page"
+            "allow-action-open-page",
+            "allow-action-record-append",
+            "allow-action-record-read"
         ])
     );
 }

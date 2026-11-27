@@ -1,0 +1,281 @@
+{
+  "//": "The record events the shell's allow-list (check_record_event in apps/studio/src-tauri/crates/action-send) and checkActionEvent in @halonicjs/events must both take or both refuse. The adapter's tests and the shell's tests/records.rs read this one file, so neither side can change alone.",
+  "taken": [
+    {
+      "case": "a review, with a time without milliseconds",
+      "event": {
+        "type": "action.reviewed",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00Z",
+        "decision": "opened",
+        "digest": "sha256-acme"
+      }
+    },
+    {
+      "case": "a sign-in",
+      "event": {
+        "type": "action.signed-in",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "service": "github",
+        "account": "acme-dev"
+      }
+    },
+    {
+      "case": "an id of 100 characters outside the BMP: 200 UTF-16 units",
+      "event": {
+        "type": "action.signed-in",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "service": "github",
+        "account": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      }
+    },
+    {
+      "case": "plain kept values, null included",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "runId": 123456,
+          "name": "release",
+          "draft": false,
+          "gone": null
+        }
+      }
+    },
+    {
+      "case": "a kept value of 1000 two-byte characters",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "name": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé"
+        }
+      }
+    },
+    {
+      "case": "a status and no kept fields",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 2,
+        "status": 201,
+        "kept": {}
+      }
+    },
+    {
+      "case": "a failure with its status and error",
+      "event": {
+        "type": "action.step.failed",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "failure": "service-error",
+        "status": 422,
+        "error": "Validation failed"
+      }
+    },
+    {
+      "case": "a skipped step 100",
+      "event": {
+        "type": "action.step.skipped",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 100
+      }
+    },
+    {
+      "case": "a finished request",
+      "event": {
+        "type": "action.finished",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "outcome": "succeeded"
+      }
+    }
+  ],
+  "refused": [
+    {
+      "case": "a request is a run event, never a record event",
+      "event": {
+        "type": "action.requested",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z"
+      }
+    },
+    {
+      "case": "a step event without its step",
+      "event": {
+        "type": "action.step.started",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z"
+      }
+    },
+    {
+      "case": "a time that isn't UTC",
+      "event": {
+        "type": "action.step.started",
+        "request": "req-1",
+        "at": "25 Nov",
+        "step": 1
+      }
+    },
+    {
+      "case": "an empty request id",
+      "event": {
+        "type": "action.step.started",
+        "request": "",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1
+      }
+    },
+    {
+      "case": "a request id with a control character",
+      "event": {
+        "type": "action.step.started",
+        "request": "req\n1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1
+      }
+    },
+    {
+      "case": "a request id of 201 characters",
+      "event": {
+        "type": "action.step.started",
+        "request": "rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1
+      }
+    },
+    {
+      "case": "an id of 101 characters outside the BMP: 202 UTF-16 units",
+      "event": {
+        "type": "action.signed-in",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "service": "github",
+        "account": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      }
+    },
+    {
+      "case": "a step past 100",
+      "event": {
+        "type": "action.step.started",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 101
+      }
+    },
+    {
+      "case": "a step that isn't whole",
+      "event": {
+        "type": "action.step.started",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1.5
+      }
+    },
+    {
+      "case": "an extra field",
+      "event": {
+        "type": "action.step.started",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "authorization": "acme-fake-token"
+      }
+    },
+    {
+      "case": "a kept value that is an object",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "body": {
+            "token": "x"
+          }
+        }
+      }
+    },
+    {
+      "case": "a kept name that starts with a digit",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "1st": 1
+        }
+      }
+    },
+    {
+      "case": "a dotted kept name: taken once #6725 (HAL-20271) lands, then both sides move it to taken together",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "triggering_actor.login": "acme-dev"
+        }
+      }
+    },
+    {
+      "case": "a kept value of 1001 characters",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        }
+      }
+    },
+    {
+      "case": "a failure that isn't listed",
+      "event": {
+        "type": "action.step.failed",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "failure": "exploded"
+      }
+    },
+    {
+      "case": "an error of 301 characters",
+      "event": {
+        "type": "action.step.failed",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "failure": "service-error",
+        "error": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    },
+    {
+      "case": "an outcome that isn't listed",
+      "event": {
+        "type": "action.finished",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "outcome": "done"
+      }
+    },
+    {
+      "case": "not an object",
+      "event": [
+        "action.finished"
+      ]
+    }
+  ]
+}

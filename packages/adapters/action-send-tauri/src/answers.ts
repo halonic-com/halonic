@@ -23,7 +23,7 @@ const refusals: readonly ActionRefusal[] = [
   "too-often",
 ];
 
-/** Whether `value` is a plain object with exactly the `outcome` key and `others`. */
+/** Whether `value` has no key but `outcome` and `others`; it may lack any of them. */
 function hasOnlyKeys(value: Record<string, unknown>, ...others: readonly string[]): boolean {
   const allowed = new Set(["outcome", ...others]);
   return Object.keys(value).every((key) => allowed.has(key));

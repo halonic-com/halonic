@@ -147,6 +147,7 @@ mod secrets;
 mod server_session;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod server_session_brief;
+mod shell_setup;
 mod system_region;
 #[cfg(desktop)]
 mod tray;
@@ -272,26 +273,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
                 .build(),
         )
         .plugin(navigation::guard())
-        .setup(|app| {
-            profile::start_shell_log(app.handle());
-            // Before any window opens, so the list is kept from the first.
-            #[cfg(desktop)]
-            open_windows_track::start(app.handle());
-            // Studio's window, the focused app's that `--app` names, or none.
-            #[cfg(desktop)]
-            let background =
-                background_start::open_window(app.handle(), &std::env::args().collect::<Vec<_>>())?;
-            #[cfg(mobile)]
-            window::open(app.handle())?;
-            server_session::sweep_at_start(app.handle());
-            #[cfg(desktop)]
-            updates::start(app.handle());
-            #[cfg(desktop)]
-            notification_clicks::listen(app.handle());
-            #[cfg(desktop)]
-            background_start::after_tray(app.handle(), background, tray::start(app.handle()));
-            Ok(())
-        })
+        .setup(shell_setup::setup)
         // What the shell ends for a page that reloads or a window that
         // closes (`page_ends.rs`).
         .on_page_load(page_ends::page_load)
@@ -427,6 +409,10 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             actions::action_open_guided,
             #[cfg(desktop)]
             actions::action_open_page,
+            #[cfg(desktop)]
+            actions::records::action_record_append,
+            #[cfg(desktop)]
+            actions::records::action_record_read,
             #[cfg(desktop)]
             updates::update_status,
             #[cfg(desktop)]
