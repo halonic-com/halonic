@@ -117,7 +117,7 @@ verifies("action-steppers.stepper-items", () => {
 
     expect(element.textContent).toContain("GitHub: repository acme/app");
     expect(element.textContent).toContain("Open it in the desktop app to run it.");
-    expect(element.textContent).not.toContain("This card has a stepper Halonic can't read:");
+    expect(element.textContent).not.toContain("Halonic can't run this card's stepper:");
     const buttons = [...element.querySelectorAll("button")].map((button) => button.textContent);
     expect(buttons).toContain("Decline");
     expect(paperclip.unexpected).toEqual([]);

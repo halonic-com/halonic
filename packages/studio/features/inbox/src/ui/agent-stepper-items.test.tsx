@@ -93,7 +93,7 @@ verifies("action-steppers.stepper-items", () => {
     const { messaging, item } = acme([approve, approve]);
     const root = await openFirst(messaging);
 
-    expect(root.textContent).toContain("This card has a stepper Halonic can't read:");
+    expect(root.textContent).toContain("Halonic can't run this card's stepper:");
     expect(root.textContent).toContain(
       "this version of Halonic opens only a request for one whole stepper",
     );
