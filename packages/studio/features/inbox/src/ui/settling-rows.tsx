@@ -6,7 +6,14 @@ import {
   useSettleAwayTogether,
   useSettling,
 } from "@halonicjs/studio-kit/settle";
-import { type ReactNode, type RefObject, useCallback, useEffect, useRef } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+} from "react";
 import { flushSync } from "react-dom";
 import type { AgentBundle } from "../agent/agent-bundles.ts";
 import { agentItemTitle } from "../agent/agent-item-text.ts";
@@ -54,7 +61,9 @@ export function useSettlingRows(
   options: SettlingRowsOptions,
 ): SettlingRows {
   const endedOf = useCallback((left: AgentBundle) => endedBundle(left, items), [items]);
-  const { settling, gone } = useSettling(open, bundleKey, endedOf);
+  const { settling: reported, gone } = useSettling(open, bundleKey, endedOf);
+  const justEnded = useJustEnded(open, reported, endedOf);
+  const settling = [...reported, ...justEnded];
   const groups = useGroups(settling);
   // Written while the page renders its rows, and read only by the next render: it never decides
   // what an effect does, so a render React throws away at worst puts a row back one place off.
@@ -112,6 +121,30 @@ export function settledRow(row: ListRow, bundle: AgentBundle): ListRow {
 }
 
 const bundleKey = (bundle: AgentBundle) => bundle.key;
+
+/**
+ * The rows that left `open` in this render, each as it ended, which `useSettling` reports only
+ * from the next render on. Without them a row that just ended would drop out for one render, and
+ * the order written then would forget its place, so it would settle at the top instead.
+ */
+function useJustEnded(
+  open: readonly AgentBundle[],
+  reported: readonly AgentBundle[],
+  endedOf: (left: AgentBundle) => AgentBundle | undefined,
+): AgentBundle[] {
+  // The open rows of the last render the page kept, as `useSettling` compares them.
+  const lastOpen = useRef<readonly AgentBundle[]>([]);
+  useLayoutEffect(() => {
+    lastOpen.current = open;
+  }, [open]);
+  const openKeys = new Set(open.map(bundleKey));
+  const reportedKeys = new Set(reported.map(bundleKey));
+  return lastOpen.current.flatMap((bundle) => {
+    if (openKeys.has(bundle.key) || reportedKeys.has(bundle.key)) return [];
+    const ended = endedOf(bundle);
+    return ended === undefined ? [] : [ended];
+  });
+}
 
 /** Puts each ended row back after the row it last showed under, or first when none is left. */
 function withEnded(

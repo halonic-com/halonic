@@ -38,7 +38,13 @@ export function EndedLine({
   const how = howAnswered(item, state, text);
   return (
     <div className="flex flex-col gap-2">
-      <p ref={line} id={id} tabIndex={-1} className="text-small focus-ring">
+      {/* As wide and as round as its chip, so the focus ring wraps the line, not the whole bar. */}
+      <p
+        ref={line}
+        id={id}
+        tabIndex={-1}
+        className="flex w-fit max-w-full rounded-xs text-small focus-ring"
+      >
         <StatusChip tone={tone}>{text}</StatusChip>
       </p>
       {how === undefined ? null : <p className="text-small text-fg-muted wrap-break-word">{how}</p>}

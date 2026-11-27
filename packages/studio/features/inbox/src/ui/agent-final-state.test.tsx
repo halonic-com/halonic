@@ -58,6 +58,20 @@ function acme(...questions: string[]) {
   return { messaging, items };
 }
 
+/** Ada's open questions in "Paperclip · Acme", asked ten minutes apart from 09:00, oldest first. */
+function askedApart(...questions: string[]) {
+  const messaging = new FakeAgentMessaging({ now: () => asked });
+  const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+  const items = questions.map((question, index) =>
+    messaging.addInboxItem(source.id, {
+      question,
+      from: { kind: "person", name: "Ada" },
+      createdAt: new Date(2026, 10, 24, 9, index * 10).toISOString(),
+    }),
+  );
+  return { messaging, items };
+}
+
 async function openInbox(messaging: FakeAgentMessaging) {
   const motion = recordedMotion();
   const announce = vi.fn<(line: string) => void>();
@@ -79,6 +93,16 @@ function rows(root: HTMLElement): HTMLTableRowElement[] {
 }
 
 const texts = (root: HTMLElement) => rows(root).map((row) => row.textContent ?? "");
+
+/**
+ * The rows are the very elements shown before, in the same order: a row that dropped out for a
+ * render, even one never painted, would have come back as a new element.
+ */
+function expectSameRows(root: HTMLElement, shown: readonly HTMLTableRowElement[]): void {
+  const now = rows(root);
+  expect(now).toHaveLength(shown.length);
+  for (const [index, row] of now.entries()) expect(row).toBe(shown[index]);
+}
 
 /** Picks a project from the filter's line, or else from its "+N" menu. */
 async function pickProject(root: HTMLElement, label: string): Promise<void> {
@@ -113,9 +137,10 @@ verifies("inbox.final-state", () => {
       });
       await settled();
 
+      // Newest first, so Ship stays second, where it was before it ended.
       expect(texts(root)).toEqual([
-        expect.stringContaining("Ship the release?Answered by Liam · 10:00"),
         expect.stringContaining("Merge #12?"),
+        expect.stringContaining("Ship the release?Answered by Liam · 10:00"),
       ]);
       await pass(settleHoldMs - 100);
       expect(rows(root)).toHaveLength(2);
@@ -214,6 +239,48 @@ verifies("inbox.final-state", () => {
 
       expect(texts(root)).toEqual([expect.stringContaining("Ship the home page?")]);
       expect(motion.leave).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("rows asked at different times, newest first", () => {
+    it("keeps a lower row that ended at its index, in the same row all along", async () => {
+      const { messaging, items } = askedApart("Ship the release?", "Merge #12?", "Tag 0.3.0?");
+      const { root } = await openInbox(messaging);
+      const [, merge] = items;
+      if (merge === undefined) throw new Error("no item");
+      const shown = rows(root);
+
+      await act(async () => messaging.closeElsewhere(merge.id, "cancelled"));
+      await settled();
+
+      expect(texts(root)).toEqual([
+        expect.stringContaining("Tag 0.3.0?"),
+        expect.stringContaining("Merge #12?Cancelled · 10:00"),
+        expect.stringContaining("Ship the release?"),
+      ]);
+      expectSameRows(root, shown);
+    });
+
+    it("keeps four of five that ended in one read in their order until they fade", async () => {
+      const questions = ["First?", "Second?", "Third?", "Fourth?", "Fifth?"];
+      const { messaging, items } = askedApart(...questions);
+      const { root, motion } = await openInbox(messaging);
+      const shown = rows(root);
+
+      await act(async () => {
+        for (const item of items.slice(0, 4)) messaging.closeElsewhere(item.id, "cancelled");
+      });
+      await settled();
+
+      const newestFirst = [...questions].reverse();
+      expect(texts(root)).toEqual(newestFirst.map((question) => expect.stringContaining(question)));
+      expectSameRows(root, shown);
+      await pass(settleHoldMs - 100);
+      expect(texts(root)).toEqual(newestFirst.map((question) => expect.stringContaining(question)));
+
+      await pass(100);
+      expect(motion.flip).toHaveBeenCalledOnce();
+      expect(texts(root)).toEqual([expect.stringContaining("Fifth?")]);
     });
   });
 
