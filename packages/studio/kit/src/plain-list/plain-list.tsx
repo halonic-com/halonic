@@ -75,11 +75,13 @@ const rowClasses =
   "flex w-full items-center gap-3 rounded-md px-3 text-start transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted";
 
 /**
- * A row with a picture is a sidebar's bigger one, at least 80px (HAL-19735). A row without one,
- * such as the Assistant's Recent chats on a phone, keeps the kit's 56px list row (HAL-19949).
+ * A row with a picture is a sidebar's bigger one, exactly 80px (HAL-19735): its title and line are
+ * each cut to one line, so a fixed height never cuts them, and a minimum let rows grow past 80px
+ * in Preview .440 (HAL-20558). A row without one, such as the Assistant's Recent chats on a
+ * phone, keeps the kit's 56px list row (HAL-19949).
  */
 const sizeClasses = (picture: ReactNode) =>
-  picture === null || picture === undefined ? "min-h-14 py-3" : "min-h-20 py-2.5";
+  picture === null || picture === undefined ? "min-h-14 py-3" : "h-20 py-2.5";
 
 /**
  * A row with an action keeps the hover fill while the pointer is on the action or the row has
