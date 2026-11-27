@@ -8,9 +8,9 @@ The agents feature's Harness page shall show, under Where it runs, the agent's *
 
 ## Examples
 
-- Given Sorter's file names the working folder `hubs/acme/work/sorter` and the site `registry.npmjs.org`, then the Harness page shows both, with **Change…** and a chip "registry.npmjs.org" whose ✕ is named "Remove registry.npmjs.org".
+- Given Sorter's file names the working folder `files/work/sorter` and the site `registry.npmjs.org`, then the Harness page shows both, with **Change…** and a chip "registry.npmjs.org" whose ✕ is named "Remove registry.npmjs.org".
 - Given Sorter's file names no working folder, then the page shows `files/agents/sorter`.
-- Given the person chooses **Change…**, types `hubs/acme/out` and presses Enter, then Sorter's working folder is saved as `hubs/acme/out`, the page shows it and focus is on **Change…**.
+- Given the person chooses **Change…**, types `files/out` and presses Enter, then Sorter's working folder is saved as `files/out`, the page shows it and focus is on **Change…**.
 - Given the person presses Esc in the box, then nothing is saved and the old folder shows.
 - Given the person adds `api.example.com` with **Add site** and removes `registry.npmjs.org`, then the saved allowed sites are `api.example.com` alone.
 - Given the host refuses the site `localhost` with "Enter a site like registry.npmjs.org.", then the chip list shows `registry.npmjs.org` alone again and the page says "Couldn't save: Enter a site like registry.npmjs.org."
