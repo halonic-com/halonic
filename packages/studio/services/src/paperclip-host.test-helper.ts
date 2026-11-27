@@ -3,13 +3,16 @@
  * invented `acme` Paperclip on `paperclip.acme.example`, its sign-in routes
  * and a keychain in memory. Its poll plays the Studio shell's part too: on
  * approval it writes the key to the keychain and confirms it, and answers the
- * page without the key (HAL-20278). Keys are made up and never real.
+ * page without the key (HAL-20278). The keychain and the keys the host holds
+ * are kept apart, as the shell's and the host's are, so an entry the host
+ * doesn't hold can be set up. Keys are made up and never real.
  */
-import type {
-  PaperclipConnectionRef,
-  PaperclipConnectionRow,
-  PaperclipSignInStart,
-  PaperclipSignInState,
+import {
+  AgentHostError,
+  type PaperclipConnectionRef,
+  type PaperclipConnectionRow,
+  type PaperclipSignInStart,
+  type PaperclipSignInState,
 } from "@halonicjs/adapter-agent-host-client";
 import type { SignInConnection } from "@halonicjs/ports";
 import { HostAgentConnections } from "./host-agent-connections.ts";
@@ -33,7 +36,12 @@ interface Challenge {
 /** What the stand-in serves: connection files, keys already kept and who approves. */
 export interface StandInSetup {
   connections: Readonly<Record<string, SignInConnection>>;
+  /** Connections whose key the keychain keeps and the host holds, and Paperclip takes. */
   keys?: readonly string[];
+  /** Connections whose keychain entry was signed in from another workspace; the host holds none. */
+  shellOnly?: readonly string[];
+  /** Connections whose kept and held key Paperclip no longer takes: their rows say `signed-out`. */
+  signedOut?: readonly string[];
   approver: string;
   now: () => number;
 }
@@ -50,14 +58,21 @@ export class StandInPaperclipHost {
   expiresAt: string | undefined;
   /** When set, the next start is refused for this reason. */
   refuseStart: "address-not-allowed" | "unreachable" | "too-many-sign-ins" | undefined;
-  /** How Disconnect goes: Paperclip revokes the key, can't, or the host can't be asked. */
-  disconnectGoes: "revoked" | "not-revoked" | "fails" = "revoked";
+  /**
+   * How Disconnect goes: Paperclip revokes the key, can't, the host can't be asked, or the host
+   * revoked it and the shell's keychain refused the delete.
+   */
+  disconnectGoes: "revoked" | "not-revoked" | "fails" | "keychain" = "revoked";
   /** Whether the connection rows say whom they are signed in as. */
   showsUserName = true;
   /** Called after each keychain write, so a test can close the stepper right then. */
   onKeyWritten: () => void = () => {};
   /** Called once the host has the shell's confirm, before the sign-in answers. */
   onConfirmed: () => void = () => {};
+  /** When set, the shell can't say whether it keeps a key. */
+  keyKeptFails = false;
+  /** How many Disconnects the host was asked for. */
+  disconnects = 0;
   readonly #setup: StandInSetup;
   readonly #challenges: Challenge[] = [];
   /** The key the host holds for each connection. */
@@ -67,12 +82,18 @@ export class StandInPaperclipHost {
 
   constructor(setup: StandInSetup) {
     this.#setup = setup;
-    for (const name of setup.keys ?? []) {
-      const key = `acme-made-up-key-${name}`;
-      this.keychain.set(paperclipKeyTokenName(name), this.#entryText(name, key));
-      this.#held.set(name, key);
-      this.#working.add(key);
-    }
+    for (const name of setup.keys ?? []) this.#keep(name, "held", true);
+    for (const name of setup.shellOnly ?? []) this.#keep(name, "shell", true);
+    for (const name of setup.signedOut ?? []) this.#keep(name, "held", false);
+  }
+
+  /** Sets up a kept key for `name`: in the keychain, and held by the host too unless `shell`. */
+  #keep(name: string, where: "held" | "shell", works: boolean): void {
+    const key = `acme-made-up-key-${name}`;
+    const workspace = where === "shell" ? "/work/other" : "/work/acme";
+    this.keychain.set(paperclipKeyTokenName(name), this.#entryText(name, key, workspace));
+    if (where === "held") this.#held.set(name, key);
+    if (works) this.#working.add(key);
   }
 
   /** The stand-in board clicks Approve on the newest open sign-in. */
@@ -104,7 +125,7 @@ export class StandInPaperclipHost {
     const connections = new HostAgentConnections({
       signIn: this.signInRoutes(),
       host: { disconnect: (ref) => this.disconnect(ref) },
-      // The host already holds every key `setup.keys` names, so the shell gives none back.
+      // The host already holds every key it should, so the shell gives none back.
       restoreKeys: async () => 0,
       workspace: "/work/acme",
       wait: () => new Promise((resolve) => setTimeout(resolve, 0)),
@@ -114,7 +135,11 @@ export class StandInPaperclipHost {
     // Studio asks the shell for a restore when the workspace opens.
     void connections.restore();
     const listed = () => this.signInRoutes().listed();
-    return new HostServiceSignIn({ listed, connections, now: this.#setup.now, report });
+    const keyKept = async (connection: string) => {
+      if (this.keyKeptFails) throw new Error("The shell couldn't ask the keychain.");
+      return this.hasKey(connection);
+    };
+    return new HostServiceSignIn({ listed, connections, keyKept, now: this.#setup.now, report });
   }
 
   /** The host's `/v1/paperclip/sign-in/*` and connections routes. */
@@ -129,29 +154,43 @@ export class StandInPaperclipHost {
 
   /** The host's Disconnect: revokes the key at Paperclip and forgets it; the shell deletes the keychain entry, also when the host fails. */
   async disconnect(ref: PaperclipConnectionRef): Promise<{ revoked: boolean }> {
+    this.disconnects += 1;
+    if (this.disconnectGoes === "keychain") {
+      this.#revokeHeld(ref.connection);
+      throw new AgentHostError(0, "keychain", "The keychain refused the delete.");
+    }
     this.keychain.delete(paperclipKeyTokenName(ref.connection));
     if (this.disconnectGoes === "fails") throw new Error("The agent host didn't answer.");
-    const key = this.#held.get(ref.connection);
-    this.#held.delete(ref.connection);
-    if (key === undefined || this.disconnectGoes === "not-revoked") return { revoked: false };
+    if (this.disconnectGoes === "not-revoked") {
+      this.#held.delete(ref.connection);
+      return { revoked: false };
+    }
+    return { revoked: this.#revokeHeld(ref.connection) };
+  }
+
+  /** Revokes and forgets the key the host holds for `connection`; whether Paperclip took it. */
+  #revokeHeld(connection: string): boolean {
+    // Every Disconnect here follows a confirmed sign-in, so the host holds a key.
+    const key = this.#held.get(connection) as string;
+    this.#held.delete(connection);
     this.requests.push(revokeCurrent);
-    this.#working.delete(key);
-    return { revoked: true };
+    return this.#working.delete(key);
   }
 
   #rows(): PaperclipConnectionRow[] {
     return Object.entries(this.#setup.connections).map(([name, file]) => {
       const key = this.#held.get(name);
       const signedIn = key !== undefined && this.#working.has(key);
+      const state: PaperclipConnectionRow["state"] = signedIn
+        ? { kind: "online", asOf: new Date(this.#setup.now()).toISOString() }
+        : { kind: key === undefined ? "no-key" : "signed-out" };
       return {
         id: `paperclip:${name}`,
         name,
         label: "Paperclip · Acme",
         address: file.address,
         company: file.company,
-        state: signedIn
-          ? { kind: "online", asOf: new Date(this.#setup.now()).toISOString() }
-          : { kind: "no-key" },
+        state,
         ...(signedIn && this.showsUserName ? { userName: this.#setup.approver } : {}),
       };
     });
@@ -184,11 +223,11 @@ export class StandInPaperclipHost {
     return { status: "connected", connection, address, company };
   }
 
-  /** The keychain entry the shell writes for `key`, signed in from this stand-in's workspace. */
-  #entryText(connection: string, key: string): string {
+  /** The keychain entry the shell writes for `key`, signed in from `workspace`. */
+  #entryText(connection: string, key: string, workspace = "/work/acme"): string {
     // Only a listed connection file's key is kept.
     const { address, company } = this.#setup.connections[connection] as SignInConnection;
-    return JSON.stringify({ key, address, company, workspaces: ["/work/acme"] });
+    return JSON.stringify({ key, address, company, workspaces: [workspace] });
   }
 
   #confirm(signInId: string): void {
@@ -200,17 +239,11 @@ export class StandInPaperclipHost {
 
   #cancel(signInId: string): PaperclipSignInState {
     const challenge = this.#find(signInId);
-    // After the approval, the host revokes the key and undoes the sign-in.
-    if (
-      challenge.status === "approved" ||
-      challenge.status === "handed" ||
-      challenge.status === "kept"
-    ) {
+    // After the approval and before the confirm, the host revokes the key and undoes the sign-in.
+    // Once confirmed, the key is the connection's: only Disconnect revokes it.
+    if (challenge.status === "approved" || challenge.status === "handed") {
       this.requests.push(revokeCurrent);
       this.#working.delete(challenge.key);
-      if (this.#held.get(challenge.connection) === challenge.key) {
-        this.#held.delete(challenge.connection);
-      }
     }
     challenge.status = "cancelled";
     return { status: "cancelled" };

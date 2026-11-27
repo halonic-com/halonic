@@ -16,13 +16,19 @@
 //! once, and the shell hands the kept keys back to the host itself
 //! (`halonic_agent_host::restore_paperclip_keys`), on a route no page can
 //! name.
+//!
+//! Before a sign-in starts, the page may ask `agent_host_paperclip_key_kept`
+//! whether the shell keeps a key for a connection: one bit, never the key
+//! (`halonic_agent_host::paperclip_key_kept`), so a sign-in doesn't write
+//! over an entry the host doesn't hold yet.
 
 use std::sync::{Arc, LazyLock};
 
 use halonic_agent_host::{
-    HandOver, HostCallFailed, KEY_HAND_OVER, KeepTurns, RestoreChecks, RestoreHost, Route,
-    SIGN_IN_CANCEL, SIGN_IN_CONFIRM, SignInHost, find_route, forget_paperclip_key,
-    keep_poll_answer, page_answer, page_cancel_answer, restore_paperclip_keys, same_workspace,
+    HandOver, HostCallFailed, KEY_HAND_OVER, KeepTurns, KeptRefusal, RestoreChecks, RestoreHost,
+    Route, SIGN_IN_CANCEL, SIGN_IN_CONFIRM, SignInHost, find_route, forget_paperclip_key,
+    keep_poll_answer, page_answer, page_cancel_answer, paperclip_key_kept, restore_paperclip_keys,
+    same_workspace,
 };
 use halonic_secrets::SecretBackend;
 use halonic_trust_grant::PickedFolders;
@@ -174,6 +180,70 @@ pub(super) async fn restore_for<R: Runtime>(
             "the agent host couldn't list the workspace's connections",
         )
     })
+}
+
+/// Answers whether the shell keeps a Paperclip key for `connection`, a
+/// connection the workspace `workspace` names, as the page names it: yes or
+/// no, never the key. The shell asks the host for the workspace's
+/// connections itself, and answers only for a workspace that is still a
+/// folder the person picked and a connection its connection file names.
+/// Otherwise it refuses: `invalid_connection`, `not_picked`,
+/// `unknown_connection`, `host_unavailable` while the host can't list the
+/// workspace, or `keychain` when the keychain can't be asked, never `false`.
+#[tauri::command]
+pub async fn agent_host_paperclip_key_kept<R: Runtime>(
+    app: AppHandle<R>,
+    workspace: String,
+    connection: String,
+) -> Result<bool, HostRefusal> {
+    let keychain = keychain(&app)?;
+    let picked = picked_folders(&app).map_err(|refusal| {
+        HostRefusal::new(
+            "io",
+            format!("the picked folders can't be read: {refusal:?}"),
+        )
+    })?;
+    key_kept_for(&app, keychain, picked, workspace, connection).await
+}
+
+/// The answer of `agent_host_paperclip_key_kept`, against `keychain` and
+/// the folders `picked` remembers.
+pub(super) async fn key_kept_for<R: Runtime>(
+    app: &AppHandle<R>,
+    keychain: Arc<dyn SecretBackend>,
+    picked: PickedFolders,
+    workspace: String,
+    connection: String,
+) -> Result<bool, HostRefusal> {
+    let host = ShellRestore { app: app.clone() };
+    on_worker(move || {
+        let checks = ShellChecks { picked };
+        paperclip_key_kept(keychain.as_ref(), &host, &checks, &workspace, &connection)
+    })
+    .await?
+    .map_err(kept_refusal)
+}
+
+/// The page's refusal for `refusal`. None of them holds a key.
+fn kept_refusal(refusal: KeptRefusal) -> HostRefusal {
+    match refusal {
+        KeptRefusal::InvalidConnection => {
+            HostRefusal::new("invalid_connection", "that isn't a connection's name")
+        }
+        KeptRefusal::HostUnavailable => HostRefusal::new(
+            "host_unavailable",
+            "the agent host couldn't list the workspace's connections",
+        ),
+        KeptRefusal::NotPicked => HostRefusal::new(
+            "not_picked",
+            "the workspace isn't a folder the person picked",
+        ),
+        KeptRefusal::UnknownConnection => HostRefusal::new(
+            "unknown_connection",
+            "the workspace's connection files name no such connection",
+        ),
+        KeptRefusal::Keychain(message) => HostRefusal::new("keychain", message),
+    }
 }
 
 /// The restore's calls, on the host that serves them.

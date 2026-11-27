@@ -21,6 +21,7 @@ mod host_secrets;
 mod loopback_secrets;
 mod opened_workspaces;
 mod paperclip_keep;
+mod paperclip_key_kept;
 mod paperclip_restore;
 mod paperclip_routes;
 mod relay;
@@ -54,6 +55,7 @@ pub use paperclip_keep::{
     HostCallFailed, KeepTurns, SignInHost, forget_paperclip_key, keep_poll_answer, page_answer,
     page_cancel_answer, same_workspace,
 };
+pub use paperclip_key_kept::{KeptRefusal, is_connection_name, paperclip_key_kept};
 pub use paperclip_restore::{HandOver, RestoreChecks, RestoreHost, restore_paperclip_keys};
 pub use paperclip_routes::{KEY_HAND_OVER, SIGN_IN_CANCEL, SIGN_IN_CONFIRM};
 use relay::Relay;

@@ -275,3 +275,34 @@ verifies("services.paperclip-restore", () => {
     }
   });
 });
+
+verifies("services.service-sign-in", () => {
+  const kept = "agent_host_paperclip_key_kept";
+
+  it("asks the shell whether it keeps a connection's key, and answers yes or no", async () => {
+    for (const answer of [true, false]) {
+      const shell = new FakeShell().answer(kept, () => answer);
+
+      await expect(
+        new TauriAgentHostTransport(shell).paperclipKeyKept("/work/acme", "acme"),
+      ).resolves.toBe(answer);
+      expect(shell.callsOf(kept)).toEqual([{ workspace: "/work/acme", connection: "acme" }]);
+    }
+  });
+
+  it("rejects the shell's refusal, and an answer that isn't yes or no", async () => {
+    const refusing = new FakeShell().answer(kept, () => {
+      throw { kind: "keychain", message: "the keychain is locked" };
+    });
+    await expect(
+      new TauriAgentHostTransport(refusing).paperclipKeyKept("/work/acme", "acme"),
+    ).rejects.toMatchObject({ status: 0, kind: "keychain" });
+    for (const odd of ["true", 1, null, { kept: true }]) {
+      const shell = new FakeShell().answer(kept, () => odd);
+
+      await expect(
+        new TauriAgentHostTransport(shell).paperclipKeyKept("/work/acme", "acme"),
+      ).rejects.toMatchObject({ kind: "answer_invalid" });
+    }
+  });
+});

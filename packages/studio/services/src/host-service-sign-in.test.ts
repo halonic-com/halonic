@@ -28,8 +28,9 @@ const acme: SignInConnectionRef = {
 };
 
 /** The stand-in `acme` Paperclip, and a connection file whose address can't be read. */
-function standIn() {
+function standIn(setup: { shellOnly?: readonly string[] } = {}) {
   const host = new StandInPaperclipHost({
+    ...setup,
     connections: {
       acme: { address, company: "acme-company" },
       broken: { address: "not an address", company: "acme-company" },
@@ -79,6 +80,37 @@ verifies("services.service-sign-in", () => {
       }
     });
 
+    it("answers the approval page as it parsed it", async () => {
+      const { host, signIn } = standIn();
+      host.approvalUrl = "HTTPS://PAPERCLIP.ACME.EXAMPLE/cli-auth/challenge-1";
+      expect((await started(signIn)).approvalUrl).toBe(`${address}/cli-auth/challenge-1`);
+    });
+
+    it("refuses a sign-in over an entry signed in from another workspace, and writes or deletes nothing", async () => {
+      const { host, signIn } = standIn({ shellOnly: ["acme"] });
+      const entry = host.keychain.get("paperclip-acme");
+      for (const test of [true, false]) {
+        expect(await signIn.start(acme, { test })).toEqual({
+          outcome: "refused",
+          reason: "already-signed-in",
+        });
+      }
+      expect(host.keychain.get("paperclip-acme")).toBe(entry);
+      expect(host.requests).toEqual([]);
+      expect(host.disconnects).toBe(0);
+    });
+
+    it("refuses to start when the shell can't say whether it keeps a key, and reports why", async () => {
+      const { host, signIn, reported } = standIn();
+      host.keyKeptFails = true;
+      expect(await signIn.start(acme, { test: true })).toEqual({
+        outcome: "refused",
+        reason: "unreachable",
+      });
+      expect(reported).toHaveLength(1);
+      expect(host.requests).toEqual([]);
+    });
+
     it("accepts an approval page only as https, on the same origin, at /cli-auth/<id>", () => {
       expect(isApprovalPage(address, `${address}/cli-auth/abc_1?token=t`)).toBe(true);
       expect(isApprovalPage(address, `${address}:8443/cli-auth/abc`)).toBe(false);
@@ -125,6 +157,24 @@ verifies("services.service-sign-in", () => {
         expect(host.keychain.size).toBe(0);
         expect(host.me("acme")).toBe(401);
       }
+    });
+
+    it("disconnects once when the stepper closes and cancels right after the confirm", async () => {
+      const { host, signIn } = standIn();
+      const { signInId } = await started(signIn);
+      const closed = new AbortController();
+      let cancelled: Promise<void> | undefined;
+      host.onConfirmed = () => {
+        closed.abort();
+        cancelled = signIn.cancel(signInId);
+      };
+      const followed = signIn.follow(signInId, closed.signal);
+      host.approve();
+      expect(await followed).toEqual({ outcome: "cancelled" });
+      await cancelled;
+      expect(host.disconnects).toBe(1);
+      expect(host.keychain.size).toBe(0);
+      expect(host.me("acme")).toBe(401);
     });
 
     it("keeps no key when a sign-in nobody follows is cancelled after the confirm", async () => {
@@ -199,6 +249,18 @@ verifies("services.service-sign-in", () => {
       expect(await unreachable.signIn.revokeTest(second)).toEqual({ outcome: "unreachable" });
       expect(unreachable.reported).toHaveLength(1);
       expect(unreachable.host.keychain.size).toBe(0);
+    });
+
+    it("says the test key may still be kept when the keychain refused its delete", async () => {
+      const stand = standIn();
+      const signInId = await signedIn(stand);
+      stand.host.disconnectGoes = "keychain";
+      expect(await stand.signIn.revokeTest(signInId)).toEqual({ outcome: "still-works" });
+      expect(stand.reported).toHaveLength(1);
+      expect(stand.reported[0]).toMatchObject({
+        message: "The test key's keychain entry couldn't be deleted.",
+      });
+      expect(stand.host.keychain.size).toBe(1);
     });
   });
 });

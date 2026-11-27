@@ -32,7 +32,9 @@ export interface SignInConnection {
 /**
  * Why a sign-in didn't start. `no-connection`: no connection file of that name.
  * `other-host`: the connection file's address isn't `https://` and the request's host.
- * `already-signed-in`: a test sign-in for a connection that already has a key in the keychain.
+ * `already-signed-in`: the sign-in would write over a key: the shell keeps one for this connection
+ * name, or the agent host holds one. A test refuses any such key; another sign-in refuses one that
+ * Paperclip still takes.
  * `unreachable`: Paperclip didn't answer. `too-many-sign-ins`: the host has too many open.
  */
 export type SignInRefusal =
@@ -67,7 +69,10 @@ export type SignInEnd =
   | { outcome: "expired" | "cancelled"; keyMayWork?: true }
   | { outcome: "wrong-company" };
 
-/** What revoking a test sign-in did. `revoked`: Paperclip no longer takes the key, and the keychain holds none. */
+/**
+ * What revoking a test sign-in did. `revoked`: Paperclip no longer takes the key, and the keychain
+ * holds none. `still-works`: Paperclip may still take it, or the keychain couldn't delete it.
+ */
 export type SignInRevoke =
   | { outcome: "revoked" }
   | { outcome: "not-a-test" }
@@ -96,7 +101,9 @@ export interface ServiceSignIn {
   connection(ref: SignInConnectionRef): Promise<SignInConnection | undefined>;
   /**
    * Starts a sign-in. Called only from a user's click, never from a request. With `test`, it
-   * refuses a connection that already has a key, so a test can only ever revoke its own key.
+   * refuses a connection the shell keeps a key for, or whose key the agent host holds, so a test can
+   * only ever revoke its own key. Without it, it refuses such a key while Paperclip still takes it,
+   * so a working key is never replaced unrevoked.
    */
   start(ref: SignInConnectionRef, options: { test: boolean }): Promise<SignInStart>;
   /** Polls until the sign-in ends and writes the key to the keychain; `signal` ends it as `cancelled`. */

@@ -99,6 +99,19 @@ export class TauriAgentHostTransport implements AgentHostTransport {
     throw invalid(command);
   }
 
+  /**
+   * Asks the shell's `agent_host_paperclip_key_kept` whether its keychain holds an entry for
+   * `connection` of `workspace`: one bit, never the key (HAL-20265). The shell answers only for a
+   * picked workspace and a connection its connection file names; anything else, or a keychain it
+   * can't ask, rejects as {@link shellRefusal} says.
+   */
+  async paperclipKeyKept(workspace: string, connection: string): Promise<boolean> {
+    const command = "agent_host_paperclip_key_kept";
+    const answer = await this.#invoke(command, { workspace, connection });
+    if (typeof answer === "boolean") return answer;
+    throw invalid(command);
+  }
+
   async stream(
     route: AgentHostStreamRoute,
     body: unknown,

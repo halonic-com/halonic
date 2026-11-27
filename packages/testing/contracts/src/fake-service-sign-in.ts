@@ -17,6 +17,10 @@ export interface FakeServiceSignInOptions {
   connections: Readonly<Record<string, SignInConnection>>;
   /** The connections that already have a key in the keychain. */
   keys?: readonly string[];
+  /** The connections whose keychain entry was signed in from another workspace. */
+  shellOnly?: readonly string[];
+  /** The connections whose kept key Paperclip no longer takes. */
+  signedOut?: readonly string[];
   /** Who approves a sign-in: the account's name. */
   approver: string;
   /** The injected clock. */
@@ -57,10 +61,17 @@ export class FakeServiceSignIn implements ServiceSignIn {
   started = 0;
   private readonly options: FakeServiceSignInOptions;
   private readonly open = new Map<string, OpenSignIn>();
+  /** The kept keys Paperclip no longer takes. */
+  private readonly signedOut: Set<string>;
 
   constructor(options: FakeServiceSignInOptions) {
     this.options = options;
-    this.keychain = new Set(options.keys ?? []);
+    this.keychain = new Set([
+      ...(options.keys ?? []),
+      ...(options.shellOnly ?? []),
+      ...(options.signedOut ?? []),
+    ]);
+    this.signedOut = new Set(options.signedOut ?? []);
   }
 
   connection(ref: SignInConnectionRef): Promise<SignInConnection | undefined> {
@@ -71,7 +82,7 @@ export class FakeServiceSignIn implements ServiceSignIn {
     const file = this.fileOf(ref.connection);
     if (file === undefined) return refused("no-connection");
     if (file.address !== `https://${ref.host}`) return refused("other-host");
-    if (options.test && this.keychain.has(ref.connection)) return refused("already-signed-in");
+    if (this.replacesKey(ref.connection, options.test)) return refused("already-signed-in");
     this.started += 1;
     const signInId = `sign-in-${this.started}`;
     this.open.set(signInId, { connection: ref.connection, test: options.test, written: false });
@@ -106,7 +117,9 @@ export class FakeServiceSignIn implements ServiceSignIn {
   }
 
   whoAmI(ref: SignInConnectionRef): Promise<ActionAccount | undefined> {
-    if (!this.keychain.has(ref.connection)) return Promise.resolve(undefined);
+    if (!this.keychain.has(ref.connection) || this.signedOut.has(ref.connection)) {
+      return Promise.resolve(undefined);
+    }
     return Promise.resolve({ service: "paperclip", name: this.options.approver });
   }
 
@@ -129,6 +142,7 @@ export class FakeServiceSignIn implements ServiceSignIn {
     const open = this.open.get(signInId);
     if (open === undefined || open.ended !== undefined || open.written) return;
     this.keychain.add(open.connection);
+    this.signedOut.delete(open.connection);
     open.written = true;
     const account = { service: "paperclip", name: this.options.approver };
     queueMicrotask(() => this.end(open, { outcome: "signed-in", account }));
@@ -147,6 +161,12 @@ export class FakeServiceSignIn implements ServiceSignIn {
     open.written = false;
     open.ended = ended;
     open.answer?.(ended);
+  }
+
+  /** Whether a sign-in would write over a kept key: a test over any, another over one that works. */
+  private replacesKey(connection: string, test: boolean): boolean {
+    if (!test && this.signedOut.has(connection)) return false;
+    return this.keychain.has(connection);
   }
 
   private fileOf(name: string): SignInConnection | undefined {
