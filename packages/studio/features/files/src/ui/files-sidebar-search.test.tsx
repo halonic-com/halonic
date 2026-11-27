@@ -190,16 +190,32 @@ verifies("files.ui.tree-search", () => {
     expect(document.activeElement).toBe(rowNamed(page, "tests"));
   });
 
+  const nameField = (page: HTMLElement, path: string) =>
+    rowNamed(page, path).querySelector<HTMLInputElement>('input:not([type="search"])');
+
   it("empties the field when a file's tab asks to rename a file the search hides", async () => {
     const page = await show();
     act(() => rowNamed(page, "docs").click());
     await type(page, "total");
     await act(async () => askRename("docs/guide.md"));
     expect(field(page).value).toBe("");
-    expect(
-      rowNamed(page, "docs/guide.md").querySelector<HTMLInputElement>('input:not([type="search"])')
-        ?.value,
-    ).toBe("guide.md");
+    expect(nameField(page, "docs/guide.md")?.value).toBe("guide.md");
+  });
+
+  it("opens the folders above a file a tab asks to rename, when only the search showed its row", async () => {
+    const page = await show();
+    await type(page, "total");
+    await act(async () => askRename("src/checkout/totals.ts"));
+    expect(field(page).value).toBe("");
+    expect(shownPaths(page)).toEqual([
+      "docs",
+      "src",
+      "src/checkout",
+      "src/checkout/cart.ts",
+      "src/checkout/totals.ts",
+      "tests",
+    ]);
+    expect(nameField(page, "src/checkout/totals.ts")?.value).toBe("totals.ts");
   });
 
   it("empties the field when another feature asks to show a path", async () => {

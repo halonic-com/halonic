@@ -20,7 +20,7 @@ import { renamedPath, renameFile, typedNameProblem } from "../rename-file.ts";
 import { subscribeRenameAsked, takeRenameAsked } from "../rename-request.ts";
 import { type FilesRevealTaken, takeFilesRevealRequests } from "../reveal-request.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
-import { deepestRow, revealRow, visibleRows } from "../tree/visible-rows.ts";
+import { deepestRow, revealFile, revealRow, visibleRows } from "../tree/visible-rows.ts";
 import { FilesTree } from "./files-tree.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
 import { TreeSearchStatus } from "./tree-search-status.tsx";
@@ -117,12 +117,14 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const { roots, allRoots, type: typeSearch } = search;
 
   // A tab's ⋮ or F2 asks for its file's name to be edited here; the ask waits until this view is
-  // shown. A search could hide the file's row, and its name field with it, so the search ends.
+  // shown. A search could hide the file's row, and its name field with it, so the search ends,
+  // and the folders above the file open, as the search may have been all that showed its row.
   useEffect(() => {
     const takeAsk = () => {
       const path = takeRenameAsked();
       if (path === undefined) return;
       typeSearch("");
+      setState((was) => ({ ...was, expanded: revealFile(was.expanded, path) }));
       setRenaming(path);
     };
     takeAsk();

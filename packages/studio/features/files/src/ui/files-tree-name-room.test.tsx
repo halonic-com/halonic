@@ -62,6 +62,7 @@ function fakeStyle(element: Element): CSSStyleDeclaration {
 
 beforeEach(() => {
   Object.assign(drawn, { ch: 7.5, name: 120, canvas: true });
+  Object.assign(tab, { active: "", changed: () => {} });
   vi.stubGlobal("ResizeObserver", FakeResizeObserver);
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
     this: HTMLElement,
@@ -86,18 +87,36 @@ const monthly = "monthly-numbers-for-the-finance-team-and-board.routine.yaml";
 const weekly = "weekly-report.routine.yaml";
 const weeklyWorkflow = "weekly-report.workflow.yaml";
 
-/** The Files sidebar with the routines folder open, five levels deep, as in Acme. */
-async function showRoutines(active = ""): Promise<HTMLElement> {
-  const paths = [quarterly, monthly, weekly].map((name) => `${routines}/${name}`);
+/** The file in the active tab, which a test changes with `openFile`. */
+const tab = { active: "", changed: () => {} };
+
+function openFile(path: string): void {
+  tab.active = path;
+  act(() => tab.changed());
+}
+
+/** The Files sidebar over `paths`, with the active tab's file from `tab`. */
+async function showFiles(paths: string[]): Promise<HTMLElement> {
   const host = contextHost();
-  host.list = async () => listing([...paths, `hubs/acme/workflows/${weeklyWorkflow}`]);
+  host.list = async () => listing(paths);
   const activeItem = {
-    get: () => (active === "" ? null : { kind: "file", hub: "workspace", id: active }),
-    subscribe: () => () => {},
+    get: () => (tab.active === "" ? null : { kind: "file", hub: "workspace", id: tab.active }),
+    subscribe: (listener: () => void) => {
+      tab.changed = listener;
+      return () => {};
+    },
   };
   const context = { ...contextOf(host), activeItem } as unknown as WorkspaceContext;
   const page = render(<FilesSidebarView context={context} />);
   await settled();
+  return page;
+}
+
+/** The Files sidebar with the routines folder open, five levels deep, as in Acme. */
+async function showRoutines(active = ""): Promise<HTMLElement> {
+  tab.active = active;
+  const paths = [quarterly, monthly, weekly].map((name) => `${routines}/${name}`);
+  const page = await showFiles([...paths, `hubs/acme/workflows/${weeklyWorkflow}`]);
   for (const folder of ["hubs", "hubs/acme", "hubs/acme/workflows", routines]) {
     act(() => rowNamed(page, folder).click());
   }
@@ -155,5 +174,24 @@ verifies("files.ui.tree-rows", () => {
     expect(nameIn(open)?.textContent).toBe("quarte…e.yaml");
     expect(nameIn(open)?.title).toBe(quarterly);
     expect(nameIn(rowNamed(page, `${routines}/${monthly}`))?.textContent).toBe("monthly…ine.yaml");
+  });
+
+  it("cuts a name again when its file becomes the open one while its row shows", async () => {
+    vi.spyOn(window, "getComputedStyle").mockImplementation(fakeStyle);
+    const page = await showRoutines();
+    const row = rowNamed(page, `${routines}/${quarterly}`);
+    expect(nameIn(row)?.textContent).toBe("quarter…ine.yaml");
+    openFile(`${routines}/${quarterly}`);
+    expect(row.getAttribute("aria-selected")).toBe("true");
+    expect(nameIn(row)?.textContent).toBe("quarte…e.yaml");
+  });
+
+  it("keeps the other names at regular weight's widths when the open file is the first row", async () => {
+    vi.spyOn(window, "getComputedStyle").mockImplementation(fakeStyle);
+    tab.active = monthly;
+    const page = await showFiles([monthly, quarterly]);
+    expect(page.querySelector('[role="treeitem"]')).toBe(rowNamed(page, monthly));
+    expect(nameIn(rowNamed(page, monthly))?.textContent).toBe("monthl…e.yaml");
+    expect(nameIn(rowNamed(page, quarterly))?.textContent).toBe("quarter…ine.yaml");
   });
 });
