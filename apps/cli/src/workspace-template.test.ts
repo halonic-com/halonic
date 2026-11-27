@@ -41,7 +41,7 @@ verifies("cli.commands.init.copy-example", () => {
     const store = new MemoryDefinitionStore({ "template.yaml": "version: 2\n" });
     expect(await firstThingToTry(store, (line) => warnings.push(line))).toBe(undefined);
     expect(warnings.map(plainText)).toEqual([
-      "! Skipped template.yaml: line 1: version must be 1. A newer Halonic may read it.",
+      "! Skipped template.yaml: line 1: version must be 1.",
     ]);
   });
 });

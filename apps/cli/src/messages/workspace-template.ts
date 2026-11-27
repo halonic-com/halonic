@@ -8,5 +8,5 @@ export const workspaceTemplateMessages = defineMessages("workspace-template", {
    * from a newer version: the command goes on as if there were none.
    */
   unreadable: (line: number, reason: string) =>
-    phrase`${markPart("needsYou")} Skipped template.yaml: line ${String(line)}: ${reason}. A newer Halonic may read it.`,
+    phrase`${markPart("needsYou")} Skipped template.yaml: line ${String(line)}: ${reason}.`,
 });

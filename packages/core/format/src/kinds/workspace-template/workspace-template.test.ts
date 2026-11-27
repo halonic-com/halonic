@@ -78,4 +78,12 @@ verifies("format.workspace-template-file", () => {
       "summary value-looks-like-key 3",
     ]);
   });
+
+  it("refuses a key in the title", () => {
+    const key = `sk-ant-api03-${"Q7x2Lm9K".repeat(4)}`;
+    const leaky = template().replace("title: Mail helpers", `title: ${key}`);
+    expect(summary(problemsOf("workspaceTemplate", leaky))).toEqual([
+      "title value-looks-like-key 2",
+    ]);
+  });
 });

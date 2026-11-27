@@ -105,7 +105,7 @@ describe("the facts a served workspace gives GET /api/workspace", () => {
         expect((await describe()).sample).toBe(false);
         expect((await describe()).sample).toBe(false);
         expect(warnings.map(plainText)).toEqual([
-          '! Skipped template.yaml: line 11: There\'s no field "flows" in this file. A newer Halonic may read it.',
+          '! Skipped template.yaml: line 11: There\'s no field "flows" in this file.',
         ]);
         expect((await describe()).sample).toBe(true);
         expect((await describe()).sample).toBe(false);
