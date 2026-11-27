@@ -11,6 +11,7 @@ import {
   frontBotHarness,
   plantedKey,
 } from "./front-bot.test-helper.ts";
+import { noteLimit } from "../front-bot/memory.ts";
 import { handleChatMemory, readMemory, writeMemory } from "./front-bot-memory.ts";
 import { chatMemoryClearRouteKey, chatMemoryRouteKey } from "./front-bot-notes.ts";
 
@@ -138,6 +139,20 @@ verifies("paperclip.front-bot-memory", () => {
       });
       expect(JSON.stringify([...saved.values()])).not.toContain(plantedKey);
     });
+
+    test("a key across the length cut is dropped, not cut in half and stored", async () => {
+      const { state, saved } = fakeState();
+      const lead = "x".repeat(noteLimit - 10);
+      await writeMemory(state, companyId, chatTaskId, boardUserId, {
+        summary: "",
+        notes: [`${lead} ${plantedKey}`],
+      });
+      expect(await readMemory(state, companyId, chatTaskId, boardUserId)).toEqual({
+        summary: "",
+        notes: [],
+      });
+      expect(JSON.stringify([...saved.values()])).not.toContain(plantedKey.slice(0, 9));
+    });
   });
 
   describe("the board reads and clears the memory on its own route", () => {
@@ -166,11 +181,14 @@ verifies("paperclip.front-bot-memory", () => {
       expect(await readMemory(state, companyId, chatTaskId, boardUserId)).toEqual(remembered);
     });
 
-    test("another company reads nothing, and an odd task id is 404", async () => {
+    test("another company reads and clears nothing, and an odd task id is 404", async () => {
       const { state } = fakeState();
       await writeMemory(state, companyId, chatTaskId, boardUserId, remembered);
       const other = memoryRequest(chatMemoryRouteKey, board, chatTaskId, "other-company");
       expect((await handleChatMemory(other, { state })).body).toEqual({ summary: "", notes: [] });
+      const otherClear = memoryRequest(chatMemoryClearRouteKey, board, chatTaskId, "other-company");
+      expect((await handleChatMemory(otherClear, { state })).status).toBe(200);
+      expect(await readMemory(state, companyId, chatTaskId, boardUserId)).toEqual(remembered);
       const odd = memoryRequest(chatMemoryRouteKey, board, "../other");
       expect((await handleChatMemory(odd, { state })).status).toBe(404);
     });

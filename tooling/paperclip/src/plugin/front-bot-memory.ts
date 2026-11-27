@@ -84,14 +84,15 @@ export async function writeMemory(
   await state.set(userNotesKey(companyId, userId), { companyId, value: notes });
 }
 
-/** Forgets the chat's summary and the board user's notes. */
+/** Forgets the chat's summary, when this company stored it, and the board user's notes. */
 export async function clearMemory(
   state: StateGetSetDelete,
   companyId: string,
   taskId: string,
   userId: string,
 ): Promise<void> {
-  await state.delete(summaryKey(taskId));
+  const summary = storedValue<string>(await state.get(summaryKey(taskId)), companyId);
+  if (summary !== undefined) await state.delete(summaryKey(taskId));
   await state.delete(userNotesKey(companyId, userId));
 }
 

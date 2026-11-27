@@ -44,8 +44,9 @@ export function isEmptyMemory(memory: ChatMemory): boolean {
  */
 export function storableMemory(memory: ChatMemory): ChatMemory {
   const clean = (text: string, limit: number) => {
-    const trimmed = text.trim().slice(0, limit);
-    return findCredentialShape(trimmed) === undefined ? trimmed : "";
+    // Check the whole part before cutting it, so a key across the cut is still found.
+    const trimmed = text.trim();
+    return findCredentialShape(trimmed) === undefined ? trimmed.slice(0, limit) : "";
   };
   const notes = memory.notes
     .map((note) => clean(note, noteLimit))
