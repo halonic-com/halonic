@@ -13,7 +13,7 @@ export const TRY_AGAIN = "Try again";
 
 export const AUTOMATIC = "Update Halonic automatically";
 export const AUTOMATIC_SENTENCE =
-  "Halonic checks for a new version when it starts and once a day, and downloads it in the background. It installs when you restart or quit Halonic. The check sends nothing about you or your work.";
+  "Halonic checks for a new version when it starts and every 10 minutes, and downloads it in the background. It installs when you restart or quit Halonic. The check sends nothing about you or your work.";
 
 export const VIEW_ONLY = "Updates are installed on the computer running Halonic.";
 
@@ -47,7 +47,7 @@ export const MANAGED_SENTENCE =
   "Scoop installs new versions of Halonic. Quit Halonic, then run this in a terminal:";
 export const NOTIFY = "Tell me when a new Halonic is out";
 export const NOTIFY_SENTENCE =
-  "Halonic checks when it starts and once a day whether Scoop has a new version, and shows it here and in the status bar. The check sends nothing about you or your work.";
+  "Halonic checks when it starts and every 10 minutes whether Scoop has a new version, and shows it here and in the status bar. The check sends nothing about you or your work.";
 export const checksOff = (when: string | null) =>
   when === null ? CHECKS_OFF_NOTE : `${CHECKS_OFF_NOTE} Checked ${when}.`;
 const CHECKS_OFF_NOTE = "Checks for new versions are off.";

@@ -1,7 +1,7 @@
 //! The check for an install another tool updates (HAL-1452, flow-install-update
 //! section 14): Studio reads the version in our Scoop bucket's manifest and
 //! says whether it is newer. It never asks the update feed, downloads or
-//! installs, and "Check now" and the daily check come here alike. The check
+//! installs, and "Check now" and the automatic checks come here alike. The check
 //! follows Halonic's proxy rules, as the updater does (HAL-12966).
 
 use std::sync::Arc;

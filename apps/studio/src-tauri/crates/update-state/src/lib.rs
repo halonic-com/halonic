@@ -39,8 +39,10 @@ pub use version::Version;
 /// it is never on the start-up path.
 pub const FIRST_CHECK_AFTER: Duration = Duration::from_secs(10);
 
-/// Then it checks again once this long has passed since the last check.
-pub const CHECK_EVERY: Duration = Duration::from_secs(24 * 60 * 60);
+/// Then it checks again once this long has passed since the last check, so
+/// a newer release shows while Halonic stays open (HAL-20504). The check is
+/// one small request for the feed; only a newer version downloads anything.
+pub const CHECK_EVERY: Duration = Duration::from_secs(10 * 60);
 
 /// One check gives up after this long, with no retry: the next check is it.
 pub const CHECK_TIME_LIMIT: Duration = Duration::from_secs(15);
@@ -52,7 +54,7 @@ pub const DOWNLOAD_STALL_LIMIT: Duration = Duration::from_secs(60);
 pub const PROGRESS_EVERY: Duration = Duration::from_millis(500);
 
 /// Whether an automatic check is due. Times are milliseconds since 1970,
-/// read from the wall clock, so a computer that slept past the 24 hours
+/// read from the wall clock, so a computer that slept past `CHECK_EVERY`
 /// checks when it wakes. A last check in the future (the clock went back)
 /// counts as due. The switch decides: a managed install (Scoop) checks only
 /// when automatic checks are on.
@@ -84,9 +86,10 @@ mod tests {
 
     const DAY: u64 = 24 * 60 * 60 * 1000;
     const NOW: u64 = 100 * DAY;
+    const TEN_MINUTES: u64 = 10 * 60 * 1000;
 
     #[test]
-    fn update_state_checks_ten_seconds_after_ready_then_once_a_day() {
+    fn update_state_checks_ten_seconds_after_ready_then_every_ten_minutes() {
         let ready = FIRST_CHECK_AFTER;
         assert!(!check_due(
             true,
@@ -96,10 +99,39 @@ mod tests {
             NOW
         ));
         assert!(check_due(true, ready, false, Some(NOW - 1), NOW));
-        assert!(!check_due(true, ready, true, Some(NOW - DAY + 1), NOW));
+        assert!(!check_due(
+            true,
+            ready,
+            true,
+            Some(NOW - TEN_MINUTES + 1),
+            NOW
+        ));
+        assert!(check_due(true, ready, true, Some(NOW - TEN_MINUTES), NOW));
         assert!(check_due(true, ready, true, Some(NOW - DAY), NOW));
         assert!(check_due(true, ready, true, None, NOW));
-        assert_eq!(CHECK_EVERY.as_millis(), u128::from(DAY));
+        assert_eq!(CHECK_EVERY.as_millis(), u128::from(TEN_MINUTES));
+    }
+
+    /// The shell's loop on a fake clock: it waits `FIRST_CHECK_AFTER`, then
+    /// asks every minute (its tick) and checks when one is due. Over one
+    /// hour that is one check at start and one every ten minutes after it.
+    #[test]
+    fn update_state_checks_every_ten_minutes_while_halonic_stays_open() {
+        let tick = Duration::from_secs(60);
+        let mut since_ready = FIRST_CHECK_AFTER;
+        let mut checked_this_run = false;
+        let mut last_attempt = None;
+        let mut checks = Vec::new();
+        while since_ready <= Duration::from_secs(60 * 60) {
+            let now = NOW + u64::try_from(since_ready.as_millis()).unwrap_or(u64::MAX);
+            if check_due(true, since_ready, checked_this_run, last_attempt, now) {
+                checked_this_run = true;
+                last_attempt = Some(now);
+                checks.push(since_ready.as_secs());
+            }
+            since_ready += tick;
+        }
+        assert_eq!(checks, [10, 610, 1210, 1810, 2410, 3010]);
     }
 
     #[test]
