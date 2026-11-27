@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-17522 (Liam's plan approval, 27 Nov 01:03 UTC, point 2: dotted `keep` paths, object keys only, at most 3 segments, plain values only, a missing path left out, the same name grammar checked in TypeScript)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:EjfhYqsQltwIYb0eTd3vRopkcoPahvy9KFI88/Ixt2d3guZvstsLphkscF1JoGBGbkgt7xYI0541g5+OyRwdCQ==
 
 ## What changes
 
