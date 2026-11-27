@@ -35,15 +35,29 @@
 # shell finds it for the WSL setup (HAL-16773). sizes.json only checks the
 # build: nothing reads it on the PC, so it isn't shipped. Like the runtime,
 # the image has its own config (tauri.image.conf.json), and both steps need it.
+#
+# -PinParts, with -Runtime and -Image, ships each part's pin instead of the
+# part (HAL-20591): halonic-runtime.json and the halonic-wsl.json that
+# part-pins.mjs wrote, each { version, sha256, size, url }, and no archive.
+# The app then downloads the parts from their release. Each pin must pin the
+# archive in its folder and name an allowed url, or the build stops.
 param(
   [ValidateSet('all', 'build', 'pack')]
   [string]$Step = 'all',
   [string]$Config,
   [string]$AgentHost,
   [string]$Runtime,
-  [string]$Image
+  [string]$Image,
+  [switch]$PinParts
 )
 $ErrorActionPreference = 'Stop'
+if ($PinParts -and -not ($Runtime -and $Image)) { throw '-PinParts needs -Runtime and -Image: it pins the parts they hold' }
+# The pin's url, its SHA-256 and its size, checked by the same script that
+# wrote it, so the workflows and this build apply one allow-list.
+function Assert-Pin([string]$pin, [string]$archive) {
+  node (Join-Path $PSScriptRoot 'part-pins.mjs') check $pin $archive
+  if ($LASTEXITCODE -ne 0) { throw "-PinParts: $pin doesn't pin $archive at an allowed url" }
+}
 # The release workflow sets HALONIC_SANDBOX_SIGNER to an empty string for an
 # unsigned run. Cargo's option_env! reads that as a publisher with no name, and
 # the helper would then refuse its own copy with exit 35 (HAL-9057). Unset, it
@@ -72,8 +86,14 @@ if ($Runtime) {
   $actual = (Get-FileHash $runtimeArchive -Algorithm SHA256).Hash.ToLowerInvariant()
   if ($pinned -ne $actual) { throw "-Runtime: halonic-runtime.json pins $pinned, the archive is $actual" }
   New-Item -ItemType Directory -Force $bin | Out-Null
-  Copy-Item $runtimeArchive, $runtimeManifest $bin -Force
-  $configs += @('--config', 'tauri.runtime.conf.json')
+  if ($PinParts) {
+    Assert-Pin $runtimeManifest $runtimeArchive
+    Remove-Item (Join-Path $bin 'halonic-runtime.tar.gz') -Force -ErrorAction SilentlyContinue
+    Copy-Item $runtimeManifest $bin -Force
+  } else {
+    Copy-Item $runtimeArchive, $runtimeManifest $bin -Force
+    $configs += @('--config', 'tauri.runtime.conf.json')
+  }
 }
 if ($Image) {
   # wsl --import doesn't check the image, so a truncated or mixed-up
@@ -88,9 +108,18 @@ if ($Image) {
   $imageActual = (Get-FileHash $imageArchive -Algorithm SHA256).Hash.ToLowerInvariant()
   if ($imagePinned -ne $imageActual) { throw "-Image: sizes.json pins $imagePinned, the image is $imageActual" }
   New-Item -ItemType Directory -Force $bin | Out-Null
-  Copy-Item $imageArchive $bin -Force
-  $configs += @('--config', 'tauri.image.conf.json')
+  if ($PinParts) {
+    $imagePin = Join-Path $Image 'halonic-wsl.json'
+    if (-not (Test-Path $imagePin -PathType Leaf)) { throw "-PinParts: $imagePin is missing; part-pins.mjs pin image writes it" }
+    Assert-Pin $imagePin $imageArchive
+    Remove-Item (Join-Path $bin 'halonic-wsl.tar.gz') -Force -ErrorAction SilentlyContinue
+    Copy-Item $imagePin $bin -Force
+  } else {
+    Copy-Item $imageArchive $bin -Force
+    $configs += @('--config', 'tauri.image.conf.json')
+  }
 }
+if ($PinParts) { $configs += @('--config', 'tauri.pins.conf.json') }
 if ($Config) {
   $Config = (Resolve-Path $Config).Path
   $extra = Get-Content $Config -Raw | ConvertFrom-Json
