@@ -5,6 +5,10 @@ import { blockBody, customProperties, lightDarkPair, readThemeFile } from "./the
 export const css = readThemeFile();
 export const themeTokens = customProperties(blockBody(css, "@theme static"));
 export const plainVariables = customProperties(blockBody(css, ":root"));
+/** The custom properties `prefers-contrast: more` raises. */
+export const moreContrast = customProperties(
+  blockBody(blockBody(css, "@media (prefers-contrast: more)"), ":root"),
+);
 
 export type Mode = "light" | "dark";
 

@@ -6,6 +6,7 @@ import {
   control,
   css,
   type Mode,
+  moreContrast,
   plainVariables,
   text,
   themeTokens,
@@ -221,10 +222,6 @@ describe("theme.css field focus", () => {
 });
 
 describe("theme.css with more contrast", () => {
-  const moreContrast = customProperties(
-    blockBody(blockBody(css, "@media (prefers-contrast: more)"), ":root"),
-  );
-
   function raisedColour(name: string, mode: Mode): Rgba {
     const pair = lightDarkPair(moreContrast.get(`--color-${name}`) ?? "");
     if (pair === undefined) {

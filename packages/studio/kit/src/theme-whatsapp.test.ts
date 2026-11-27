@@ -6,10 +6,11 @@ import {
   control,
   css,
   type Mode,
+  moreContrast,
   text,
   themeTokens,
 } from "./test/theme-colours.spec.ts";
-import { blockBody, customProperties, lightDarkPair } from "./test/theme-file.spec.ts";
+import { lightDarkPair } from "./test/theme-file.spec.ts";
 
 /** Every surface text sits on in the WhatsApp layout: the frame, the sidebar, panels and menus. */
 const surfaces = [
@@ -24,10 +25,6 @@ const surfaces = [
 
 const textColours = ["fg", "fg-muted", "fg-subtle"];
 
-const moreContrast = customProperties(
-  blockBody(blockBody(css, "@media (prefers-contrast: more)"), ":root"),
-);
-
 /** A text colour as `prefers-contrast: more` raises it. */
 function moreContrastColour(name: string, mode: Mode): Rgba {
   const pair = lightDarkPair(moreContrast.get(`--color-${name}`) ?? "");
@@ -39,6 +36,10 @@ function moreContrastColour(name: string, mode: Mode): Rgba {
 
 verifies("kit.whatsapp-theme", () => {
   describe("theme.css WhatsApp surfaces", () => {
+    it("keeps none of Studio's old blue-violet ink", () => {
+      expect(css).not.toMatch(/16 16 46|242 242 255/);
+    });
+
     it("takes WhatsApp's frame, panels and ink in our blue's hue", () => {
       expect(themeTokens.get("--color-canvas")).toBe("light-dark(#f3f5fa, #0a1630)");
       expect(themeTokens.get("--color-app-frame")).toBe("light-dark(#f3f5fa, #0a1630)");
