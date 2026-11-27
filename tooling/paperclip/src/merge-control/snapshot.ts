@@ -112,6 +112,12 @@ export interface GatePull {
   /** Additions minus deletions per changed file, files not removed only. */
   readonly fileNet: Readonly<Record<string, number>>;
   /**
+   * Additions plus deletions per changed file, removed files too, for the
+   * reviewers' line limits (`RoutedPull.fileLines`, HAL-20645). Missing: the
+   * limits use the whole pull request's lines.
+   */
+  readonly fileLines?: Readonly<Record<string, number>>;
+  /**
    * The old path of each renamed file, by its new path; null until a REST
    * read names it, since GraphQL doesn't (HAL-19283). Missing: no renames.
    */

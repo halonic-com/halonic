@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-19248; the board's decision of 26 Nov on HAL-18424 on Nora's scope, as `paperclip.routine-review` sets it; HAL-19283 (one scope rule for the gate, `pr_status` and the PR watcher)
+- Source: HAL-19248; the board's decision of 26 Nov on HAL-18424 on Nora's scope, as `paperclip.routine-review` sets it; HAL-19283 (one scope rule for the gate, `pr_status` and the PR watcher); HAL-20645 (#6678: the gate counted tests toward her line limit)
 
-When Nora's signed approval "Nora: approved on head `<sha>`" is the only one that counts on the head, the plugin shall count it only where `paperclip.routine-review` lets the routine reviewer approve alone (`routineRefusal` finds nothing, renamed files counted by their old paths too, the pull request written by the team and not a security or release one), every changed file is known, the pull request is not on a `nora/` or `changeset-release/` branch, and no change request by Liam is newer than the last push. Julian's exceptions don't apply to her: "Author: Liam" doesn't widen her limits, and her rebase-only re-approval doesn't count outside them. Her approval carries over a rebase with an identical diff, as Julian's does. A signed approval by any other name than Liam, Julian or Nora doesn't count. `pr_status` judges her approval by the same `routineRefusal`.
+When Nora's signed approval "Nora: approved on head `<sha>`" is the only one that counts on the head, the plugin shall count it only where `paperclip.routine-review` lets the routine reviewer approve alone (`routineRefusal` finds nothing, renamed files counted by their old paths too, the pull request written by the team and not a security or release one), every changed file is known, the pull request is not on a `nora/` or `changeset-release/` branch, and no change request by Liam is newer than the last push. Her line limits count each file's own changed lines from the pull request's file list, as `pr_status` does, so tests, Markdown and wording don't count. Julian's exceptions don't apply to her: "Author: Liam" doesn't widen her limits, and her rebase-only re-approval doesn't count outside them. Her approval carries over a rebase with an identical diff, as Julian's does. A signed approval by any other name than Liam, Julian or Nora doesn't count. `pr_status` judges her approval by the same `routineRefusal`.
 
 ## Examples
 
@@ -17,6 +17,9 @@ When Nora's signed approval "Nora: approved on head `<sha>`" is the only one tha
 - Given Nora's approval on one that changes `turbo.json`, `tooling/check/x.ts` or `pnpm-lock.yaml`, on a `nora/` branch or on a `changeset-release/` branch,
   when a pass runs,
   then it isn't enqueued.
+- Given Nora's approval on a pull request of 1,819 changed lines, 1,222 of them code and the rest tests,
+  when a pass runs,
+  then it is enqueued; with 1,501 lines of code, it isn't.
 - Given "Nina: approved on head `<sha>`" on a pull request within Julian's limits,
   when a pass runs,
   then it isn't enqueued.

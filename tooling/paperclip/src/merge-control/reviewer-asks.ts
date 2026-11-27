@@ -38,6 +38,7 @@ const askRoles: Readonly<Record<AskKind, string>> = {
 const securityWait =
   /^security PR \(.+\): waiting for ("Julian: security sign-off|Julian's recorded security-ok)/;
 const noraNeedsLiam = /^Nora approved, but it is outside her scope \(.+\): needs Liam$/;
+const noLiamApproval = /^no approval from Liam found for head /;
 
 function askOf(reason: string): AskKind | undefined {
   if (securityWait.test(reason)) {
@@ -74,8 +75,13 @@ export function reviewerAsksOf(
         `Nora approved head ${pull.head.slice(0, 9)}; while she is in shadow the Merger still needs Liam's signed approval`,
       );
     }
+    // Outside her scope, the gate also says it found no approval from Liam:
+    // that is the same ask, not something else holding it (HAL-20645).
+    const holding = kinds.has("liam-after-nora")
+      ? others.filter((reason) => !noLiamApproval.test(reason))
+      : others;
     const due =
-      others.length === 0 &&
+      holding.length === 0 &&
       !pull.draft &&
       row.entry === undefined &&
       pull.mergeable === "MERGEABLE";

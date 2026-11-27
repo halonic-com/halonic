@@ -37,6 +37,7 @@ verifies("paperclip.merge-control-facts", () => {
     });
     expect(ready?.ciRun).toMatchObject({ id: 9101, status: "completed" });
     expect(ready?.fileNet).toEqual({ "packages/core/thing-101/src/a.ts": 20 });
+    expect(ready?.fileLines).toEqual({ "packages/core/thing-101/src/a.ts": 40 });
     expect(ready?.liveCloud).toEqual([]);
     expect(queued?.forcePushedAt).toHaveLength(1);
     expect(queued?.retargetedAt).toHaveLength(1);

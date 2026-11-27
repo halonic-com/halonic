@@ -185,6 +185,7 @@ export function routedOf(pull: GatePull): RoutedPull {
     files: pull.files,
     changedLines: pull.additions + pull.deletions,
     sensitive: sensitiveOrigin(pull),
+    ...(pull.fileLines === undefined ? {} : { fileLines: pull.fileLines }),
     ...(pull.manifests === undefined ? {} : { manifests: pull.manifests }),
     ...(pull.previousPaths === undefined ? {} : { previousPaths: pull.previousPaths }),
     ours: writtenByTeam(pull),
