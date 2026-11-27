@@ -101,6 +101,86 @@ verifies("agents.configuration.sandbox-fields", () => {
     expect(named(page, "Working folder")).toBeNull();
   });
 
+  it("keeps a folder the host refused in the box and says why", async () => {
+    const base = hostWith({ workingFolder: "files/work/sorter" });
+    const host: AgentsHost = {
+      ...base,
+      update: async (to: AgentRef, change: AgentChange) => {
+        if (change.workingFolder === ".git/hooks") {
+          throw new KindedError("invalid_input", "Choose a folder outside .git.");
+        }
+        await base.update(to, change);
+      },
+    };
+    const page = await openHarness(host);
+    await changeFolder(page, ".git/hooks", "Enter");
+    const box = named(page, "Working folder") as HTMLInputElement;
+    expect(box.value).toBe(".git/hooks");
+    expect(page.textContent).toContain("Couldn't save: Choose a folder outside .git.");
+    expect((await host.settings(ref)).workingFolder).toBe("files/work/sorter");
+
+    // The box takes another try once the host refused the first.
+    await typeInto(box, "files/out");
+    await press(box, "Enter");
+    expect((await host.settings(ref)).workingFolder).toBe("files/out");
+  });
+
+  it("saves the typed folder when the box loses focus and puts Change… back", async () => {
+    const host = hostWith({ workingFolder: "files/work/sorter" });
+    const page = await openHarness(host);
+    await act(async () => buttonNamed(page, "Change…")?.click());
+    const box = named(page, "Working folder") as HTMLInputElement;
+    await typeInto(box, "files/out");
+    await act(async () => box.blur());
+    expect((await host.settings(ref)).workingFolder).toBe("files/out");
+    expect(named(page, "Working folder")).toBeNull();
+    expect(buttonNamed(page, "Change…")).toBeDefined();
+  });
+
+  it("closes the box without saving when the folder is empty or unchanged", async () => {
+    const base = hostWith({ workingFolder: "files/work/sorter" });
+    const saved: AgentChange[] = [];
+    const host: AgentsHost = {
+      ...base,
+      update: async (to: AgentRef, change: AgentChange) => {
+        saved.push(change);
+        await base.update(to, change);
+      },
+    };
+    const page = await openHarness(host);
+    await changeFolder(page, "  ", "Enter");
+    expect(named(page, "Working folder")).toBeNull();
+    await changeFolder(page, "files/work/sorter", "Enter");
+    expect(named(page, "Working folder")).toBeNull();
+    expect(saved).toEqual([]);
+    expect(page.textContent).toContain("files/work/sorter");
+  });
+
+  it("doesn't let a slow failed save of sites undo a newer one", async () => {
+    const base = hostWith({ allowedSites: ["registry.npmjs.org"] });
+    let refuseHeldSave: () => void = () => {};
+    const host: AgentsHost = {
+      ...base,
+      update: async (to: AgentRef, change: AgentChange) => {
+        if (change.allowedSites?.includes("api.example.com") && change.allowedSites.length === 2) {
+          await new Promise<void>((resume) => {
+            refuseHeldSave = resume;
+          });
+          throw new KindedError("invalid_input", "The host took too long.");
+        }
+        await base.update(to, change);
+      },
+    };
+    const page = await openHarness(host);
+    await addSite(page, "api.example.com");
+    await addSite(page, "cdn.example.com");
+    const newer = ["registry.npmjs.org", "api.example.com", "cdn.example.com"];
+    expect((await host.settings(ref)).allowedSites).toEqual(newer);
+
+    await act(async () => refuseHeldSave());
+    expect(chipsOf(page)).toEqual(newer);
+  });
+
   it("saves the whole list of sites when one is added or removed", async () => {
     const host = hostWith({ allowedSites: ["registry.npmjs.org"] });
     const page = await openHarness(host);
