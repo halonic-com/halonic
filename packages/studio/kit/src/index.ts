@@ -155,6 +155,7 @@ export {
   type OpenExternalProviderProps,
   openInNewTab,
   useOpenExternal,
+  useOpenSignIn,
 } from "./external-link/open-external.tsx";
 export {
   Field,

@@ -42,15 +42,30 @@ const signedOut: AgentConnection = {
 
 /** The dialog over a fake, with every page it opens and every close counted. */
 async function openDialog(
-  options: { readonly fake?: FakeAgentConnections; readonly again?: AgentConnection } = {},
+  options: {
+    readonly fake?: FakeAgentConnections;
+    readonly again?: AgentConnection;
+    /** Gives the provider an `openSignIn` that counts into `signInOpened` (`kit.open-sign-in`). */
+    readonly signInWindow?: boolean;
+  } = {},
 ) {
   const fake = options.fake ?? new FakeAgentConnections({ phrase: "amber falcon river seven" });
   const opened: string[] = [];
+  const signInOpened: string[] = [];
   const closed = vi.fn();
   const connected = vi.fn();
   const cancelFailed = vi.fn();
+  const signInWindow = options.signInWindow
+    ? {
+        openSignIn: async (address: string | Promise<string>) =>
+          void signInOpened.push(await address),
+      }
+    : {};
   render(
-    <OpenExternalProvider openExternal={async (address) => void opened.push(await address)}>
+    <OpenExternalProvider
+      openExternal={async (address) => void opened.push(await address)}
+      {...signInWindow}
+    >
       <ConnectDialog
         connections={fake}
         again={options.again}
@@ -61,8 +76,19 @@ async function openDialog(
     </OpenExternalProvider>,
   );
   await settle();
-  return { fake, opened, closed, connected, cancelFailed };
+  return { fake, opened, signInOpened, closed, connected, cancelFailed };
 }
+
+verifies("kit.open-sign-in", () => {
+  it("opens the Paperclip approval page as a sign-in page, never as an outside link", async () => {
+    const { opened, signInOpened } = await openDialog({ signInWindow: true });
+    await connectTo("https://paperclip.acme.test");
+    await press(button("Open the approval page"));
+    const approvalPage = "https://paperclip.acme.test/cli-auth/fake-challenge";
+    expect(signInOpened).toEqual([approvalPage, approvalPage]);
+    expect(opened).toEqual([]);
+  });
+});
 
 /** Types the address and presses Continue. */
 async function connectTo(address: string) {

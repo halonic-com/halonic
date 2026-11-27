@@ -1,0 +1,16 @@
+{
+  "identifier": "desktop-sign-in-window",
+  "description": "On desktop, Studio's main window may open a sign-in page through open_sign_in, which on Windows with a Chromium default browser (Chrome, Edge or Brave) opens it as a small app window of that browser centred on the calling window (HAL-20515). The command takes one address, refuses any that isn't https or plain http to this computer, places the window over the window that calls it, never one the page names, and starts only the browser the default-app setting names. It reads nothing back. It is local only, so the Studio the computer serves gets none of it.",
+  "local": true,
+  "windows": [
+    "main"
+  ],
+  "platforms": [
+    "linux",
+    "macOS",
+    "windows"
+  ],
+  "permissions": [
+    "allow-open-sign-in"
+  ]
+}

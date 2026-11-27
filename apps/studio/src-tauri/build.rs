@@ -154,6 +154,7 @@ fn main() {
         "window_content_set",
         "take_pending_notification_click",
         "set_frame_colour",
+        "open_sign_in",
     ]);
     // The feedback capture's commands (HAL-18778), as the `feedback`
     // plugin: `plugin:feedback|start` needs `feedback:allow-start`.

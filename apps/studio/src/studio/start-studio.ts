@@ -25,6 +25,7 @@ import { mainWindowFeedbackOf, startWindowFeedback } from "../feedback/start-win
 import { desktopFeatures } from "./desktop-features.ts";
 import { newWorkspaceOf } from "./desktop-new-workspace.ts";
 import { desktopOpenExternal } from "./desktop-open-external.ts";
+import { desktopOpenSignIn } from "./desktop-open-sign-in.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
 import type { DeviceMemory } from "./device-memory.ts";
 import { appFrameColour, followFrameColour } from "./frame-colour.ts";
@@ -201,7 +202,9 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
     newWorkspaceAsks,
     freshCopyAsks,
   };
-  const window = mountWorkspaceWindow(page.element, parts, openExternal);
+  // A sign-in page opens as a small browser window over Studio, where the shell can (HAL-20515).
+  const openSignIn = openExternal === undefined ? undefined : desktopOpenSignIn(ipc, openExternal);
+  const window = mountWorkspaceWindow(page.element, parts, openExternal, openSignIn);
   // Formats follows the system's region once the shell has read it; until then, the browser's.
   const stopRegion = followSystemRegion(ipc, (r) => window.update({ ...parts, regionFormat: r }));
   const stopListening = onWindowCloseRequested(

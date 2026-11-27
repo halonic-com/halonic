@@ -60,6 +60,9 @@ halonic-secret-broker = { path = "crates/secret-broker" }
 halonic-server-session = { path = "crates/server-session" }
 halonic-secrets = { path = "crates/secrets" }
 halonic-shell-log = { path = "crates/shell-log" }
+# Sign-in pages open as a small window of the user's own Chromium browser,
+# centred on Halonic (HAL-20515). Its Windows calls are Windows only.
+halonic-sign-in-window = { path = "crates/sign-in-window" }
 halonic-trust-grant = { path = "crates/trust-grant" }
 halonic-trust-store = { path = "crates/trust-store" }
 halonic-update-state = { path = "crates/update-state" }

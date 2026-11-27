@@ -1,4 +1,4 @@
-import { Dialog, Field, Input, useOpenExternal } from "@halonicjs/studio-kit";
+import { Dialog, Field, Input, useOpenSignIn } from "@halonicjs/studio-kit";
 import type { AgentConnection, AgentConnections } from "@halonicjs/studio-services";
 import { useEffect, useRef, useState } from "react";
 import * as words from "../connections-words.ts";
@@ -172,7 +172,7 @@ function AddressStep({
   readonly onClose: () => void;
 }) {
   const [invalid, setInvalid] = useState(false);
-  const openExternal = useOpenExternal();
+  const openSignIn = useOpenSignIn();
   const fieldError = invalid ? words.ADDRESS_HTTPS_ONLY : fieldProblem(problem);
   const input = useRef<HTMLInputElement>(null);
 
@@ -192,7 +192,7 @@ function AddressStep({
     setInvalid(false);
     // Opened inside the click, before anything is awaited, or a browser blocks the tab. When no
     // sign-in starts, the address never comes, the tab closes, and the step says why.
-    openExternal(signIn.start(trimmed)).catch(() => undefined);
+    openSignIn(signIn.start(trimmed)).catch(() => undefined);
   };
 
   return (

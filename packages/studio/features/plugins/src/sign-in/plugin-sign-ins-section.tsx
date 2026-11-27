@@ -1,5 +1,5 @@
 import type { Plugin } from "@halonicjs/format";
-import { type ButtonSize, Callout, useOpenExternal, usePresentation } from "@halonicjs/studio-kit";
+import { type ButtonSize, Callout, useOpenSignIn, usePresentation } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { messageOf } from "../message-of.ts";
 import type { PluginSettingsReader } from "../settings/plugin-settings-section.tsx";
@@ -54,7 +54,7 @@ export type PluginSignOutResult =
 /**
  * The app's way to a plugin's sign-ins: the agent host's sign-in routes. The
  * page never holds a code, a token or a client secret. The browser opens
- * through the kit's `openExternal`, as every outside page does.
+ * through the kit's `openSignIn` (`kit.open-sign-in`), as every sign-in page does.
  */
 export interface PluginSignIns {
   status(plugin: string): Promise<readonly PluginSignInStatus[]>;
@@ -223,7 +223,7 @@ function SignInBlock({
   onChanged,
   announceState,
 }: SignInBlockProps) {
-  const openExternal = useOpenExternal();
+  const openSignIn = useOpenSignIn();
   // On a phone the block's buttons are touch buttons, as the 44px rule asks (C569).
   const buttonSize: ButtonSize = usePresentation() === "phone" ? "touch" : "sm";
   const [busy, setBusy] = useState(false);
@@ -291,7 +291,7 @@ function SignInBlock({
       // The browser has to open its tab inside the click, so the address is handed over as a
       // promise. It opens only the approved sign-in page (`signInPage`).
       const address = signIns.start(plugin, name).then((answered) => signInPage(answered, facts));
-      await openExternal(address);
+      await openSignIn(address);
       const page = await address;
       refocus.current = hasFocus(block.current);
       setWaiting({ from: status, page });
@@ -305,9 +305,9 @@ function SignInBlock({
 
   function openAgain() {
     if (waiting === undefined) return;
-    // For a page already known the kit's `openExternal` never rejects: the shell reports its own
+    // For a page already known the kit's `openSignIn` never rejects: the shell reports its own
     // errors, such as a system browser that didn't start.
-    void openExternal(waiting.page);
+    void openSignIn(waiting.page);
   }
 
   async function cancel() {
