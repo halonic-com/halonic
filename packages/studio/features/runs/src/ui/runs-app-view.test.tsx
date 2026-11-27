@@ -7,6 +7,8 @@ import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type AllRunsFeed, type AllRunsFeedState, AllRunsService } from "../app/all-runs-feed.ts";
 import type { AllRunsRow } from "../app/source-rows.ts";
+import { RunsList, RunsListService } from "../runs-list.ts";
+import { fakeSource } from "../source.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { RunsAppView } from "./runs-app-view.tsx";
 import { RunsPage } from "./runs-page.tsx";
@@ -133,16 +135,64 @@ verifies("runs.list-column", () => {
       expect(new Set(current)).toEqual(new Set(["w1"]));
     });
 
-    it("shows the list, then the run alone with a way back, in one pane", () => {
+    it("opens a run in a new tab on a Ctrl-click and leaves the pane empty", () => {
+      const { root, openInNewTab } = show(feedOf({ rows: [workspaceRow] }));
+      const cell = root.querySelector<HTMLElement>('[data-row-id="w1"] td');
+      act(() => cell?.dispatchEvent(new MouseEvent("click", { bubbles: true, ctrlKey: true })));
+      expect(openInNewTab).toHaveBeenCalledWith({ kind: "run", hub: "acme", id: "w1" });
+      expect(paneText(root)).toContain("No run open");
+    });
+
+    it("takes an agent's failed run out of Failed on a click, though nothing opens", () => {
+      const { root } = show(feedOf({ rows: [{ ...teamRow, phase: "failed" }] }));
+      const headings = () => [...root.querySelectorAll("h2")].map((heading) => heading.textContent);
+      expect(headings()).toContain("Failed");
+      clickRow(root, "a1");
+      expect(headings()).not.toContain("Failed");
+      expect(paneText(root)).toContain("No run open");
+    });
+
+    it("shows the list, then the run alone with Back to Runs, moving the focus, in one pane", () => {
       const { root } = show(feedOf({ rows: [workspaceRow] }), true);
       expect(root.querySelector('[data-part="run-pane"]')).toBeNull();
       clickRow(root, "w1");
       expect(root.querySelector('[data-part="list-column"]')).toBeNull();
-      expect(paneText(root)).toBe("← RunsRun page w1");
-      const back = [...root.querySelectorAll("button")].find((b) => b.textContent === "← Runs");
+      expect(paneText(root)).toBe("Back to RunsRun page w1");
+      const back = document.activeElement as HTMLElement | null;
+      expect(back?.textContent).toBe("Back to Runs");
       act(() => back?.click());
       expect(root.querySelector('[data-part="run-pane"]')).toBeNull();
-      expect(root.querySelector('[data-row-id="w1"]')).not.toBeNull();
+      expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
+        "w1",
+      );
+    });
+  });
+
+  describe("RunsPage's content pane", () => {
+    it("closes a run that left the workspace when its page leads to Runs", async () => {
+      const { source } = fakeSource([]);
+      const list = new RunsList(source);
+      await act(() => list.refresh());
+      const feed = feedOf({ rows: [workspaceRow] });
+      const openPlace = vi.fn();
+      const services = {
+        find: (key: unknown) => (key === AllRunsService ? feed : undefined),
+        get: (key: unknown) => (key === RunsListService ? list : undefined),
+      };
+      const announcer = { announce: vi.fn(), announceState: vi.fn() };
+      const context = { services, openItem: vi.fn(), openPlace, announcer };
+      const root = render(<RunsPage context={context as unknown as PlaceViewProps["context"]} />);
+      clickRow(root, "w1");
+      const goToRuns = await vi.waitFor(() => {
+        const button = [...root.querySelectorAll("button")].find((each) =>
+          each.textContent?.includes("Go to Runs"),
+        );
+        if (button === undefined) throw new Error("no Go to Runs yet");
+        return button;
+      });
+      act(() => goToRuns.click());
+      expect(openPlace).not.toHaveBeenCalled();
+      expect(paneText(root)).toContain("No run open");
     });
   });
 });

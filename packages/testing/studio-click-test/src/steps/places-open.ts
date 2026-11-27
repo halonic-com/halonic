@@ -27,6 +27,7 @@ export const placesOpen: Step = {
     "inbox.page",
     "inbox.request",
     "runs.app-list",
+    "runs.list-column",
     "library.library-place",
     "library.library-page",
     "source-control.changes-page",

@@ -21,6 +21,7 @@ import {
 } from "../list/runs-filter.ts";
 import { useAnnounceFilterChange } from "../list/use-filter-announcement.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
+import { RunTitleOnPhone } from "../run-view/run-layout.tsx";
 import { RunPage } from "../run-view/run-page.tsx";
 import { emptyListWords, pageWords } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
@@ -42,9 +43,12 @@ export function RunsPage({ context }: PlaceViewProps) {
       <RunsAppView
         feed={allRuns}
         engine={engineWordsOf(context)}
-        // The content pane draws the run's own page, a new one per run (`runs.list-column`).
-        runPane={(item, show) => (
-          <RunPage key={item.id} item={item} context={paneContext(context, show)} />
+        // The content pane draws the run's own page, a new one per run, with its title on a phone
+        // too, where the top bar says "Runs" (`runs.list-column`).
+        runPane={(item, ways) => (
+          <RunTitleOnPhone key={item.id}>
+            <RunPage item={item} context={paneContext(context, ways)} />
+          </RunTitleOnPhone>
         )}
         {...(openItemInNewTab === undefined ? {} : { openInNewTab: openItemInNewTab })}
       />

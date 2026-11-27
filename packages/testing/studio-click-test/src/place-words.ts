@@ -36,10 +36,12 @@ export const placePages: readonly PlacePage[] = [
   },
   {
     // The desktop Runs place is the Runs app (HAL-18725). A fresh install's demo has no run yet,
-    // so its summary line says so (run 45705698354).
+    // so its summary line says so (run 45705698354), and no run is open in its content pane
+    // (`runs.list-column`).
     place: { text: "Runs", file: placeNames },
     shows: [
       { text: "No runs yet today.", file: "packages/studio/features/runs/src/app/app-run.ts" },
+      { text: "No run open", file: "packages/studio/features/runs/src/ui/runs-app-view.tsx" },
     ],
   },
   {

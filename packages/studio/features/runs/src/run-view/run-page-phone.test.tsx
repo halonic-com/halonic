@@ -7,6 +7,7 @@ import { RunsList } from "../runs-list.ts";
 import { fakeSource } from "../source.test-helper.ts";
 import { mondayMorning, summaryWith } from "../summary.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { RunTitleOnPhone } from "./run-layout.tsx";
 import { RunView } from "./run-page.tsx";
 
 // jsdom's <dialog> has no showModal(); the sheet only needs it to exist.
@@ -27,11 +28,12 @@ afterEach(unmountAll);
 
 const run = summaryWith({ id: "run_a_7k2m9p" });
 
-async function openOnPhone() {
+async function openOnPhone(inRunsPane = false) {
   const list = new RunsList(fakeSource([run]).source);
+  const view = <RunView list={list} runId={run.id} now={() => mondayMorning} />;
   const root = render(
     <PresentationProvider presentation="phone">
-      <RunView list={list} runId={run.id} now={() => mondayMorning} />
+      {inRunsPane ? <RunTitleOnPhone>{view}</RunTitleOnPhone> : view}
     </PresentationProvider>,
   );
   await act(async () => {
@@ -63,5 +65,14 @@ verifies("runs.run-page", () => {
     expect(row).toBeDefined();
     await act(async () => row?.click());
     expect(root.querySelector("dialog dl")?.textContent).toContain("Started by");
+  });
+});
+
+verifies("runs.list-column", () => {
+  it("shows the run's title on a phone in the Runs page's content pane, whose top bar says Runs", async () => {
+    const root = await openOnPhone(true);
+    const heading = root.querySelector("h1");
+    expect(heading?.textContent).toBe("Run 7k2m9p");
+    expect(heading?.className).not.toContain("sr-only");
   });
 });

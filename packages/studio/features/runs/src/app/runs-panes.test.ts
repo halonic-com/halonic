@@ -25,6 +25,10 @@ function row(id: string, item?: AllRunsRow["item"]): AllRunsRow {
 const workflowRun = { kind: "run", hub: "acme", id: "w1" } as const;
 const rows = [row("w1", workflowRun), row("a1")];
 
+function ways() {
+  return { markOpened: vi.fn(), show: vi.fn(), openInNewTab: vi.fn() };
+}
+
 verifies("runs.list-column", () => {
   describe("runsPanes", () => {
     it("shows the list column and the content pane in a wide window, a run open or not", () => {
@@ -39,44 +43,52 @@ verifies("runs.list-column", () => {
   });
 
   describe("rowActions", () => {
-    it("shows a workflow run in the pane on a click or Enter", () => {
-      const show = vi.fn();
-      rowActions(rows, { show }).onOpen("w1");
-      expect(show).toHaveBeenCalledWith(workflowRun);
+    it("marks a workflow run opened and shows it in the pane on a click or Enter", () => {
+      const row = ways();
+      rowActions(rows, row).onOpen("w1");
+      expect(row.markOpened).toHaveBeenCalledWith("w1");
+      expect(row.show).toHaveBeenCalledWith(workflowRun);
     });
 
-    it("opens a workflow run in a new tab on a Ctrl, Cmd or middle click, and leaves the pane", () => {
-      const show = vi.fn();
-      const openInNewTab = vi.fn();
-      rowActions(rows, { show, openInNewTab }).onOpenInNewTab?.("w1");
-      expect(openInNewTab).toHaveBeenCalledWith(workflowRun);
-      expect(show).not.toHaveBeenCalled();
+    it("opens a workflow run in a new tab on a Ctrl, Cmd or middle click, marks it, and leaves the pane", () => {
+      const row = ways();
+      rowActions(rows, row).onOpenInNewTab?.("w1");
+      expect(row.openInNewTab).toHaveBeenCalledWith(workflowRun);
+      expect(row.markOpened).toHaveBeenCalledWith("w1");
+      expect(row.show).not.toHaveBeenCalled();
     });
 
-    it("does nothing for an agent's run, which has no page yet", () => {
-      const show = vi.fn();
-      const openInNewTab = vi.fn();
-      const actions = rowActions(rows, { show, openInNewTab });
+    it("opens nothing for an agent's run, which has no page yet, but a click still marks it", () => {
+      const row = ways();
+      const actions = rowActions(rows, row);
       actions.onOpen("a1");
+      expect(row.markOpened).toHaveBeenCalledWith("a1");
+      row.markOpened.mockClear();
       actions.onOpenInNewTab?.("a1");
-      expect(show).not.toHaveBeenCalled();
-      expect(openInNewTab).not.toHaveBeenCalled();
+      expect(row.markOpened).not.toHaveBeenCalled();
+      expect(row.show).not.toHaveBeenCalled();
+      expect(row.openInNewTab).not.toHaveBeenCalled();
     });
 
-    it("has no new-tab gesture where the window has no tabs", () => {
-      expect(rowActions(rows, { show: vi.fn() }).onOpenInNewTab).toBeUndefined();
+    it("has no new-tab gesture in a context built without a window", () => {
+      const { markOpened, show } = ways();
+      expect(rowActions(rows, { markOpened, show }).onOpenInNewTab).toBeUndefined();
     });
   });
 
   describe("paneContext", () => {
-    function contextWith(openItem: (...args: unknown[]) => void): PlaceViewProps["context"] {
-      return { openItem } as unknown as PlaceViewProps["context"];
+    function contextWith(
+      openItem: (...args: unknown[]) => void,
+      openPlace: (...args: unknown[]) => void = vi.fn(),
+    ): PlaceViewProps["context"] {
+      return { openItem, openPlace } as unknown as PlaceViewProps["context"];
     }
 
     it("shows a run the pane's page opens in the pane", () => {
       const openItem = vi.fn();
       const show = vi.fn();
-      paneContext(contextWith(openItem), show).openItem?.({ kind: "run", hub: "acme", id: "w2" });
+      const context = paneContext(contextWith(openItem), { show, close: vi.fn() });
+      context.openItem?.({ kind: "run", hub: "acme", id: "w2" });
       expect(show).toHaveBeenCalledWith({ kind: "run", hub: "acme", id: "w2" });
       expect(openItem).not.toHaveBeenCalled();
     });
@@ -84,7 +96,7 @@ verifies("runs.list-column", () => {
     it("opens a run asked for at a step, and any other item, as the shell does", () => {
       const openItem = vi.fn();
       const show = vi.fn();
-      const context = paneContext(contextWith(openItem), show);
+      const context = paneContext(contextWith(openItem), { show, close: vi.fn() });
       context.openItem?.({ kind: "run", hub: "acme", id: "w2" }, { step: "draft" });
       context.openItem?.({ kind: "workflow", hub: "acme", id: "support-reply" });
       expect(openItem).toHaveBeenNthCalledWith(
@@ -98,6 +110,18 @@ verifies("runs.list-column", () => {
         undefined,
       );
       expect(show).not.toHaveBeenCalled();
+    });
+
+    it("closes the run when the pane's page leads to Runs, and opens any other place", () => {
+      const openPlace = vi.fn();
+      const close = vi.fn();
+      const context = paneContext(contextWith(vi.fn(), openPlace), { show: vi.fn(), close });
+      context.openPlace?.("runs");
+      expect(close).toHaveBeenCalledOnce();
+      expect(openPlace).not.toHaveBeenCalled();
+      context.openPlace?.("inbox");
+      expect(openPlace).toHaveBeenCalledWith("inbox");
+      expect(close).toHaveBeenCalledOnce();
     });
   });
 });

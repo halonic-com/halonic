@@ -28,9 +28,14 @@ export function runsPanes(onePane: boolean, open: RunItem | undefined): RunsPane
 
 /** The ways a row's gestures reach the page. */
 export interface RowWays {
+  /** Notes that the person opened the row, so its failure leaves Failed (`runs.run-groups`). */
+  readonly markOpened: (id: string) => void;
   /** Shows the run in the content pane. */
   readonly show: (item: RunItem) => void;
-  /** Opens the run's page in a new tab; absent where the window has no tabs. */
+  /**
+   * Opens the run's page in a new tab, or as the page on a phone, which has no tabs; absent in a
+   * context built without a window.
+   */
   readonly openInNewTab?: (item: RunItem) => void;
 }
 
@@ -41,14 +46,16 @@ export interface RowActions {
 }
 
 /**
- * A click or Enter shows the row's run in the pane; a Ctrl-click, Cmd-click or middle click
- * opens it in a new tab instead. A row with no page, an agent's run, does neither.
+ * A click or Enter marks the row opened and shows its run in the pane; a Ctrl-click, Cmd-click
+ * or middle click opens it in a new tab instead, and marks it opened too. A row with no page, an
+ * agent's run, opens nothing, but a click still marks it opened, as the person looked at it.
  */
 export function rowActions(rows: readonly AllRunsRow[], ways: RowWays): RowActions {
   const itemOf = (id: string) => rows.find((row) => row.id === id)?.item;
   const { openInNewTab } = ways;
   return {
     onOpen: (id) => {
+      ways.markOpened(id);
       const item = itemOf(id);
       if (item !== undefined) ways.show(item);
     },
@@ -57,28 +64,50 @@ export function rowActions(rows: readonly AllRunsRow[], ways: RowWays): RowActio
       : {
           onOpenInNewTab: (id: string) => {
             const item = itemOf(id);
-            if (item !== undefined) openInNewTab(item);
+            if (item === undefined) return;
+            ways.markOpened(id);
+            openInNewTab(item);
           },
         }),
   };
 }
 
+/** How the content pane's run page reaches the Runs page around it. */
+export interface PaneWays {
+  /** Shows another run in the pane. */
+  readonly show: (item: RunItem) => void;
+  /** Closes the run, leaving the pane empty, or the list alone in one pane. */
+  readonly close: () => void;
+}
+
 /**
- * The context the content pane's run page gets: a run it opens on its own, such as one started
- * again or a child run, shows in the pane, so the Runs page stays in its tab. A run asked for at
- * a step, and every other item, opens as the shell opens it.
+ * The context the content pane's run page gets. A run it opens on its own, such as one started
+ * again or a child run, shows in the pane, so the Runs page stays in its tab; a run asked for at
+ * a step, and every other item, opens as the shell opens it. Its way to Runs, such as **Go to
+ * Runs** on a run that left the workspace, closes the run, as Runs is already showing.
  */
-export function paneContext(context: PageContext, show: (item: RunItem) => void): PageContext {
-  const { openItem } = context;
-  if (openItem === undefined) return context;
+export function paneContext(context: PageContext, ways: PaneWays): PageContext {
+  const { openItem, openPlace } = context;
   return {
     ...context,
-    openItem: (item, options) => {
-      if (item.kind === "run" && options === undefined) {
-        show({ kind: "run", hub: item.hub, id: item.id });
-        return;
-      }
-      openItem(item, options);
-    },
+    ...(openItem === undefined
+      ? {}
+      : {
+          openItem: (item, options) => {
+            if (item.kind === "run" && options === undefined) {
+              ways.show({ kind: "run", hub: item.hub, id: item.id });
+              return;
+            }
+            openItem(item, options);
+          },
+        }),
+    ...(openPlace === undefined
+      ? {}
+      : {
+          openPlace: (place) => {
+            if (place === "runs") return ways.close();
+            openPlace(place);
+          },
+        }),
   };
 }
