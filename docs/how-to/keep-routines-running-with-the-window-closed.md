@@ -123,5 +123,6 @@ and never grants it.
 
 ## See also
 
+- [Start Halonic when you log in](start-halonic-when-you-log-in.md)
 - [Start a routine with a signal](start-a-routine-with-a-signal.md)
 - [Threat model: the agent host](../security/threat-model.md#the-agent-host)
