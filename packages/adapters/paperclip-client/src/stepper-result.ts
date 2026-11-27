@@ -85,10 +85,23 @@ function succeededOf(step: ActionResultStep, secret: boolean, at: Date): string 
   return kept === "" ? done : `${done}: ${kept}`;
 }
 
-function resultOf(step: ActionResultStep | undefined, notRun: string, secret: boolean, at: Date) {
+/** `Started a server session on 25 Nov 2026 for HAL-1234`: the session runs on, so "done" would mislead. */
+function sessionStartedOf(task: string, at: Date): string {
+  return `Started a server session on ${dayOf(at)} for ${cell(task)}`;
+}
+
+function resultOf(
+  block: RequestBlock,
+  step: ActionResultStep | undefined,
+  notRun: string,
+  catalog: StepperCatalog,
+  at: Date,
+) {
   if (step === undefined) return notRun;
   if (step.outcome === "skipped") return "skipped";
-  if (step.outcome === "succeeded") return succeededOf(step, secret, at);
+  if (step.outcome === "succeeded" && block.kind === "server-session")
+    return sessionStartedOf(block.task, at);
+  if (step.outcome === "succeeded") return succeededOf(step, takesSecret(block, catalog), at);
   const said = step.error === undefined ? "" : `, the service said: "${cell(step.error.text)}"`;
   return `failed (${step.failure ?? "unknown"})${said}`;
 }
@@ -107,7 +120,7 @@ export function renderStepperResult(input: StepperResultInput): StepperResult {
   const notRun = ran ? "not reached" : "not run";
   const rows = request.blocks.map((block, index) => {
     const step = answer.steps.find((candidate) => candidate.step === index + 1);
-    const result = resultOf(step, notRun, takesSecret(block, catalog), at);
+    const result = resultOf(block, step, notRun, catalog, at);
     return `| ${index + 1} | ${whatOf(block)} | ${result} | ${step === undefined ? "" : timeOf(at)} |`;
   });
   const document = [
@@ -122,16 +135,20 @@ export function renderStepperResult(input: StepperResultInput): StepperResult {
     ...rows,
     "",
   ].join("\n");
-  return { document, summary: summaryOf(answer, request.blocks.length) };
+  return { document, summary: summaryOf(answer, request.blocks, at) };
 }
 
-function summaryOf(answer: ActionResultAnswer, blocks: number): string {
+function summaryOf(answer: ActionResultAnswer, blocks: readonly RequestBlock[], at: Date): string {
   const see = "The document `stepper-result` on this task has each block's result.";
   if (answer.outcome === "declined") return `Declined in Halonic: nothing ran. ${see}`;
   if (answer.outcome === "expired")
     return `The stepper request expired in Halonic: nothing ran. ${see}`;
   const done = answer.steps.filter((step) => step.outcome === "succeeded");
+  // A `server-session` block is always the request's only block (validateStepperRequest).
+  const [first] = blocks;
+  if (first?.kind === "server-session" && done.some((step) => step.step === 1))
+    return `${sessionStartedOf(first.task, at)}. ${see}`;
   const byHand = done.filter((step) => step.byHand === true).length;
   const handPart = byHand === 0 ? "" : `, ${byHand} by hand`;
-  return `The stepper ${answer.outcome} in Halonic: ${done.length} of ${blocks} blocks done${handPart}. ${see}`;
+  return `The stepper ${answer.outcome} in Halonic: ${done.length} of ${blocks.length} blocks done${handPart}. ${see}`;
 }
