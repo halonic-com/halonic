@@ -72,7 +72,11 @@ export const oneQuestionCard: CardFixture = {
   }),
 };
 
-/** A checkbox confirmation that takes one or two of three picks. */
+/**
+ * A checkbox confirmation that takes one or two of three picks. Paperclip refuses one whose
+ * default picks are fewer than `minSelected`; Halonic doesn't tick the defaults, so the
+ * steps' own picks are the whole answer.
+ */
 export const checkboxCard: CardFixture = {
   key: "checkbox",
   kind: "request_checkbox_confirmation",
@@ -85,6 +89,7 @@ export const checkboxCard: CardFixture = {
       { id: "blog", label: "Blog" },
       { id: "social", label: "Social" },
     ],
+    defaultSelectedOptionIds: ["email"],
     minSelected: 1,
     maxSelected: 2,
   }),

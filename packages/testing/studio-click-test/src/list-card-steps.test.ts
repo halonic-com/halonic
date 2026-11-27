@@ -14,6 +14,16 @@ function submitting(picks: readonly string[], status: string, result: unknown): 
 
 verifies("studio-click-test.list-card-steps", () => {
   describe("the checkbox card step", () => {
+    it("seeds default picks that Paperclip's minSelected accepts", () => {
+      const payload = checkboxCard.payload(checkboxCard.prompt) as {
+        defaultSelectedOptionIds?: readonly string[];
+        minSelected: number;
+      };
+      expect(payload.defaultSelectedOptionIds?.length ?? 0).toBeGreaterThanOrEqual(
+        payload.minSelected,
+      );
+    });
+
     it("ticks each surface's picks, submits them, and checks Paperclip has them in any order", async () => {
       const studio = cardStudio(
         checkboxCard,
