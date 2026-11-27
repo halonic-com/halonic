@@ -88,7 +88,7 @@ verifies("inbox.page", () => {
     it("shows the list as the whole page, with its heading for screen readers only", async () => {
       const { root } = await openPhone(fakeRuns([notes, review]).runs);
       expect(root.querySelector("h1")?.parentElement?.classList.contains("sr-only")).toBe(true);
-      expect(root.querySelector(".w-90")).toBeNull();
+      expect(root.querySelector(".max-w-95")).toBeNull();
       expect(rows(root)).toHaveLength(2);
       expect(hidden(root, "item")).toBe(true);
       expect(hidden(root, "list")).toBe(false);
