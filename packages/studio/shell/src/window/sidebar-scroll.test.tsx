@@ -2,7 +2,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
-import { type PlaceContribution, sidebarPlaces } from "../points/frame.ts";
+import {
+  type BarItemContribution,
+  type PlaceContribution,
+  type SidebarViewContribution,
+  sidebarPlaces,
+} from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
 import { TabSet } from "../tabs/tab-set.ts";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
@@ -37,24 +42,44 @@ function classesOf(element: Element | null | undefined): string[] {
   return element?.className.split(" ") ?? [];
 }
 
+const filesView: Registered<SidebarViewContribution> = {
+  featureId: "files",
+  id: "files",
+  order: 10,
+  label: "Files",
+  view: "FilesView",
+  load: async () => ({ FilesView: () => <p>The file tree</p> }),
+};
+
+const accountItem: Registered<BarItemContribution> = {
+  featureId: "connections",
+  id: "account-switcher",
+  order: 1,
+  view: "Account",
+  load: async () => ({ Account: () => <button type="button">Acme</button> }),
+};
+
+/** The sidebar with every place, and the Files view and the footer when asked. */
+function renderSidebar(withViewAndFooter: boolean): HTMLElement {
+  const announcer = createAnnouncer({ timers: new FakeTimers() });
+  const context = { services: { get: () => undefined }, announcer } as unknown as WorkspaceContext;
+  return render(
+    <StudioSidebar
+      places={everyPlace()}
+      tabs={new TabSet()}
+      announcer={announcer}
+      platform="windows"
+      contextFor={() => context}
+      onSearch={() => {}}
+      {...(withViewAndFooter ? { views: [filesView], footer: accountItem } : {})}
+    />,
+  );
+}
+
 verifies("shell.sidebar-scroll", () => {
   // jsdom lays nothing out, so the test checks the classes that make the region scroll.
   it("scrolls the places inside the sidebar, while the Search box stays put above them", () => {
-    const announcer = createAnnouncer({ timers: new FakeTimers() });
-    const context = {
-      services: { get: () => undefined },
-      announcer,
-    } as unknown as WorkspaceContext;
-    const container = render(
-      <StudioSidebar
-        places={everyPlace()}
-        tabs={new TabSet()}
-        announcer={announcer}
-        platform="windows"
-        contextFor={() => context}
-        onSearch={() => {}}
-      />,
-    );
+    const container = renderSidebar(false);
     const sidebar = container.firstElementChild;
     const scroller = container.querySelector("[data-sidebar-scroll]");
     const search = [...container.querySelectorAll("button")].find((button) =>
@@ -68,5 +93,20 @@ verifies("shell.sidebar-scroll", () => {
     expect(scroller?.querySelector('nav[aria-label="Places"]')).not.toBeNull();
     expect(search).toBeDefined();
     expect(scroller?.contains(search ?? null)).toBe(false);
+  });
+
+  it("keeps the Studio | Files switch and the footer put, with only the places scrolling between", () => {
+    const container = renderSidebar(true);
+    const scrollers = container.querySelectorAll("[data-sidebar-scroll]");
+    const scroller = scrollers[0];
+    const tabPanel = container.querySelector('[role="tabpanel"]');
+
+    expect(scrollers).toHaveLength(1);
+    expect(scroller?.querySelector('nav[aria-label="Places"]')).not.toBeNull();
+    expect(scroller?.contains(container.querySelector('[role="tablist"]'))).toBe(false);
+    expect(scroller?.contains(container.querySelector("[data-sidebar-footer]"))).toBe(false);
+    // The panel passes the sidebar's room on to the scroller.
+    expect(classesOf(tabPanel)).toEqual(expect.arrayContaining(["min-h-0", "flex-1", "flex-col"]));
+    expect(classesOf(container.querySelector("[data-sidebar-footer]"))).toContain("shrink-0");
   });
 });

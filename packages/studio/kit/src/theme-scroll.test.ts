@@ -99,8 +99,20 @@ verifies("kit.slim-scrollbars", () => {
     expect(css).not.toMatch(/@media \(forced-colors: active\) \{[^@]*scrollbar/);
   });
 
+  it("draws the slim bar only for a fine pointer in the desktop layout, so a phone keeps its own", async () => {
+    const css = squeezed(await buildCss([]));
+    expect(css).toContain(
+      `@media (hover: hover) and (pointer: fine) and (width >= 600px) { ${standardOnly}`,
+    );
+    expect(css).toContain(`} } ${parts}`);
+    // Both engines' bars sit in that one block: nothing draws a bar outside it.
+    const theme = css.slice(css.indexOf("--scrollbar-thumb:"), css.indexOf(":where( button"));
+    const outside = theme.slice(0, theme.indexOf("@media (hover: hover) and (pointer: fine)"));
+    expect(outside).not.toMatch(/scrollbar-width|::-webkit-scrollbar/);
+  });
+
   it("lets a part that hides its bar on purpose win, as the theme's rules sit in the base layer", async () => {
-    const css = await buildCss(["[scrollbar-width:none]"]);
+    const css = await buildCss(["[scrollbar-width:none]", "[&::-webkit-scrollbar]:hidden"]);
     const thin = css.indexOf("scrollbar-width: thin");
     const base = css.lastIndexOf("\n@layer base {", thin);
     // No top-level block closes between the base layer's start and the rule: it sits inside it.
@@ -109,5 +121,7 @@ verifies("kit.slim-scrollbars", () => {
     expect(css).toMatch(
       /@layer utilities \{\s*\.\\\[scrollbar-width\\:none\\\] \{\s*scrollbar-width: none;/,
     );
+    // The parts' bar, which WebKit and Chromium draw, hides through its own utility.
+    expect(squeezed(css)).toMatch(/::-webkit-scrollbar \{ display: none; \}/);
   });
 });

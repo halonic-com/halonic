@@ -224,7 +224,9 @@ function NewTabButton({ tabs, onNewTab }: Pick<WindowTabStripProps, "tabs" | "on
  */
 const stripClasses = [
   "-mx-2 -mb-px flex min-w-0 items-end self-end overflow-x-auto px-2 pb-px",
-  "[scrollbar-width:none]",
+  // No bar: the standard property for Firefox, the part for WebKit and Chromium, which draw the
+  // kit's slim bar from the parts (`kit.slim-scrollbars`).
+  "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
 ].join(" ");
 
 /**

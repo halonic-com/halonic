@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: the board's request on HAL-20556 (scrollbars should be slick, modern and small)
 
-The kit's theme shall give every scrolling region in the Studio, the Messenger and the Inbox one scrollbar style, with no copy of its own in an app. The scrollbar shall be thin, about 6px where the engine lets the theme set its width, with no arrow buttons, and a rounded thumb in the mode's text colour at a low alpha (about 3:1 against the surface) on a see-through track, so it fits the light and the dark theme. While the pointer is over a region or keyboard focus is inside it, the region's thumb shall show; at rest, and after a pointer click alone, it shall not. When the system asks for more contrast, the thumb shall show at rest too, in a stronger alpha. In forced colours the system's own scrollbar shall show. A part that hides its scrollbar on purpose shall still be able to.
+The kit's theme shall give every scrolling region in the Studio, the Messenger and the Inbox one scrollbar style, with no copy of its own in an app. The scrollbar shall be thin, about 6px where the engine lets the theme set its width, with no arrow buttons, and a rounded thumb in the mode's text colour at a low alpha (about 3:1 against the surface) on a see-through track, so it fits the light and the dark theme. While the pointer is over a region or keyboard focus is inside it, the region's thumb shall show; at rest, and after a pointer click alone, it shall not. When the system asks for more contrast, the thumb shall show at rest too, in a stronger alpha. In forced colours, on a touch screen and in the phone layout of a window narrower than 600px, the system's own scrollbar shall show, so a region loses no width to a bar that only hover would show. A part that hides its scrollbar on purpose shall still be able to.
 
 ## Examples
 
@@ -18,6 +18,9 @@ The kit's theme shall give every scrolling region in the Studio, the Messenger a
 - Given a click on a row in a scrolling list,
   when the pointer leaves the list,
   then the list's thumb hides, as focus from the pointer doesn't show it.
+- Given a touch screen, or a window narrower than 600px,
+  when the theme's CSS is built,
+  then the slim bar's rules don't apply there, and the system's own bar shows.
 - Given a part with `[scrollbar-width:none]`,
   when the theme's CSS is built,
   then the part's own rule wins over the theme's.

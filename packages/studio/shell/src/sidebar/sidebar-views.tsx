@@ -27,6 +27,7 @@ export interface SidebarViewsProps {
 /**
  * The switch between the Studio's places and the views features added, such as the file tree
  * (requirement `shell.sidebar-switch`). Without a view, only the places show and there is no switch.
+ * The switch stays put; what it shows scrolls below it.
  *
  * @example
  * <SidebarViews views={contributions.sidebarViews.list()} contextFor={contextFor}
@@ -44,28 +45,52 @@ export function SidebarViews({ views, contextFor, places, settings, ...props }: 
     ],
     [views],
   );
-  if (views.length === 0) return places;
+  if (views.length === 0) return <SidebarScroll>{places}</SidebarScroll>;
   const shown = views.find((view) => view.id === selected);
   return (
     <>
-      <TabList
-        label="Sidebar view"
+      <div className="shrink-0 ps-2 pt-2">
+        <TabList
+          label="Sidebar view"
+          tabs={tabs}
+          selected={shown?.id ?? studioTab}
+          onSelect={setSelected}
+          ids={ids}
+        />
+      </div>
+      <TabPanel
+        ids={ids}
         tabs={tabs}
         selected={shown?.id ?? studioTab}
-        onSelect={setSelected}
-        ids={ids}
-      />
-      <TabPanel ids={ids} tabs={tabs} selected={shown?.id ?? studioTab}>
-        {shown === undefined ? (
-          places
-        ) : (
-          <>
-            <SidebarView view={shown} context={contextFor(shown.featureId)} />
-            {settings}
-          </>
-        )}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <SidebarScroll>
+          {shown === undefined ? (
+            places
+          ) : (
+            <>
+              <SidebarView view={shown} context={contextFor(shown.featureId)} />
+              {settings}
+            </>
+          )}
+        </SidebarScroll>
       </TabPanel>
     </>
+  );
+}
+
+/**
+ * The part of the sidebar that scrolls, below the switch (`shell.sidebar-scroll`). It takes the
+ * room the sidebar has left, and its own padding keeps the first and last rows' focus rings in view.
+ */
+function SidebarScroll({ children }: { readonly children: React.ReactNode }) {
+  return (
+    <div
+      data-sidebar-scroll=""
+      className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto py-2 ps-2"
+    >
+      {children}
+    </div>
   );
 }
 

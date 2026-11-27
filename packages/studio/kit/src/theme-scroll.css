@@ -50,32 +50,39 @@
     }
   }
 
-  @supports not selector(::-webkit-scrollbar) {
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: var(--scrollbar-thumb-now) transparent;
+  /*
+   * Only for a mouse or trackpad in the desktop layout. A phone, and the phone layout of a narrow
+   * window, keep the system's overlay bar: it takes no room and shows while scrolling, where a
+   * 10px bar here would take 10px from every region and, with no hover, never show.
+   */
+  @media (hover: hover) and (pointer: fine) and (width >= 600px) {
+    @supports not selector(::-webkit-scrollbar) {
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb-now) transparent;
+      }
     }
-  }
 
-  @supports selector(::-webkit-scrollbar) {
-    @media not (forced-colors: active) {
-      ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-        background: transparent;
-      }
-      ::-webkit-scrollbar-button {
-        display: none;
-      }
-      ::-webkit-scrollbar-corner {
-        background: transparent;
-      }
-      /* 2px of see-through border on each side leaves a 6px rounded thumb. */
-      ::-webkit-scrollbar-thumb {
-        border: 2px solid transparent;
-        border-radius: var(--radius-full);
-        background-clip: padding-box;
-        background-color: var(--scrollbar-thumb-now);
+    @supports selector(::-webkit-scrollbar) {
+      @media not (forced-colors: active) {
+        ::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+          background: transparent;
+        }
+        ::-webkit-scrollbar-button {
+          display: none;
+        }
+        ::-webkit-scrollbar-corner {
+          background: transparent;
+        }
+        /* 2px of see-through border on each side leaves a 6px rounded thumb. */
+        ::-webkit-scrollbar-thumb {
+          border: 2px solid transparent;
+          border-radius: var(--radius-full);
+          background-clip: padding-box;
+          background-color: var(--scrollbar-thumb-now);
+        }
       }
     }
   }
