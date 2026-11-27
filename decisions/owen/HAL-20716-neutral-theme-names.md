@@ -3,6 +3,7 @@
 - Task: HAL-20716
 - Approval: Liam signs this note for HAL-20716 (board request on HAL-10: no reference app names in the code base). A rename, fast-track.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qRXscGA628xkIty0n+fsNieGDyVnuMRJceoZWo1VNUY8m/sbI97G1Eb9QBFZcIAitpNQSfDnRLbOI80FpmIXDg==
 
 ## What changes
 
