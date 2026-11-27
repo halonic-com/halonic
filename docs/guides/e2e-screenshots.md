@@ -114,6 +114,7 @@ load through `loadUpdateButton` in its `api.ts`.
 `first-run-tab-bar-<1|12>-<light|dark>.png` is the kit's phone tab bar at 390 px with Home, Inbox
 and Runs drawn with the Studio's own icons, Inbox picked with a one- or a two-digit count beside its
 icon, for the house-style check of HAL-19399's G13 (HAL-20644).
+`first-run-tab-bar-home-<light|dark>.png` is the same bar with Home picked and a count of 3 on the unpicked Inbox tab.
 
 ## An agent's question
 

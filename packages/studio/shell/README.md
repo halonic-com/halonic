@@ -242,9 +242,9 @@ There are no window tabs and no status bar.
   `actions` go at the right (Search and the Assistant on a place, once they're built). The title
   isn't a heading: the page keeps its own `h1`.
 - `BottomNavigation` is the `nav` named "Places": Home, Inbox and Runs where the features added
-  them, then More, always. Where you are has the filled icon on the halo pill. Inbox's count and
-  Runs' still dot sit at the icon's corner, and each link is named with its signal ("Inbox, 3
-  waiting"). A tap calls `onSelect` with the place. Pass it only on a place or a list: an opened
+  them, then More, always. Where you are has the filled icon on the halo pill. Inbox's count sits
+  beside the icon, inside the pill, and Runs' still dot at the icon's corner. Each link is named
+  with its signal ("Inbox, 3 waiting"). A tap calls `onSelect` with the place. Pass it only on a place or a list: an opened
   item leaves the bottom edge to its own bar.
 
 ```tsx

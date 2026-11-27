@@ -47,8 +47,8 @@ export interface PhoneTabBarProps<Id extends string = string> {
  * on top, at least 56px plus the home bar's inset, its tabs sharing the width equally, each a 20px
  * icon over its label, and the whole tab the target. The picked tab is `aria-current="page"`: the
  * filled icon in `accent` on a 56×28px halo pill and the label in `fg`, as the shell's bottom
- * navigation. A count, or the running dot, sits at the icon's corner, and a screen reader hears
- * its words after the name.
+ * navigation. A count sits beside the icon inside the pill, the running dot at the icon's corner,
+ * and a screen reader hears its words after the name.
  *
  * Use it for the views of one thing on a phone, such as a paired computer's Inbox and Agents; the
  * kit's `Tabs` is the row of a page's own views at the top.

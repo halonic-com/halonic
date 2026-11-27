@@ -19,3 +19,17 @@ for (const count of [1, 12]) {
     });
   }
 }
+
+// The state most people see: Home picked, and the count on an Inbox tab that isn't.
+for (const scheme of ["light", "dark"] as const) {
+  test(`first-run tab bar, Home picked, ${scheme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.goto("/first-run-polish.html?count=3&picked=home");
+    await expect(page.getByRole("navigation")).toBeVisible();
+    await page.screenshot({
+      path: `test-results/screenshots/first-run-tab-bar-home-${scheme}.png`,
+      fullPage: true,
+    });
+  });
+}

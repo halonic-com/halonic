@@ -4,6 +4,11 @@
   decision on a detail of an approved screen, no board card
 - Kind: user-visible
 
+## Covers
+
+- shell.phone-bars
+- kit.phone-tab-bar
+
 ## What changes
 
 `shell.phone-bars` (active) and `kit.phone-tab-bar` (draft): on a phone, a tab's count now sits

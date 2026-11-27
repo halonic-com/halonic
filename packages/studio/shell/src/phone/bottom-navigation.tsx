@@ -23,9 +23,10 @@ export interface BottomNavigationProps {
  * a link, so a screen reader lists it with the page's links; the shell opens the place itself, so
  * the browser never follows the address.
  *
- * Where you are is `aria-current="page"`. Inbox carries its count and Runs the still running dot,
- * at the icon's corner; a screen reader hears them after the name ("Inbox, 3 waiting"). More
- * carries nothing and always shows, because the workspace switcher lives there.
+ * Where you are is `aria-current="page"`. Inbox carries its count beside the icon, inside the pill,
+ * and Runs the still running dot at the icon's corner; a screen reader hears them after the name
+ * ("Inbox, 3 waiting"). More carries nothing and always shows, because the workspace switcher
+ * lives there.
  *
  * @example
  * <BottomNavigation places={shownPlaces} current="inbox" onSelect={switchPlace} />
