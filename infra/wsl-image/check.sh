@@ -63,7 +63,32 @@ image="$(cat "$(dirname "$0")/image-version")"
 [ "$(cat "$root/usr/share/doc/halonic-image/IMAGE")" = "$image" ] || fail "IMAGE isn't image-version ($image)"
 grep -q '^halonic:' "$root/etc/passwd" || fail "user halonic is missing"
 grep -q '^root:[!*]' "$root/etc/shadow" || fail "root password is not locked"
-[ -e "$root/usr/share/doc/bubblewrap/copyright" ] || fail "no copyright file for bubblewrap"
+# No translations, man pages or docs (HAL-20583), but every package's copyright
+# file (the licences ask for it), and a package dpkg installs later (as
+# security-update does) brings none either.
+doc="$root/usr/share/doc"
+left="$(find "$root/usr/share/locale" "$root/usr/share/man" -mindepth 1 -print -quit)"
+[ -z "$left" ] || fail "translations or man pages left: ${left#"$root"}"
+left="$(find "$doc" -mindepth 2 ! -type d ! -name copyright ! -path "$doc/halonic-image/*" -print -quit)"
+[ -z "$left" ] || fail "docs left: ${left#"$root"}"
+while IFS=$'\t' read -r pkg _; do
+  [ -f "$doc/$pkg/copyright" ] || fail "no copyright file for $pkg"
+done < "$doc/halonic-image/packages.txt"
+while IFS= read -r link; do
+  grep -qxF "path-include=${link#"$root"}" "$root/etc/dpkg/dpkg.cfg.d/halonic-nodoc" || fail "an update would drop ${link#"$root"}"
+done < <(find "$doc" -mindepth 1 -maxdepth 1 -type l)
+acme="$root/tmp/acme-docs"
+mkdir -p "$acme/DEBIAN" "$acme/usr/share/doc/acme-docs" "$acme/usr/share/man/man1" "$acme/usr/share/locale/nl/LC_MESSAGES"
+printf 'Package: acme-docs\nVersion: 1\nArchitecture: all\nMaintainer: Acme <dev@acme.example>\nDescription: docs\n' > "$acme/DEBIAN/control"
+touch "$acme/usr/share/doc/acme-docs/"{copyright,README} "$acme/usr/share/man/man1/acme.1" "$acme/usr/share/locale/nl/LC_MESSAGES/acme.mo"
+chroot "$root" dpkg-deb --build /tmp/acme-docs /tmp/acme-docs.deb >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
+chroot "$root" dpkg -i /tmp/acme-docs.deb >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
+[ -f "$doc/acme-docs/copyright" ] || fail "dpkg left out a new package's copyright file"
+for gone in doc/acme-docs/README man/man1/acme.1 locale/nl/LC_MESSAGES/acme.mo; do
+  [ ! -e "$root/usr/share/$gone" ] || fail "dpkg installed /usr/share/$gone"
+done
+chroot "$root" dpkg --purge acme-docs >/dev/null
+rm -rf "$acme" "$root/tmp/acme-docs.deb"
 
 for pkg in bubblewrap socat ripgrep git ca-certificates; do
   grep -q "^$pkg	" "$root/usr/share/doc/halonic-image/packages.txt" || fail "package $pkg missing"

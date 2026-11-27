@@ -53,6 +53,17 @@ Suites: $suite-security
 Components: main
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 SRC
+# No translations, man pages or docs (HAL-20583): only the copyright files,
+# the links between doc folders and halonic-image/ stay. The dpkg file keeps
+# it that way through security updates; a doc folder that is a link is a file
+# to dpkg, so it gets its own path-include, or an update would drop it.
+doc="$root/usr/share/doc"
+cfg="$root/etc/dpkg/dpkg.cfg.d/halonic-nodoc"
+install -m 0644 "$here/files/dpkg-nodoc" "$cfg"
+find "$doc" -mindepth 1 -maxdepth 1 -type l -printf 'path-include=/usr/share/doc/%f\n' | LC_ALL=C sort >> "$cfg"
+find "$root/usr/share/locale" "$root/usr/share/man" -mindepth 1 -delete
+find "$doc" -mindepth 2 ! -type d ! -name copyright ! -path "$doc/halonic-image/*" -delete
+find "$doc" -mindepth 1 -type d -empty -delete
 # Keep the image small and the build repeatable.
 rm -rf "$root"/var/lib/apt/lists/* "$root"/var/cache/apt/* \
        "$root"/var/log/* "$root"/etc/machine-id "$root"/var/lib/dbus/machine-id

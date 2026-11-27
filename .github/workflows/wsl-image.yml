@@ -35,7 +35,7 @@ jobs:
           image_files=(infra/wsl-image/Dockerfile infra/wsl-image/build.sh
                        infra/wsl-image/customize.sh infra/wsl-image/snapshot.conf
                        infra/wsl-image/files/wsl.conf infra/wsl-image/files/opt-halonic-README
-                       infra/wsl-image/files/NOTICE)
+                       infra/wsl-image/files/NOTICE infra/wsl-image/files/dpkg-nodoc)
           before="$(git show "$BASE:infra/wsl-image/image-version" 2>/dev/null || echo 0)"
           after="$(cat infra/wsl-image/image-version)"
           for v in "$before" "$after"; do

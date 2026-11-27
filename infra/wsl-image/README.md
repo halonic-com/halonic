@@ -23,7 +23,8 @@ installer (board, option A on HAL-16772): `build-installer.ps1 -Image` puts
 - `Dockerfile`: the build container, `debian:trixie` pinned by digest. Dependabot
   proposes new digests.
 - `files/`: `/etc/wsl.conf` (interop off, automount and `/etc/fstab` mounts off, user `halonic`, systemd off),
-  the empty `/opt/halonic` runtime slot, the runtime updater and the licence notice.
+  the empty `/opt/halonic` runtime slot, the runtime updater, the licence notice and
+  `dpkg-nodoc`, which leaves translations, man pages and docs out (below).
 
 ## The runtime updater
 
@@ -134,8 +135,8 @@ Locally (Debian or Ubuntu, as root): `apt-get install mmdebstrap libcap2-bin` th
 `customize.sh` writes it to `/usr/share/doc/halonic-image/IMAGE` and `status`
 reports it as `image`. Raise it by one whenever something only a new image brings
 changes: `Dockerfile` (the build container), `build.sh` (the package list),
-`customize.sh`, `snapshot.conf`, `files/wsl.conf`, `files/opt-halonic-README` or
-`files/NOTICE`; the WSL image workflow fails a pull request that changes one of
+`customize.sh`, `snapshot.conf`, `files/wsl.conf`, `files/opt-halonic-README`,
+`files/NOTICE` or `files/dpkg-nodoc`; the WSL image workflow fails a pull request that changes one of
 them without it, and one that lowers the number (HAL-15778). A Dependabot pull
 request for the `Dockerfile` needs a commit that raises it too. A change to the
 updater alone needs no raise, as it travels with the runtime. Studio names the lowest image it works with (`WSL_IMAGE_MIN` in
@@ -153,5 +154,10 @@ The image is imported on Windows with
 
 Licences: the image carries Debian's per-package `copyright` files plus
 `/usr/share/doc/halonic-image/NOTICE`, `SNAPSHOT.txt` and `packages.txt` (the
-source pointer). Whoever owns licence compliance checks this before the first
+source pointer). Nothing else in `/usr/share/doc`, `/usr/share/man` or
+`/usr/share/locale` (HAL-20583): `customize.sh` removes it, and
+`/etc/dpkg/dpkg.cfg.d/halonic-nodoc` (from `files/dpkg-nodoc`, plus a line for
+each doc folder that is a link) keeps security updates from bringing it back.
+`check.sh` checks both, and that every installed package has its `copyright`
+file. Whoever owns licence compliance checks this before the first
 release that ships the image in the installer.

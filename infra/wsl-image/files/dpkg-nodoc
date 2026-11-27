@@ -1,0 +1,9 @@
+# Halonic's WSL image (HAL-20583): no translations, man pages or docs, and
+# security updates don't bring them back. Every package's copyright file
+# stays: the licences ask for it. customize.sh adds the links between doc
+# folders (libgcc-s1 to gcc-14-base and the like) below.
+path-exclude=/usr/share/locale/*
+path-exclude=/usr/share/man/*
+path-exclude=/usr/share/doc/*
+path-include=/usr/share/doc/*/copyright
+path-include=/usr/share/doc/halonic-image/*
