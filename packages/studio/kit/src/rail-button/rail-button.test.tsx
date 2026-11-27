@@ -103,18 +103,27 @@ verifies("kit.rail-button-motion", () => {
       expect.arrayContaining([
         "duration-(--duration-rail-hover)",
         "ease-press",
-        "motion-safe:group-hover:scale-110",
-        "motion-safe:group-active:scale-90",
-        "group-active:duration-(--duration-rail-press)",
+        "motion-safe:group-hover/rail-button:scale-110",
+        "motion-safe:group-active/rail-button:scale-90",
+        "group-active/rail-button:duration-(--duration-rail-press)",
       ]),
     );
-    const css = await buildCss(["motion-safe:group-hover:scale-110"]);
+    const css = await buildCss(["motion-safe:group-hover/rail-button:scale-110"]);
     expect(css).toContain("prefers-reduced-motion: no-preference");
   });
 
-  it("doesn't scale the selected button", () => {
+  it("doesn't scale the selected button, and eases its drawing back to 100%", () => {
     const { drawing } = renderButton({ selected: true });
     expect(drawing.className).not.toContain("scale");
+    expect(drawing.className).toContain(
+      "transition-transform duration-(--duration-rail-hover) ease-press",
+    );
+  });
+
+  it("scales only under its own named group, not a group round it", () => {
+    const { target, drawing } = renderButton();
+    expect(target.className.split(" ")).toContain("group/rail-button");
+    expect(drawing.className).not.toMatch(/group-(hover|active):/);
   });
 
   it("is the only kit part that grows or shrinks under the pointer or when pressed", async () => {
@@ -125,8 +134,24 @@ verifies("kit.rail-button-motion", () => {
     const scaling: string[] = [];
     for (const file of files) {
       const text = await readFile(path.join(source, file), "utf8");
-      if (/(hover|active):scale-/.test(text)) scaling.push(file.split(path.sep).join("/"));
+      // Named groups and variants in between too: `group-hover/rail-button:scale-110`,
+      // `hover:motion-safe:scale-105`.
+      if (/(hover|active)(\/[\w-]+)?:([\w-]+:)*scale-/.test(text))
+        scaling.push(file.split(path.sep).join("/"));
     }
     expect(scaling).toEqual(["rail-button/rail-button.tsx"]);
+  });
+});
+
+verifies("kit.rail-button-count-cap", () => {
+  it("shows 99+ past 99 and still says the whole count", () => {
+    const { target } = renderButton({ count: { value: 100, name: "100 unread" } });
+    expect(target.getAttribute("aria-label")).toBe("Messenger, 100 unread");
+    expect(target.querySelector('[aria-hidden="true"]')?.textContent).toBe("99+");
+  });
+
+  it("shows 99 as it is", () => {
+    const { target } = renderButton({ count: { value: 99, name: "99 unread" } });
+    expect(target.querySelector('[aria-hidden="true"]')?.textContent).toBe("99");
   });
 });

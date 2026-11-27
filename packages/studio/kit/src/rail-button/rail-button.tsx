@@ -34,19 +34,26 @@ export interface RailButtonProps {
  * one gets a 2px `Highlight` edge.
  */
 const circle = [
-  "group relative grid size-10 shrink-0 place-items-center rounded-full focus-ring transition-colors",
+  "group/rail-button relative grid size-10 shrink-0 place-items-center rounded-full focus-ring transition-colors",
   "hover:bg-surface-muted active:bg-surface-muted aria-[current=page]:bg-surface-muted",
   "forced-colors:aria-[current=page]:border-2 forced-colors:aria-[current=page]:border-[Highlight]",
 ].join(" ");
 
 /**
+ * The drawing eases between sizes, so it settles back to 100% when the button is picked rather
+ * than jumping (Julian, HAL-20675).
+ */
+const drawingTransition = "transition-transform duration-(--duration-rail-hover) ease-press";
+
+/**
  * The drawing grows to 110% under the pointer in 180ms and shrinks to 90% when pressed in 60ms:
  * the one place the kit scales something (decision HAL-20675). Never while the person prefers
- * reduced motion, and never on the selected button, which doesn't react.
+ * reduced motion, and never on the selected button, which doesn't react. The group is named, so a
+ * group round the button in a screen can't scale it.
  */
 const scaling = [
-  "transition-transform duration-(--duration-rail-hover) ease-press",
-  "motion-safe:group-hover:scale-110 motion-safe:group-active:scale-90 group-active:duration-(--duration-rail-press)",
+  "motion-safe:group-hover/rail-button:scale-110 motion-safe:group-active/rail-button:scale-90",
+  "group-active/rail-button:duration-(--duration-rail-press)",
 ].join(" ");
 
 /**
@@ -77,7 +84,9 @@ export function RailButton({ label, icon, selected, onSelect, count, href }: Rai
   };
   const content = (
     <>
-      <span className={`grid size-6 place-items-center *:size-full ${selected ? "" : scaling}`}>
+      <span
+        className={`grid size-6 place-items-center *:size-full ${drawingTransition}${selected ? "" : ` ${scaling}`}`}
+      >
         {icon(selected)}
       </span>
       {shownCount === undefined ? null : <CountBadge value={shownCount.value} />}
@@ -99,6 +108,9 @@ export function RailButton({ label, icon, selected, onSelect, count, href }: Rai
   );
 }
 
+/** Past this the badge shows "99+", as the Messenger's rows do (`kit.rail-button-count-cap`). */
+const maxShownCount = 99;
+
 /**
  * The 20px badge, 3px above and 5px beyond the circle's top end, with a 2px ring in the
  * rail's colour (`canvas`). The button's name already says it, so it's hidden here.
@@ -109,7 +121,7 @@ function CountBadge({ value }: { readonly value: number }) {
       aria-hidden="true"
       className="absolute -end-1.25 -top-0.75 grid h-5 min-w-5 place-items-center rounded-full bg-accent px-1.5 text-caption text-on-primary tabular-nums ring-2 ring-canvas"
     >
-      {value}
+      {value > maxShownCount ? `${maxShownCount}+` : value}
     </span>
   );
 }
