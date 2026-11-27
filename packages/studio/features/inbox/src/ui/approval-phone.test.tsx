@@ -58,6 +58,21 @@ verifies("inbox.approval-phone", () => {
       );
     });
 
+    it("points a wait step's decided line at Open run, or at the computer without it", async () => {
+      for (const [onOpenRun, words] of [
+        [() => {}, "Open the run to see what it did."],
+        [undefined, "See what it did in Studio on your computer."],
+      ] as const) {
+        const { root, later } = wait.openCard({ onOpenRun }, "phone");
+        later(61);
+        await wait.press(wait.button(root, "Approve"));
+        expect(nothingElseLine(root)?.textContent).toBe(
+          `Nothing else is waiting for you. ${words}`,
+        );
+        unmountAll();
+      }
+    });
+
     it("still says the run finished when the approve finished it", async () => {
       const { root, later } = openCard(
         {

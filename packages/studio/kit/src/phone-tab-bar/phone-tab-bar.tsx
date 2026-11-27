@@ -161,10 +161,10 @@ function TabPill({
 }
 
 /**
- * A signal at the icon's corner (component specs 15.2, rev. 6): the count's right edge and top
- * inside the 56×28px pill, ring included, so however wide the count, it stays inside the
- * current place's filled pill (HAL-19399 G13); the dot centred on the icon's top right
- * corner. Both have a 2px `surface` ring, and the count sits on a `surface` backing so the pill
+ * A signal at the icon's corner: the count's right edge and top inside the 56×28px pill, ring
+ * included, so however wide the count, it stays inside the current place's filled pill (HAL-19399
+ * G13, which moved it from component specs 15.2 rev. 6's spot above the pill); the dot centred on
+ * the icon's top right corner (15.2, rev. 6). Both have a 2px `surface` ring, and the count sits on a `surface` backing so the pill
  * doesn't show through its soft fill. The tab's name already says it, so it's hidden here.
  */
 function IconSignal({ signal }: { readonly signal: TabSignal }) {

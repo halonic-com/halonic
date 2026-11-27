@@ -289,8 +289,8 @@ interface AnswerBarProps {
  * The bar under the card, none red (flow-inbox 5.1, first-run 4.3). On a phone the first answer is
  * primary and full width, the others secondary sharing a row under it. On a desktop they sit in one
  * right-aligned row at their natural width with the first at the right end, as Approve is on the
- * approval card (HAL-19399 G8): stretched across a 730 px pane they read as one bar. While one is sent it is busy and the others ignore presses but
- * keep focus.
+ * approval card (HAL-19399 G8): stretched across a 730 px pane they read as one bar. While one is
+ * sent it is busy and the others ignore presses but keep focus.
  *
  * A step's label has no length limit, so a button keeps it on one line and ends it with an
  * ellipsis at its edge, with the whole label as its name, and as its tooltip only when cut off

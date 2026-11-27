@@ -122,13 +122,14 @@ type Opening = { readonly from: "picker" } | { readonly from: "recent"; readonly
  * Studio", what a workspace is, and **Open folder**, centred with no sidebar and no tabs. With the
  * app's demo and an empty Recent, **Open demo** is the primary button beside it and "New here? The
  * demo takes about 4 minutes." sits right under the buttons, except while Halonic's start shows
- * (`shell.welcome-sample`); else **Open folder** is the primary button. With the app's New workspace dialog, **New workspace…** comes
- * last as a quiet link. The column hangs a fixed 18% of the window height from the top rather than
- * centring, so nothing above a new line (Recent, an error) moves under the pointer. While the
- * folder opens the button reads "Opening…" and is busy: it keeps focus and ignores presses. A
- * folder that fails to open says why under the text in the danger colour, and the button works
- * again (`shell.welcome.cant-open`); a reason Halonic can't explain comes with **Copy details**.
- * Cancelling the picker changes nothing. Focus starts on the primary button (accessibility pass 1.3).
+ * (`shell.welcome-sample`); else **Open folder** is the primary button. With the app's New
+ * workspace dialog, **New workspace…** comes last as a quiet link. The column hangs a fixed 18% of
+ * the window height from the top rather than centring, so nothing above a new line (Recent, an
+ * error) moves under the pointer. While the folder opens the button reads "Opening…" and is busy:
+ * it keeps focus and ignores presses. A folder that fails to open says why under the text in the
+ * danger colour, and the button works again (`shell.welcome.cant-open`); a reason Halonic can't
+ * explain comes with **Copy details**. Cancelling the picker changes nothing. Focus starts on the
+ * primary button (accessibility pass 1.3).
  *
  * While Halonic starts, the waiting line shows under the buttons from 2 seconds, and **Open demo**
  * and **Open folder** are off with a line that says why; a start that fails shows why there, with

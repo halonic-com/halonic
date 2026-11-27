@@ -381,3 +381,25 @@ describe("theme.css built by Tailwind: breakpoints", () => {
     expect(used).toEqual([]);
   });
 });
+
+verifies("shell.focus-ring-after-pointer", () => {
+  describe("theme.css built by Tailwind: no ring on code focus after a pointer press", () => {
+    const pointer =
+      ':root[data-input="pointer"] :is(:is(h1, h2, h3, h4, h5, h6)[tabindex="-1"], [data-code-focus]):focus-visible {';
+
+    it("takes the ring's shadow off outside any layer, so a heading's own classes don't bring it back", async () => {
+      const css = await buildCss([]);
+      // At the top level, not indented inside an `@layer` block.
+      expect(css).toContain(`\n${pointer}`);
+      const start = css.indexOf(pointer);
+      const rule = css.slice(start, css.indexOf("\n}", start));
+      expect(rule).toContain("box-shadow: none;");
+    });
+
+    it("leaves the outline alone, so high-contrast mode still rings the focus", async () => {
+      const css = await buildCss([]);
+      const start = css.indexOf(pointer);
+      expect(css.slice(start, css.indexOf("\n}", start))).not.toContain("outline");
+    });
+  });
+});
