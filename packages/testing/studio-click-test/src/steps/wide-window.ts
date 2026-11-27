@@ -40,17 +40,20 @@ export async function inWideWindow(
     return { passed: false, code: "NO_WIDE_WINDOW", note };
   }
   const restore = () => driver.setWindowSize(before).then(() => undefined, errorText);
+  const ranIn = `It ran in a ${wide.width} × ${wide.height} window.`;
   const outcome = await step().catch(async (error: unknown) => {
-    // A step that threw keeps its own error; the runner's restart resets the window anyway.
+    // A step that threw keeps its own error, with the size it ran in, since the runner's
+    // screenshot comes after the restore; the runner's restart resets the window anyway.
     await restore();
-    throw error;
+    throw new Error(`${ranIn} ${errorText(error)}`, { cause: error });
   });
   const whyNot = await restore();
   if (whyNot === undefined) {
     if (outcome.passed) return outcome;
     return {
       ...outcome,
-      note: `${outcome.note} It ran in a ${wide.width} × ${wide.height} window.`,
+      // The size comes first: a note can end in quoted screen text with no closing mark.
+      note: `${ranIn} ${outcome.note}`,
     };
   }
   const kept = `The window kept ${wide.width} × ${wide.height} (${whyNot}).`;

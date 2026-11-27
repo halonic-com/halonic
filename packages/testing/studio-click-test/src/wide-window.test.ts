@@ -60,8 +60,19 @@ verifies("studio-click-test.wide-window", () => {
     const studio = fakeStudio("Home");
     await expect(windowTabs.run(studio.context)).resolves.toMatchObject({
       passed: false,
-      note: expect.stringMatching(/ It ran in a 1280 × 800 window\.$/),
+      note: expect.stringMatching(/^It ran in a 1280 × 800 window\. /),
     });
+  });
+
+  it("names the size a step that threw ran in, and gives the window its size back", async () => {
+    const studio = studioOnDemo();
+    studio.context.driver.title = async () => {
+      throw new Error("no such window");
+    };
+    await expect(demoWorkspace.run(studio.context)).rejects.toThrow(
+      "It ran in a 1280 × 800 window. no such window",
+    );
+    expect(studio.windowSize).toEqual({ width: 800, height: 600 });
   });
 
   it("passes in the size the driver answers when a small screen caps it", async () => {

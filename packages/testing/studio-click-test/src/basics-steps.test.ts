@@ -62,7 +62,7 @@ verifies("studio-click-test.basics-steps", () => {
       studio.title = "Support reply · Halonic";
       await expect(demoWorkspace.run(studio.context)).resolves.toMatchObject({
         code: "WRONG_TITLE",
-        note: 'Window title: "Support reply · Halonic". It ran in a 1280 × 800 window.',
+        note: 'It ran in a 1280 × 800 window. Window title: "Support reply · Halonic".',
       });
     });
 
@@ -117,7 +117,7 @@ verifies("studio-click-test.basics-steps", () => {
       await expect(windowTabs.run(studio.context)).resolves.toEqual({
         passed: false,
         code: "TAB_NOT_CLOSED",
-        note: "Ctrl W: 2 tabs before, 2 after. It ran in a 1280 × 800 window.",
+        note: "It ran in a 1280 × 800 window. Ctrl W: 2 tabs before, 2 after.",
       });
     });
 

@@ -72,7 +72,7 @@ export const basicsText = {
   welcomeLine: { text: "Local first, private, and yours.", file: welcomeFile },
   recent: { text: "Recent", file: "packages/studio/shell/src/welcome/welcome-recent.tsx" },
   demoTag: { text: "Demo", file: "packages/studio/shell/src/welcome/welcome-recent.tsx" },
-  demoFolder: { text: "Acme sample", file: "apps/studio/src/studio/sample-host.ts" },
+  demoFolder: { text: "Acme demo", file: "apps/studio/src/studio/sample-host.ts" },
   switcher: {
     text: "Workspace: ",
     file: "packages/studio/shell/src/sidebar/workspace-switcher.tsx",
