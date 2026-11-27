@@ -82,7 +82,15 @@ export function MetaLine({
   );
 }
 
-/** The step's closing words above its answers, such as "Approving finishes the run. Nothing is sent.". */
+/**
+ * The step's closing words above its answers, such as "Approving finishes the run. Nothing is sent.".
+ * They come from the workflow, so hidden characters show as markers in their own direction
+ * (`inbox.plain-values`).
+ */
 export function Caption({ note }: { readonly note: string | null }) {
-  return note === null ? null : <p className="text-small text-fg-muted">{note}</p>;
+  return note === null ? null : (
+    <p dir="auto" className="text-small text-fg-muted">
+      {markHiddenName(note)}
+    </p>
+  );
 }
