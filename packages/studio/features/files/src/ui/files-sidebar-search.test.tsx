@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import type { FilesHost } from "../files-host.ts";
+import { askRename, takeRenameAsked } from "../rename-request.ts";
 import { requestFilesReveal, takeFilesRevealRequests } from "../reveal-request.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, listing, rowNamed, settled } from "../test-support/sidebar.ts";
@@ -12,6 +13,7 @@ afterEach(() => {
   unmountAll();
   // A request no view took must not reach the next test's view.
   takeFilesRevealRequests(() => "shown")();
+  takeRenameAsked();
 });
 
 const acme = [
@@ -43,6 +45,14 @@ async function type(page: HTMLElement, value: string): Promise<void> {
     set?.call(field(page), value);
     field(page).dispatchEvent(new Event("input", { bubbles: true }));
   });
+}
+
+function pressEscape(page: HTMLElement): KeyboardEvent {
+  const pressed = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+  act(() => {
+    field(page).dispatchEvent(pressed);
+  });
+  return pressed;
 }
 
 function shownPaths(page: HTMLElement): (string | null)[] {
@@ -92,7 +102,7 @@ verifies("files.ui.tree-search", () => {
     await type(page, " invoice ");
     expect(page.querySelector('[role="tree"]')).toBeNull();
     expect(status(page)).toBe(
-      "No files match “invoice”Check the spelling, or search for part of the name.",
+      "No files match “invoice”.Check the spelling, or search for part of the name.",
     );
   });
 
@@ -137,6 +147,59 @@ verifies("files.ui.tree-search", () => {
     await type(page, "totals");
     await type(page, "total");
     expect(rowNamed(page, "tests").getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("leaves the folders opened before the search alone when one is closed during it", async () => {
+    const page = await show();
+    act(() => rowNamed(page, "docs").click());
+    await type(page, "total");
+    act(() => rowNamed(page, "tests").click());
+    pressEscape(page);
+    expect(shownPaths(page)).toEqual(["docs", "docs/guide.md", "src", "tests"]);
+    expect(rowNamed(page, "docs").getAttribute("aria-expanded")).toBe("true");
+    expect(rowNamed(page, "src").getAttribute("aria-expanded")).toBe("false");
+    expect(rowNamed(page, "tests").getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("moves focus to the next row the search shows after Delete on a result", async () => {
+    let paths = acme;
+    let notify = () => {};
+    const host: FilesHost = {
+      ...contextHost(),
+      list: async () => listing(paths),
+      subscribe: (listener) => {
+        notify = listener;
+        return () => {};
+      },
+      remove: async (path) => {
+        paths = paths.filter((other) => other !== path);
+        notify();
+        return { places: 0, undo: async () => {} };
+      },
+    };
+    const page = render(<FilesSidebarView context={contextOf(host)} />);
+    await settled();
+    await type(page, "total");
+    const row = rowNamed(page, "src/checkout/totals.ts");
+    act(() => row.click());
+    await act(async () => {
+      row.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
+    });
+    await settled();
+    expect(shownPaths(page)).toEqual(["tests", "tests/subtotal.test.ts"]);
+    expect(document.activeElement).toBe(rowNamed(page, "tests"));
+  });
+
+  it("empties the field when a file's tab asks to rename a file the search hides", async () => {
+    const page = await show();
+    act(() => rowNamed(page, "docs").click());
+    await type(page, "total");
+    await act(async () => askRename("docs/guide.md"));
+    expect(field(page).value).toBe("");
+    expect(
+      rowNamed(page, "docs/guide.md").querySelector<HTMLInputElement>('input:not([type="search"])')
+        ?.value,
+    ).toBe("guide.md");
   });
 
   it("empties the field when another feature asks to show a path", async () => {

@@ -58,11 +58,15 @@ export function useTreeSearch(
     setClosed(noFolders);
   }, []);
 
-  // Kept the same between draws, so the tree doesn't measure its rows again on every draw.
+  // The open folders are kept the same while only the focus moves, so the tree doesn't work out
+  // and measure its rows again on every arrow key.
+  const searchedExpanded = useMemo(
+    () => (found === undefined ? undefined : foldersWithout(found.folders, closed)),
+    [found, closed],
+  );
   const shownState = useMemo(
-    () =>
-      found === undefined ? state : { ...state, expanded: foldersWithout(found.folders, closed) },
-    [found, closed, state],
+    () => (searchedExpanded === undefined ? state : { ...state, expanded: searchedExpanded }),
+    [searchedExpanded, state],
   );
   const kept = state.expanded;
   const onStateChange = useCallback(

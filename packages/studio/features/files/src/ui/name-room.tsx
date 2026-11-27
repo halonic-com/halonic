@@ -6,6 +6,11 @@ export interface NameRoom {
   readonly room: ReadonlyMap<string, number>;
   /** Undefined where text can't be measured: names then keep their fixed cut. */
   readonly widthOf: ((text: string) => number) | undefined;
+  /**
+   * The same in the font of the open file's name, which is heavier and so wider
+   * (`files.ui.tree-rows`). Undefined while no open file's row shows, or it can't be measured.
+   */
+  readonly openWidthOf: ((text: string) => number) | undefined;
 }
 
 /** How the names are drawn, from the parts of their style that change a text's width. */
@@ -56,10 +61,15 @@ function measureRoom(tree: HTMLElement): Map<string, number> {
   return room;
 }
 
-/** The font the names are drawn in. */
-function namesFont(tree: HTMLElement): NamesFont {
-  const name = tree.querySelector<HTMLElement>("[data-name]");
-  if (name === null) return { font: "", letterSpacing: "normal" };
+const noFont: NamesFont = { font: "", letterSpacing: "normal" };
+/** The name in the open file's row, and a name in any other row. */
+const openName = '[aria-selected="true"] [data-name]';
+const otherName = '[role="treeitem"]:not([aria-selected="true"]) [data-name]';
+
+/** The font the first name `selector` finds is drawn in; no font when it finds none. */
+function nameFont(tree: HTMLElement, selector: string): NamesFont {
+  const name = tree.querySelector<HTMLElement>(selector);
+  if (name === null) return noFont;
   const style = getComputedStyle(name);
   return {
     font: [style.fontStyle, style.fontWeight, style.fontSize, style.fontFamily].join(" "),
@@ -77,19 +87,33 @@ function sameRoom(before: ReadonlyMap<string, number>, after: ReadonlyMap<string
   );
 }
 
+/** What was measured, with the fonts it was measured in, so a new font is noticed. */
+interface Measured extends NameRoom {
+  readonly font: NamesFont;
+  readonly openFont: NamesFont;
+}
+
 /**
  * The room each row's name has and a way to measure text in its font, measured again when the
  * tree's width changes (the sidebar's edge, the window, the zoom), when `rows` change and once the
  * fonts have loaded. A name takes the room its row leaves after the indent, the marks and the ⋮,
- * whatever its own length.
+ * whatever its own length. The open file's name is drawn in its own, heavier font, so it is measured
+ * in that one: cut at the other names' widths it would overflow and lose its end too.
  */
-export function useNameRoom(tree: RefObject<HTMLElement | null>, rows: unknown): NameRoom {
-  const [measured, setMeasured] = useState<NameRoom & { font: NamesFont }>({
+export function useNameRoom(
+  tree: RefObject<HTMLElement | null>,
+  rows: unknown,
+  openPath?: string,
+): NameRoom {
+  const [measured, setMeasured] = useState<Measured>({
     room: new Map(),
     widthOf: undefined,
-    font: { font: "", letterSpacing: "normal" },
+    openWidthOf: undefined,
+    font: noFont,
+    openFont: noFont,
   });
-  // `rows` is a dependency because it changes which names are drawn, and how much room each has.
+  // `rows` is a dependency because it changes which names are drawn, and how much room each has;
+  // `openPath` because it changes which name is drawn in the open file's font.
   useLayoutEffect(() => {
     const target = tree.current;
     if (target === null) return;
@@ -97,12 +121,20 @@ export function useNameRoom(tree: RefObject<HTMLElement | null>, rows: unknown):
     const measure = (fontsLoaded = false) => {
       if (!live) return;
       const room = measureRoom(target);
-      const font = namesFont(target);
+      const font = nameFont(target, otherName);
+      const openFont = nameFont(target, openName);
       setMeasured((before) => {
         const fontKept = sameFont(before.font, font) && !fontsLoaded;
-        if (fontKept && sameRoom(before.room, room)) return before;
+        const openFontKept = sameFont(before.openFont, openFont) && !fontsLoaded;
+        if (fontKept && openFontKept && sameRoom(before.room, room)) return before;
         // A new font, or one that has just loaded, draws text at new widths: measure it afresh.
-        return { room, font, widthOf: fontKept ? before.widthOf : textMeasure(font) };
+        return {
+          room,
+          font,
+          openFont,
+          widthOf: fontKept ? before.widthOf : textMeasure(font),
+          openWidthOf: openFontKept ? before.openWidthOf : textMeasure(openFont),
+        };
       });
     };
     measure();
@@ -114,6 +146,6 @@ export function useNameRoom(tree: RefObject<HTMLElement | null>, rows: unknown):
       live = false;
       observer?.disconnect();
     };
-  }, [tree, rows]);
+  }, [tree, rows, openPath]);
   return measured;
 }

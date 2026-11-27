@@ -30,9 +30,13 @@ const nameLimit = 32;
 /**
  * The name a row shows: cut in the middle to the room its row has, so its start and its end stay in
  * sight at any depth, or at `nameLimit` characters until the room is measured.
+ *
+ * @param isOpenFile - whether the row is the file in the active tab
  */
-function shownName(node: TreeNode, { room, widthOf }: NameRoom): string {
-  const width = room.get(node.path);
+function shownName(node: TreeNode, nameRoom: NameRoom, isOpenFile: boolean): string {
+  // The open file's name is in medium weight, which is wider: it is cut at its own widths.
+  const widthOf = isOpenFile ? nameRoom.openWidthOf : nameRoom.widthOf;
+  const width = nameRoom.room.get(node.path);
   if (width === undefined || widthOf === undefined) return cutInMiddle(node.name, nameLimit);
   return cutToWidth(node.name, width, widthOf);
 }
@@ -159,7 +163,7 @@ export function FilesTree({
 }: FilesTreeProps) {
   const rows = useMemo(() => visibleRows(roots, state.expanded), [roots, state.expanded]);
   const tree = useRef<HTMLDivElement>(null);
-  const nameRoom = useNameRoom(tree, rows);
+  const nameRoom = useNameRoom(tree, rows, activePath);
   // The row that takes the Tab stop: the focused one, or the first while nothing is focused.
   const stop = rows.some((row) => row.node.path === state.focus) ? state.focus : rows[0]?.node.path;
   const focusing = useRef(false);
@@ -264,7 +268,7 @@ export function FilesTree({
         const { node } = row;
         const open = node.kind === "folder" && state.expanded.has(node.path);
         const label = marksLabel(node);
-        const shown = shownName(node, nameRoom);
+        const shown = shownName(node, nameRoom, node.path === activePath);
         return (
           <Fragment key={node.path}>
             {/* biome-ignore lint/a11y/useKeyWithClickEvents: keys are handled by the tree */}

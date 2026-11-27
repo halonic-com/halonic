@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -32,13 +33,31 @@ function resize(name: number): void {
   });
 }
 
-/** A canvas that draws every character `drawn.ch` wide, or none, as where text can't be measured. */
+/**
+ * A canvas that draws every character `drawn.ch` wide, and a fifth wider in medium weight (500), as
+ * a real font does; or no canvas, as where text can't be measured.
+ */
 function fakeContext() {
   if (!drawn.canvas) return null;
   return {
     font: "10px sans-serif",
-    measureText: (text: string) => ({ width: text.length * drawn.ch }),
+    measureText(text: string) {
+      const wider = this.font.includes(" 500 ") ? 1.2 : 1;
+      return { width: text.length * drawn.ch * wider };
+    },
   };
+}
+
+/** The names' style as the theme gives it, which jsdom has no stylesheet for: 500 in the open file's row. */
+function fakeStyle(element: Element): CSSStyleDeclaration {
+  const open = element.closest('[aria-selected="true"]') !== null;
+  return {
+    fontStyle: "normal",
+    fontWeight: open ? "500" : "400",
+    fontSize: "14px",
+    fontFamily: "Inter",
+    letterSpacing: "normal",
+  } as CSSStyleDeclaration;
 }
 
 beforeEach(() => {
@@ -68,11 +87,16 @@ const weekly = "weekly-report.routine.yaml";
 const weeklyWorkflow = "weekly-report.workflow.yaml";
 
 /** The Files sidebar with the routines folder open, five levels deep, as in Acme. */
-async function showRoutines(): Promise<HTMLElement> {
+async function showRoutines(active = ""): Promise<HTMLElement> {
   const paths = [quarterly, monthly, weekly].map((name) => `${routines}/${name}`);
   const host = contextHost();
   host.list = async () => listing([...paths, `hubs/acme/workflows/${weeklyWorkflow}`]);
-  const page = render(<FilesSidebarView context={contextOf(host)} />);
+  const activeItem = {
+    get: () => (active === "" ? null : { kind: "file", hub: "workspace", id: active }),
+    subscribe: () => () => {},
+  };
+  const context = { ...contextOf(host), activeItem } as unknown as WorkspaceContext;
+  const page = render(<FilesSidebarView context={context} />);
   await settled();
   for (const folder of ["hubs", "hubs/acme", "hubs/acme/workflows", routines]) {
     act(() => rowNamed(page, folder).click());
@@ -118,5 +142,18 @@ verifies("files.ui.tree-view", () => {
     const name = nameIn(rowNamed(page, `${routines}/${quarterly}`));
     expect(name?.textContent).toHaveLength(32);
     expect(name?.className).toContain("truncate");
+  });
+});
+
+verifies("files.ui.tree-rows", () => {
+  it("cuts the open file's name at its medium weight's widths, so its end stays in sight", async () => {
+    vi.spyOn(window, "getComputedStyle").mockImplementation(fakeStyle);
+    const page = await showRoutines(`${routines}/${quarterly}`);
+    const open = rowNamed(page, `${routines}/${quarterly}`);
+    expect(open.getAttribute("aria-selected")).toBe("true");
+    // 120px holds 16 characters in regular weight, and 13 in medium.
+    expect(nameIn(open)?.textContent).toBe("quarte…e.yaml");
+    expect(nameIn(open)?.title).toBe(quarterly);
+    expect(nameIn(rowNamed(page, `${routines}/${monthly}`))?.textContent).toBe("monthly…ine.yaml");
   });
 });

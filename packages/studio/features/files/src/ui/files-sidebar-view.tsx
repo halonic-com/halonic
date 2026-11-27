@@ -63,16 +63,6 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     setAdding(true);
   }, []);
 
-  // A tab's ⋮ or F2 asks for its file's name to be edited here; the ask waits until this view is shown.
-  useEffect(() => {
-    const takeAsk = () => {
-      const path = takeRenameAsked();
-      if (path !== undefined) setRenaming(path);
-    };
-    takeAsk();
-    return subscribeRenameAsked(takeAsk);
-  }, []);
-
   const latest = useRef(0);
   // The row that takes focus once the listing shows it: the next row after a delete, the restored
   // row after Undo. The listing changes a moment after the host says so, so the focus waits for it.
@@ -125,6 +115,19 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     setState,
   );
   const { roots, allRoots, type: typeSearch } = search;
+
+  // A tab's ⋮ or F2 asks for its file's name to be edited here; the ask waits until this view is
+  // shown. A search could hide the file's row, and its name field with it, so the search ends.
+  useEffect(() => {
+    const takeAsk = () => {
+      const path = takeRenameAsked();
+      if (path === undefined) return;
+      typeSearch("");
+      setRenaming(path);
+    };
+    takeAsk();
+    return subscribeRenameAsked(takeAsk);
+  }, [typeSearch]);
 
   const focusRow = useCallback((path: string | undefined) => {
     if (path === undefined) return;
