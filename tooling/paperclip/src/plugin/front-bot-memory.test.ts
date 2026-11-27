@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import type { PluginApiRequestInput } from "@paperclipai/plugin-sdk";
 import { describe, expect, test } from "vitest";
+import { noteLimit } from "../front-bot/memory.ts";
 import { fakeState } from "./fake-host.test-helper.ts";
 import {
   boardUserId,
@@ -11,7 +12,6 @@ import {
   frontBotHarness,
   plantedKey,
 } from "./front-bot.test-helper.ts";
-import { noteLimit } from "../front-bot/memory.ts";
 import { handleChatMemory, readMemory, writeMemory } from "./front-bot-memory.ts";
 import { chatMemoryClearRouteKey, chatMemoryRouteKey } from "./front-bot-notes.ts";
 
