@@ -53,6 +53,7 @@ import { showInChatEntry } from "./show-in-chat-entry.ts";
 import { useAgentCards } from "./use-agent-cards.ts";
 import { type AgentView, agentTabs, useAgentView } from "./use-agent-view.ts";
 import { useLoad } from "./use-load.ts";
+import { useRenamePlaces } from "./use-rename-places.ts";
 import { useTakenNames } from "./use-taken-names.ts";
 import { focusAfterAdd, focusedIn, mapAdds, pickedPageTab } from "./view-opening.ts";
 
@@ -177,6 +178,7 @@ export function AgentScreen({
     settings.retry();
   };
   const takenNames = useTakenNames(host, { hubId, id });
+  const renamePlaces = useRenamePlaces(host, { hubId, id });
   const { view, selectView, fresh, modelWaiting, modelShown } = useAgentView(
     hubId,
     id,
@@ -426,6 +428,7 @@ export function AgentScreen({
         if (ready) void save({ name: next });
       }}
       check={(next) => nameProblem(next, takenNames)}
+      renameNote={renamePlaces.length === 0 ? undefined : pageWords.alsoUpdates(renamePlaces)}
       titleRef={titleRef}
       actions={ready ? [...showInChatEntry(showInChat, name, phone), ...trash.actions] : []}
       end={ready && fullAccess}

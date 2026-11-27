@@ -59,6 +59,8 @@ export interface ItemPageProps<Id extends string> {
   readonly onRename?: ((name: string) => void) | undefined;
   /** Checks a new name as it is typed: why it can't be kept, or `undefined` when it can. */
   readonly check?: ((name: string) => string | undefined) | undefined;
+  /** A quiet line under the name while a new name without a problem is typed: "Also updates 3 places: …". */
+  readonly renameNote?: string | undefined;
   /** The page's `h1`, for a page that moves the focus to its title. */
   readonly titleRef?: Ref<HTMLHeadingElement> | undefined;
   readonly actions?: readonly MenuItem[] | undefined;

@@ -8,6 +8,21 @@ export const pageWords = {
   loadFailedTitle: "Couldn't load this agent",
   tryAgain: "Try again",
   nameTaken: (name: string) => `An agent called ${name} already exists.`,
+  /**
+   * Flow-agents 3.1: under the name field while a new name is typed, the places that use the agent.
+   * Up to 5 names in full; more are 4 names and "and *n* more", as the Files tree's rename line.
+   */
+  alsoUpdates: (owners: readonly string[]) => {
+    const names =
+      owners.length > 5
+        ? `${owners.slice(0, 4).join(", ")} and ${owners.length - 4} more`
+        : owners.join(", ");
+    return `Also updates ${owners.length} ${owners.length === 1 ? "place" : "places"}: ${names}`;
+  },
+  /** A workflow step that runs the agent, in that line: "Inbox flow (Sort mail)". */
+  placeStep: (workflow: string, step: string) => `${workflow} (${step})`,
+  /** A routine that starts the agent, in that line. */
+  placeRoutine: (routine: string) => `${routine} (routine)`,
   views: "Agent views",
   /** Microcopy 2 and flow-agents 3.1: under the header while saved changes aren't in a version. */
   changesNotLive: "Changes not live yet",
