@@ -151,6 +151,30 @@ verifies("shell.settings-container", () => {
   });
 });
 
+verifies("shell.settings-two-columns", () => {
+  it("shows the list column on the frame colour and the section in the content pane", async () => {
+    const { container } = await open();
+    const list = container.querySelector('nav[data-part="list-column"]');
+    expect(list?.className).toContain("w-[34%]");
+    expect(list?.className).toContain("min-w-52");
+    expect(list?.className).toContain("max-w-[380px]");
+    expect(list?.className).toContain("bg-app-frame");
+    expect(list?.className).toContain("border-e");
+    const pane = container.querySelector('[data-part="content-pane"]');
+    expect(pane?.className).toContain("bg-app-panel");
+    expect(pane?.textContent).toContain("Appearance view for appearance");
+  });
+
+  it("fills only the current section's row with the selected colour", async () => {
+    const { container } = await open();
+    expect(row(container, "Appearance").className).toContain("bg-accent-soft");
+    act(() => row(container, "Formats").click());
+    await settle();
+    expect(row(container, "Formats").className).toContain("bg-accent-soft");
+    expect(row(container, "Appearance").className).not.toContain("bg-accent-soft");
+  });
+});
+
 verifies("shell.settings-keyboard", () => {
   it("focuses the current section's row when it opens", async () => {
     const { container } = await open({ requested: "formats" });

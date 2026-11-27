@@ -168,7 +168,10 @@ export function SettingsDialog(props: SettingsDialogProps) {
           onShow={show}
           navRef={nav}
         />
-        <div className="min-w-0 flex-1 overflow-y-auto bg-surface-raised px-6 pt-5 pb-6">
+        <div
+          data-part="content-pane"
+          className="min-w-0 flex-1 overflow-y-auto bg-app-panel px-6 pt-5 pb-6"
+        >
           {section === undefined ? null : (
             <SectionView
               key={section.id}
