@@ -5,6 +5,7 @@
 
 ## Covers
 
+- check.changesets-patch-only
 - tooling/check/
 
 ## What changes
