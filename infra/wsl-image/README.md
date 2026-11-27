@@ -156,8 +156,10 @@ Licences: the image carries Debian's per-package `copyright` files plus
 `/usr/share/doc/halonic-image/NOTICE`, `SNAPSHOT.txt` and `packages.txt` (the
 source pointer). Nothing else in `/usr/share/doc`, `/usr/share/man` or
 `/usr/share/locale` (HAL-20583): `customize.sh` removes it, and
-`/etc/dpkg/dpkg.cfg.d/halonic-nodoc` (from `files/dpkg-nodoc`, plus a line for
-each doc folder that is a link) keeps security updates from bringing it back.
-`check.sh` checks both, and that every installed package has its `copyright`
+`/etc/dpkg/dpkg.cfg.d/halonic-nodoc` (from `files/dpkg-nodoc`) keeps security
+updates from bringing it back. A doc folder that is a link to another package's
+stays: dpkg keeps folders and links above an included path. `check.sh` checks
+both, with invented packages for a later install (one with its doc folder as a
+link), and that every installed package has its `copyright`
 file. Whoever owns licence compliance checks this before the first
 release that ships the image in the installer.

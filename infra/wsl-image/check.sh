@@ -74,21 +74,27 @@ left="$(find "$doc" -mindepth 2 ! -type d ! -name copyright ! -path "$doc/haloni
 while IFS=$'\t' read -r pkg _; do
   [ -f "$doc/$pkg/copyright" ] || fail "no copyright file for $pkg"
 done < "$doc/halonic-image/packages.txt"
-while IFS= read -r link; do
-  grep -qxF "path-include=${link#"$root"}" "$root/etc/dpkg/dpkg.cfg.d/halonic-nodoc" || fail "an update would drop ${link#"$root"}"
-done < <(find "$doc" -mindepth 1 -maxdepth 1 -type l)
-acme="$root/tmp/acme-docs"
-mkdir -p "$acme/DEBIAN" "$acme/usr/share/doc/acme-docs" "$acme/usr/share/man/man1" "$acme/usr/share/locale/nl/LC_MESSAGES"
-printf 'Package: acme-docs\nVersion: 1\nArchitecture: all\nMaintainer: Acme <dev@acme.example>\nDescription: docs\n' > "$acme/DEBIAN/control"
-touch "$acme/usr/share/doc/acme-docs/"{copyright,README} "$acme/usr/share/man/man1/acme.1" "$acme/usr/share/locale/nl/LC_MESSAGES/acme.mo"
-chroot "$root" dpkg-deb --build /tmp/acme-docs /tmp/acme-docs.deb >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
-chroot "$root" dpkg -i /tmp/acme-docs.deb >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
+# acme-libs' doc folder is a link to acme-docs', as libgcc-s1's is to gcc-14-base.
+acme="$root/tmp/acme"
+for pkg in acme-docs acme-libs; do
+  mkdir -p "$acme/$pkg/DEBIAN" "$acme/$pkg/usr/share/doc"
+  printf 'Package: %s\nVersion: 1\nArchitecture: all\nMaintainer: Acme <dev@acme.example>\nDescription: docs\n' "$pkg" > "$acme/$pkg/DEBIAN/control"
+done
+mkdir -p "$acme/acme-docs/usr/share/doc/acme-docs" "$acme/acme-docs/usr/share/man/man1" "$acme/acme-docs/usr/share/locale/nl/LC_MESSAGES"
+touch "$acme/acme-docs/usr/share/doc/acme-docs/"{copyright,README} "$acme/acme-docs/usr/share/man/man1/acme.1" \
+  "$acme/acme-docs/usr/share/locale/nl/LC_MESSAGES/acme.mo"
+ln -s acme-docs "$acme/acme-libs/usr/share/doc/acme-libs"
+for pkg in acme-docs acme-libs; do
+  chroot "$root" dpkg-deb --build "/tmp/acme/$pkg" "/tmp/acme/$pkg.deb" >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
+done
+chroot "$root" dpkg -i /tmp/acme/acme-docs.deb /tmp/acme/acme-libs.deb >/dev/null # leak-guard: allow absolute-path the chroot's own /tmp
 [ -f "$doc/acme-docs/copyright" ] || fail "dpkg left out a new package's copyright file"
+[ -L "$doc/acme-libs" ] && [ -f "$doc/acme-libs/copyright" ] || fail "dpkg left out a new package's doc folder link"
 for gone in doc/acme-docs/README man/man1/acme.1 locale/nl/LC_MESSAGES/acme.mo; do
   [ ! -e "$root/usr/share/$gone" ] || fail "dpkg installed /usr/share/$gone"
 done
-chroot "$root" dpkg --purge acme-docs >/dev/null
-rm -rf "$acme" "$root/tmp/acme-docs.deb"
+chroot "$root" dpkg --purge acme-libs acme-docs >/dev/null
+rm -rf "$acme"
 
 for pkg in bubblewrap socat ripgrep git ca-certificates; do
   grep -q "^$pkg	" "$root/usr/share/doc/halonic-image/packages.txt" || fail "package $pkg missing"
