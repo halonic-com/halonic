@@ -1,7 +1,7 @@
 # Pair a phone
 
-Pair your phone with this computer to see your agents, approve what a run proposes
-and send prompts from the Halonic app on Android. Your code, files and
+Pair your phone with this computer to see your agents, approve what a run
+proposes and send prompts from the Halonic app on Android. Your code, files and
 secrets stay on the computer, but a prompt you send from the phone steers a
 live agent run, so the phone can make an agent do whatever that run's tools
 allow (see Security notes).
@@ -13,9 +13,8 @@ The desktop app offers Remote where `tailscale` is installed; otherwise
 ## Pair a phone
 
 1. On the computer, open **Settings › Remote** and press **Pair a phone**. This
-   turns remote on while the pairing is open; in the desktop app, turning remote
-   on may first ask "Let phones reach this computer?" in a window of its own. The dialog shows a QR code and the
-   time left: a code works once and ends after 5 minutes.
+   turns remote on while the pairing is open, without asking. The dialog shows a
+   QR code and the time left: a code works once and ends after 5 minutes.
 2. On the phone, open the Halonic app and scan the QR code. If you can't scan,
    press **Can't scan? Type a code** on the computer, then on the phone tap
    **Type a code instead**, choose your computer from the list and enter the
@@ -23,8 +22,8 @@ The desktop app offers Remote where `tailscale` is installed; otherwise
 3. Both screens now show a 6-character check code, such as `4F7 · 2KQ`. Compare
    them. If they differ, press **Don't allow** on the computer and start again.
 4. If they match, press **Allow** on the computer. The desktop app asks once
-   more, in a window of its own, "Pair this phone?"; confirm it. The dialog says your phone is
-   paired and what it can do. Press **Done**.
+   more, in a window of its own, "Pair this phone?"; confirm it. The dialog
+   says your phone is paired and what it can do. Press **Done**.
 
 Allow is the only step that pairs a phone. If you don't press it within 2
 minutes, or you press **Don't allow**, nothing is shared.
@@ -51,8 +50,9 @@ the phone answers no approvals: they wait for the computer. To let phones answer
 them, turn on **Let phones answer risky approvals** in **Settings › Remote**;
 the desktop app asks "Let phones answer risky approvals?" in a window of its own.
 The switch is off until you turn it on, and the phone asks its owner for a
-strong biometric check (not only unlocking the phone) before it answers. When the phone is offline, it shows what it last
-read and turns Approve, Reject and the prompt box off until it reconnects.
+strong biometric check (not only unlocking the phone) before it answers.
+When the phone is offline, it shows what it last read and turns Approve, Reject
+and the prompt box off until it reconnects.
 
 ## Unpair a phone
 
@@ -73,6 +73,8 @@ until you revoke it there.
 - **A prompt from the phone needs no approval.** It steers a live run, which can
   do whatever that run's tools allow, as if you typed it on the computer. Pair
   only phones you trust.
+- **Confirm "Pair this phone?" only right after you pressed Allow yourself.**
+  If that question appears when you didn't, press Cancel.
 - **Treat the pairing code like a password for 5 minutes.** Don't read it out or
   show it on a screen share. It is never sent over the network, and five wrong
   tries end it; a dropped connection mid-pairing counts as a wrong try too.
