@@ -96,7 +96,7 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
       >
         {tone.icon}
       </span>
-      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-3.5">
         <div className="min-w-0 flex-[1_1_10rem] wrap-break-word">
           <p className="text-body-strong text-fg">{toast.title}</p>
           {toast.text === undefined ? null : (

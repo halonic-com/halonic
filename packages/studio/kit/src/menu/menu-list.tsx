@@ -9,7 +9,7 @@ import { MenuRow } from "./menu-row.tsx";
 // popover/place-popover.ts: change both together), so a long item wraps or cuts rather than
 // pushing its key and check off the screen. Exported for the states page's static copy.
 export const menuClasses = [
-  "m-0 inset-auto outline-none min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-border p-1",
+  "m-0 inset-auto outline-none min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-transparent p-1",
   "bg-surface text-fg shadow-2",
   "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
 ].join(" ");
