@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it } from "vitest";
 import { Button } from "../button/button.tsx";
 import { ChatComposer, type ChatComposerProps } from "../chat/chat-composer.tsx";
+import { Field } from "../field/field.tsx";
 import { buildCss } from "../test/build-css.spec.ts";
 import { render, unmountAll } from "../test/render.tsx";
 import { Input } from "./input.tsx";
@@ -80,6 +81,21 @@ verifies("kit.prompt-look", () => {
     expect(field).toContain("rounded-sm");
     expect(field).toContain("border-border-control");
     expect(field).not.toContain("shadow-prompt");
+  });
+
+  it("keeps a prompt Input with an error on the danger edge, with no accent on focus", () => {
+    const outside = render(<Input look="prompt" invalid aria-label="Search chats" />).container;
+    const inField = render(
+      <Field label="Search chats" error="Type at least two letters.">
+        <Input look="prompt" />
+      </Field>,
+    ).container;
+    for (const container of [outside, inField]) {
+      const frame = frameOf(container);
+      expect(frame).toContain("border-danger");
+      expect(frame).toContain("focus-field-danger");
+      expect(frame).not.toContain("focus-prompt");
+    }
   });
 
   it("gives a prompt Input the 15px prompt text and no browser clear button beside its Esc", () => {

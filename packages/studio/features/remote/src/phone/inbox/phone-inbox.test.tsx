@@ -201,6 +201,21 @@ verifies("remote.phone-inbox", () => {
     expect(text()).not.toContain("Nothing is sent later.");
   });
 
+  it("sends no answer pressed while the computer isn't answering, then or once it answers again", async () => {
+    const { scene } = await mountInbox([item()]);
+    await open("Ship phase 2 now?");
+    await step(() => scene.tunnel.status("unreachable"));
+    await press("Today");
+    expect(scene.tunnel.sentOf("msg-answer")).toEqual([]);
+
+    await step(() => {
+      scene.connect();
+      scene.list([]);
+    });
+    expect(text()).not.toContain("Nothing is sent later.");
+    expect(scene.tunnel.sentOf("msg-answer")).toEqual([]);
+  });
+
   it("puts the focus on Needs you when the card has left a list that still holds others", async () => {
     const { scene } = await mountInbox([item(), hire]);
     await open("Ship phase 2 now?");

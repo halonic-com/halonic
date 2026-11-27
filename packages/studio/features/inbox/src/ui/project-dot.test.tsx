@@ -56,6 +56,35 @@ async function inboxWith(items: readonly { question: string; project?: Messaging
   return root;
 }
 
+/** Chief asks twice in the Studio app project, so the two cards make one bundle. */
+async function chiefBundle() {
+  const messaging = new FakeAgentMessaging({ now: () => new Date(2026, 10, 24, 10, 0) });
+  const source = messaging.addSource({ label: "Paperclip · Acme" });
+  const agent = messaging.addAgent(source.id, { name: "Chief" });
+  const from = { kind: "agent" as const, agent: agent.id, name: "Chief" };
+  messaging.addInboxItem(source.id, {
+    question: "Ship the phone build?",
+    from,
+    project: studioApp,
+  });
+  messaging.addInboxItem(source.id, { question: "Which button size?", from, project: studioApp });
+  const root = render(
+    <InboxView
+      inbox={new Inbox(fakeRuns([]).runs)}
+      now={() => new Date(2026, 10, 24, 10, 2)}
+      agentMessaging={messaging}
+    />,
+  );
+  await settled();
+  return root;
+}
+
+async function openFirstRow(root: HTMLElement): Promise<Element | null> {
+  await act(async () => rows(root)[0]?.querySelector<HTMLElement>('[role="gridcell"]')?.click());
+  await settled();
+  return root.querySelector('[data-pane="item"] header h2 + p');
+}
+
 verifies("inbox.project-dot", () => {
   it("leads an item's row line with its project's dot and name", async () => {
     const root = await inboxWith([
@@ -98,6 +127,32 @@ verifies("inbox.project-dot", () => {
     expect(second?.querySelector(colour)).not.toBeNull();
     expect(third?.querySelector('[class*="bg-series-"]')).toBeNull();
     expect(rowLine(third)).toContain("Paperclip · Acme · Chief");
+  });
+
+  it("marks a hidden character in the project's name, in the row and in the header", async () => {
+    const rightToLeft = String.fromCodePoint(0x202e);
+    const tricky = { id: "p-tricky", name: `Studio${rightToLeft}app` };
+    const root = await inboxWith([{ question: "Send preview.98 to the phone?", project: tricky }]);
+    expect(rowLine(rows(root)[0])).toContain("Studio⟦U+202E⟧app · Paperclip · Acme");
+    expect(rowLine(rows(root)[0])).not.toContain(rightToLeft);
+    const line = await openFirstRow(root);
+    expect(line?.textContent).toMatch(/^Studio⟦U\+202E⟧app · /);
+    expect(line?.textContent).not.toContain(rightToLeft);
+  });
+
+  it("leads a bundle's row and, once open, its header with the project's dot and name", async () => {
+    const root = await chiefBundle();
+    const [row] = rows(root);
+    expect(rows(root)).toHaveLength(1);
+    expect(rowLine(row)).toContain("2 cards from Chief");
+    expect(rowLine(row).replace(/\s/g, " ")).toContain("Studio app · Paperclip · Acme");
+    const colour = `.${projectColour("p-studio")}`;
+    expect(row?.querySelector(colour)?.nextElementSibling?.className).toContain("truncate");
+
+    const line = await openFirstRow(root);
+    expect(line?.textContent).toMatch(/^Studio app · /);
+    expect(line?.querySelector(colour)).not.toBeNull();
+    expect(line?.querySelector(".truncate")).toBeNull();
   });
 });
 
