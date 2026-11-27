@@ -37,7 +37,7 @@ export interface PlacesListProps {
  * place the features added, in the fixed order. Where you are shows the filled icon in `accent`
  * on the halo tint, and is `aria-current="page"`; the others show the outline in `fg-muted`. A
  * signal shows after the name: a count, or the still running dot, and a screen reader hears it
- * after the name ("Inbox, 2 waiting").
+ * after the name ("Inbox, 3 new, 8 waiting"). A `new` signal also sets the name semibold.
  *
  * A grouped place shows under its group's heading from the shell's `placeGroupNames`, such as
  * "Team" over Spend and seats (HAL-17510 flows, Choice P1); the places of one group stay together.

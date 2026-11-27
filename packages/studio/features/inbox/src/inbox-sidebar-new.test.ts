@@ -1,6 +1,9 @@
-import { showPlace } from "@halonicjs/studio-shell";
+import { createShell, showPlace } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it, vi } from "vitest";
+import { InboxRunsService, InboxService } from "./api.ts";
+import { fakeRuns, WorkspaceServices } from "./fake-runs.test-helper.ts";
+import { inboxFeature } from "./feature.ts";
 import { inboxNewSignal } from "./inbox-count.ts";
 import { inboxItems } from "./inbox-items.ts";
 import { readKey, StoredReadMarks } from "./read-marks.ts";
@@ -49,5 +52,24 @@ verifies("inbox.sidebar-new", () => {
     stop();
     marks.markRead([key]);
     expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it("tells the sidebar through the place when an item is opened, and its count drops", async () => {
+    const shell = createShell({ features: [inboxFeature], hostServices: [InboxRunsService] });
+    const workspace = new WorkspaceServices();
+    workspace.provide(InboxRunsService, fakeRuns([waitingRun("r1")]).runs);
+    shell.services.instantiate(workspace);
+    const place = shell.contributions.places.list().find((added) => added.id === "inbox");
+    const context = shell.services.contextFor("inbox", workspace);
+    const inbox = workspace.get(InboxService);
+    await inbox.refresh();
+    expect(place?.signal?.(context)?.value).toBe(1);
+
+    const listener = vi.fn();
+    const stop = place?.subscribeSignal?.(context, listener);
+    inbox.readMarks.markRead(inbox.state.items.map(readKey));
+    expect(listener).toHaveBeenCalledOnce();
+    expect(place?.signal?.(context)?.value).toBe(0);
+    stop?.();
   });
 });

@@ -90,7 +90,9 @@ export const inboxFeature = defineFeature({
         notices.push(onHold.notices);
       }
       inbox.extraNotices = joinInboxNotices(notices);
-      inbox.readMarks = new StoredReadMarks(globalThis.localStorage ?? null);
+      // Another window's marks come in through the page's `storage` event (inbox.sidebar-new).
+      const events = globalThis instanceof EventTarget ? globalThis : null;
+      inbox.readMarks = new StoredReadMarks(globalThis.localStorage ?? null, undefined, events);
       return inbox;
     });
     studio.places.add({
