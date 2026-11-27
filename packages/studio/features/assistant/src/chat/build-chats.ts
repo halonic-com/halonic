@@ -6,6 +6,7 @@ import type { AssistantHost, Chat, ChatAbout, ChatKind, ChatModel, ShownItem } f
 import { cardReviewsOf } from "../cards/card-reviews.ts";
 import { buildChatWords } from "./build-chat-words.ts";
 import { endOf, endOfError, isSameItem, loadFailure, viewOf, withShown } from "./chat-view.ts";
+import { HomeHold } from "./home-hold.ts";
 import { endLine, type ReplyEnd } from "./turns.ts";
 
 /** Reads a sentence out through the shell's announcer. */
@@ -70,6 +71,8 @@ export class BuildChats {
   private readonly listeners = new Set<() => void>();
   /** The chats open as tabs (`assistant.chat.open-as-tab`). */
   private readonly tabbed = new Set<string>();
+  /** The chat Home's content pane holds (`assistant.home.chats`). */
+  readonly home = new HomeHold();
   private currentId: string | undefined;
   private state: Shown = { kind: "loading" };
   private keepFocus = false;
@@ -95,7 +98,9 @@ export class BuildChats {
     if (shown !== undefined) return this.show({ kind: "chat", view: shown });
     await this.load(async () => {
       if (this.currentId !== undefined) return this.host.chat(this.currentId);
-      const recent = (await this.host.chats()).find((chat) => !this.tabbed.has(chat.id));
+      const recent = (await this.host.chats()).find(
+        (chat) => !this.tabbed.has(chat.id) && chat.id !== this.home.held(),
+      );
       return recent === undefined ? this.host.newChat("build") : this.host.chat(recent.id);
     });
   }
@@ -126,8 +131,20 @@ export class BuildChats {
    * opens on another one next time. Its shown items go along, since they belong to the chat.
    */
   moveToTab(chatId: string): void {
+    this.home.leave(chatId);
     this.tabbed.add(chatId);
     this.leavePanel(chatId);
+  }
+
+  /**
+   * Holds a chat in Home's content pane: the panel and its tab let go of it. Returns the function
+   * that gives it back, after which it is an ordinary panel chat again.
+   */
+  holdInHome(chatId: string): () => void {
+    this.tabbed.delete(chatId);
+    const release = this.home.hold(chatId);
+    this.leavePanel(chatId);
+    return release;
   }
 
   /**
@@ -349,6 +366,7 @@ export class BuildChats {
     this.stoppers.get(chatId)?.abort();
     this.views.delete(chatId);
     this.tabbed.delete(chatId);
+    this.home.leave(chatId);
     this.leavePanel(chatId);
   }
 
@@ -415,6 +433,8 @@ export class BuildChats {
   }
 
   private show(state: Shown): void {
+    // The panel shows the chat now, so Home no longer holds it.
+    if (state.kind === "chat") this.home.leave(state.view.chat.id);
     this.state = state;
     this.changed();
   }
