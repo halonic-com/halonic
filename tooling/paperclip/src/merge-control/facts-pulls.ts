@@ -129,11 +129,13 @@ function queueExitOf(node: PullNode): GatePull["queueExit"] {
 
 function filesOf(
   node: PullNode,
-): Pick<GatePull, "files" | "filesTotal" | "fileNet" | "previousPaths"> {
+): Pick<GatePull, "files" | "filesTotal" | "fileNet" | "fileLines" | "previousPaths"> {
   const files = node.files?.nodes ?? [];
   const fileNet: Record<string, number> = {};
+  const fileLines: Record<string, number> = {};
   const previousPaths: Record<string, string | null> = {};
   for (const file of files) {
+    fileLines[file.path] = file.additions + file.deletions;
     if (file.changeType !== "DELETED") {
       fileNet[file.path] = file.additions - file.deletions;
     }
@@ -146,6 +148,7 @@ function filesOf(
     files: files.map((file) => file.path),
     filesTotal: node.changedFiles,
     fileNet,
+    fileLines,
     ...(Object.keys(previousPaths).length === 0 ? {} : { previousPaths }),
   };
 }

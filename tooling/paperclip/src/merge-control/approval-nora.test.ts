@@ -29,6 +29,16 @@ verifies("paperclip.merge-control-nora-scope", () => {
     });
   });
 
+  test("tests, Markdown and wording don't count toward her line limit (#6678, HAL-20645)", () => {
+    const spec = "packages/studio/features/inbox/src/view.test.tsx";
+    const fileLines = { [view]: 1222, [spec]: 597 };
+    const big = { files: [view, spec], filesTotal: 2, additions: 1700, deletions: 119 };
+    expect(addedWith({ texts: [nora], ...big, fileLines })).toEqual([1]);
+    expect(addedWith({ texts: [nora], ...big, fileLines: { ...fileLines, [view]: 1501 } })).toEqual(
+      [],
+    );
+  });
+
   test("outside Julian's limits, on her own branch or a release branch, it needs Liam", () => {
     for (const file of ["turbo.json", "tooling/check/x.ts", "pnpm-lock.yaml"]) {
       expect(addedWith({ texts: [nora], files: [file], fileNet: {} })).toEqual([]);
