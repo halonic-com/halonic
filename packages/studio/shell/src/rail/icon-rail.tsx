@@ -17,7 +17,10 @@ import { type PlaceOfKind, selectedRailEntry } from "./rail-selection.ts";
 export interface IconRailProps {
   /** The entries to show: `shell.contributions.rail.shown(facts, kept)`. Settings goes last. */
   readonly entries: readonly Registered<RailEntry>[];
-  /** The open workspace's tabs: a click opens there, and the active tab says which entry is selected. */
+  /**
+   * The open workspace's tabs: a click opens there, and the active tab says which entry is
+   * selected.
+   */
   readonly tabs: TabSet;
   /** The place an item kind registers: `(kind) => contributions.itemKinds.get(kind)?.place`. */
   readonly placeOfKind: PlaceOfKind;

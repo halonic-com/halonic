@@ -1,7 +1,8 @@
 import type { RailEntryContribution } from "@halonicjs/studio-shell";
 
 /**
- * Inbox's entry in the icon rail (`inbox.rail-entry`): it shows while the folder has items, or while an Inbox item waits, so a waiting question is never hidden.
+ * Inbox's entry in the icon rail (`inbox.rail-entry`): it shows while the folder has items, or
+ * while an Inbox item waits, so a waiting question is never hidden.
  */
 export const inboxRailEntry: RailEntryContribution = {
   id: "inbox",
