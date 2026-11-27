@@ -113,14 +113,22 @@ describe("createQuickJsToolScriptHost", () => {
       );
       expect(good.result).toMatchObject({ ok: true, calls: ["acme.set-secret@1"] });
       expect(revealed).toEqual(["acme-value"]);
-      expect(good.confirmed[0]?.[0]?.args).toEqual({ name: "b", value: { secret: "token" } });
-      const bad = await run(
-        "await ctx.acme.setSecret({ name: ctx.input.token, value: 'x' });",
-        [capability],
-        secretHeader,
-        secretInput,
-      );
-      expect(bad.result).toMatchObject({ ok: false, reason: "toolscript.bad-handle", calls: [] });
+      expect(good.confirmed[0]?.[0]).toMatchObject({ secretInputs: { value: "token" } });
+      expect(JSON.stringify(good.confirmed)).not.toContain("acme-value");
+      for (const args of [
+        "{ name: ctx.input.token, value: 'x' }",
+        "{ name: 'b', value: [ctx.input.token] }",
+        "{ name: 'b', value: { id: ctx.input.token } }",
+      ]) {
+        const bad = await run(
+          `await ctx.acme.setSecret(${args});`,
+          [capability],
+          secretHeader,
+          secretInput,
+        );
+        expect(bad.result).toMatchObject({ ok: false, reason: "toolscript.bad-handle", calls: [] });
+        expect(bad.confirmed).toEqual([]);
+      }
     });
 
     it("refuses a write outside the header's touches before confirm", async () => {

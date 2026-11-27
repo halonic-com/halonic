@@ -11,6 +11,9 @@ When the QuickJS adapter's ToolScript host runs an artifact, it shall run it wit
 - Given a user host and the contract's `acme` registry,
   when the contract suite runs,
   then every case passes.
-- Given a script that returns `JSON.stringify(ctx.input)` for a secret input,
+- Given a script that checks whether `String(ctx.input.token)` contains the secret's value,
   when it is run,
-  then the output doesn't contain the secret's value.
+  then the answer is no.
+- Given a script that passes the handle nested inside a declared secret field, as in `{ value: [ctx.input.token] }`,
+  when it is run,
+  then the run stops with `toolscript.bad-handle` and nothing is confirmed or sent.
