@@ -318,6 +318,25 @@
   }
 }
 
+/*
+ * A prompt TextArea's height limit: the same, but its fallback line is the reading text's 24px,
+ * since a prompt's text is the 15px of chat messages (kit.prompt-look).
+ */
+@utility max-h-rows-reading {
+  max-height: calc(var(--max-rows) * var(--text-reading--line-height));
+  max-height: calc(var(--max-rows) * 1lh);
+
+  @variant touch {
+    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
+    max-height: calc(var(--max-rows) * 1lh);
+  }
+
+  @variant phone {
+    max-height: calc(var(--max-rows) * var(--text-input-touch--line-height));
+    max-height: calc(var(--max-rows) * 1lh);
+  }
+}
+
 /* A Dialog's frame (specs 8) inside the window's edges. The vh line is for an engine without dvh. */
 @utility dialog-frame {
   max-width: calc(100vw - 32px);

@@ -47,9 +47,12 @@ const boxClasses = [
   "inset-shadow-[0_1px_0_light-dark(transparent,rgb(255_255_255/0.06))]",
 ].join(" ");
 
-/** The agent chip: a 32 px pill with the agent's picture, its name and a chevron (design section 4). */
+/**
+ * The agent chip: a 32 px pill with the agent's picture, its name and a chevron (design section 4),
+ * 2 px down so it centres on the 36 px round Ask.
+ */
 const agentChipClasses = [
-  "order-first flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border",
+  "order-first mt-0.5 flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border",
   "py-0.5 ps-0.5 pe-2 text-body text-fg hover:bg-surface-muted focus-ring",
 ].join(" ");
 

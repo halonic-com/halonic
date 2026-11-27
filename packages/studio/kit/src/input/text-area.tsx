@@ -22,6 +22,12 @@ import {
   promptTextClasses,
 } from "./field-box.ts";
 
+const fieldTextAreaClasses = `${fieldTextClasses} max-h-rows`;
+
+// A margin, not padding: the textarea is border-box, so padding would come out of its line limit
+// and cut the last line in half. A press on the margin still puts the caret in the text.
+const promptTextAreaClasses = `${promptTextClasses} my-1.5 max-h-rows-reading`;
+
 type OwnedAttributes =
   | "className"
   | "style"
@@ -146,7 +152,7 @@ export function TextArea({
       rows={minRows}
       data-field-text=""
       data-text-entry=""
-      className={`${look === "prompt" ? `${promptTextClasses} py-1.5` : fieldTextClasses} max-h-rows resize-none overflow-y-auto`}
+      className={`${look === "prompt" ? promptTextAreaClasses : fieldTextAreaClasses} resize-none overflow-y-auto`}
       // The limit in lines of the text's own height, so it follows the text size
       // (theme-utilities.css).
       style={{ "--max-rows": maxRows } as CSSProperties}

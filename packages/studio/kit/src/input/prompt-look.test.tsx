@@ -91,6 +91,21 @@ verifies("kit.prompt-look", () => {
     expect(field?.className).toContain("text-body");
   });
 
+  it("keeps a prompt TextArea's padding out of its line limit, so its last line shows whole", () => {
+    const text = render(composer()).container.querySelector("textarea") as HTMLTextAreaElement;
+    const names = text.className.split(" ");
+    expect(names).toContain("my-1.5");
+    expect(names).toContain("max-h-rows-reading");
+    expect(names).not.toContain("py-1.5");
+    expect(names).not.toContain("max-h-rows");
+  });
+
+  it("falls back to the reading text's 24px line where the lh unit is missing", async () => {
+    const css = await buildCss(["max-h-rows-reading"]);
+    const rule = css.slice(css.indexOf(".max-h-rows-reading"));
+    expect(rule).toContain("max-height: calc(var(--max-rows) * var(--text-reading--line-height))");
+  });
+
   it("builds the board's values in light and the lighter box in dark", async () => {
     const css = await buildCss(["rounded-prompt", "border-border-prompt", "shadow-prompt"]);
     expect(css).toContain("--radius-prompt: 24px");
