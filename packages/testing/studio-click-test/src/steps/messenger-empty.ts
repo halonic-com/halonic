@@ -5,12 +5,16 @@ import { onWorkspace, openConnections } from "./open-demo.ts";
 
 const windowWaitMs = 30_000;
 const emptyStateWaitMs = 45_000;
+/** The page's own text until the window draws (`studio.html`). */
+const pageStartingText = "Starting Halonic…";
 
 /**
  * Step 2: Start menu › Halonic Messenger opens the Messenger, which shows its
  * empty state, No connections. Anything else fails. Messenger only logs a
  * failed read, so the step then opens Settings › Connections in the main
  * window, where the same failure has a line, and reports that line's code.
+ * A window still on the page's own "Starting Halonic…" text never drew
+ * (`studio.focused-app-start`, HAL-20489) and fails as STILL_STARTING.
  */
 export const messengerEmpty: Step = {
   id: "messenger-empty",
@@ -18,6 +22,7 @@ export const messengerEmpty: Step = {
   requirements: [
     "studio.installer-focused-apps",
     "studio.focused-app-window",
+    "studio.focused-app-start",
     "messenger.not-connected",
   ],
   run: async (context) => {
@@ -34,6 +39,9 @@ export const messengerEmpty: Step = {
     );
     if (empty.value === true) return { passed: true };
     const screen = `Messenger: ${lastWords(empty.text) || "(blank)"}`;
+    if (empty.text.includes(pageStartingText)) {
+      return { passed: false, code: "STILL_STARTING", note: screen };
+    }
     const code =
       errorCodeIn(empty.text) ?? (await connectionsError(context)) ?? "EMPTY_STATE_MISSING";
     return { passed: false, code, note: screen };

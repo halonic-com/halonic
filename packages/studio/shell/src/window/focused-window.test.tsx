@@ -31,6 +31,7 @@ afterEach(() => {
   element.remove();
   restoreMedia();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 /**
@@ -170,6 +171,47 @@ verifies("shell.focused-apps", () => {
       defineFeature({ id, title: id, register: (studio) => studio.focusedApps.add(inboxApp) });
 
     expect(() => createShell({ features: [twice("one"), twice("two")] })).toThrow(ShellError);
+  });
+});
+
+verifies("shell.focused-app-opening", () => {
+  it("says it reads the workspace while it opens, offers Halonic after a minute, then shows the app", async () => {
+    vi.useFakeTimers();
+    const shell = shellWith(inboxApp);
+    const services = new MapTarget();
+    shell.services.instantiate(services);
+    const [app] = shell.contributions.focusedApps.list();
+    if (app === undefined) throw new Error("The Acme Inbox added no focused app.");
+    const props = { shell, app, language: "en", openStudio: () => undefined };
+    let focused: ReturnType<typeof mountFocusedWindow> | undefined;
+    act(() => {
+      focused = mountFocusedWindow(element, { ...props, workspace: undefined, opening: true });
+    });
+
+    await act(() => vi.advanceTimersByTimeAsync(3_000));
+
+    expect(element.querySelector('[role="status"]')?.textContent).toContain(
+      "Reading the workspace…",
+    );
+    expect(element.textContent).toContain("3 s");
+    expect(element.textContent).not.toContain("Open Halonic");
+    await act(() => vi.advanceTimersByTimeAsync(57_000));
+    expect(element.textContent).toContain("Reading the workspace…");
+    expect(element.textContent).not.toContain("Open Halonic to choose a workspace.");
+    expect([...element.querySelectorAll("button")].map((button) => button.textContent)).toContain(
+      "Open Halonic",
+    );
+    const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name: "Acme" });
+    await act(async () => {
+      focused?.update({ ...props, workspace, opening: false });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    vi.useRealTimers();
+    await vi.waitFor(() =>
+      expect(element.querySelector("main h1")?.textContent).toBe("Inbox for desktop-app"),
+    );
+    expect(element.textContent).not.toContain("Reading the workspace…");
+    act(() => focused?.unmount());
   });
 });
 

@@ -135,6 +135,15 @@ verifies("studio-click-test.steps", () => {
       ]);
     });
 
+    it('fails as STILL_STARTING when the Messenger stays on "Starting Halonic…"', async () => {
+      const studio = studioWithMessenger("Starting Halonic…", "");
+      await expect(messengerEmpty.run(studio.context)).resolves.toEqual({
+        passed: false,
+        code: "STILL_STARTING",
+        note: "Messenger: Starting Halonic…",
+      });
+    });
+
     it("fails as NO_WINDOW when the shortcut opens nothing", async () => {
       const studio = fakeStudio("Acme");
       await expect(messengerEmpty.run(studio.context)).resolves.toMatchObject({

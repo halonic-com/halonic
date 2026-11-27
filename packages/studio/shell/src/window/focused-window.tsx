@@ -7,8 +7,10 @@ import {
   PresentationProvider,
   ToastRegion,
   ToastStoreProvider,
+  useWaitedMs,
+  WaitingLine,
 } from "@halonicjs/studio-kit";
-import { StrictMode, useEffect, useMemo } from "react";
+import { StrictMode, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   useDocumentLanguage,
@@ -23,6 +25,7 @@ import type { FocusedAppContribution } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
 import type { Shell } from "../shell.ts";
 import { LoadedView } from "../view-loading.tsx";
+import { welcomeOpenWords } from "../welcome/welcome-open-words.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import type { PlaceViewProps } from "./studio-page.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
@@ -66,6 +69,11 @@ export interface FocusedWindowProps {
   readonly app: Registered<FocusedAppContribution>;
   /** The workspace Studio last had open, or `undefined` when Halonic has none yet. */
   readonly workspace: StudioWorkspace | undefined;
+  /**
+   * Whether the window is still opening its workspace: with no `workspace` yet, it then says it
+   * reads the workspace instead of saying to open Halonic, and offers to open Halonic after a minute.
+   */
+  readonly opening?: boolean | undefined;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
   /**
@@ -82,14 +90,16 @@ export interface FocusedWindowProps {
 /**
  * A focused app's window (`shell.focused-apps`): the app's one view on the approved frame, given
  * its feature's context for the open workspace, and none of Studio's tabs, places or status bar.
- * With no workspace it says to open Halonic, with a button that does. Its title is the app's, then the workspace's, then the
+ * While it still opens its workspace it says so (`shell.focused-app-opening`), and with no
+ * workspace it says to open Halonic, with a button that does. Its title is the app's, then the workspace's, then the
  * app's own name: "Inbox · Acme · Halonic Inbox". Below 900px wide its app shows one pane at a
  * time, as in Studio's window, through the kit's `NarrowProvider`, and its times follow the system's
  * region format (`regionFormat`) as Studio's window's do. A `floating` app, quick ask's
  * box, draws on the see-through window itself, with no frame.
  */
 export function FocusedWindow(props: FocusedWindowProps) {
-  const { shell, app, workspace, language, regionFormat, chosenFormat, openStudio } = props;
+  const { shell, app, workspace, opening, language, regionFormat, chosenFormat, openStudio } =
+    props;
   const { announcer, closeStack, toasts } = shell;
   const presentation = usePresentationFromWidth();
   const narrow = useNarrowFromWidth();
@@ -111,11 +121,13 @@ export function FocusedWindow(props: FocusedWindowProps) {
                   data-focused-app={app.id}
                   className={`relative flex h-dvh flex-col text-fg ${frameClassOf(app)}`}
                 >
-                  {workspace === undefined ? (
-                    <NoWorkspace app={app} openStudio={openStudio} />
-                  ) : (
-                    <FocusedPage shell={shell} app={app} workspace={workspace} />
-                  )}
+                  <FocusedContent
+                    shell={shell}
+                    app={app}
+                    workspace={workspace}
+                    opening={opening === true}
+                    openStudio={openStudio}
+                  />
                   <ToastRegion store={toasts} />
                 </div>
                 <FrameRegions announcer={announcer} />
@@ -131,6 +143,55 @@ export function FocusedWindow(props: FocusedWindowProps) {
 /** The frame round a focused app's view; a floating app's window is see-through, so it has none. */
 function frameClassOf(app: FocusedAppContribution): string {
   return app.floating === true ? "" : `p-2 ${focusedFrameClass}`;
+}
+
+/** The app's page for the workspace, the wait while it opens, or the way to open Halonic. */
+function FocusedContent({
+  shell,
+  app,
+  workspace,
+  opening,
+  openStudio,
+}: {
+  readonly shell: Shell;
+  readonly app: Registered<FocusedAppContribution>;
+  readonly workspace: StudioWorkspace | undefined;
+  readonly opening: boolean;
+  readonly openStudio: () => void;
+}) {
+  if (workspace !== undefined) return <FocusedPage shell={shell} app={app} workspace={workspace} />;
+  if (opening) return <OpeningWorkspace app={app} openStudio={openStudio} />;
+  return <NoWorkspace app={app} openStudio={openStudio} />;
+}
+
+/** How long the window waits for its workspace before it offers to open Halonic: as long as Welcome waits for the engine. */
+const openHalonicAfterMs = 60_000;
+
+/**
+ * The wait while the window opens its workspace (`shell.focused-app-opening`): the line a Recent
+ * row shows for the same step, with the time waited, so a slow open is never a blank window. The
+ * workspace is chosen and still opening, so after a minute the line stays and only adds the way
+ * to Studio's window.
+ */
+function OpeningWorkspace({
+  app,
+  openStudio,
+}: {
+  readonly app: FocusedAppContribution;
+  readonly openStudio: () => void;
+}) {
+  const [since] = useState(() => new Date());
+  const waitedMs = useWaitedMs(since);
+  const actions =
+    waitedMs < openHalonicAfterMs
+      ? []
+      : [{ label: focusedWindowWords.openHalonic, onClick: openStudio }];
+  return (
+    <main className={`flex flex-1 items-center justify-center ${focusedPanelClass}`}>
+      <h1 className="sr-only">{`${appName} ${app.title}`}</h1>
+      <WaitingLine what={welcomeOpenWords.steps.workspace} waitedMs={waitedMs} actions={actions} />
+    </main>
+  );
 }
 
 function NoWorkspace({
