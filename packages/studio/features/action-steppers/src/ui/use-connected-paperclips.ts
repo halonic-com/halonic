@@ -1,21 +1,23 @@
 import type { AgentConnections } from "@halonicjs/studio-services";
 import { useEffect, useState } from "react";
-import { connectedPaperclipHosts } from "../review/paperclip-host.ts";
+import { type ConnectedPaperclip, connectedPaperclips } from "../review/paperclip-host.ts";
 
 /**
- * The hosts of the Paperclips the user connected, read again whenever the connections change, for
- * the review's `paperclipHosts` (`action-steppers.paperclip-host`). Without `connections`, as in a
+ * The Paperclips the user connected, read again whenever this window's connections change, for
+ * the review's `paperclips` (`action-steppers.paperclip-host`). Without `connections`, as in a
  * browser, there are none, so no Paperclip request runs.
  */
-export function usePaperclipHosts(connections: AgentConnections | undefined): readonly string[] {
-  const [hosts, setHosts] = useState<readonly string[]>([]);
+export function useConnectedPaperclips(
+  connections: AgentConnections | undefined,
+): readonly ConnectedPaperclip[] {
+  const [paperclips, setPaperclips] = useState<readonly ConnectedPaperclip[]>([]);
   useEffect(() => {
     if (connections === undefined) return;
     let live = true;
     const read = () => {
       connections.list().then(
         (listed) => {
-          if (live) setHosts(connectedPaperclipHosts(listed));
+          if (live) setPaperclips(connectedPaperclips(listed));
         },
         (error: unknown) => console.error("The stepper couldn't read the connections", error),
       );
@@ -27,5 +29,5 @@ export function usePaperclipHosts(connections: AgentConnections | undefined): re
       stop();
     };
   }, [connections]);
-  return hosts;
+  return paperclips;
 }

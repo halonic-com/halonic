@@ -18,7 +18,7 @@ import { acmeSource } from "../test-support/acme-catalog.test-helper.ts";
 import { allowsAcme } from "../test-support/acme-run.test-helper.ts";
 import {
   acmeApprovalPage,
-  acmePaperclipHosts,
+  acmePaperclips,
   signInCatalog,
   signInItem,
   signInRequest,
@@ -71,7 +71,7 @@ function signInRunOf(
       catalog: signInCatalog,
       policy: allowsAcme,
       now,
-      paperclipHosts: acmePaperclipHosts,
+      paperclips: acmePaperclips,
     });
     if (review.kind !== "stepper") throw new Error(review.reasons.join("; "));
     const run = new StepperRun(review.view, {
@@ -82,7 +82,7 @@ function signInRunOf(
       steps,
       answer,
       now: () => now,
-      paperclipHosts: () => acmePaperclipHosts,
+      paperclips: () => acmePaperclips,
       ...(setUp.canSignIn === false ? {} : { serviceSignIn }),
     });
     await run.open();

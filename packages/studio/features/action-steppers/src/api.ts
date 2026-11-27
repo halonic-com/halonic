@@ -15,6 +15,7 @@ export {
   type ActionReviewContext,
   reviewActionItem,
 } from "./review/action-item-review.ts";
+export type { ConnectedPaperclip } from "./review/paperclip-host.ts";
 export { StepperRun, type StepperRunOptions } from "./run/stepper-run.ts";
 export {
   offerServerSession,
@@ -32,7 +33,7 @@ export {
 export type { StepperActions, StepperView } from "./stepper-view.ts";
 export { ActionStepper, type ActionStepperProps } from "./ui/action-stepper.tsx";
 export { RunWithClaude, type RunWithClaudeProps } from "./ui/run-with-claude.tsx";
-export { usePaperclipHosts } from "./ui/use-paperclip-hosts.ts";
+export { useConnectedPaperclips } from "./ui/use-connected-paperclips.ts";
 export { type StepperRunState, useStepperRun } from "./ui/use-stepper-run.ts";
 
 /**

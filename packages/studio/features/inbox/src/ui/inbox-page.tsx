@@ -7,7 +7,7 @@ import {
   type RequesterPolicy,
   RequesterPolicyService,
   type StepperCatalog,
-  usePaperclipHosts,
+  useConnectedPaperclips,
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { EmptyState, List, useNarrow, usePresentation } from "@halonicjs/studio-kit";
@@ -254,10 +254,10 @@ export function InboxView({
   const list = useRef<HTMLDivElement>(null);
   const state = useGlidingState(subscribe, read, list, motion);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
-  const paperclipHosts = usePaperclipHosts(agentConnections);
+  const paperclips = useConnectedPaperclips(agentConnections);
   const agent = useAgentItems(
     agentMessaging,
-    { catalog: actionCatalog, policy: requesterPolicy, steps: actionSteps, paperclipHosts },
+    { catalog: actionCatalog, policy: requesterPolicy, steps: actionSteps, paperclips },
     { list, motion, announce },
   );
   // An item of the Inbox's own that opens, by hand or on request, takes the pane from an agent's.

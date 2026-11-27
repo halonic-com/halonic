@@ -1,4 +1,7 @@
-import type { StepperView } from "@halonicjs/studio-feature-action-steppers/api";
+import type {
+  ConnectedPaperclip,
+  StepperView,
+} from "@halonicjs/studio-feature-action-steppers/api";
 import {
   type ActionItem,
   ActionStepper,
@@ -21,8 +24,8 @@ export interface ActionItemCardProps extends AgentItemCardProps {
   readonly policy: RequesterPolicy;
   /** Runs the request's steps with the user's sign-in; in a browser it runs nothing. */
   readonly steps: ActionSteps;
-  /** The hosts of the Paperclips the user connected: a Paperclip request runs only on one of them. */
-  readonly paperclipHosts: readonly string[];
+  /** The Paperclips the user connected: a Paperclip request runs only on one whose key this computer holds. */
+  readonly paperclips: readonly ConnectedPaperclip[];
 }
 
 /**
@@ -38,11 +41,11 @@ export function ActionItemCard({
   catalog,
   policy,
   steps,
-  paperclipHosts,
+  paperclips,
   ...card
 }: ActionItemCardProps) {
   const { item, source, now } = card;
-  const review = reviewActionItem(item, source, { catalog, policy, now: now(), paperclipHosts });
+  const review = reviewActionItem(item, source, { catalog, policy, now: now(), paperclips });
   if (review.kind === "unreadable") return <AgentItemCard {...card} cannotRun={review.reasons} />;
   return (
     <ActionRun
@@ -52,7 +55,7 @@ export function ActionItemCard({
       catalog={catalog}
       policy={policy}
       steps={steps}
-      paperclipHosts={paperclipHosts}
+      paperclips={paperclips}
     />
   );
 }
@@ -63,16 +66,16 @@ interface ActionRunProps {
   readonly catalog: StepperCatalog;
   readonly policy: RequesterPolicy;
   readonly steps: ActionSteps;
-  readonly paperclipHosts: readonly string[];
+  readonly paperclips: readonly ConnectedPaperclip[];
 }
 
 /** The stepper of one open request, run until it ends; an item answered elsewhere shows as answered. */
-function ActionRun({ reviewed, card, catalog, policy, steps, paperclipHosts }: ActionRunProps) {
+function ActionRun({ reviewed, card, catalog, policy, steps, paperclips }: ActionRunProps) {
   const { item, source, now, answer } = card;
-  // The run keeps its first options, so it reads the hosts through a ref that every draw updates.
-  const hosts = useRef(paperclipHosts);
-  hosts.current = paperclipHosts;
-  const hostsNow = () => hosts.current;
+  // The run keeps its first options, so it reads the Paperclips through a ref that every draw updates.
+  const connected = useRef(paperclips);
+  connected.current = paperclips;
+  const paperclipsNow = () => connected.current;
   const run = useStepperRun(reviewed, {
     item,
     source,
@@ -81,7 +84,7 @@ function ActionRun({ reviewed, card, catalog, policy, steps, paperclipHosts }: A
     steps,
     answer,
     now,
-    paperclipHosts: hostsNow,
+    paperclips: paperclipsNow,
   });
   const stage = run.view.stage.kind;
   // Ended here, the stepper keeps saying how; answered by someone else, the card says by whom.

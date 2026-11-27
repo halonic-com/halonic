@@ -6,6 +6,7 @@ import type {
 } from "@halonicjs/ports";
 import type {
   ActionItem,
+  ConnectedPaperclip,
   RequesterPolicy,
   StepperCatalog,
 } from "@halonicjs/studio-feature-action-steppers/api";
@@ -100,13 +101,13 @@ export const agentLoadFailed = "Couldn't load the items from your agents.";
 
 /**
  * What an action item is checked against when it opens, the installed catalog, the user's policy
- * and the hosts of the Paperclips they connected, and what runs its steps.
+ * and the Paperclips they connected, and what runs its steps.
  */
 export interface ActionChecks {
   readonly catalog: StepperCatalog;
   readonly policy: RequesterPolicy;
   readonly steps: ActionSteps;
-  readonly paperclipHosts: readonly string[];
+  readonly paperclips: readonly ConnectedPaperclip[];
 }
 
 function isActionItem(item: AgentItem): item is ActionItem {
@@ -124,7 +125,7 @@ function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: 
       catalog={checks.catalog}
       policy={checks.policy}
       steps={checks.steps}
-      paperclipHosts={checks.paperclipHosts}
+      paperclips={checks.paperclips}
     />
   );
 }

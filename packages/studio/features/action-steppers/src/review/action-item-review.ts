@@ -37,7 +37,7 @@ import type {
   StepView,
 } from "../stepper-view.ts";
 import { serviceName } from "../ui/stepper-words.ts";
-import { paperclipHostRefusal } from "./paperclip-host.ts";
+import { type ConnectedPaperclip, paperclipHostRefusal } from "./paperclip-host.ts";
 
 /** An Inbox item that asks the user to run a stepper. */
 export type ActionItem = InboxItem & { readonly action: InboxActionRequest };
@@ -54,10 +54,10 @@ export interface ActionReviewContext {
    */
   readonly current?: Readonly<Record<string, ActionKeptValue>> | undefined;
   /**
-   * The hosts of the Paperclips the user connected, such as `paperclip.acme.example`: a Paperclip
-   * request runs only on one of them. Without them, none does (`action-steppers.paperclip-host`).
+   * The Paperclips the user connected: a Paperclip request runs only on the host of one whose key
+   * this computer holds. Without them, none does (`action-steppers.paperclip-host`).
    */
-  readonly paperclipHosts?: readonly string[] | undefined;
+  readonly paperclips?: readonly ConnectedPaperclip[] | undefined;
 }
 
 /**
@@ -267,7 +267,7 @@ export function reviewActionItem(
   if (definition === undefined || parsed === undefined || !parsed.ok) {
     return { kind: "unreadable", reasons: [`\`${action.definition}@${action.version}\` changed`] };
   }
-  const hostRefusal = paperclipHostRefusal(definition, action, context.paperclipHosts ?? []);
+  const hostRefusal = paperclipHostRefusal(definition, action, context.paperclips ?? []);
   if (hostRefusal !== undefined) return { kind: "unreadable", reasons: [hostRefusal] };
   const expiresAt = new Date(action.expires);
   if (Number.isNaN(expiresAt.getTime())) {

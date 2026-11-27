@@ -20,6 +20,7 @@ import {
   type ActionReviewContext,
   reviewActionItem,
 } from "../review/action-item-review.ts";
+import type { ConnectedPaperclip } from "../review/paperclip-host.ts";
 import {
   isDone,
   nextStep,
@@ -62,10 +63,10 @@ export interface StepperRunOptions {
   /** Runs a definition's `sign-in` steps; without it, such a request can't run here. */
   readonly serviceSignIn?: StepperSignIn | undefined;
   /**
-   * The hosts of the Paperclips the user connected, read again at every check, so a Paperclip
-   * disconnected since stops its requests. Without it, no Paperclip request runs.
+   * The Paperclips the user connected, as this window last read them, read again at every check,
+   * so a Paperclip disconnected since stops its requests. Without it, no Paperclip request runs.
    */
-  readonly paperclipHosts?: (() => readonly string[]) | undefined;
+  readonly paperclips?: (() => readonly ConnectedPaperclip[]) | undefined;
 }
 
 /**
@@ -237,13 +238,13 @@ export class StepperRun {
 
   /** The item checked again now, with today's state from the checks once there is one. */
   private check(current?: Readonly<Record<string, ActionKeptValue>>) {
-    const { item, source, catalog, policy, now, paperclipHosts } = this.options;
+    const { item, source, catalog, policy, now, paperclips } = this.options;
     return reviewActionItem(item, source, {
       catalog,
       policy,
       now: now(),
       current,
-      paperclipHosts: paperclipHosts?.(),
+      paperclips: paperclips?.(),
     });
   }
 
