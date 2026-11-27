@@ -29,7 +29,6 @@ import {
   THEME_NOT_SAVED,
   themeNames,
 } from "./appearance-text.ts";
-import { FrameColoursField } from "./frame-colours-field.tsx";
 
 const themeOptions = themes.map((theme) => ({ value: theme, label: themeNames[theme] }));
 
@@ -56,7 +55,7 @@ export interface AppearanceViewProps {
    */
   readonly announce: (text: string) => void;
   /**
-   * `phone` on the phone's Settings page (mc 13.2): no Frame colours, no Panel opacity, and a
+   * `phone` on the phone's Settings page (mc 13.2): no Panel opacity, and a
    * failed save is a toast, "Couldn't save the … on this phone.", not a line under the control.
    */
   readonly surface?: SettingsSurface;
@@ -67,8 +66,8 @@ export interface AppearanceViewProps {
 }
 
 /**
- * Settings → Appearance (flow-settings 5, UX checklist 3.7): Theme, Frame colours, Panel opacity
- * and Agent characters (the last two only with `showUnfinished`), each applied to the whole window at once and saved by itself. A failed
+ * Settings → Appearance (flow-settings 5, UX checklist 3.7): Theme, Panel opacity and Agent
+ * characters (the last two only with `showUnfinished`), each applied to the whole window at once and saved by itself. A failed
  * save puts the value from before back, says so under the control until it next saves, and says
  * it in the dialog, never in a toast while the dialog is open; a save that fails after the section
  * is gone says it in a toast, which waits for a modal to close (`settings.failed-save`).
@@ -124,7 +123,6 @@ export function AppearanceView({
           }
         />
       </Field>
-      {phone ? null : <FrameColoursField settings={settings} save={save} />}
       {phone || !showUnfinished ? null : (
         <Field
           label={PANEL_OPACITY}

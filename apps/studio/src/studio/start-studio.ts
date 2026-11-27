@@ -27,7 +27,7 @@ import { newWorkspaceOf } from "./desktop-new-workspace.ts";
 import { desktopOpenExternal } from "./desktop-open-external.ts";
 import { watchDesktopResources } from "./desktop-resources.ts";
 import type { DeviceMemory } from "./device-memory.ts";
-import { followFrameColour, studioFrameColour } from "./frame-colour.ts";
+import { appFrameColour, followFrameColour } from "./frame-colour.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import { halonicVersion } from "./open-trusts.ts";
 import { startServedStudio } from "./served-studio.ts";
@@ -154,9 +154,7 @@ function startDesktopApp(page: StudioPage, { shell, ipc, platform }: DesktopPart
   const display = displaySettingsOf(page);
   const stopAppearance = watchAppearance(display, rootOf(page.element));
   const document = page.element.ownerDocument;
-  const stopFrameColour = followFrameColour(ipc, document, () =>
-    studioFrameColour(document, display),
-  );
+  const stopFrameColour = followFrameColour(ipc, document, () => appFrameColour(document));
   const picked = new TauriPickedFolders(ipc);
   const newWorkspaceAsks = new NewWorkspaceAsks();
   const freshCopyAsks = new FreshCopyAsks();

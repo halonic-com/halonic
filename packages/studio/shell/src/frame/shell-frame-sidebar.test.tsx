@@ -53,7 +53,7 @@ function classesOf(element: Element | null | undefined): string[] {
 }
 
 verifies("shell.frame", () => {
-  it("puts the sidebar on the halo and the page with the status bar on a framed panel 8px beside it", () => {
+  it("puts the sidebar on the app frame and the page with the status bar on a framed panel 8px beside it", () => {
     const container = renderFrame();
     const sidebar = container.querySelector('nav[aria-label="Places"]');
     const panel = container.querySelector("[data-framed-panel]");
@@ -64,8 +64,15 @@ verifies("shell.frame", () => {
     expect(classesOf(panel)).toEqual(
       expect.arrayContaining(["ms-2", "rounded-lg", "border", "border-border", "bg-surface"]),
     );
-    // Nothing between the sidebar and the halo: the frame's row has no fill of its own.
+    // Nothing between the sidebar and the frame: the frame's row has no fill of its own.
     expect(classesOf(panel?.parentElement)).not.toContain("bg-surface");
+  });
+
+  it("draws the desktop frame in the Messenger's app frame colour, not the halo", () => {
+    const container = renderFrame();
+    const frame = container.querySelector('[data-layout="desktop"]');
+    expect(classesOf(frame)).toContain("bg-app-frame");
+    expect(classesOf(frame)).not.toContain("bg-halo-frame");
   });
 
   it("keeps the Places drawer in a narrow window, with the framed panel taking the whole row", () => {

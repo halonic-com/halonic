@@ -19,7 +19,7 @@ import { startFocusedWindowFeedback } from "../feedback/start-window-feedback.ts
 import { desktopOpenExternal } from "./desktop-open-external.ts";
 import type { DeviceMemory } from "./device-memory.ts";
 import { keepFocusedContent, shownInApp } from "./focused-window-content.ts";
-import { focusedFrameColour, followFrameColour } from "./frame-colour.ts";
+import { appFrameColour, followFrameColour } from "./frame-colour.ts";
 import { noStorage, openFolder } from "./open-folder.ts";
 import type { StartedStudio, StudioPage } from "./start-studio.ts";
 import { followSystemRegion } from "./system-region.ts";
@@ -69,7 +69,7 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
   const { shell, ipc, app, language, display } = parts;
   const stopAppearance = watchAppearance(display, page.element.ownerDocument.documentElement);
   const document = page.element.ownerDocument;
-  const stopFrameColour = followFrameColour(ipc, document, () => focusedFrameColour(document));
+  const stopFrameColour = followFrameColour(ipc, document, () => appFrameColour(document));
   const device: DeviceMemory = {
     recent: new RecentWorkspaces(page.storage ?? noStorage),
     storage: page.storage ?? noStorage,

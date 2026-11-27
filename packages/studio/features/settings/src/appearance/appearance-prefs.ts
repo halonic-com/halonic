@@ -1,4 +1,3 @@
-import { type HaloPreset, haloPresets, parseHex } from "@halonicjs/studio-kit";
 import type { DisplayPref } from "../display-prefs.ts";
 
 /** The themes, in the order the Theme select lists them. */
@@ -13,63 +12,6 @@ export const themePref: DisplayPref<Theme> = {
   fallback: "system",
   read: (stored) => themes.find((theme) => theme === stored),
 };
-
-/** The two halo colours of the frame round the window, as `#3B8BFF`. */
-export type FrameColourPair = readonly [first: string, second: string];
-
-/**
- * The frame colour presets and their two colours (req-settings `settings.appearance.frame-colours`),
- * the kit's list, so the halo's contrast test checks the very colours Settings offers.
- */
-export const framePresets: Readonly<Record<HaloPreset, FrameColourPair>> = haloPresets;
-
-/** One of the frame colour presets. */
-export type FramePreset = HaloPreset;
-
-/** The frame colours: a preset, or the person's own two colours. */
-export type FrameColours =
-  | { readonly preset: FramePreset }
-  | { readonly preset: "own"; readonly colours: FrameColourPair };
-
-/** Settings → Appearance → Frame colours (`settings.appearance-frame-colours`). */
-export const frameColoursPref: DisplayPref<FrameColours> = {
-  key: "appearance.frame-colours",
-  fallback: { preset: "blue-and-purple" },
-  read: readFrameColours,
-};
-
-function readFrameColours(stored: unknown): FrameColours | undefined {
-  if (typeof stored !== "object" || stored === null || !("preset" in stored)) {
-    return undefined;
-  }
-  const preset = stored.preset;
-  if (isFramePreset(preset)) {
-    return { preset };
-  }
-  if (
-    preset !== "own" ||
-    !("colours" in stored) ||
-    !Array.isArray(stored.colours) ||
-    stored.colours.length !== 2
-  ) {
-    return undefined;
-  }
-  const [first, second] = stored.colours.map((colour) =>
-    typeof colour === "string" ? parseHex(colour) : null,
-  );
-  return typeof first === "string" && typeof second === "string"
-    ? { preset: "own", colours: [first, second] }
-    : undefined;
-}
-
-function isFramePreset(value: unknown): value is FramePreset {
-  return typeof value === "string" && Object.hasOwn(framePresets, value);
-}
-
-/** The two colours the frame shows for `frame`. */
-export function frameColourPair(frame: FrameColours): FrameColourPair {
-  return frame.preset === "own" ? frame.colours : framePresets[frame.preset];
-}
 
 /** Panel opacity's lowest and highest value, and its step: 10% to 100% in steps of 10. */
 export const panelOpacityRange = { min: 0.1, max: 1, step: 0.1 } as const;

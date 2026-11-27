@@ -102,11 +102,10 @@ The desktop start screen and Welcome on a computer put one `aria-hidden` element
 `bg-halo-spot` behind their heading and box: the halo tints, fading out from the middle, so text on
 it keeps 4.5:1. `shadow-halo-glow` is the app's one glow. Put it on a `rounded-lg` wrapper round
 the composer, never on the box itself, whose focus look is a box shadow too. It's a utility, not a
-`--shadow-*` token, so it can't turn up elsewhere. A frame colour preset (Settings) sets only
-`--halo-blue` and `--halo-violet`; the tints are `color-mix()` of those two, so all six halo
-utilities follow. The four presets keep every text colour at 4.5:1 on the spot and the frame.
-`haloPresets` lists them, each as its `--halo-blue` and `--halo-violet` hex, and Settings offers that
-same list, so a preset can't change without the contrast test seeing it.
+`--shadow-*` token, so it can't turn up elsewhere. The halo comes from `--halo-blue` and
+`--halo-violet`; the tints are `color-mix()` of those two, so all six halo utilities follow. The
+four presets in `haloPresets`, each as its `--halo-blue` and `--halo-violet` hex, keep every text
+colour at 4.5:1 on the spot and the frame.
 
 ## Agent pages: the orb, stacked cards and the canvas
 

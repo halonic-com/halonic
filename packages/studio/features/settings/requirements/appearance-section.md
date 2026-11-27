@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-1294 (T11); flow-settings 5 (HAL-646); g5-frames T11-F13 to F15 (HAL-1143); ux-checklists-t4-t5-t11 3.7 and 3.9 (HAL-1185); microcopy 13.1 and 19.8 (HAL-751)
+- Source: HAL-1294 (T11); flow-settings 5 (HAL-646); g5-frames T11-F13 to F15 (HAL-1143); ux-checklists-t4-t5-t11 3.7 and 3.9 (HAL-1185); microcopy 13.1 and 19.8 (HAL-751); the board's choice on HAL-20499 (Frame colours removed)
 
-The Settings dialog shall have an Appearance section, saved on this computer for every workspace, with these controls in this order: Theme, a select of System, Light and Dark; Panel opacity, a slider from 10% to 100% in steps of 10% with the hint "How much of the frame shows through the sidebar, the page and the tabs."; and Agent characters, a switch with the sentence "Show agents as orbs. Off shows initials." Each change shall apply at once and save by itself. While the slider is dragged the window shall follow it, and it shall save when it is let go. If the drag never lets go, because the dialog closes, the pointer is cancelled or the slider loses focus, the window shall go back to the stored opacity. The slider keeps the browser's own keys and steps, with no Page Up or Page Down handling of its own. When a save fails, the control shall show the value from before, the line "Couldn't save the theme on this computer." (with the setting's own name) shall show under it until it next saves, and the dialog shall say the line and what the setting is back to, never in a toast: "Theme is back to System.", "Panel opacity is back to 80%.", "Agent characters are back on." (or "back off.").
+The Settings dialog shall have an Appearance section, saved on this computer for every workspace, with these controls in this order: Theme, a select of System, Light and Dark; Panel opacity, a slider from 10% to 100% in steps of 10% with the hint "How much of the frame shows through the sidebar, the page and the tabs."; and Agent characters, a switch with the sentence "Show agents as orbs. Off shows initials." Each change shall apply at once and save by itself. While the slider is dragged the window shall follow it, and it shall save when it is let go. If the drag never lets go, because the dialog closes, the pointer is cancelled or the slider loses focus, the window shall go back to the stored opacity. The slider keeps the browser's own keys and steps, with no Page Up or Page Down handling of its own. When a save fails, the control shall show the value from before, the line "Couldn't save the theme on this computer." (with the setting's own name) shall show under it until it next saves, and the dialog shall say the line and what the setting is back to, never in a toast: "Theme is back to System.", "Panel opacity is back to 80%.", "Agent characters are back on." (or "back off."). Appearance shall not set the halo colours, so the window's highlights keep the kit's own blue and purple, whatever frame colours an earlier version stored.
 
 On the phone's own Settings page (served Studio, flow-settings 13 and mc 13.2), Appearance shall show only Theme and Agent characters: no Frame colours and no Panel opacity. A failed save there shall put the value from before back and say "Couldn't save the theme on this phone." (with the setting's own name) and what the setting is back to in a toast, not under the control. The phone's page in the desktop app, in a narrow window, says "on this computer" instead.
 
@@ -19,6 +19,9 @@ On the phone's own Settings page (served Studio, flow-settings 13 and mc 13.2), 
 - Given storing fails,
   when the user picks Dark,
   then Theme shows System, "Couldn't save the theme on this computer." shows under it, and the dialog says "Couldn't save the theme on this computer. Theme is back to System."
+- Given "Pink and violet" frame colours were stored by an earlier version,
+  when the window opens,
+  then the highlights show the kit's blue and purple.
 - Given Appearance shows on the phone's Settings page,
   when the page is read,
   then it has Theme and Agent characters, and no Frame colours and no Panel opacity.

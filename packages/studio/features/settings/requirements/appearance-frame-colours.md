@@ -1,8 +1,9 @@
 # settings.appearance-frame-colours
 
-- Status: active
+- Status: retired
 - Since: unreleased
 - Source: HAL-1294 (T11); HAL-6655; req-settings `settings.appearance.frame-colours` (HAL-110); flow-settings 5 (HAL-646); ux-checklists-t4-t5-t11 3.7 and 3.8 (HAL-1185)
+- Retired: the board's choice on HAL-20499: Studio's frame is the Messenger's app frame, so Settings has no Frame colours
 
 The Studio shall show the frame round the window in the two frame colours of the chosen preset, or in the person's own two colours. The presets shall be "Blue and purple" (`#3B8BFF` and `#B05ED9`), the default, "Green and blue" (`#10B981` and `#3B8BFF`), "Yellow and orange" (`#FBBF24` and `#F97316`) and "Pink and violet" (`#EC4899` and `#8B5CF6`), the same four the kit's halo contrast is checked with. The frame colours shall set only the two halo colours, never the accent or primary colour. When the stored frame colours can't be read, or the person's own colours aren't exactly two six-digit hex colours, the frame shall use "Blue and purple".
 

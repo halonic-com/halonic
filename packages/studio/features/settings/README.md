@@ -54,8 +54,7 @@ named in English and sorted by name.
 
 ## Sections
 
-- **Appearance** (`settings.appearance-section`): Theme, Frame colours (with Your own,
-  `settings.appearance-own-colours`), Panel opacity and Agent characters.
+- **Appearance** (`settings.appearance-section`): Theme, Panel opacity and Agent characters.
 - **Agent sandbox** (`settings.agent-sandbox-section`): the sandbox's state and buttons over
   `AgentSandboxService`. Under them, "Plugins and integrations" (`settings.unfenced-yes-take-back`)
   shows the saved yes to run plugin and integration code without the sandbox, with **Take back**,
@@ -84,17 +83,14 @@ if (!outcome.saved && !outcome.superseded) {
 
 ## Appearance
 
-`themePref`, `frameColoursPref` and `panelOpacityPref` are Appearance → Theme, Frame colours and
-Panel opacity (`settings.appearance-theme`, `settings.appearance-frame-colours`,
-`settings.appearance-panel-opacity`), and `agentCharactersPref` is Agent characters. The frame
-colours are a preset from `framePresets`, the kit's `haloPresets` (`blue-and-purple` by default),
-or `{ preset: "own", colours }` with two colours of the person's own; `frameColourPair` gives the
-two the frame shows. Panel opacity goes from 0.1 to 1 in steps of 0.1 (`panelOpacityRange`), 0.8 by
+`themePref` and `panelOpacityPref` are Appearance → Theme and Panel opacity
+(`settings.appearance-theme`, `settings.appearance-panel-opacity`), and `agentCharactersPref` is
+Agent characters. There are no frame colours: Studio's frame is the app frame the Messenger has
+(HAL-20499), and the halo keeps the kit's colours. Panel opacity goes from 0.1 to 1 in steps of 0.1 (`panelOpacityRange`), 0.8 by
 default; a stored value between steps or outside the range goes to the nearest step.
 
 `watchAppearance` shows them on the window's root at once, without a reload: the theme as
-`data-theme` (none for System), the frame colours as `--halo-blue` and `--halo-violet` only, never
-the accent, and the opacity as `--panel-opacity`. It returns a function that stops it; what it set
+`data-theme` (none for System) and the opacity as `--panel-opacity`. It returns a function that stops it; what it set
 stays. The app doesn't call it yet.
 
 ```ts

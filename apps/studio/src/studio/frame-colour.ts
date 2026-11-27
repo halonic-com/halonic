@@ -1,19 +1,4 @@
-import {
-  type DisplaySettings,
-  frameColourPair,
-  frameColoursPref,
-} from "@halonicjs/studio-feature-settings";
-import type { TauriIpc } from "@halonicjs/studio-services";
 import { focusedFrameClass } from "@halonicjs/studio-shell";
-
-/** Studio's frame: the halo over the canvas (the kit's `bg-halo-frame`, which the shell frame uses). */
-const studioFrameClass = "bg-halo-frame";
-
-/**
- * How much of the first frame colour the halo lays over the canvas where it starts, at the top
- * left, which the title bar meets: the kit's `bg-halo-frame`, 30% in light and 15% in dark.
- */
-const haloStart = { light: 0.3, dark: 0.15 } as const;
 
 /**
  * `colour` as `#rrggbb`, for a colour the way the browser computes it: `#rrggbb`, `rgb()` or
@@ -44,27 +29,6 @@ function opaqueHex(channels: readonly number[], alpha: string | undefined): stri
   return `#${channels.map((channel) => Math.round(channel).toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** `top` laid over `base` at `share`, from 0 to 1, as `color-mix(in srgb, …)` mixes them. */
-export function mixOver(base: string, top: string, share: number): string {
-  const channels = (hex: string) =>
-    [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
-  const under = channels(base);
-  const over = channels(top);
-  return `#${under
-    .map((channel, index) => Math.round(channel + ((over[index] ?? channel) - channel) * share))
-    .map((channel) => channel.toString(16).padStart(2, "0"))
-    .join("")}`;
-}
-
-/** Whether the `#rrggbb` colour is a dark theme's: the canvas is near-black in dark and near-white in light. */
-function isDarkCanvas(hex: string): boolean {
-  const sum = [1, 3, 5].reduce(
-    (total, start) => total + Number.parseInt(hex.slice(start, start + 2), 16),
-    0,
-  );
-  return sum < 3 * 128;
-}
-
 /**
  * The colour a frame of `frameClass` has in `document` now, read off a hidden element of that
  * class, so it follows the theme and the system's light or dark as the frame does.
@@ -81,31 +45,18 @@ function computedBackground(document: Document, frameClass: string): string | un
   }
 }
 
-/** A focused app's frame colour, `--color-app-frame`: slate-75 in light, slate-950 in dark. */
-export function focusedFrameColour(document: Document): string | undefined {
+/**
+ * An app window's frame colour, `--color-app-frame`: slate-75 in light, slate-950 in dark. Studio's
+ * window has the same frame as a focused app's (HAL-20499).
+ */
+export function appFrameColour(document: Document): string | undefined {
   return computedBackground(document, focusedFrameClass);
 }
 
 /**
- * Studio's frame colour where the title bar meets it: the first of the person's frame colours,
- * from Settings, laid over the canvas as the halo starts. The canvas is the frame's own colour
- * under the halo.
- */
-export function studioFrameColour(
-  document: Document,
-  display: DisplaySettings,
-): string | undefined {
-  const canvas = computedBackground(document, studioFrameClass);
-  if (canvas === undefined) return undefined;
-  const [first] = frameColourPair(display.get(frameColoursPref));
-  const share = isDarkCanvas(canvas) ? haloStart.dark : haloStart.light;
-  return mixOver(canvas, first.toLowerCase(), share);
-}
-
-/**
  * Tells the shell the frame's colour (`studio.window-title-bar-colour`), so on Windows the title
- * bar takes it: once now, and again whenever the theme, the frame colours or the system's light or
- * dark change it, only when it changed. A refusal goes to the console. Returns the stop.
+ * bar takes it: once now, and again whenever the theme or the system's light or dark change it,
+ * only when it changed. A refusal goes to the console. Returns the stop.
  */
 export function followFrameColour(
   ipc: TauriIpc,
@@ -122,7 +73,7 @@ export function followFrameColour(
     });
   };
   report();
-  // Settings → Appearance shows on <html>: the theme as data-theme, the frame colours as its style.
+  // Settings → Appearance shows on <html>: the theme as data-theme, the rest as its style.
   const observer = new MutationObserver(report);
   observer.observe(document.documentElement, {
     attributes: true,

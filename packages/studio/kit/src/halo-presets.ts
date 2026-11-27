@@ -1,7 +1,7 @@
 /**
  * The four frame colour presets and their two colours, `--halo-blue` first and `--halo-violet`
- * second, in the order Settings lists them (visual language, HAL-6655). The first is the theme's
- * own halo, the default. Settings and the halo's contrast test both read this one list.
+ * second (visual language, HAL-6655). The first is the theme's own halo, the default. The halo's
+ * contrast test checks all four; Settings no longer offers them (HAL-20499).
  */
 export const haloPresets = {
   "blue-and-purple": ["#3B8BFF", "#B05ED9"],

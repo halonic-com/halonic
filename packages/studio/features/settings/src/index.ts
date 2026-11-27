@@ -16,12 +16,6 @@ export {
 } from "./api.ts";
 export {
   agentCharactersPref,
-  type FrameColourPair,
-  type FrameColours,
-  type FramePreset,
-  frameColourPair,
-  frameColoursPref,
-  framePresets,
   panelOpacityPref,
   panelOpacityRange,
   type Theme,

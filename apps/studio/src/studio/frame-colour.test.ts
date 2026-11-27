@@ -1,23 +1,16 @@
 // @vitest-environment jsdom
 
-import { BrowserDisplayPrefs, DisplaySettings } from "@halonicjs/studio-feature-settings";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, expect, it, vi } from "vitest";
-import {
-  focusedFrameColour,
-  followFrameColour,
-  hexOfColour,
-  mixOver,
-  studioFrameColour,
-} from "./frame-colour.ts";
+import { appFrameColour, followFrameColour, hexOfColour } from "./frame-colour.ts";
 
-/** The frames' colours as the kit's stylesheet gives them, light or dark. */
+/** The app frame's colour as the kit's stylesheet gives it, light or dark. */
 function frameStyles(theme: "light" | "dark"): HTMLStyleElement {
   const style = document.createElement("style");
   style.textContent =
     theme === "light"
-      ? ".bg-app-frame { background-color: rgb(244, 247, 250); } .bg-halo-frame { background-color: rgb(235, 236, 246); }"
-      : ".bg-app-frame { background-color: rgb(2, 6, 23); } .bg-halo-frame { background-color: rgb(2, 6, 23); }";
+      ? ".bg-app-frame { background-color: rgb(244, 247, 250); }"
+      : ".bg-app-frame { background-color: rgb(2, 6, 23); }";
   document.head.append(style);
   return style;
 }
@@ -33,9 +26,6 @@ function recordingShell(answer: () => Promise<unknown> = async () => null) {
   };
   return { ipc: ipc as never, sent };
 }
-
-/** Display settings that keep nothing, so every one is its fallback. */
-const unsaved = { getItem: () => null, setItem: () => undefined };
 
 const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -65,28 +55,13 @@ verifies("studio.window-title-bar-colour", () => {
     expect(hexOfColour("linear-gradient(red, blue)")).toBeUndefined();
   });
 
-  it("lays one colour over another as color-mix does", () => {
-    expect(mixOver("#ebecf6", "#3b8bff", 0.3)).toBe("#b6cff9");
-    expect(mixOver("#000000", "#ffffff", 0)).toBe("#000000");
-    expect(mixOver("#000000", "#ffffff", 1)).toBe("#ffffff");
-  });
-
-  it("gives a focused app's frame colour, light and dark", () => {
+  it("gives the app frame colour Studio and a focused app share, light and dark", () => {
     const light = frameStyles("light");
-    expect(focusedFrameColour(document)).toBe("#f4f7fa");
+    expect(appFrameColour(document)).toBe("#f4f7fa");
     light.remove();
     frameStyles("dark");
-    expect(focusedFrameColour(document)).toBe("#020617");
+    expect(appFrameColour(document)).toBe("#020617");
     expect(document.body.children).toHaveLength(0);
-  });
-
-  it("gives Studio's frame colour where the halo starts, from the frame colours in Settings", () => {
-    const display = new DisplaySettings(new BrowserDisplayPrefs(unsaved, new EventTarget()));
-    const light = frameStyles("light");
-    expect(studioFrameColour(document, display)).toBe("#b6cff9");
-    light.remove();
-    frameStyles("dark");
-    expect(studioFrameColour(document, display)).toBe(mixOver("#020617", "#3b8bff", 0.15));
   });
 
   it("sends the colour once at start, again after a theme switch, and not when it stayed", async () => {
