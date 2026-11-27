@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-20465
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qvXGdVoWA1mVM2le01aKxKgrd/q5Y6+GAWx2QmnIw+RPgfMONdfn2Aeus9Yks9JNwiLlBQnd8UziJwl22PTHDA==
 
 The board approved a new app icon set on HAL-20465 (27 Nov 2026, card "App icons: build the dark,
 all-blue set?"): dark only, all in Halonic blue, one line of light on ink glass around a point of
