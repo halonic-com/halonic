@@ -273,9 +273,10 @@ verifies("agent-host.paperclip-polling", () => {
 
     const company = `/api/companies/${acme.company}`;
     expect(tick).toEqual([
-      // The poll.
+      // The poll; the chats once, for the cards on them, which the task list leaves out.
       `GET ${company}/issues`,
       `GET ${company}/agents`,
+      `GET ${company}/chats`,
       `GET ${company}/projects`,
       // The watch: the conversation list, and no chat's comments.
       `GET ${company}/issues`,

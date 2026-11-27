@@ -75,6 +75,8 @@ export class FakePaperclip {
     if (path === `/api/companies/${acme.company}/join-requests`) return json([]);
     if (path === `/api/companies/${acme.company}/projects`) return json([]);
     if (path === "/api/issues/task-1/comments") return json([]);
+    // The Inbox reads the chat's cards too, as the task list leaves chats out.
+    if (path === "/api/issues/task-1/interactions") return json([]);
     return toolStepAnswer(path, request.method, body);
   };
 }
