@@ -25,6 +25,7 @@ const STEP_FAILURES: &[&str] = &[
     "unreachable",
     "malformed",
     "state-changed",
+    "more-than-one",
 ];
 /// Every way a request may end: `ActionOutcome`.
 const OUTCOMES: &[&str] = &["succeeded", "failed", "declined", "expired"];

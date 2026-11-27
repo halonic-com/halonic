@@ -31,6 +31,19 @@
       "path": "/zones/{zone_id}",
       "body": [],
       "keep": ["name", "status"]
+    },
+    {
+      "kind": "call",
+      "definition": "acme.update-dns-record",
+      "version": 1,
+      "step": 1,
+      "service": "cloudflare",
+      "risk": "routine",
+      "placeholders": { "zone_id": "^[0-9a-f]{32}$", "record_id": "^[0-9a-f]{32}$" },
+      "method": "PATCH",
+      "path": "/zones/{zone_id}/dns_records/{record_id}",
+      "body": [],
+      "keep": ["id"]
     }
   ]
 }

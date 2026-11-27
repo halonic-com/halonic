@@ -59,6 +59,7 @@ export const actionStepFailures: readonly ActionStepFailure[] = [
   "unreachable",
   "malformed",
   "state-changed",
+  "more-than-one",
 ];
 
 /** Every way a request may end. */

@@ -121,7 +121,8 @@ export function outcomeText(outcome: StepOutcome, service: StepperService): stri
     case "succeeded":
       return outcome.result === undefined ? "Done." : `Done. ${outcome.result}`;
     case "failed":
-      // Without a status nothing reached the service, so the reason is in Halonic's own words.
+      // Without a status the reason is in Halonic's own words: nothing reached the service, or
+      // Halonic couldn't use its answer, such as a check that found more than one match.
       if (outcome.status === undefined) return `Failed. ${outcome.message}`;
       return `Failed: ${serviceName(service)} refused this step (status ${outcome.status}).`;
     case "skipped":

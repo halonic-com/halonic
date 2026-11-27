@@ -104,6 +104,12 @@ export interface ActionSendRequest extends ActionStepRef {
  */
 export type ActionRefusal = "not-in-catalog" | "bad-value" | "signed-out" | "too-often";
 
+/**
+ * Why a `GET` step's successful answer can't be used. `more-than-one`: the answer listed more than one match, and a
+ * step works on exactly one. The sender sends no text with it, so the caller words it itself.
+ */
+export type ActionUnusable = "more-than-one";
+
 /** What sending a step did. `cancelled`: the user closed the sender's native dialog, and nothing was sent. */
 export type ActionSendResult =
   | {
@@ -113,9 +119,11 @@ export type ActionSendResult =
       kept: Readonly<Record<string, ActionValue>>;
       /**
        * For a failed status, the service's own message, cut to `maxActionErrorLength` of `@halonicjs/events` and with
-       * anything that looks like a token dropped: untrusted text, shown quoted.
+       * anything that looks like a token dropped: untrusted text, shown quoted. Never set on a successful status.
        */
       error?: string;
+      /** Set only on a successful status of a `GET` step whose answer can't be used; `kept` is then empty. */
+      unusable?: ActionUnusable;
     }
   | { outcome: "refused"; reason: ActionRefusal }
   | { outcome: "cancelled" }

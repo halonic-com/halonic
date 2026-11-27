@@ -3,6 +3,7 @@ import { ClipboardProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stepOutcome } from "../run/record-fold.ts";
 import type { StepperView } from "../stepper-view.ts";
 import {
   inStage,
@@ -89,6 +90,27 @@ verifies("action-steppers.run", () => {
       expect(copied).toEqual(["Status 403. GitHub said: “Resource not accessible by integration”"]);
       await click(button(root, "Try step 2 again"));
       expect(actions.calls).toEqual(["run 2"]);
+    });
+
+    it("words a check that found more than one match itself, never as the service's refusal or words", async () => {
+      const outcome = stepOutcome({
+        type: "action.step.failed",
+        request: "req-1",
+        at: "2026-11-25T09:00:00.000Z",
+        step: 2,
+        failure: "more-than-one",
+        status: 200,
+      });
+      const { root, copied } = show(
+        withOutcomes(routineRequest(), [{ kind: "succeeded" }, outcome]),
+      );
+      const words =
+        "The service found more than one match, and this step works on exactly one. (status 200)";
+      const line = root.querySelectorAll("ol > li")[1]?.textContent;
+      expect(line).toContain(`Failed. ${words}`);
+      expect(line).not.toContain("refused");
+      await click(button(root, "Copy details"));
+      expect(copied).toEqual([words]);
     });
 
     it("starts nothing while a step runs, and says why its buttons can't be used", async () => {
