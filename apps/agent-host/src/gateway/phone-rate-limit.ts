@@ -3,14 +3,18 @@ import type { Clock } from "@halonicjs/ports";
 import { deviceId } from "../remote/phone-records.ts";
 
 /**
- * How many searches and how many sends one paired phone may make in a
- * minute (proposed on HAL-18874 for Julian's sign-off; HAL-17540 asks for a
- * rate but names no number). A person reading and replying stays well under
- * it; a stolen phone can't turn the board key into a burst of Paperclip calls.
+ * How many searches, sends and reactions reads one paired phone may make in
+ * a minute (proposed on HAL-18874 and HAL-20260 for Julian's sign-off;
+ * HAL-17540 asks for a rate but names no number). A person reading and
+ * replying stays well under it; a stolen phone can't turn the board key into
+ * a burst of Paperclip calls. Reactions reads get more, because the phone
+ * reads them each time a chat opens or changes, and one refused only hides
+ * the chat's reactions.
  */
 export const phoneCallsPerMinute: Readonly<Record<GatewayRateLimited, number>> = {
   search: 10,
   send: 10,
+  reactions: 30,
 };
 
 const minuteMs = 60_000;
@@ -22,13 +26,13 @@ interface Bucket {
 }
 
 /**
- * The paired phones' rates for search and send (Julian, HAL-17540): a token
- * bucket per phone and kind, which refills evenly over a minute. Buckets are
- * keyed by the paired phone's id, never by its connection, so a phone that
- * reconnects finds its bucket as it left it. It reads the time from the
- * `Clock` port and sets no timer: a bucket refills by the time that passed
- * since its last call. It holds two small entries per phone that ever
- * searched or sent, for as long as the host runs.
+ * The paired phones' rates for search, send and reactions reads (Julian,
+ * HAL-17540): a token bucket per phone and kind, which refills evenly over a
+ * minute. Buckets are keyed by the paired phone's id, never by its
+ * connection, so a phone that reconnects finds its bucket as it left it. It
+ * reads the time from the `Clock` port and sets no timer: a bucket refills by
+ * the time that passed since its last call. It holds a small entry per phone
+ * and kind it ever rated, for as long as the host runs.
  */
 export class PhoneRateLimits {
   readonly #clock: Clock;

@@ -87,6 +87,16 @@ verifies("remote-gateway.phone-reactions", () => {
       await t.say(readReactions);
       expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "r1", code: "offline" });
     });
+
+    it("counts each read against the phone's reactions reads, and refuses one over the rate", async () => {
+      const t = await connect();
+      t.fake.left.reactions = 1;
+      await t.say(readReactions);
+      await t.say({ ...readReactions, id: "r2" });
+      expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "r2", code: "rate-limited" });
+      expect(t.reactions.calls).toEqual([["list", "conv-1"]]);
+      expect(t.fake.left).toMatchObject({ search: 10, send: 10 });
+    });
   });
 
   describe("reacting", () => {
@@ -114,6 +124,14 @@ verifies("remote-gateway.phone-reactions", () => {
       await t.say(react);
       expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "x1", code: "rate-limited" });
       expect(t.reactions.calls).toEqual([]);
+    });
+
+    it("refuses with not-supported where the host keeps no reactions, and keeps the connection", async () => {
+      const t = await connect(5, false);
+      await t.say(react);
+      expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "x1", code: "not-supported" });
+      expect(t.transport.closed).toBe(false);
+      expect(t.fake.left.send).toBe(10);
     });
 
     it("closes with malformed on an emoji that isn't one of the six", async () => {
