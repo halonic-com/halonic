@@ -15,6 +15,7 @@ const settings = {
   webhookHosts: ["hooks.acme.test"],
   maxPerHour: 3,
   prOutcomes: true,
+  noPostTasks: [],
 };
 
 /** Liam's signed verdict on #6089, as a webhook delivery and as the pass reads it. */

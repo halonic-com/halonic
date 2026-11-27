@@ -18,6 +18,9 @@ export const chiefLineRouteKeys = {
   prEvent: "chief-line-pr-event",
 } as const;
 
+/** The board's own chats, which `board/post` refuses unless the board sets its own list (HAL-20168). */
+const defaultNoPostTasks = ["HAL-10", "HAL-45"];
+
 /** The chief line's settings, spread into the manifest's instance settings. */
 export const chiefLineConfigProperties = {
   chiefLine: {
@@ -60,6 +63,14 @@ export const chiefLineConfigProperties = {
         minimum: 1,
         default: 20,
       },
+      noPostTasks: {
+        type: "array",
+        title: "Tasks the board never posts on",
+        description:
+          'Task identifiers board/post refuses (the board\'s own chats); tasks titled "Chat with …" are always refused.',
+        items: { type: "string" },
+        default: defaultNoPostTasks,
+      },
     },
   },
 } as const;
@@ -72,6 +83,8 @@ export interface ChiefLineSettings {
   readonly maxPerHour: number;
   /** Whether tracked pull requests' outcomes are posted (HAL-18586). */
   readonly prOutcomes: boolean;
+  /** Task identifiers, upper case, that `board/post` refuses (HAL-20168). */
+  readonly noPostTasks: readonly string[];
 }
 
 /** Reads the `chiefLine` object of a company's settings, with the defaults for what's missing. */
@@ -82,6 +95,7 @@ export function readChiefLineSettings(
   const projectId = raw["projectId"];
   const hosts = raw["webhookHosts"];
   const max = raw["maxPerHour"];
+  const noPost = raw["noPostTasks"];
   return {
     enabled: raw["enabled"] === true,
     projectId:
@@ -91,6 +105,9 @@ export function readChiefLineSettings(
       : [],
     maxPerHour: typeof max === "number" && Number.isInteger(max) && max > 0 ? max : 20,
     prOutcomes: raw["prOutcomes"] === true,
+    noPostTasks: Array.isArray(noPost)
+      ? noPost.filter((id): id is string => typeof id === "string").map((id) => id.toUpperCase())
+      : defaultNoPostTasks,
   };
 }
 
