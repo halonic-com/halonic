@@ -155,9 +155,7 @@ fn open_in_frame<R: Runtime>(
 
 /// Whether the window labelled `label` sits in a frame.
 pub fn is_framed(label: &str) -> bool {
-    FRAMED
-        .lock()
-        .is_ok_and(|framed| framed.iter().any(|kept| *kept == label))
+    FRAMED.lock().is_ok_and(|framed| framed.contains(&label))
 }
 
 fn set_framed(label: &'static str, framed: bool) {
