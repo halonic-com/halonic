@@ -15,7 +15,9 @@ export interface MountedWorkspaceWindow {
  * Draws the desktop app's {@link WorkspaceWindow} into an element of the page, in React's strict
  * mode as every Studio page, so React stays inside the Studio packages and `apps/studio` only
  * starts the window. Every outside link in it opens its page with `openExternal`: the desktop
- * app's own, or a new browser tab when it gives none.
+ * app's own, or a new browser tab when it gives none. A sign-in page opens with `openSignIn`, the
+ * desktop app's small browser window over Studio, or with `openExternal` when it gives none
+ * (`kit.open-sign-in`).
  *
  * @example
  * const window = mountWorkspaceWindow(root, { shell, switcher, platform, language: "en" });
@@ -26,12 +28,13 @@ export function mountWorkspaceWindow(
   element: Element,
   props: WorkspaceWindowProps,
   openExternal: OpenExternal = openInNewTab,
+  openSignIn: OpenExternal = openExternal,
 ): MountedWorkspaceWindow {
   const root = createRoot(element);
   const render = (shown: WorkspaceWindowProps) =>
     root.render(
       <StrictMode>
-        <OpenExternalProvider openExternal={openExternal}>
+        <OpenExternalProvider openExternal={openExternal} openSignIn={openSignIn}>
           <WorkspaceWindow {...shown} />
         </OpenExternalProvider>
       </StrictMode>,

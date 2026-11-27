@@ -57,26 +57,50 @@ export async function openInNewTab(address: ExternalAddress): Promise<void> {
 
 const OpenExternalContext = createContext<OpenExternal>(openInNewTab);
 
+const OpenSignInContext = createContext<OpenExternal>(openInNewTab);
+
 /** The props of `OpenExternalProvider`. */
 export interface OpenExternalProviderProps {
   readonly openExternal: OpenExternal;
+  /**
+   * How a sign-in page opens (`kit.open-sign-in`), such as the desktop app's small browser window
+   * over Studio. Left out, a sign-in page opens with `openExternal`, as every other page.
+   */
+  readonly openSignIn?: OpenExternal;
   readonly children: ReactNode;
 }
 
 /**
- * Sets how every `ExternalLink` inside it opens its page. The shell puts one at the root of the
- * app; a test puts one around the component it renders.
+ * Sets how every `ExternalLink` inside it opens its page, and how a sign-in page opens. The
+ * shell puts one at the root of the app; a test puts one around the component it renders.
  *
  * @example
  * <OpenExternalProvider openExternal={async (address) => desktop.openInSystemBrowser(await address)}>
  *   <App />
  * </OpenExternalProvider>
  */
-export function OpenExternalProvider({ openExternal, children }: OpenExternalProviderProps) {
-  return <OpenExternalContext value={openExternal}>{children}</OpenExternalContext>;
+export function OpenExternalProvider({
+  openExternal,
+  openSignIn = openExternal,
+  children,
+}: OpenExternalProviderProps) {
+  return (
+    <OpenExternalContext value={openExternal}>
+      <OpenSignInContext value={openSignIn}>{children}</OpenSignInContext>
+    </OpenExternalContext>
+  );
 }
 
 /** The `openExternal` service in force where a component renders. */
 export function useOpenExternal(): OpenExternal {
   return useContext(OpenExternalContext);
+}
+
+/**
+ * How a sign-in page opens where a component renders (`kit.open-sign-in`): a feature calls it, in
+ * place of `useOpenExternal()`, for a page where the person signs in, such as a Paperclip approval
+ * page or a Google consent page, and for no other page.
+ */
+export function useOpenSignIn(): OpenExternal {
+  return useContext(OpenSignInContext);
 }

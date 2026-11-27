@@ -1,0 +1,37 @@
+[package]
+name = "halonic-sign-in-window"
+description = "Opens a sign-in page as a small app window of the user's own Chromium browser, centred on the Halonic window that asked for it."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# The Windows calls need `unsafe`. As in window-app-id, this crate turns the
+# workspace's `unsafe_code = "forbid"` off in its own Cargo.toml, every block
+# has a `// SAFETY:` comment, and nothing unsafe leaves the `platform`
+# module. These are the workspace lints with that one change.
+[lints.rust]
+unsafe_code = "allow"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+undocumented_unsafe_blocks = "deny"
+print_stderr = "deny"
+
+[dependencies]
+# The shell's own URL parser (Cargo.lock already has it), for the address check.
+url = "2"
+
+# Pinned to the version already in Cargo.lock, so this crate adds no new code
+# to the build. Only the features it calls are turned on: the default browser
+# and its open command (RegGetValueW), the browser's process path
+# (OpenProcess, QueryFullProcessImageNameW) and its windows (EnumWindows,
+# GetClassNameW, GetWindowThreadProcessId, IsWindowVisible, SetWindowPos).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_System_Registry",
+  "Win32_System_Threading",
+  "Win32_UI_WindowsAndMessaging",
+] }

@@ -1908,6 +1908,14 @@ name = "halonic-shell-log"
 version = "0.1.1"
 
 [[package]]
+name = "halonic-sign-in-window"
+version = "0.1.1"
+dependencies = [
+ "url",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "halonic-studio"
 version = "0.1.1"
 dependencies = [
@@ -1941,6 +1949,7 @@ dependencies = [
  "halonic-secrets",
  "halonic-server-session",
  "halonic-shell-log",
+ "halonic-sign-in-window",
  "halonic-trust-grant",
  "halonic-trust-store",
  "halonic-tunnel",

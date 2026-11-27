@@ -1,5 +1,5 @@
 import { pendingSignInLifetimeMs } from "@halonicjs/google-setup";
-import { Button, Callout, Spinner, useOpenExternal } from "@halonicjs/studio-kit";
+import { Button, Callout, Spinner, useOpenSignIn } from "@halonicjs/studio-kit";
 import { failureLine } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { useNotAnswering } from "./not-answering.tsx";
@@ -51,7 +51,7 @@ export function SignInPanel(props: SignInPanelProps) {
   const { start, cancel, signInStartedAt, lastSignInAt, wrongAccountAt, signInEndedAt } = props;
   const { answering } = props;
   const { onOpenClientStep, whileWaiting } = props;
-  const openExternal = useOpenExternal();
+  const openSignIn = useOpenSignIn();
   const notAnswering = useNotAnswering();
   const reason = useId();
   const [signIn, setSignIn] = useState<SignIn>({ kind: "idle" });
@@ -78,7 +78,7 @@ export function SignInPanel(props: SignInPanelProps) {
       (url) => setSignIn({ kind: "waiting", address: url }),
       () => {},
     );
-    openExternal(address).catch((error: unknown) => {
+    openSignIn(address).catch((error: unknown) => {
       setSignIn({
         kind: "failed",
         line: failureLine("start the sign-in", error),
@@ -134,7 +134,7 @@ export function SignInPanel(props: SignInPanelProps) {
       <Waiting
         problem={cancelProblem}
         below={whileWaiting}
-        onOpenAgain={() => void openExternal(signIn.address)}
+        onOpenAgain={() => void openSignIn(signIn.address)}
         onCancel={() => void cancelWaiting()}
       />
     );

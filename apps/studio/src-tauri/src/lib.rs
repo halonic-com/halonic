@@ -29,7 +29,7 @@
 //! `show_main_window` (capabilities/desktop-show-main-window.json), in every app window
 //! `window_content_get` and `window_content_set` (capabilities/desktop-window-content.json), in the main window only
 //! `take_pending_notification_click` (capabilities/desktop-pending-notification-click.json), and the page's close request
-//! (capabilities/desktop-window.json), the title bar's `set_frame_colour` (capabilities/desktop-frame-colour.json), its notifications
+//! (capabilities/desktop-window.json), the title bar's `set_frame_colour` (capabilities/desktop-frame-colour.json), in the main window only `open_sign_in` (capabilities/desktop-sign-in-window.json), its notifications
 //! (capabilities/desktop-notifications.json) and the `wsl_*` commands of the sandbox
 //! backup (capabilities/desktop-sandbox-backup.json) and the `action_*` commands of
 //! user-only action steppers (capabilities/desktop-actions.json) and, on macOS and
@@ -148,6 +148,7 @@ mod server_session;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod server_session_brief;
 mod shell_setup;
+mod sign_in_window;
 mod system_region;
 #[cfg(desktop)]
 mod tray;
@@ -457,6 +458,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             #[cfg(desktop)]
             notification_clicks::pending_click::take_pending_notification_click,
             frame_colour::set_frame_colour,
+            sign_in_window::open_sign_in,
         ])
 }
 

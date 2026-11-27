@@ -1,4 +1,4 @@
-import { Dialog, IconTile, Spinner, useOpenExternal, WarningIcon } from "@halonicjs/studio-kit";
+import { Dialog, IconTile, Spinner, useOpenSignIn, WarningIcon } from "@halonicjs/studio-kit";
 import { type SignInChallenge, signInLimitMs } from "@halonicjs/studio-services";
 import { type ReactNode, useEffect, useState } from "react";
 import * as words from "../connections-words.ts";
@@ -74,14 +74,14 @@ export function WaitingStep({
   readonly leftMs: number;
   readonly onCancel: () => void;
 }) {
-  const openExternal = useOpenExternal();
+  const openSignIn = useOpenSignIn();
   return (
     <Dialog
       size="md"
       title={title}
       closeLabel={`Close ${title}`}
       confirm={{ label: words.OPEN_APPROVAL, busyLabel: words.OPEN_APPROVAL }}
-      onConfirm={() => void openExternal(challenge.approvalUrl)}
+      onConfirm={() => void openSignIn(challenge.approvalUrl)}
       onCancel={onCancel}
     >
       <div className="flex flex-col gap-4">

@@ -2494,6 +2494,12 @@ for the address and hands it to the system browser:
 </OpenExternalProvider>;
 ```
 
+**Sign-in pages.** A feature opens a page where the person signs in, such as a Paperclip approval
+page or a Google consent page, with `useOpenSignIn()` instead of `useOpenExternal()`
+(`kit.open-sign-in`). The provider's optional `openSignIn` opens it: on Windows the desktop app
+opens it as a small window of the user's own browser, centred on Studio. Without `openSignIn`,
+a sign-in page opens with `openExternal`, as every other page.
+
 Without a provider, the link uses `openInNewTab`. A known address opens in a new tab with
 `noopener` and `noreferrer`. For a pending address the tab has to open inside the click, or the
 browser blocks it as a popup: it opens empty at once, its handle back to Studio is cut, and it

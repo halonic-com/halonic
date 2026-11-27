@@ -237,6 +237,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "deployment_stream_end",
         "window_content_get",
         "window_content_set",
+        "open_sign_in",
     ] {
         assert!(
             commands.iter().any(|command| command == expected),
