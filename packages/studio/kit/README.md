@@ -153,6 +153,13 @@ fades. A test puts in its own motion with `SettleMotionProvider` instead of stub
 Cards that ended in the same read hold and go as one with `useSettleAwayTogether`
 (`kit.settle-together`), as the Inbox's rows do.
 
+## List column
+
+Every new-design screen sizes its list column with `listColumnClass` (`kit.list-column`, imported
+from `@halonicjs/studio-kit/list-column`, decision HAL-20769): 34% of the room it sits in, at most
+380px and at least 208px. A screen adds its own layout classes, such as `shrink-0`, but never its
+own size, so a later change is one edit.
+
 ## More contrast
 
 When macOS or Linux asks for more contrast (`prefers-contrast: more`), colours aren't forced, so

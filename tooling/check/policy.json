@@ -132,6 +132,7 @@
     "@halonicjs/studio-kit": [
       "./app-glyphs",
       "./fonts",
+      "./list-column",
       "./settle"
     ],
     "@halonicjs/studio-services": [
