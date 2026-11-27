@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-20169
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:coVdV46UEkYmghi39GRJukW8+9txS/zlBPt5pJYCgQsnSerxA7EqPYPJK/30RgNw9un3uA1w8/hvpQtczH0HBw==
 
 The board approved this fix on 26 Nov (HAL-20169, from the Agent tools safety sweep of that day).
 
