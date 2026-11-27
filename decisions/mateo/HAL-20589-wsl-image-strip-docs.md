@@ -3,6 +3,7 @@
 - Task: HAL-20589
 - Approval: the plan on HAL-20583, approved by Liam; Liam signs this note as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dSIVEw/0dzIiIeytrRUG3lXqjuVFbOmu+GAfKzjvnYDRJLP/g/uVgsbSxFd8Uj1dCTf4CgRGL8NdXifWz8bfBA==
 
 ## What changes
 
