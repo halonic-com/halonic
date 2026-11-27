@@ -144,13 +144,27 @@ function importProblem(
   return subpathProblem(context, site, target, name, subpath);
 }
 
+/**
+ * The one import that may reach into another package by path. CI runs the
+ * leak guard on plain Node with nothing installed, so it can't import
+ * `@halonicjs/std` by name; it reads the secret rules it shares with
+ * Studio's offer scans straight from the file, which imports nothing
+ * (HAL-20537, pinned by `leaks-imports.test.ts`).
+ */
+const leakGuardImport = {
+  from: "tooling/check/src/leaks/",
+  file: "packages/core/std/src/secret-rules.ts",
+};
+
 function relativeImportProblem(site: ImportSite, specifier: string): string | undefined {
   if (specifier.startsWith("/")) {
     return `imports the absolute path "${specifier}". Use a relative path inside the package, or the other package's name.`;
   }
   const resolved = posix.normalize(posix.join(posix.dirname(site.file), specifier));
   const inside = site.pkg.directory === "." || resolved.startsWith(`${site.pkg.directory}/`);
-  if (!inside) {
+  const leakGuardRules =
+    site.file.startsWith(leakGuardImport.from) && resolved === leakGuardImport.file;
+  if (!inside && !leakGuardRules) {
     return `"${specifier}" reaches outside ${site.pkg.manifest.name}. Import the other package by name through its public entry point.`;
   }
   if (!site.dev && namesTestFile(resolved)) {
