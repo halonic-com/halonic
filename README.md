@@ -261,6 +261,11 @@ or [Bug report](https://github.com/halonic-com/halonic/issues/new/choose)
 issue. Remove keys, tokens and private folder or user names first: `--debug`
 output can include your home folder.
 
+## Use Halonic from your phone
+
+[Pair a phone](docs/how-to/pair-a-phone.md) shows your agents, approves what a run
+proposes and sends prompts from Android, and says how to unpair.
+
 ## Models and privacy
 
 - Use local models through Ollama, LM Studio, llama.cpp or vLLM, or cloud
