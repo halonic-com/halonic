@@ -148,11 +148,14 @@ function TabPill({
   const fill = picked
     ? "bg-halo-tint text-accent forced-colors:border-2 forced-colors:border-[Highlight] forced-colors:text-[CanvasText]"
     : "text-fg-muted group-active:bg-surface-muted forced-colors:border forced-colors:border-[CanvasText]";
+  // A count sits beside the icon, so the icon keeps room for it at its end and the pair is centred:
+  // 6px, icon 20px, ring 2px, count 20px, ring 2px, 6px (HAL-19399 G13, Noah's check HAL-20644).
+  const room = signal?.kind === "count" ? " me-6" : "";
   return (
     <span
       className={`flex h-7 w-14 max-w-full shrink-0 items-center justify-center rounded-full ${fill}`}
     >
-      <span className="relative size-icon-md *:size-full">
+      <span className={`relative size-icon-md *:size-full${room}`}>
         {children}
         {signal === undefined ? null : <IconSignal signal={signal} />}
       </span>
@@ -161,13 +164,14 @@ function TabPill({
 }
 
 /**
- * A signal at the icon's corner: the count's right edge and top inside the 56×28px pill, ring
- * included, so however wide the count, it stays inside the current place's filled pill (HAL-19399
- * G13, which moved it from component specs 15.2 rev. 6's spot above the pill); the dot centred on
- * the icon's top right corner (15.2, rev. 6). Both have a 2px `surface` ring, and the count sits
- * on a `surface` backing so the pill doesn't show through its soft fill. The backing is a flex box,
- * so the count fills it rather than sitting on a text line's baseline: the ring stays even and the
- * count level with the icon. The tab's name already says it, so it's hidden here.
+ * A tab's signal. The count sits beside the icon, level with it, so it hides none of the icon and
+ * stays inside the 56×28px pill, ring included (HAL-19399 G13, which moved it from component specs
+ * 15.2 rev. 6's spot above the pill, then off the icon's corner after Noah's check HAL-20644). It
+ * holds one or two digits; the box is the icon's 20px. The dot stays centred on the icon's top
+ * right corner (15.2, rev. 6). Both have a 2px `surface` ring, and the count sits on a `surface`
+ * backing so the pill doesn't show through its soft fill. The backing is a flex box, so the count
+ * fills it rather than sitting on a text line's baseline: the ring stays even. The tab's name
+ * already says it, so it's hidden here.
  */
 function IconSignal({ signal }: { readonly signal: TabSignal }) {
   if (signal.kind === "running") {
@@ -183,7 +187,7 @@ function IconSignal({ signal }: { readonly signal: TabSignal }) {
   return (
     <span
       aria-hidden="true"
-      className="absolute -end-3.5 top-0 flex rounded-full bg-surface ring-2 ring-surface"
+      className="absolute -end-5.5 top-0 flex rounded-full bg-surface ring-2 ring-surface"
     >
       <StatusChip tone={problems ? "attention" : "accent"} shape="count" name={signal.name}>
         {problems ? (

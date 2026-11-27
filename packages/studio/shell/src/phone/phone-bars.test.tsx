@@ -142,11 +142,14 @@ verifies("shell.phone-bars", () => {
     expect(link("Runs").getAttribute("href")).toBe("#runs");
     const count = link("Inbox").querySelector('[aria-hidden="true"].absolute');
     expect(count?.textContent).toContain("3");
-    // The 20px icon sits 4px inside the 28px pill and 18px from its ends: the count, measured from
-    // the icon's top and end, stays inside the pill whatever its width (G13).
+    // The count sits beside the 20px icon, 2px past its end, level with it, and the icon keeps 24px
+    // at its end, so the pair is centred in the 56px pill with 6px either side (G13).
     expect(count?.className).toContain("top-0");
     expect(count?.className).not.toContain("-top-");
-    expect(count?.className).toContain("-end-3.5");
+    expect(count?.className).toContain("-end-5.5");
+    expect(count?.parentElement?.className.split(" ")).toContain("me-6");
+    // The running dot stays at the icon's corner, so that icon keeps no room.
+    expect(link("Runs").querySelector(".relative")?.className.split(" ")).not.toContain("me-6");
     // A flex backing, so the count fills it rather than sitting on a text line's baseline.
     expect(count?.className.split(" ")).toContain("flex");
     const dot = link("Runs").querySelector('[aria-hidden="true"].absolute');

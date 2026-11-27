@@ -109,6 +109,12 @@ the update's signature was refused or its download failed (HAL-19575). The strip
 title bar; the button and the dialog are the settings feature's own, over a made-up updater, and
 load through `loadUpdateButton` in its `api.ts`.
 
+## The phone tab bar's count
+
+`first-run-tab-bar-<1|12>-<light|dark>.png` is the kit's phone tab bar at 390 px with Home, Inbox
+and Runs drawn with the Studio's own icons, Inbox picked with a one- or a two-digit count beside its
+icon, for the house-style check of HAL-19399's G13 (HAL-20644).
+
 ## An agent's question
 
 `agent-card-<light|dark>.png` is the Inbox card of an open question a made-up agent put to the
