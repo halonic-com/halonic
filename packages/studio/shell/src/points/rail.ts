@@ -34,6 +34,17 @@ export interface FolderFacts {
 }
 
 /**
+ * Where the rail reads the open folder's facts. The app builds one per open folder from the
+ * services that know them, so the shell itself reads no files or git (rail flows, line 6).
+ */
+export interface FolderFactsSource {
+  /** The facts as they are now. */
+  readonly facts: FolderFacts;
+  /** Calls `listener` whenever the facts may have changed; returns a function that stops it. */
+  subscribe(listener: () => void): () => void;
+}
+
+/**
  * The rail entries a feature may add. The set is fixed by design (the layout in HAL-20617): a feature
  * can't make up a sub-app. It is a list of names only, kept here so a misspelt entry fails at once;
  * the order, name, icon and rule belong to each entry.

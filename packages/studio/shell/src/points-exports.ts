@@ -77,6 +77,7 @@ export type {
 } from "./points/point-store.ts";
 export {
   type FolderFacts,
+  type FolderFactsSource,
   type FolderGitState,
   type FolderKind,
   type RailEntry,

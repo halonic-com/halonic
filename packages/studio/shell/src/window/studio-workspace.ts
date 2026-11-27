@@ -1,6 +1,7 @@
 import type { ToastStore } from "@halonicjs/studio-kit";
 import { EngineStarting } from "../engine/engine-starting.ts";
 import { RecentPlaces } from "../palette/recent-places.ts";
+import type { FolderFactsSource } from "../points/rail.ts";
 import { SaveState } from "../save/save-state.ts";
 import type { ServiceTarget } from "../service-catalog.ts";
 import { TabSet } from "../tabs/tab-set.ts";
@@ -18,6 +19,11 @@ export interface StudioWorkspaceOptions {
    * the frame's engine line says "Starting the engine…" until it settles. Left out, it doesn't.
    */
   readonly engineReady?: Promise<unknown> | undefined;
+  /**
+   * The open folder's facts for the icon rail, which the app reads from the folder's services.
+   * Left out, the rail shows the entries of a workspace project with items.
+   */
+  readonly folderFacts?: FolderFactsSource | undefined;
 }
 
 /**
@@ -44,6 +50,8 @@ export class StudioWorkspace {
   readonly name: string | undefined;
   /** Whether the workspace's own engine still starts; each open workspace has its own engine. */
   readonly engineStarting: EngineStarting;
+  /** The open folder's facts for the icon rail, when the app gives them. */
+  readonly folderFacts: FolderFactsSource | undefined;
 
   constructor(options: StudioWorkspaceOptions) {
     this.recent = new RecentPlaces(this.tabs);
@@ -51,6 +59,7 @@ export class StudioWorkspace {
     this.services = options.services;
     this.name = options.name;
     this.engineStarting = new EngineStarting(options.engineReady);
+    this.folderFacts = options.folderFacts;
   }
 
   /** Stops following the tabs. Call it once, when the workspace closes. */
