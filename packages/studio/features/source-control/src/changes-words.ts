@@ -85,6 +85,7 @@ export const itemWords = {
     integration: "Integration",
     plugin: "Plugin",
     workspace: "Workspace settings",
+    workspaceTemplate: "Workspace template",
     deployments: "Deployments",
     models: "Models",
   } as const,
