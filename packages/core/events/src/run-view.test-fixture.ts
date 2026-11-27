@@ -172,6 +172,16 @@ const everyKind: { readonly [Type in RunEventType]: Extract<RunEventBody, { type
     idempotencyKey: hidden,
     resume: { messages: [{ role: "user", content: hidden }], calls: [], step: 1 },
   },
+  "action.requested": {
+    type: "action.requested",
+    request: hidden,
+    definition: hidden,
+    version: 1,
+    parameters: { app: hidden },
+    requester: { kind: "agent", agent: hidden, run: hidden },
+    reason: hidden,
+    expires: hidden,
+  },
   "knowledge.searched": {
     type: "knowledge.searched",
     agent: hidden,

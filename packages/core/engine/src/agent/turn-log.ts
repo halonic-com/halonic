@@ -2,7 +2,10 @@ import { maxCauseNameLength, type RunEventBody } from "@halonicjs/events";
 import type { ConnectorPartOff } from "@halonicjs/ports";
 import { connectorStartCause } from "./connector-start-cause.ts";
 
-/** The run log events a model turn writes, with the `agent.*` events of the subagents it hands tasks to. */
+/**
+ * The run log events a model turn writes, with the `agent.*` events of the
+ * subagents it hands tasks to and the `action.requested` of a request it files.
+ */
 export type TurnEvent = Extract<
   RunEventBody,
   {
@@ -21,7 +24,8 @@ export type TurnEvent = Extract<
       | "connector.listing-failed"
       | "connector.part-off"
       | "key-origin.asked"
-      | "key-origin.answered";
+      | "key-origin.answered"
+      | "action.requested";
   }
 >;
 

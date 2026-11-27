@@ -1,3 +1,4 @@
+import type { ActionRequestedRunEvent } from "./action-events.ts";
 import type { AgentAnswerRetriedEvent } from "./agent-answer-retried.ts";
 import type { AgentResume } from "./agent-resume.ts";
 import type { BridgeFailedEvent, HarnessAllowedEvent } from "./bridge-events.ts";
@@ -247,6 +248,12 @@ export type RunEventBody =
   | ConnectorPartOffEvent
   | KeyOriginAskedEvent
   | KeyOriginAnsweredEvent
+  /**
+   * An agent asked the user to run a reviewed action stepper (requirement
+   * `events.action-requested-run-event`). The agent runs nothing; the user
+   * reviews and runs it in Studio.
+   */
+  | ActionRequestedRunEvent
   /**
    * A step is about to make a connector call that can change things
    * (requirement `events.effect-requested`). Written before the call, so a

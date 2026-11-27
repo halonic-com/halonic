@@ -317,6 +317,9 @@ export class LocalExecutor implements RunExecutor {
       runs: this.options.runs.store,
       ...(this.options.memory === undefined ? {} : { records: this.options.memory }),
       clock: this.options.clock,
+      ...(this.options.actionRequests === undefined
+        ? {}
+        : { actionRequests: { ...this.options.actionRequests, ids: this.options.runs.ids } }),
       log: turn.log,
       runSubagent: (task) =>
         runLocalSubagent(

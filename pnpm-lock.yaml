@@ -2884,6 +2884,9 @@ importers:
 
   packages/core/engine:
     dependencies:
+      '@halonicjs/action-steppers':
+        specifier: workspace:*
+        version: link:../action-steppers
       '@halonicjs/app':
         specifier: workspace:*
         version: link:../app

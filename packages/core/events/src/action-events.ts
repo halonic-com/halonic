@@ -130,6 +130,13 @@ export type ActionEvent =
   | ActionFinishedEvent;
 
 /**
+ * `action.requested` as a run log line (requirement
+ * `events.action-requested-run-event`): the same fields but `at`, since the
+ * line's own `at` is when the engine filed it.
+ */
+export type ActionRequestedRunEvent = Omit<ActionRequestedEvent, "at">;
+
+/**
  * An event of a request's record, which Studio keeps outside every workspace
  * through the `ActionRecords` port: every action event but `action.requested`.
  */

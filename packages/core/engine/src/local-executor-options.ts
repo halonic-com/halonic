@@ -17,6 +17,7 @@ import type { HalonicTool } from "./agent/turn-tools.ts";
 import type { AgentKnowledgeOptions } from "./knowledge/agent-knowledge.ts";
 import type { AbortOnStop } from "./run/abort-on-stop.ts";
 import type { LocalRunsOptions } from "./run/local-runs-options.ts";
+import type { ActionRequests } from "./tools/action-requests/request-action-tool.ts";
 
 /** The run a model call is made in. A chat turn has none. */
 export interface ModelScope {
@@ -112,4 +113,10 @@ export interface LocalExecutorOptions {
    * answer no more.
    */
   readonly abortOnStop?: AbortOnStop;
+  /**
+   * The action catalog and the user's requester policy. With them, every
+   * run's agent gets `request_action`, which files a request the user runs
+   * in Studio; without them, none does. It never holds a way to run a step.
+   */
+  readonly actionRequests?: ActionRequests;
 }
