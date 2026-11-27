@@ -26,7 +26,8 @@ export interface ToolScriptHostCapability extends ToolScriptCapability {
    * The capability's own preview lines for a write, from the frozen arguments
    * (S17). The host always adds them after the header's preview, so a
    * script's wording can never hide what the capability will do. Secret
-   * fields arrive as `{ secret: "<input name>" }`, never their value.
+   * fields hold the handle itself (check with `isToolScriptSecretHandle`),
+   * never its value.
    */
   readonly preview?: (args: ToolScriptData) => readonly string[];
 }
@@ -50,10 +51,12 @@ export interface ToolScriptPreview {
 
 /**
  * A write as this host hands it to `confirm`: the port's
- * {@link ToolScriptWrite}, whose `args` are the frozen copy that will be
- * sent with secret handles shown as `{ secret: "<input name>" }`, plus the
+ * {@link ToolScriptWrite}, whose `args` are the very frozen object that will
+ * be sent, secret handles included (a handle holds no value), plus the
  * preview when the header or the capability gives one.
  */
 export interface ToolScriptHostWrite extends ToolScriptWrite {
+  /** For each top-level field that holds a secret handle, the input it stands for. */
+  readonly secretInputs?: Readonly<Record<string, string>>;
   readonly preview?: ToolScriptPreview;
 }

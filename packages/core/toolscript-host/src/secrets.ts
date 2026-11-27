@@ -93,13 +93,19 @@ export function holdsHandle(value: unknown): boolean {
   return Object.values(value).some(holdsHandle);
 }
 
-/** `args` with every handle shown as `{ secret: "<input name>" }`, for `confirm`, previews and records. */
-export function redacted(args: ToolScriptIsolateValue, table: SecretTable): ToolScriptData {
-  if (isToolScriptSecretHandle(args)) return Object.freeze({ secret: table.nameOf(args) });
-  if (typeof args !== "object" || args === null) return args;
-  if (Array.isArray(args)) return Object.freeze(args.map((item) => redacted(item, table)));
-  const entries = Object.entries(args as Record<string, ToolScriptIsolateValue>);
-  return Object.freeze(
-    Object.fromEntries(entries.map(([field, value]) => [field, redacted(value, table)])),
-  );
+/**
+ * Which input each handle in `args` stands for, by field, so `confirm` can
+ * say "the secret input token" without the value. Handles are only ever in
+ * top-level fields here (checked first), so the top level is all there is.
+ */
+export function secretInputsOf(
+  args: ToolScriptData,
+  table: SecretTable,
+): Readonly<Record<string, string>> {
+  if (typeof args !== "object" || args === null || Array.isArray(args)) return {};
+  const names: Record<string, string> = {};
+  for (const [field, value] of Object.entries(args)) {
+    if (isToolScriptSecretHandle(value)) names[field] = table.nameOf(value);
+  }
+  return Object.freeze(names);
 }

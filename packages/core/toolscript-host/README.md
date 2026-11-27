@@ -15,7 +15,7 @@ S9 and S14 to S17).
 ```ts
 import { createToolScriptHost } from "@halonicjs/toolscript-host";
 
-const host = createToolScriptHost({ audience: "user", isolate });
+const host = createToolScriptHost({ audience: "user", isolate, digest, randomBytes });
 const result = await host.run({ runId, artifact, registry, input, confirm });
 if (!result.ok) record.fail(result.reason);
 ```

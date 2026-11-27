@@ -12,7 +12,7 @@ import {
   inputField,
   runAcme,
 } from "./acme.test-helper.ts";
-import type { ToolScriptHostCallContext } from "./capability.ts";
+import type { ToolScriptHostCallContext, ToolScriptHostWrite } from "./capability.ts";
 
 const setNote = (ctx: AcmeContext, args: unknown) => ctxCall(ctx, "acme.setNote", args);
 
@@ -57,6 +57,17 @@ describe("createToolScriptHost", () => {
           frozen: true,
           now: "2026-01-01T00:00:00.000Z",
         },
+      });
+    });
+
+    it("gives an agent run's ctx no batch", async () => {
+      const { result } = await runAcme(async (ctx) => Object.keys(ctx).sort(), {
+        capabilities: [acmeCapability("stepper.request@1", { kind: "read" }, "agent")],
+        audience: "agent",
+      });
+      expect(result).toMatchObject({
+        ok: true,
+        output: ["fail", "input", "log", "now", "stepper"],
       });
     });
 
@@ -118,7 +129,28 @@ describe("createToolScriptHost", () => {
       });
       expect(result).toMatchObject({ ok: true, calls: ["acme.set-secret@1"] });
       expect(revealed).toEqual(["acme-value"]);
-      expect(confirmed[0]?.[0]?.args).toEqual({ name: "b", value: { secret: "token" } });
+      const write = confirmed[0]?.[0] as ToolScriptHostWrite;
+      expect(isToolScriptSecretHandle((write.args as { value: unknown }).value)).toBe(true);
+      expect(write.secretInputs).toEqual({ value: "token" });
+      expect(JSON.stringify(write)).not.toContain("acme-value");
+    });
+
+    it("refuses a handle nested inside a declared secret field", async () => {
+      const capability = acmeCapability("acme.set-secret@1", { secretFields: ["value", "name"] });
+      for (const wrap of [
+        (token: unknown) => ({ value: [token] }),
+        (token: unknown) => ({ name: { id: token } }),
+      ]) {
+        const script = (ctx: AcmeContext) =>
+          ctxCall(ctx, "acme.setSecret", wrap(inputField(ctx, "token")));
+        const { result, confirmed } = await runAcme(script, {
+          capabilities: [capability],
+          header,
+          input,
+        });
+        expect(result).toMatchObject({ ok: false, reason: "toolscript.bad-handle", calls: [] });
+        expect(confirmed).toEqual([]);
+      }
     });
 
     it("refuses a handle in a field that isn't declared secret", async () => {
@@ -138,9 +170,15 @@ describe("createToolScriptHost", () => {
   });
 
   verifies("toolscript-host.frozen-writes", () => {
-    it("confirms the frozen copy and sends exactly it", async () => {
+    it("checks, previews, confirms and sends one frozen object", async () => {
+      const seen: ToolScriptData[] = [];
       const sent: ToolScriptData[] = [];
       const capability = acmeCapability("acme.set-note@1", {
+        acceptsArguments: (args) => seen.push(args) > 0,
+        preview: (args) => {
+          seen.push(args);
+          return ["acme note"];
+        },
         call: async (args) => {
           sent.push(args);
           return { saved: true };
@@ -154,11 +192,11 @@ describe("createToolScriptHost", () => {
         output: { saved: true },
         calls: ["acme.set-note@1"],
       });
-      expect(confirmed).toEqual([
-        [{ capability: "acme.set-note@1", risk: "routine", args: { name: "b" } }],
-      ]);
-      expect(sent).toEqual([{ name: "b" }]);
-      expect(Object.isFrozen(sent[0])).toBe(true);
+      const confirmedArgs = confirmed[0]?.[0]?.args;
+      expect(confirmedArgs).toEqual({ name: "b" });
+      expect(Object.isFrozen(confirmedArgs)).toBe(true);
+      expect(seen).toHaveLength(2);
+      for (const args of [...seen, ...sent]) expect(args).toBe(confirmedArgs);
     });
 
     it("sends nothing when the write is declined", async () => {

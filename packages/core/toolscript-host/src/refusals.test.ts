@@ -1,3 +1,4 @@
+import { toolScriptSecretHandle } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { acmeCapability, ctxCall, runAcme } from "./acme.test-helper.ts";
@@ -80,7 +81,10 @@ describe("refusals before and during a run", () => {
     });
 
     it("finds a handle nested anywhere in a value", () => {
+      const handle = toolScriptSecretHandle("secret:acme");
       expect(holdsHandle({ list: [1, "a", { deep: null }] })).toBe(false);
+      expect(holdsHandle({ list: [1, { deep: [handle] }] })).toBe(true);
+      expect(holdsHandle(handle)).toBe(true);
     });
   });
 });

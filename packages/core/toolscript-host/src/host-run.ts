@@ -12,16 +12,18 @@ import {
 import type { ToolScriptHostCapability, ToolScriptHostWrite } from "./capability.ts";
 import type { HeaderView } from "./header-view.ts";
 import { deepFreeze, isPlainAnswer } from "./plain-data.ts";
-import { handlesInPlace, redacted, type SecretTable } from "./secrets.ts";
+import { handlesInPlace, type SecretTable, secretInputsOf } from "./secrets.ts";
 import { withinTouches } from "./touches.ts";
 
 /** A call checked and frozen, ready to confirm and send. */
 interface Prepared {
   readonly capability: ToolScriptHostCapability;
-  /** Exactly what is sent: the isolate's copy, deep-frozen, handles included. */
-  readonly frozen: ToolScriptIsolateValue;
-  /** The same copy with handles shown by input name, for the schema, `touches`, previews and `confirm`. */
-  readonly shown: ToolScriptData;
+  /**
+   * The isolate's copy, deep-frozen, handles included: the one object the
+   * schema, `touches`, the preview and `confirm` see, and exactly what is
+   * sent (S9). A handle holds only its random reference, never the value.
+   */
+  readonly frozen: ToolScriptData;
 }
 
 /**
@@ -51,22 +53,32 @@ export class HostRun {
     this.#now = now;
   }
 
-  /** `ctx`'s host functions: one namespace per capability in `uses`, then `now` and `batch` (the isolate owns `input`, `log` and `fail`). */
+  /**
+   * `ctx`'s host functions: one namespace per capability in `uses`, then
+   * `now`, and `batch` on a user run only (the isolate owns `input`, `log`
+   * and `fail`). An agent run gets no `batch`: ADR 3.2 gives agents no
+   * person to confirm one, and the isolate would count a batch as one call.
+   */
   functions(): ToolScriptIsolateFunctions {
-    const namespaces: Record<string, Record<string, ToolScriptIsolateFunction>> = {};
+    // Maps, so a namespace or method named like `constructor` never reads a prototype.
+    const namespaces = new Map<string, Map<string, ToolScriptIsolateFunction>>();
     for (const id of this.#request.artifact.header.uses) {
       const path = toolScriptCapabilityPath(id);
       const capability = this.#capability(id);
       if (path === undefined || capability === undefined) continue;
-      const namespace = namespaces[path.namespace] ?? {};
-      namespace[path.method] = (args, context) => this.#call(capability, args, context);
-      namespaces[path.namespace] = namespace;
+      const namespace =
+        namespaces.get(path.namespace) ?? new Map<string, ToolScriptIsolateFunction>();
+      namespace.set(path.method, (args, context) => this.#call(capability, args, context));
+      namespaces.set(path.namespace, namespace);
     }
-    return {
-      ...namespaces,
-      now: async () => this.#now(),
-      batch: (items, context) => this.#batch(items, context),
-    };
+    const functions: Record<string, ToolScriptIsolateFunctions[string]> = Object.fromEntries(
+      [...namespaces].map(([name, methods]) => [name, Object.fromEntries(methods)]),
+    );
+    functions["now"] = async () => this.#now();
+    if (this.#request.artifact.header.audience === "user") {
+      functions["batch"] = (items, context) => this.#batch(items, context);
+    }
+    return functions;
   }
 
   async #call(
@@ -115,22 +127,22 @@ export class HostRun {
   }
 
   #prepare(capability: ToolScriptHostCapability, args: ToolScriptIsolateValue): Prepared {
-    const frozen = deepFreeze(args);
-    if (!handlesInPlace(frozen, capability.secretFields ?? [], this.#table)) {
+    if (!handlesInPlace(args, capability.secretFields ?? [], this.#table)) {
       throw new ToolScriptStop("toolscript.bad-handle");
     }
-    const shown = redacted(frozen, this.#table);
-    if (capability.acceptsArguments !== undefined && !capability.acceptsArguments(shown)) {
+    // Handles sit only in top-level secret fields now, and are frozen marked objects.
+    const frozen = deepFreeze(args) as ToolScriptData;
+    if (capability.acceptsArguments !== undefined && !capability.acceptsArguments(frozen)) {
       throw new ToolScriptStop("toolscript.bad-argument");
     }
     const { touches } = this.#view;
     // A header without `touches` declares no targets to hold writes to; one with it covers every write (S14).
     if (capability.kind === "write" && touches !== undefined) {
-      if (!withinTouches(shown, touches[capability.id], this.#request.input)) {
+      if (!withinTouches(frozen, touches[capability.id], this.#request.input)) {
         throw new ToolScriptStop("toolscript.undeclared-target");
       }
     }
-    return { capability, frozen, shown };
+    return { capability, frozen };
   }
 
   async #confirm(prepared: readonly Prepared[], context: ToolScriptCallContext): Promise<void> {
@@ -140,9 +152,15 @@ export class HostRun {
     if (!confirmed) throw new ToolScriptStop("toolscript.declined");
   }
 
-  #write({ capability, shown }: Prepared): ToolScriptHostWrite {
-    const write = { capability: capability.id, risk: capability.risk, args: shown };
-    const fromCapability = capability.preview?.(shown) ?? [];
+  #write({ capability, frozen }: Prepared): ToolScriptHostWrite {
+    const secretInputs = secretInputsOf(frozen, this.#table);
+    const write = {
+      capability: capability.id,
+      risk: capability.risk,
+      args: frozen,
+      ...(Object.keys(secretInputs).length > 0 ? { secretInputs } : {}),
+    };
+    const fromCapability = capability.preview?.(frozen) ?? [];
     const fromHeader = this.#view.preview;
     if (fromHeader.length === 0 && fromCapability.length === 0) return write;
     return {
@@ -156,8 +174,7 @@ export class HostRun {
     this.calls.push(prepared.capability.id);
     const table = this.#table;
     // Secret handles reach only the fields the capability declared secret (checked in #prepare).
-    const args = prepared.frozen as ToolScriptData;
-    const answer = await prepared.capability.call(args, {
+    const answer = await prepared.capability.call(prepared.frozen, {
       ...context,
       secret: (handle: ToolScriptSecretHandle) => table.reveal(handle),
     } as ToolScriptCallContext);

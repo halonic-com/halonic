@@ -143,6 +143,8 @@ export interface AcmeRunOptions {
   readonly input?: ToolScriptData;
   readonly decline?: boolean;
   readonly hostAudience?: ToolScriptAudience;
+  /** The audience of the artifact and the registry, and of the host unless `hostAudience` says otherwise. */
+  readonly audience?: ToolScriptAudience;
   /** Overrides the artifact's `codeHash`. */
   readonly codeHash?: string;
   /** Overrides `uses`; the capabilities given are still the registry. */
@@ -153,7 +155,7 @@ export interface AcmeRunOptions {
 export async function runAcme(script: AcmeScript, options: AcmeRunOptions): Promise<AcmeRun> {
   const code = `acme script ${crypto.randomUUID()}`;
   const host = createToolScriptHost({
-    audience: options.hostAudience ?? "user",
+    audience: options.hostAudience ?? options.audience ?? "user",
     isolate: inProcessIsolate(new Map([[code, script]])),
     now: () => "2026-01-01T00:00:00.000Z",
     digest: {
@@ -168,7 +170,7 @@ export async function runAcme(script: AcmeScript, options: AcmeRunOptions): Prom
       format: "halonic.toolscript/1",
       id: "acme.test",
       version: 1,
-      audience: "user",
+      audience: options.audience ?? "user",
       uses: options.uses ?? options.capabilities.map((capability) => capability.id),
       ...options.header,
     },
@@ -181,7 +183,7 @@ export async function runAcme(script: AcmeScript, options: AcmeRunOptions): Prom
     runId: "run-acme",
     artifact,
     registry: {
-      audience: "user",
+      audience: options.audience ?? "user",
       capabilities: new Map(options.capabilities.map((capability) => [capability.id, capability])),
     },
     input: options.input ?? {},
