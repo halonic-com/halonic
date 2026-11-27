@@ -114,7 +114,7 @@ export function agentNames({ paperclip, companyId }: ActionCall): AgentName {
 }
 
 /** No changed files read: the repository has no rules to match them against. */
-const noFiles: ChangedFiles = { paths: [], lines: {} };
+const noFiles: ChangedFiles = { paths: [], lines: {}, renamedFrom: {} };
 
 /**
  * Reads one pull request's whole status: about 9 GitHub requests.

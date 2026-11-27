@@ -39,7 +39,7 @@ const rules: RepositoryReviewerRules = {
 
 /** Changed files without their own line counts. */
 function filesAt(paths: readonly string[]): ChangedFiles {
-  return { paths, lines: {} };
+  return { paths, lines: {}, renamedFrom: {} };
 }
 
 const routing: Routing = {
@@ -176,14 +176,14 @@ verifies("runtime.github-reviewer-rules", () => {
       const reviewer = reviewerByPaths(rules, filesAt(["infra/deploy.ts"]), 3, routing);
       expect(reviewer).toEqual({ role: "code-reviewer", person: "priya" });
       expect(reviewerText(reviewer)).toBe(
-        "reviewer: priya as code-reviewer (by paths; security/release PRs and the author's own PRs route differently)",
+        "reviewer: priya as code-reviewer (by paths; security/release PRs, the author's own PRs and PRs not written by the team route differently)",
       );
     });
 
     test("names the role alone when no one covers it, and says when there are no rules", () => {
       const reviewer = reviewerByPaths(rules, filesAt(["src/cart.ts"]), 3, undefined);
       expect(reviewerText(reviewer)).toBe(
-        "reviewer: second-reviewer, no one covers it in the routing (by paths; security/release PRs and the author's own PRs route differently)",
+        "reviewer: second-reviewer, no one covers it in the routing (by paths; security/release PRs, the author's own PRs and PRs not written by the team route differently)",
       );
       expect(reviewerText(undefined)).toBe("reviewer: none (no path rules for this repository)");
     });
@@ -204,6 +204,7 @@ verifies("runtime.github-reviewer-rules", () => {
       expect(files).toEqual({
         paths: ["infra/deploy.ts", "scripts/deploy.ts"],
         lines: { "infra/deploy.ts": 0, "scripts/deploy.ts": 3 },
+        renamedFrom: { "scripts/deploy.ts": "infra/deploy.ts" },
       });
       expect(reviewerByPaths(rules, files, 3, routing).person).toBe("priya");
     });
@@ -221,6 +222,20 @@ verifies("runtime.github-reviewer-rules", () => {
       expect(files.lines).toEqual({ "src/kernel/run.ts": 0, "src/kernel/step.ts": 700 });
       // Counted on both sides, 1,400 lines would pass the kernel's 800.
       expect(reviewerByPaths(rules, files, 700, routing).person).toBe("mateo");
+    });
+
+    test("counts a file renamed out of a limited folder toward that folder's limit", async () => {
+      const get: GitHubGet = async () => [
+        {
+          filename: "src/engine/step.ts",
+          previous_filename: "src/kernel/step.ts",
+          additions: 600,
+          deletions: 300,
+        },
+      ];
+      const files = await changedFiles(get, "acme/website", 12);
+      // 900 lines: under the 1,200 limit, over the kernel's 800 by the old path.
+      expect(reviewerByPaths(rules, files, 900, routing).person).toBe("priya");
     });
 
     test("keeps each file's count when two files swap names", async () => {
