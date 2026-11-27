@@ -37,7 +37,7 @@ import { chiefLinePrPass } from "./chief-line-prs.ts";
 import { readChiefLineSettings } from "./chief-line-settings.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
 import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
-import { type HostApi, paperclipHost, unblockHost } from "./host.ts";
+import { type HostApi, paperclipHost } from "./host.ts";
 import { passStateKey } from "./merge-control-lock.ts";
 import { countingFetch, type MetricsApi, writeMetrics } from "./metrics.ts";
 import { monitorChecks } from "./monitor-check.ts";
@@ -50,6 +50,7 @@ import {
   stackRebaseOf,
 } from "./stack-rebase-job.ts";
 import { recordThinSpecOutcomes } from "./thin-spec-outcome.ts";
+import { unblockHost } from "./unblock-host.ts";
 
 /** The part of the plugin context the job uses, so tests can fake it. */
 export interface JobApi extends HostApi, MetricsApi, StateApi {
@@ -383,7 +384,7 @@ async function watchCompany(
   });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
   const unblocked = await unblockPass({
-    paperclip: unblockHost(ctx, companyId),
+    paperclip: unblockHost(ctx, companyId, ctx.state),
     dryRun: settings.dryRun,
     log: (line) => ctx.logger.info(line, { companyId }),
   });

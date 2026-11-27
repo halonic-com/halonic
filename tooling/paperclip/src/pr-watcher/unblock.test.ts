@@ -9,21 +9,26 @@ function blocked(identifier: string, extra: Partial<BlockedRow> = {}): BlockedRo
     identifier,
     assigneeAgentId: "agent-owen",
     running: false,
+    blockedSince: null,
     ...extra,
   };
 }
 
-function blocker(identifier: string, status: string): BlockerRow {
-  return { id: `id-${identifier}`, identifier, status };
+function blocker(identifier: string, status: string, finishedAt?: string): BlockerRow {
+  return { id: `id-${identifier}`, identifier, status, ...(finishedAt ? { finishedAt } : {}) };
 }
 
-/** A Paperclip with blocked tasks in memory; unblocks land in its list. */
+/**
+ * A Paperclip with blocked tasks in memory; unblocks land in its list, and the
+ * tasks stay blocked, as when an agent sets them to blocked again.
+ */
 function fakePaperclip(
   tasks: readonly BlockedRow[],
   blockers: Record<string, BlockerRow[]>,
   movedMeanwhile: ReadonlySet<string> = new Set(),
 ) {
   const unblocked: { taskId: string; body: string; key: string }[] = [];
+  const lastUnblocks = new Map<string, string>();
   const paperclip: UnblockPaperclip = {
     blockedTasks: async () => [...tasks],
     blockers: async (taskId) => blockers[taskId] ?? [],
@@ -32,8 +37,10 @@ function fakePaperclip(
         return "closed";
       }
       unblocked.push({ taskId, body, key });
+      lastUnblocks.set(taskId, key);
       return "written";
     },
+    lastUnblock: async (taskId) => lastUnblocks.get(taskId) ?? null,
     parentOf: async () => null,
     releaseParentBlock: async () => "closed",
   };
@@ -129,5 +136,77 @@ verifies("paperclip.pr-watcher-unblock", () => {
     const { summary, lines } = await sweep(fake);
     expect(summary).toEqual({ unblocked: 1, parentBlocks: 0, failed: ["HAL-2"] });
     expect(lines[0]).toBe("HAL-2: couldn't unblock it: relations unavailable");
+  });
+
+  // HAL-20169: HAL-19131 and others were set to blocked again and again, each time put back to todo.
+  test("leaves blocked a task set to blocked after every blocker had finished", async () => {
+    const fake = fakePaperclip(
+      [blocked("HAL-19131", { blockedSince: "2026-11-27T06:48:29.095Z" })],
+      {
+        "id-HAL-19131": [
+          blocker("HAL-1", "done", "2026-11-26T10:00:00.000Z"),
+          blocker("HAL-3", "cancelled", "2026-11-27T06:00:00.000Z"),
+        ],
+      },
+    );
+    const { summary, lines } = await sweep(fake);
+    expect(summary.unblocked).toBe(0);
+    expect(fake.unblocked).toEqual([]);
+    expect(lines).toEqual([
+      "HAL-19131: every blocker finished before it was set to blocked, so left blocked",
+    ]);
+  });
+
+  test("unblocks once a blocker finishes after the task was set to blocked", async () => {
+    const fake = fakePaperclip([blocked("HAL-2", { blockedSince: "2026-11-27T06:00:00.000Z" })], {
+      "id-HAL-2": [
+        blocker("HAL-1", "done", "2026-11-26T10:00:00.000Z"),
+        blocker("HAL-3", "done", "2026-11-27T07:00:00.000Z"),
+      ],
+    });
+    expect((await sweep(fake)).summary.unblocked).toBe(1);
+    // The key carries when the last blocker finished, so Paperclip wakes again for a later finish.
+    expect(fake.unblocked[0]?.key).toBe(
+      "unblock id-HAL-1,id-HAL-3 finished 2026-11-27T07:00:00.000Z",
+    );
+  });
+
+  test("never unblocks a task twice for the same blockers", async () => {
+    const fake = fakePaperclip([blocked("HAL-2", { blockedSince: "2026-11-27T06:00:00.000Z" })], {
+      "id-HAL-2": [blocker("HAL-1", "done", "2026-11-27T07:00:00.000Z")],
+    });
+    expect((await sweep(fake)).summary.unblocked).toBe(1);
+    const second = await sweep(fake);
+    expect(second.summary.unblocked).toBe(0);
+    expect(second.lines).toEqual([
+      "HAL-2: already unblocked once for these blockers, so left blocked",
+    ]);
+    expect(fake.unblocked).toHaveLength(1);
+  });
+
+  test("unblocks only once when Paperclip gives no times", async () => {
+    const fake = fakePaperclip([blocked("HAL-2")], { "id-HAL-2": [blocker("HAL-1", "done")] });
+    expect((await sweep(fake)).summary.unblocked).toBe(1);
+    expect((await sweep(fake)).summary.unblocked).toBe(0);
+    expect(fake.unblocked.map((unblock) => unblock.key)).toEqual(["unblock id-HAL-1"]);
+  });
+
+  test("unblocks again when a reopened blocker finishes again", async () => {
+    const blockers = { "id-HAL-2": [blocker("HAL-1", "done", "2026-11-27T07:00:00.000Z")] };
+    const first = fakePaperclip(
+      [blocked("HAL-2", { blockedSince: "2026-11-27T06:00:00.000Z" })],
+      blockers,
+    );
+    await sweep(first);
+    // HAL-1 was reopened, the task set to blocked on it again, and HAL-1 finished again.
+    first.paperclip.blockedTasks = async () => [
+      blocked("HAL-2", { blockedSince: "2026-11-27T08:00:00.000Z" }),
+    ];
+    blockers["id-HAL-2"] = [blocker("HAL-1", "done", "2026-11-27T09:00:00.000Z")];
+    expect((await sweep(first)).summary.unblocked).toBe(1);
+    expect(first.unblocked.map((unblock) => unblock.key)).toEqual([
+      "unblock id-HAL-1 finished 2026-11-27T07:00:00.000Z",
+      "unblock id-HAL-1 finished 2026-11-27T09:00:00.000Z",
+    ]);
   });
 });

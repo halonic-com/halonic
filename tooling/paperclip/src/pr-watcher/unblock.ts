@@ -7,6 +7,11 @@ import { ancestorIds, finished, parentBlockers } from "./parent-block.ts";
  * sat for hours. This belongs in Paperclip itself, when a blocker closes;
  * until it is there, the watcher sweeps every pass, so it also catches
  * blockers that someone else closed.
+ *
+ * It acts only on a blocker that finished after the task was set to blocked,
+ * and never twice on the same finish (HAL-20169). An agent may set a task to
+ * blocked for a reason its old, finished "blocked by" doesn't show; without
+ * this memory, every pass put such a task back to `todo` and woke its agent.
  */
 
 /** A blocked task, as the sweep reads it. */
@@ -17,6 +22,8 @@ export interface BlockedRow {
   readonly assigneeAgentId: string | null;
   /** A run of its assignee is queued or running, so it can unblock itself. */
   readonly running: boolean;
+  /** When it was last set to blocked (ISO), or null when Paperclip doesn't say. */
+  readonly blockedSince: string | null;
 }
 
 /** One task in its "blocked by". */
@@ -24,15 +31,20 @@ export interface BlockerRow {
   readonly id: string;
   readonly identifier: string | null;
   readonly status: string;
+  /** When it was done or cancelled (ISO); null or missing when it isn't finished or Paperclip doesn't say. */
+  readonly finishedAt?: string | null;
 }
 
 /** What the sweep needs from Paperclip. */
 export interface UnblockPaperclip {
   blockedTasks(): Promise<BlockedRow[]>;
   blockers(taskId: string): Promise<BlockerRow[]>;
+  /** The key of the last unblock the sweep wrote on the task, or null for none. */
+  lastUnblock(taskId: string): Promise<string | null>;
   /**
-   * Sets the task to `todo`, comments and wakes its agent, only if it is still
-   * blocked; `closed` when it no longer was by the time of the write.
+   * Sets the task to `todo`, comments, wakes its agent and remembers `key` as
+   * its last unblock, only if it is still ready (`shouldUnblock`); `closed`
+   * when it no longer was by the time of the write.
    */
   unblock(taskId: string, body: string, key: string): Promise<"written" | "closed">;
   /** The task's parent, or null for a task at the top. */
@@ -62,18 +74,54 @@ export function readyToUnblock(blockers: readonly BlockerRow[]): boolean {
   return blockers.length > 0 && blockers.every((blocker) => finished.has(blocker.status));
 }
 
+/**
+ * Whether a blocker finished after the task was set to blocked. A task set to
+ * blocked when all its blockers were already finished waits on something else,
+ * and goes back to `todo` only when one of them finishes again. A time
+ * Paperclip doesn't give counts as after, so a missing time never strands a
+ * task; the memory of the last unblock keeps that to one unblock.
+ */
+export function finishedSinceBlocked(
+  blockedSince: string | null,
+  blockers: readonly BlockerRow[],
+): boolean {
+  if (blockedSince === null) {
+    return true;
+  }
+  const since = Date.parse(blockedSince);
+  return blockers.some(
+    (blocker) => blocker.finishedAt == null || Date.parse(blocker.finishedAt) > since,
+  );
+}
+
+/** Whether the sweep may put the task back to `todo`: ready, and a blocker finished since it was set to blocked. */
+export function shouldUnblock(
+  blockedSince: string | null,
+  blockers: readonly BlockerRow[],
+): boolean {
+  return readyToUnblock(blockers) && finishedSinceBlocked(blockedSince, blockers);
+}
+
 /** The comment that unblocks the task, naming what it waited on. */
 export function unblockMessage(blockers: readonly BlockerRow[]): string {
   const names = blockers.map((blocker) => `${blocker.identifier ?? blocker.id} ${blocker.status}`);
   return `PR watcher: everything this task was blocked by is finished (${names.join(", ")}), so it's back to \`todo\`.`;
 }
 
-/** The same unblock again is a no-op: the key names the task and what it waited on. */
-function unblockKey(blockers: readonly BlockerRow[]): string {
-  return `unblock ${blockers
+/**
+ * One unblock's key: what the task waited on and, when Paperclip gives it, when
+ * the last of them finished. The sweep never writes the same key twice on a
+ * task, and Paperclip wakes once per key; a blocker that is reopened and
+ * finishes again gives a new key, so that unblock still wakes the agent.
+ */
+export function unblockKey(blockers: readonly BlockerRow[]): string {
+  const ids = blockers
     .map((blocker) => blocker.id)
     .sort()
-    .join(",")}`;
+    .join(",");
+  const times = blockers.flatMap((blocker) => blocker.finishedAt ?? []).sort();
+  const lastFinished = times.at(-1);
+  return lastFinished === undefined ? `unblock ${ids}` : `unblock ${ids} finished ${lastFinished}`;
 }
 
 /** What the sweep did with one task. */
@@ -129,12 +177,23 @@ async function sweepTask(
   if (!readyToUnblock(blockers)) {
     return "skipped";
   }
+  if (!finishedSinceBlocked(task.blockedSince, blockers)) {
+    options.log(
+      `${task.identifier}: every blocker finished before it was set to blocked, so left blocked`,
+    );
+    return "skipped";
+  }
+  const key = unblockKey(blockers);
+  if ((await paperclip.lastUnblock(task.id)) === key) {
+    options.log(`${task.identifier}: already unblocked once for these blockers, so left blocked`);
+    return "skipped";
+  }
   const body = unblockMessage(blockers);
   options.log(`${task.identifier}: unblock${options.dryRun ? " (dry run)" : ""}\n${body}`);
   if (options.dryRun) {
     return "unblocked";
   }
-  if ((await paperclip.unblock(task.id, body, unblockKey(blockers))) === "closed") {
+  if ((await paperclip.unblock(task.id, body, key)) === "closed") {
     options.log(`${task.identifier}: no longer blocked during this pass, so left alone`);
     return "skipped";
   }

@@ -13,6 +13,9 @@ export interface FakeIssue {
   readonly monitorNextCheckAt?: Date | null;
   readonly monitorLastTriggeredAt?: Date | null;
   readonly priority?: string;
+  readonly blockedTransitionAt?: Date | null;
+  readonly completedAt?: Date | null;
+  readonly cancelledAt?: Date | null;
 }
 
 /** A comment as the fake host stores it. */

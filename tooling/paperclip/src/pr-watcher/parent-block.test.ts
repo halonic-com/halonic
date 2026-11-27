@@ -28,6 +28,7 @@ function fakePaperclip(blockers: BlockerRow[], result: "todo" | "blocked" | "clo
     identifier: "HAL-18142",
     assigneeAgentId: "agent-owen",
     running: false,
+    blockedSince: null,
   };
   const released: { taskId: string; removed: readonly BlockerRow[] }[] = [];
   const unblocked: string[] = [];
@@ -38,6 +39,7 @@ function fakePaperclip(blockers: BlockerRow[], result: "todo" | "blocked" | "clo
       unblocked.push(taskId);
       return "written";
     },
+    lastUnblock: async () => null,
     parentOf,
     releaseParentBlock: async (taskId, removed) => {
       released.push({ taskId, removed });

@@ -11,19 +11,6 @@ import type {
   WriteOutcome,
 } from "../pr-watcher/paperclip.ts";
 import { waitingRunStatuses } from "../pr-watcher/paperclip.ts";
-import {
-  ancestorIds,
-  finished,
-  parentBlockers,
-  parentBlockKey,
-  parentBlockMessage,
-} from "../pr-watcher/parent-block.ts";
-import {
-  type BlockedRow,
-  type BlockerRow,
-  readyToUnblock,
-  type UnblockPaperclip,
-} from "../pr-watcher/unblock.ts";
 import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
 
 /**
@@ -37,8 +24,7 @@ import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
  * a task to `high` (HAL-17920), and nothing else; `setTaskLabels` lets the difficulty tagger
  * set labels and nothing else, and `assignTaskBack` lets the hand-off limit
  * set the task's agent and nothing else, because the manifest can't narrow
- * `issues.update`. The one blocker link it removes is a task's parent or a
- * task above it (`parent_block`), re-read right before the write.
+ * `issues.update`. The unblock sweep's own adapter is in `unblock-host.ts`.
  */
 
 /** The part of the plugin context the adapter uses, so tests can fake it. */
@@ -60,7 +46,8 @@ const watchedStatuses: ReadonlySet<string> = new Set(["todo", "in_progress", "in
  */
 const parkedStatuses: ReadonlySet<string> = new Set(["backlog", "blocked"]);
 const wakeStatuses: ReadonlySet<string> = new Set([...watchedStatuses, ...parkedStatuses]);
-const pageSize = 500;
+/** How many tasks one list call asks for. */
+export const pageSize = 500;
 
 /** The only status change the watcher may make. Anything else throws before it reaches the host. */
 export function doneOnly(patch: Readonly<Record<string, unknown>>): { status: "done" } {
@@ -144,8 +131,20 @@ export async function reopenThread(
   await issues.update(taskId, todoOnly({ status: "todo" }), companyId);
 }
 
+/**
+ * The unblock sweep's only task change (`unblock-host.ts`): a blocked task
+ * back to `todo`, and no other field.
+ */
+export async function blockedToTodo(
+  issues: Pick<PluginIssuesClient, "update">,
+  taskId: string,
+  companyId: string,
+): Promise<void> {
+  await issues.update(taskId, todoOnly({ status: "todo" }), companyId);
+}
+
 /** A host time (a `Date`, or a string over the wire) as ISO, or null when there is none. */
-function isoOrNull(value: Date | string | null | undefined): string | null {
+export function isoOrNull(value: Date | string | null | undefined): string | null {
   return value == null ? null : new Date(value).toISOString();
 }
 
@@ -347,108 +346,4 @@ export function todoOnly(patch: Readonly<Record<string, unknown>>): { status: "t
     throw new Error(`Unblock: refusing a task change other than todo (${keys.join(", ")}).`);
   }
   return { status: "todo" };
-}
-
-async function blockersOf(host: HostApi, taskId: string, companyId: string) {
-  const relations = await host.issues.relations.get(taskId, companyId);
-  return relations.blockedBy.map(
-    (blocker): BlockerRow => ({
-      id: blocker.id,
-      identifier: blocker.identifier,
-      status: blocker.status,
-    }),
-  );
-}
-
-/** A sweep's Paperclip for one company. */
-export function unblockHost(host: HostApi, companyId: string): UnblockPaperclip {
-  return {
-    async blockedTasks() {
-      const tasks: BlockedRow[] = [];
-      for (let offset = 0; ; offset += pageSize) {
-        const page = await host.issues.list({
-          companyId,
-          status: "blocked",
-          limit: pageSize,
-          offset,
-        });
-        tasks.push(
-          ...page
-            .filter((issue) => issue.identifier !== null)
-            .map(
-              (issue): BlockedRow => ({
-                id: issue.id,
-                identifier: issue.identifier ?? "",
-                assigneeAgentId: issue.assigneeAgentId,
-                running: issue.activeRun != null,
-              }),
-            ),
-        );
-        if (page.length < pageSize) {
-          return tasks;
-        }
-      }
-    },
-    blockers: (taskId) => blockersOf(host, taskId, companyId),
-    async unblock(taskId, body, key) {
-      // Re-read right before the write: someone may have moved it, or added a blocker, during the pass.
-      const issue = await host.issues.get(taskId, companyId);
-      const blockers = await blockersOf(host, taskId, companyId);
-      if (issue?.status !== "blocked" || !readyToUnblock(blockers)) {
-        return "closed";
-      }
-      await host.issues.update(taskId, todoOnly({ status: "todo" }), companyId);
-      await host.issues.createComment(taskId, body, companyId);
-      // A plugin's comment and status change wake nobody, so the wake-up is its own call.
-      await host.issues.requestWakeup(taskId, companyId, {
-        reason: "blockers_finished",
-        idempotencyKey: `pr-watcher ${taskId} ${key}`,
-      });
-      return "written";
-    },
-    async parentOf(taskId) {
-      return (await host.issues.get(taskId, companyId))?.parentId ?? null;
-    },
-    releaseParentBlock: (taskId, removed) => releaseParentBlock(host, companyId, taskId, removed),
-  };
-}
-
-/**
- * Removes a task's parent, or a task above it, from its "blocked by"
- * (`parent_block`), after reading the task, its blockers and its parents
- * again: only blockers that are still there, unfinished and above it go.
- */
-async function releaseParentBlock(
-  host: HostApi,
-  companyId: string,
-  taskId: string,
-  removed: readonly BlockerRow[],
-): Promise<"todo" | "blocked" | "closed"> {
-  const issue = await host.issues.get(taskId, companyId);
-  const blockers = await blockersOf(host, taskId, companyId);
-  const above = await ancestorIds(
-    taskId,
-    async (id) => (await host.issues.get(id, companyId))?.parentId ?? null,
-  );
-  const stillThere = parentBlockers(blockers, above).map((blocker) => blocker.id);
-  if (issue?.status !== "blocked" || !removed.every((blocker) => stillThere.includes(blocker.id))) {
-    return "closed";
-  }
-  const ids = removed.map((blocker) => blocker.id);
-  await host.issues.relations.removeBlockers(taskId, ids, companyId);
-  const rest = blockers.filter((blocker) => !ids.includes(blocker.id));
-  const backToTodo = rest.every((blocker) => finished.has(blocker.status));
-  if (backToTodo) {
-    await host.issues.update(taskId, todoOnly({ status: "todo" }), companyId);
-  }
-  await host.issues.createComment(taskId, parentBlockMessage(removed, backToTodo), companyId);
-  if (!backToTodo) {
-    return "blocked";
-  }
-  // A plugin's comment and status change wake nobody, so the wake-up is its own call.
-  await host.issues.requestWakeup(taskId, companyId, {
-    reason: "parent_block",
-    idempotencyKey: `pr-watcher ${taskId} ${parentBlockKey(removed)}`,
-  });
-  return "todo";
 }
