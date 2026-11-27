@@ -39,6 +39,7 @@
    desktop Studio imports them as `@halonicjs/studio-kit/fonts` (theme-font.css). */
 @import "./theme-selection.css";
 @import "./theme-lines.css";
+@import "./theme-scroll.css";
 @import "./theme-cursor.css";
 @import "./checkbox/checkbox.css";
 @import "./switch/switch.css";

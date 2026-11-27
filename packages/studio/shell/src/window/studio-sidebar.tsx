@@ -91,42 +91,47 @@ export function StudioSidebar(props: StudioSidebarProps) {
 
   return (
     <>
-      <div
-        id={sidebarId}
-        style={{ width }}
-        className="flex shrink-0 flex-col gap-2 overflow-y-auto py-2 ps-2"
-      >
-        {props.switcher === undefined ? null : <WorkspaceSwitcher {...props.switcher} />}
-        <SidebarSearch platform={props.platform} onOpen={props.onSearch} />
-        <SidebarViews
-          views={props.views ?? noViews}
-          contextFor={contextFor}
-          selected={props.selectedView}
-          onSelect={props.onSelectView}
-          places={
-            <PlacesList
-              places={places}
-              tabs={tabs}
-              announcer={props.announcer}
-              onSettings={props.onSettings}
-              help={props.help}
-            />
-          }
-          settings={
-            <PlacesList
-              places={[]}
-              tabs={tabs}
-              announcer={props.announcer}
-              onSettings={props.onSettings}
-              help={props.help}
-            />
-          }
-        />
-        {props.footer === undefined ? null : (
-          <div data-sidebar-footer="" className="mt-auto flex flex-col pt-2">
-            <StatusBarItems items={footerItems(props.footer)} contextFor={contextFor} />
-          </div>
-        )}
+      <div id={sidebarId} style={{ width }} className="flex shrink-0 flex-col pt-2">
+        <div className="flex shrink-0 flex-col gap-2 ps-2">
+          {props.switcher === undefined ? null : <WorkspaceSwitcher {...props.switcher} />}
+          <SidebarSearch platform={props.platform} onOpen={props.onSearch} />
+        </div>
+        {/* Only the places scroll, inside the sidebar; the switcher and Search stay put
+            (`shell.sidebar-scroll`). Its own padding keeps the first row's focus ring in view. */}
+        <div
+          data-sidebar-scroll=""
+          className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto py-2 ps-2"
+        >
+          <SidebarViews
+            views={props.views ?? noViews}
+            contextFor={contextFor}
+            selected={props.selectedView}
+            onSelect={props.onSelectView}
+            places={
+              <PlacesList
+                places={places}
+                tabs={tabs}
+                announcer={props.announcer}
+                onSettings={props.onSettings}
+                help={props.help}
+              />
+            }
+            settings={
+              <PlacesList
+                places={[]}
+                tabs={tabs}
+                announcer={props.announcer}
+                onSettings={props.onSettings}
+                help={props.help}
+              />
+            }
+          />
+          {props.footer === undefined ? null : (
+            <div data-sidebar-footer="" className="mt-auto flex flex-col pt-2">
+              <StatusBarItems items={footerItems(props.footer)} contextFor={contextFor} />
+            </div>
+          )}
+        </div>
       </div>
       <SidebarResizeEdge
         width={width}

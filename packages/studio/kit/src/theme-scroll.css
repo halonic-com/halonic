@@ -1,0 +1,70 @@
+/*
+ * The one scrollbar every scrolling region uses (`kit.slim-scrollbars`, HAL-20556), split out of
+ * theme.css by concept. theme.css imports this file.
+ *
+ * Slim and rounded, in the mode's ink at a low alpha, and shown only while the pointer is over the
+ * region or focus is inside it, so a sidebar, a list and a thread don't each draw a bar at rest. In
+ * `@layer base`, so a part that hides its bar on purpose (`[scrollbar-width:none]`, the tab strip)
+ * still wins.
+ *
+ * Two ways in, because the desktop windows are two engines: WebView2 (Chromium) and Firefox read
+ * the standard `scrollbar-width` and `scrollbar-color`; WebKit (macOS, Linux) doesn't read
+ * `scrollbar-color` yet and takes the `::-webkit-scrollbar` parts, where the bar can be 6px. Chromium
+ * ignores those parts once the standard ones are set, so the WebKit ones sit behind `@supports`.
+ */
+:root {
+  --scrollbar-thumb: light-dark(rgb(16 16 46 / 0.24), rgb(242 242 255 / 0.24));
+  --scrollbar-thumb-hover: light-dark(rgb(16 16 46 / 0.4), rgb(242 242 255 / 0.4));
+}
+
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  *:hover,
+  *:focus-within {
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  @supports not (scrollbar-color: auto) {
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+      background: transparent;
+    }
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    /* 2px of see-through border on each side leaves a 6px rounded thumb. */
+    ::-webkit-scrollbar-thumb {
+      border: 2px solid transparent;
+      border-radius: var(--radius-full);
+      background-clip: padding-box;
+      background-color: transparent;
+    }
+    *:hover::-webkit-scrollbar-thumb,
+    *:focus-within::-webkit-scrollbar-thumb {
+      background-color: var(--scrollbar-thumb);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: var(--scrollbar-thumb-hover);
+    }
+  }
+
+  /* More contrast keeps the bar shown at rest; forced colours draw the system's own. */
+  @media (prefers-contrast: more) {
+    *,
+    *:hover,
+    *:focus-within {
+      scrollbar-color: var(--scrollbar-thumb-hover) transparent;
+    }
+  }
+  @media (forced-colors: active) {
+    *,
+    *:hover,
+    *:focus-within {
+      scrollbar-color: auto;
+    }
+  }
+}
