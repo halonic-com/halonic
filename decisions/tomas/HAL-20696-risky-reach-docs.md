@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20696 (claims check of #6784; fix asked for by Nora's review of #6847)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ybqqV2qUsD8PFD0GHAZY2HoLKuFQQn1Tz8hiG22C5LXDgx1KYVObCu2EHDLx7yfpEf+x1QJSHjOoXjQHnndeAA==
 
 Since #6784 (HAL-20441), a confirmation card whose `payload.secretProposal`
 Paperclip set is `risky`, because its Accept binds that secret
