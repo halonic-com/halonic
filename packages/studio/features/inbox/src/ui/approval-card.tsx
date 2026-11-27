@@ -14,18 +14,15 @@ import { actionSummary, approvalTitle } from "../plain/approval-text.ts";
 import { ArgumentList } from "./argument-list.tsx";
 import { AskForChangesDialog } from "./ask-for-changes-dialog.tsx";
 import {
-  type BackLink,
   CardHeader,
   cardBodyClasses,
   cardClasses,
-  DecidedBar,
   type EngineState,
   FailedLine,
   failedText,
   failureDetailOf,
   type ManualAnswer,
   manualAnswerOf,
-  type NextItem,
   NotAnsweringLine,
   unavailableWhile,
   untrustedText,
@@ -33,6 +30,7 @@ import {
   wasDecidedElsewhere,
   wasRefusedUntrusted,
 } from "./card-parts.tsx";
+import { type BackLink, DecidedBar, type NextItem } from "./decided-bar.tsx";
 import { useDecisionGuard } from "./decision-guard.ts";
 import {
   showsUntrusted,
@@ -265,6 +263,7 @@ export function ApprovalCard(props: ApprovalCardProps) {
           {...(state.decided.kind === "note" ? { note: state.decided.note } : {})}
           next={next}
           back={back}
+          runOpens={props.onOpenRun !== undefined}
           callout={decided}
         />
       ) : (

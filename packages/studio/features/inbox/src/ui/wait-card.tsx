@@ -25,17 +25,14 @@ import { answeredText, answerLabel, busyLabel, ownLabel } from "../plain/answer-
 import { waitParts } from "../plain/wait-parts.ts";
 import { AnsweredView, type AnsweredViews, claimedView } from "./answered-view.tsx";
 import {
-  type BackLink,
   CardHeader,
   cardBodyClasses,
   cardClasses,
-  DecidedBar,
   type EngineState,
   FailedLine,
   failureDetailOf,
   type ManualAnswer,
   manualAnswerOf,
-  type NextItem,
   NotAnsweringLine,
   StaleBar,
   unavailableWhile,
@@ -43,6 +40,7 @@ import {
   wasDecidedElsewhere,
   wasRefusedUntrusted,
 } from "./card-parts.tsx";
+import { type BackLink, DecidedBar, type NextItem } from "./decided-bar.tsx";
 import { type DecisionGuard, useDecisionGuard } from "./decision-guard.ts";
 import { Caption, MetaLine, showsMetaLine, WaitBody } from "./wait-card-parts.tsx";
 import {
@@ -129,7 +127,7 @@ type CardState =
  * The card for a run waiting at a `wait` step (`inbox.wait-card`), such as Acme's "Approve this
  * reply?": the run's workflow and model above the step's first line as its title, what the run
  * started with as a quote, the rest as plain text in its own box, the timer line if the step has
- * one, and a button per answer the step takes, the first one primary and full width, none red, with
+ * one, and a button per answer the step takes, the first one primary, none red, with
  * the step's closing words as their caption (`inbox.wait-context`). It has the approval card's 1 s
  * guard, and is replaced in place once answered.
  */
@@ -233,6 +231,7 @@ export function WaitCard(props: WaitCardProps) {
           )}
           next={next}
           back={back}
+          runOpens={openRun !== undefined}
           callout={answered}
         />
       ) : null}
@@ -287,14 +286,16 @@ interface AnswerBarProps {
 }
 
 /**
- * The bar under the card: the first answer primary and full width, the others secondary sharing
- * a row under it, none red (flow-inbox 5.1, first-run 4.3). While one is sent it is busy and the
- * others ignore presses but keep focus.
+ * The bar under the card, none red (flow-inbox 5.1, first-run 4.3). On a phone the first answer is
+ * primary and full width, the others secondary sharing a row under it. On a desktop they sit in one
+ * right-aligned row at their natural width with the first at the right end, as Approve is on the
+ * approval card (HAL-19399 G8): stretched across a 730 px pane they read as one bar. While one is
+ * sent it is busy and the others ignore presses but keep focus.
  *
  * A step's label has no length limit, so a button keeps it on one line and ends it with an
  * ellipsis at its edge, with the whole label as its name, and as its tooltip only when cut off
- * (HAL-4050, HAL-12721 L15). Each button sits in a `@container` as wide as the button, so the label can be
- * capped at that width less the button's widest padding and edges.
+ * (HAL-4050, HAL-12721 L15). The label is capped at its `@container`'s width less the button's
+ * widest padding and edges: on a phone each button's own box, on a desktop the row's.
  */
 function AnswerBar({
   accepts,
@@ -310,9 +311,9 @@ function AnswerBar({
 }: AnswerBarProps) {
   const reasonId = useId();
   const unavailable = unavailableWhile(engine.answering ?? true, reasonId);
-  const [first, ...others] = accepts;
   const failed = state.kind === "open" ? state.failed : null;
   const buttons = useRef(new Map<string, HTMLButtonElement>());
+  const phone = usePresentation() === "phone";
   // **Try again** leaves the alert slot while the answer is sent, so it hands focus to the
   // answer's own button, busy until the answer comes back, rather than to the page (C560).
   const retry = (event: string) => {
@@ -329,6 +330,7 @@ function AnswerBar({
       label={answerLabel(event, ownLabel(labels, event))}
       busyLabel={busyLabel(event, ownLabel(labels, event))}
       primary={primary}
+      fill={phone}
       unavailable={unavailable}
       busy={state.kind === "answering" && state.event === event}
       onClick={() => onAnswer(event)}
@@ -357,11 +359,42 @@ function AnswerBar({
         }
       />
       <Caption note={note} />
-      {first === undefined ? null : answerButton(first, true)}
-      {others.length === 0 ? null : (
-        <div className="flex gap-2">{others.map((event) => answerButton(event, false))}</div>
-      )}
+      <AnswerButtons events={accepts} phone={phone} button={answerButton} />
     </div>
+  );
+}
+
+/**
+ * The answers' buttons: on a phone the first full width over a row of the others, on a desktop one
+ * right-aligned row of the others then the first (HAL-19399 G8). Last in the DOM, not reversed by
+ * CSS, so Tab goes the way the eye does.
+ */
+function AnswerButtons({
+  events,
+  phone,
+  button,
+}: {
+  readonly events: readonly string[];
+  readonly phone: boolean;
+  readonly button: (event: string, primary: boolean) => ReactNode;
+}) {
+  const [first, ...others] = events;
+  if (first === undefined) return null;
+  if (!phone) {
+    return (
+      <div className="@container flex flex-wrap justify-end gap-2">
+        {others.map((event) => button(event, false))}
+        {button(first, true)}
+      </div>
+    );
+  }
+  return (
+    <>
+      {button(first, true)}
+      {others.length === 0 ? null : (
+        <div className="flex gap-2">{others.map((event) => button(event, false))}</div>
+      )}
+    </>
   );
 }
 
@@ -371,6 +404,8 @@ interface AnswerButtonProps {
   readonly label: string;
   readonly busyLabel: string;
   readonly primary: boolean;
+  /** On a phone: the button fills its share of the row and is its label's `@container`. */
+  readonly fill: boolean;
   readonly unavailable: ButtonUnavailable | undefined;
   readonly busy: boolean;
   readonly onClick: () => void;
@@ -385,15 +420,16 @@ function AnswerButton({
   label,
   busyLabel,
   primary,
+  fill,
   unavailable,
   busy,
   onClick,
 }: AnswerButtonProps) {
   const shown = useRef<HTMLSpanElement>(null);
   return (
-    // `[&>span]:flex` makes the tooltip's wrapper as wide as the container, as is the button.
+    // `[&>span]:flex` makes the tooltip's wrapper as wide as the box, as is the button.
     <div
-      className="@container min-w-0 flex-1 [&>span]:flex"
+      className={`${fill ? "@container flex-1" : "max-w-full"} min-w-0 [&>span]:flex`}
       {...(primary ? { [firstAnswerAttribute]: "" } : {})}
     >
       <Tooltip
@@ -408,7 +444,7 @@ function AnswerButton({
             {...tooltip}
             ref={buttonRef}
             variant={primary ? "primary" : "secondary"}
-            block
+            block={fill}
             unavailable={unavailable}
             busy={busy}
             busyLabel={busyLabel}

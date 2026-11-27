@@ -68,6 +68,35 @@ export function useDocumentLanguage(language: string): void {
 }
 
 /**
+ * Marks `<html>` with how the user last acted, `data-input="pointer"` or `"keyboard"`, so the kit
+ * draws the ring on a heading code focused only for keyboard users (HAL-19399 G9). WebKit, the
+ * app's view on macOS and Linux, matches `:focus-visible` on every focus from code, so after a click
+ * that opens a page its title would wear the ring. Capture, so a handler that stops a press can't
+ * hide it. The mark outlives the frame: **Open demo** swaps Welcome's frame for the workspace's,
+ * and the press that did it must still count when the new page's title takes focus. A modifier
+ * alone isn't a key press, as in Chromium: ⌘-Tab away and back brings no ring.
+ */
+export function useInputModality(): void {
+  useEffect(() => {
+    const root = document.documentElement;
+    const pointer = () => root.setAttribute("data-input", "pointer");
+    const keyboard = (event: KeyboardEvent) => {
+      if (modifierKeys.has(event.key)) return;
+      root.setAttribute("data-input", "keyboard");
+    };
+    window.addEventListener("pointerdown", pointer, true);
+    window.addEventListener("keydown", keyboard, true);
+    return () => {
+      window.removeEventListener("pointerdown", pointer, true);
+      window.removeEventListener("keydown", keyboard, true);
+    };
+  }, []);
+}
+
+/** Keys that, pressed alone, don't make the user a keyboard user. */
+const modifierKeys = new Set(["Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock"]);
+
+/**
  * Passes Esc to the close stack, which closes the topmost layer only. While a modal `<dialog>` is
  * open it handles Esc itself as Cancel, wherever focus is (even on `body`), so the frame leaves
  * every press to it: otherwise one Esc would close the dialog and the layer under it. A press the

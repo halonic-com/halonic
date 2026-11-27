@@ -1,4 +1,4 @@
-import { MiddleCut, Spinner, usePresentation } from "@halonicjs/studio-kit";
+import { MiddleCut, Spinner } from "@halonicjs/studio-kit";
 import { type Ref, useId } from "react";
 import { type RecentOpenStep, welcomeOpenWords } from "./welcome-open-words.ts";
 
@@ -43,15 +43,15 @@ export interface WelcomeRecentProps {
  * *~/Documents/Acme Support*" (microcopy 19.6). One press opens it. The row whose folder is
  * opening is busy: a spinner at its end, `aria-busy`, presses ignored, the step it waits on under
  * its folder, such as "Starting the engine…", and the same step in a polite status for screen readers. Hidden while nothing is
- * remembered, with no "No recent workspaces" sentence. A sample's Demo tag sits at the row's
- * right on desktop, and on a phone right after its name, so the folder keeps the row's width.
+ * remembered, with no "No recent workspaces" sentence. A sample's Demo tag sits right after its
+ * name at any width, so the folder keeps the row's width and a wide window doesn't push the tag
+ * away from what it tags (HAL-19399 G12).
  *
  * @example
  * <WelcomeRecent workspaces={recent} opening={undefined} onOpen={open} rowRef={rowRef} />
  */
 export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: WelcomeRecentProps) {
   const headingId = useId();
-  const phone = usePresentation() === "phone";
   const shown = workspaces.slice(0, WELCOME_RECENT_ROWS);
   if (shown.length === 0) {
     return null;
@@ -85,14 +85,13 @@ export function WelcomeRecent({ workspaces, opening, onOpen, rowRef, failed }: W
                   {/* The whole name wraps rather than ending in "…": nowhere else shows it to a sighted user. */}
                   <span className="text-body text-fg wrap-break-word">
                     {workspace.name}
-                    {phone && workspace.sample === true ? (
+                    {workspace.sample === true ? (
                       <SampleTag className="ms-1.5 inline-block" />
                     ) : null}
                   </span>
                   <MiddleCut text={workspace.location} />
                   <OpeningStep step={step} />
                 </span>
-                {!phone && workspace.sample === true ? <SampleTag /> : null}
                 {busy ? (
                   <span aria-hidden="true" className="size-icon-sm shrink-0 *:size-full">
                     <Spinner />

@@ -9,17 +9,16 @@ import {
   CardHeader,
   cardBodyClasses,
   cardClasses,
-  DecidedBar,
   type EngineState,
   FailedLine,
   failureDetailOf,
-  type NextItem,
   NotAnsweringLine,
   StaleBar,
   unavailableWhile,
   useEveryMinute,
   wasDecidedElsewhere,
 } from "./card-parts.tsx";
+import { DecidedBar, type NextItem } from "./decided-bar.tsx";
 
 /** What {@link PlanLimitCard} shows: a run waiting at a plan limit. */
 export interface PlanLimitCardProps extends EngineState {
@@ -121,6 +120,7 @@ export function PlanLimitCard(props: PlanLimitCardProps) {
           text={afterText(state.after)}
           next={props.next}
           back={null}
+          runOpens={openRun !== undefined}
           callout={continued}
         />
       ) : null}
