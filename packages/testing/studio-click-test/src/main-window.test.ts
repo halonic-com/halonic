@@ -1,5 +1,5 @@
 import { verifies } from "@halonicjs/testing-spec";
-import { expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { fakeStudio } from "./fake-studio.test-helper.ts";
 import { findMainWindow } from "./main-window.ts";
 
@@ -13,6 +13,10 @@ function studioWithWindows(handles: readonly string[]) {
 }
 
 verifies("studio-click-test.main-window", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("takes Studio's window when Inbox is listed first, though both are titled Halonic", async () => {
     const studio = studioWithWindows(["inbox", "main"]);
     const { driver, sleep } = studio.context;
@@ -28,7 +32,8 @@ verifies("studio-click-test.main-window", () => {
     await expect(findMainWindow(studio.context.driver, sleep)).resolves.toBe("main");
   });
 
-  it("takes the first window when none is Studio's within 30 seconds", async () => {
+  it("takes the first window when none is Studio's within 30 seconds, and logs it", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const studio = studioWithWindows(["messenger", "inbox"]);
     const waits: number[] = [];
     const sleep = async (ms: number) => {
@@ -37,5 +42,6 @@ verifies("studio-click-test.main-window", () => {
     await expect(findMainWindow(studio.context.driver, sleep)).resolves.toBe("messenger");
     expect(waits.reduce((total, ms) => total + ms, 0)).toBe(30_000);
     expect(studio.current).toBe("messenger");
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("using the first, messenger"));
   });
 });
