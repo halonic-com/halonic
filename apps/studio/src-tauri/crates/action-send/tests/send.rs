@@ -372,13 +372,25 @@ fn the_body_is_checked_field_by_field() {
 }
 
 #[test]
-fn irreversible_and_secret_input_steps_wait_for_their_dialogs() {
+fn closing_either_text_dialog_sends_nothing() {
+    // HAL-18085: an irreversible step and a secret-input step each wait for
+    // the dialog with text fields; closing it sends nothing.
     let delete = json!({ "definition": "acme.delete-repo", "version": 1, "step": 1, "placeholders": { "owner": "acme", "repo": "app" } });
     let secret = json!({ "definition": "acme.set-secret", "version": 1, "step": 1,
                          "placeholders": { "owner": "acme", "repo": "app", "name": "DEPLOY_KEY" } });
     for request in [delete, secret] {
-        let (result, network, _) = send(request, Ok(Answer::default()));
-        assert_eq!(result, refused(Refusal::NotInCatalog));
+        let network = FakeNetwork::default();
+        let dialogs = FakeDialogs::typing(None);
+        let result = send_with(
+            &routes(),
+            &network,
+            &FakeKeychain::signed_in(),
+            &dialogs,
+            &FakeLog::default(),
+            request,
+        );
+        assert_eq!(result, SendResult::Cancelled);
+        assert_eq!(dialogs.asked().len(), 1);
         assert!(network.calls().is_empty());
     }
 }

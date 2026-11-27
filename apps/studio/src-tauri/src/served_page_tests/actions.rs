@@ -85,3 +85,60 @@ fn served_page_test_sees_the_connect_page_reach_the_action_commands() {
         assert_eq!(refusal["kind"], "unknown_service", "{command}: {refusal}");
     }
 }
+
+#[test]
+fn served_page_test_sees_the_action_dialog_granted_nothing() {
+    // HAL-18085: the dialog with text fields takes a secret or a target's
+    // name. No capability names its window, so its page can call no
+    // command; its answer is a form the shell's own scheme reads.
+    use tauri::http::{Request, StatusCode};
+    use tauri::webview::WebviewWindowBuilder;
+    use tauri::{Manager, WebviewUrl};
+
+    use crate::action_parts::dialog::{WINDOW, serve};
+
+    let folder = concat!(env!("CARGO_MANIFEST_DIR"), "/capabilities");
+    for entry in std::fs::read_dir(folder).expect("the capabilities folder") {
+        let path = entry.expect("a capability file").path();
+        let text = std::fs::read_to_string(&path).expect("a readable capability");
+        let capability: Value = serde_json::from_str(&text).expect("the capability is JSON");
+        for window in capability["windows"].as_array().into_iter().flatten() {
+            let label = window.as_str().expect("a label");
+            assert!(
+                label != WINDOW && !label.contains('*'),
+                "{path:?} names {label}"
+            );
+        }
+    }
+    let main = app_window();
+    let dialog = WebviewWindowBuilder::new(main.app_handle(), WINDOW, WebviewUrl::default())
+        .build()
+        .expect("the dialog's window opens");
+    for command in every_command() {
+        let refusal = invoke(&dialog, "halonic-action://localhost/", &command, json!({}))
+            .expect_err("the dialog's window is refused every command");
+        assert!(
+            refusal.to_string().contains("not allowed"),
+            "{command}: {refusal}"
+        );
+    }
+    // Its scheme serves nothing to another window, nor with no dialog open.
+    for (label, method, path) in [
+        ("main", "GET", "/"),
+        ("main", "POST", "/send"),
+        (WINDOW, "GET", "/"),
+        (WINDOW, "GET", "/send"),
+    ] {
+        let request = Request::builder()
+            .method(method)
+            .uri(format!("halonic-action://localhost{path}"))
+            .body(b"target=acme%2Fapp".to_vec())
+            .expect("a request");
+        let answer = serve(main.app_handle(), label, request);
+        assert_eq!(
+            answer.status(),
+            StatusCode::NOT_FOUND,
+            "{label} {method} {path}"
+        );
+    }
+}

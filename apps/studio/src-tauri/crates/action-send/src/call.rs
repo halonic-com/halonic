@@ -115,6 +115,8 @@ pub fn check_placeholders(
 
 fn checked_value(field: &BodyField, value: Option<&Value>) -> Result<Option<Value>, Refusal> {
     let checked = match (&field.kind, value) {
+        // Typed into the shell's dialog during the send, never from the page.
+        (BodyKind::SecretInput, None) => return Ok(None),
         (BodyKind::Constant(constant), None) => constant.clone(),
         (BodyKind::Text(pattern), Some(Value::String(text)))
             if pattern.matches(text) && !has_hidden_characters(text) =>
@@ -138,7 +140,8 @@ fn checked_value(field: &BodyField, value: Option<&Value>) -> Result<Option<Valu
 
 /// Builds the body field by field from the route: every field the page must
 /// give, none extra, each of its kind, plus the route's constants. A
-/// `secret-input` field never comes from the page.
+/// `secret-input` field never comes from the page: the sender adds the
+/// typed value when it writes the body.
 fn check_body(
     route: &CallRoute,
     given: &BTreeMap<String, Value>,
@@ -161,17 +164,6 @@ fn check_body(
         }
     }
     Ok(Some(body))
-}
-
-/// Whether the shell can send the route at all. `secret-input` fields and
-/// `irreversible` steps need native dialogs with a text field, which the
-/// shell doesn't have yet, so those routes are treated as not on the list.
-pub fn is_sendable(route: &CallRoute) -> bool {
-    route.risk != crate::routes::Risk::Irreversible
-        && !route
-            .body
-            .iter()
-            .any(|field| field.kind == BodyKind::SecretInput)
 }
 
 /// Refuses a query value holding `&` or `=`. The value is form-encoded
@@ -200,11 +192,7 @@ pub fn prepare<'a>(
         version: request.version,
         step: request.step,
     };
-    let route = list
-        .calls
-        .get(&key)
-        .filter(|route| is_sendable(route))
-        .ok_or(Refusal::NotInCatalog)?;
+    let route = list.calls.get(&key).ok_or(Refusal::NotInCatalog)?;
     check_placeholders(&route.placeholders, &request.placeholders)?;
     check_query_values(route, &request.placeholders)?;
     let body = check_body(route, &request.body)?;

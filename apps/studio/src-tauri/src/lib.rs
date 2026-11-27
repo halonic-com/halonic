@@ -238,7 +238,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
         .manage(sandbox_elevate::ElevateState::default())
         .manage(sandbox_wsl_setup::WslSetupState::default());
     #[cfg(desktop)]
-    let builder = builder
+    let builder = action_parts::dialog::register(builder)
         .manage(actions::ActionState::default())
         .manage(deployment_calls::DeploymentState::default())
         .manage(updates::Updates::default())

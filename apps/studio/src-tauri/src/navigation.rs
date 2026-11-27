@@ -55,6 +55,11 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("navigation-guard")
         .on_navigation(on_navigation)
         .on_page_load(|webview, payload| {
+            #[cfg(desktop)]
+            if webview.label() == crate::action_parts::dialog::WINDOW {
+                crate::action_parts::dialog::on_page_load(webview, payload.url());
+                return;
+            }
             #[cfg(any(target_os = "macos", target_os = "linux"))]
             if webview.label() == crate::server_session_brief::WINDOW {
                 crate::server_session_brief::on_page_load(webview, payload.url());
@@ -72,6 +77,12 @@ pub fn guard<R: Runtime>() -> TauriPlugin<R> {
 
 /// Decides one navigation: true lets it load in the window.
 pub(crate) fn on_navigation<R: Runtime>(webview: &Webview<R>, url: &Url) -> bool {
+    // The dialog with text fields loads only its own page and form
+    // (`action_dialog.rs`).
+    #[cfg(desktop)]
+    if webview.label() == crate::action_parts::dialog::WINDOW {
+        return crate::action_parts::dialog::on_navigation(webview, url);
+    }
     // The brief window loads only its own page (`server_session_brief.rs`).
     #[cfg(any(target_os = "macos", target_os = "linux"))]
     if webview.label() == crate::server_session_brief::WINDOW {

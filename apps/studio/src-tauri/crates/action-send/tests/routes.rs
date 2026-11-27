@@ -23,7 +23,7 @@ fn with_first_route(change: impl FnOnce(&mut Value)) -> Result<RouteList, String
 #[test]
 fn the_acme_list_loads() {
     let list = RouteList::parse(ACME_ROUTES).expect("loads");
-    assert_eq!(list.calls.len(), 5);
+    assert_eq!(list.calls.len(), 6);
     assert_eq!(list.guided.len(), 1);
 }
 
@@ -153,4 +153,48 @@ fn patterns_match_whole_values() {
     let dash_last = Pattern::parse("^[a-z_-]?x$").expect("reads");
     assert!(dash_last.matches("-x"));
     assert!(dash_last.matches("x"));
+}
+
+fn with_route(index: usize, change: impl FnOnce(&mut Value)) -> Result<RouteList, String> {
+    let mut list = acme();
+    change(&mut list["routes"][index]);
+    RouteList::parse(&list.to_string())
+}
+
+/// The acme list's `irreversible` call, `acme.delete-repo`.
+const DELETE_REPO: usize = 3;
+
+#[test]
+fn only_an_irreversible_call_names_a_target_from_its_own_placeholders() {
+    // HAL-18085: the name the user types comes from the reviewed route.
+    let refused = [
+        with_route(DELETE_REPO, |route| {
+            if let Some(route) = route.as_object_mut() {
+                route.remove("target");
+            }
+        }),
+        with_route(DELETE_REPO, |route| {
+            route["target"] = json!("{owner}/{name}")
+        }),
+        with_route(DELETE_REPO, |route| route["target"] = json!("acme/app")),
+        with_route(DELETE_REPO, |route| {
+            route["target"] = json!("{owner}/{repo")
+        }),
+        with_route(DELETE_REPO, |route| {
+            route["target"] = json!("{owner}}/{repo}")
+        }),
+        with_route(DELETE_REPO, |route| {
+            route["target"] = json!("{owner}\u{202E}/{repo}")
+        }),
+        with_first_route(|route| route["target"] = json!("{owner}/{repo}")),
+    ];
+    for (index, list) in refused.iter().enumerate() {
+        assert!(list.is_err(), "case {index}");
+    }
+    let mut list = acme();
+    list["routes"][6]["target"] = json!("{owner}/{repo}");
+    assert!(
+        RouteList::parse(&list.to_string()).is_err(),
+        "a guided step has no target"
+    );
 }

@@ -12,7 +12,8 @@ use std::thread::{self, Thread};
 
 use halonic_action_send::account::{self, Account};
 use halonic_action_send::{
-    Answer, ConfirmSheet, Dialogs, Outgoing, RouteList, Sender, Tokens, Transport,
+    Answer, AskSheet, ConfirmSheet, Dialogs, Outgoing, RouteList, Sender, Tokens, Transport, Typed,
+    TypedText,
 };
 use halonic_secrets::{MemoryBackend, SecretError};
 
@@ -125,10 +126,16 @@ impl Tokens for FakeKeychain {
     }
 }
 
+/// What the stand-in user types into the dialog with text fields: the
+/// target's name and each secret, or `None` to close it.
+pub type TypedAnswer = Option<(Option<&'static str>, Vec<(&'static str, &'static str)>)>;
+
 /// The native dialogs: answers with what the test set and records each sheet.
 pub struct FakeDialogs {
     pub answer: bool,
     pub sheets: Mutex<Vec<ConfirmSheet>>,
+    pub typed: TypedAnswer,
+    pub asked: Mutex<Vec<AskSheet>>,
 }
 
 impl FakeDialogs {
@@ -136,7 +143,21 @@ impl FakeDialogs {
         Self {
             answer,
             sheets: Mutex::default(),
+            typed: None,
+            asked: Mutex::default(),
         }
+    }
+
+    /// A user who types `typed` into the dialog with text fields.
+    pub fn typing(typed: TypedAnswer) -> Self {
+        Self {
+            typed,
+            ..Self::answering(true)
+        }
+    }
+
+    pub fn asked(&self) -> Vec<AskSheet> {
+        self.asked.lock().expect("not poisoned").clone()
     }
 }
 
@@ -148,6 +169,18 @@ impl Dialogs for FakeDialogs {
             .push(sheet.clone());
         let answer = self.answer;
         async move { answer }
+    }
+
+    fn ask(&self, sheet: &AskSheet) -> impl Future<Output = Option<Typed>> + Send {
+        self.asked.lock().expect("not poisoned").push(sheet.clone());
+        let typed = self.typed.as_ref().map(|(target, secrets)| Typed {
+            target: target.map(|name| TypedText::new(name.to_owned())),
+            secrets: secrets
+                .iter()
+                .map(|(name, value)| ((*name).to_owned(), TypedText::new((*value).to_owned())))
+                .collect(),
+        });
+        async move { typed }
     }
 }
 
