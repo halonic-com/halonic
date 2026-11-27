@@ -20,6 +20,7 @@ mod held_backend;
 mod host_secrets;
 mod loopback_secrets;
 mod opened_workspaces;
+mod paperclip_keep;
 mod paperclip_routes;
 mod relay;
 mod route_kinds;
@@ -48,6 +49,10 @@ use halonic_secrets::SecretBackend;
 use handshake::{FirstLine, read_first_line};
 pub use handshake::{Handshake, read_handshake};
 use loopback_secrets::LoopbackSecrets;
+pub use paperclip_keep::{
+    HostCallFailed, SignInHost, forget_paperclip_key, keep_poll_answer, page_cancel_answer,
+};
+pub use paperclip_routes::{SIGN_IN_CANCEL, SIGN_IN_CONFIRM};
 use relay::Relay;
 pub use route_kinds::{Answer, Method, Route};
 pub use routes::find_route;

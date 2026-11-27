@@ -20,6 +20,9 @@ type Keychain = Map<string, string>;
  * One workspace as the agent host serves it, fresh after each restart: it
  * holds no key until Studio hands one over, as the real host keeps keys in
  * memory only. Studio may name the folder otherwise, such as through a link.
+ * It plays the Studio shell's part too (HAL-20278): an approved poll writes
+ * the keychain entry, naming the workspace's real path after those an entry
+ * for the same place named, and Disconnect deletes it.
  */
 class FakeHost {
   readonly handedOver: PaperclipKeyHandOver[] = [];
@@ -28,9 +31,21 @@ class FakeHost {
 
   /** The workspace's real path, as the host resolves it. */
   readonly real: string;
+  readonly #keychain: Keychain;
 
-  constructor(real: string) {
+  constructor(real: string, keychain: Keychain = new Map()) {
     this.real = real;
+    this.#keychain = keychain;
+  }
+
+  /** What the shell does with the approved poll's key: the entry, then the answer without the key. */
+  #keep(): PaperclipSignInState {
+    const before = this.#keychain.get("paperclip-halonic");
+    const earlier: string[] = before === undefined ? [] : JSON.parse(before).workspaces;
+    const workspaces = [...earlier.filter((each) => each !== this.real), this.real];
+    const entry = { key: this.nextKey, address, company, workspaces };
+    this.#keychain.set("paperclip-halonic", JSON.stringify(entry));
+    return { status: "connected", connection: "halonic", address, company };
   }
 
   #row(): PaperclipConnectionRow {
@@ -63,20 +78,16 @@ class FakeHost {
       approvalUrl: `${address}/cli-auth/challenge-1`,
       expiresAt: "2026-11-25T23:00:00.000Z",
     }),
-    poll: async (): Promise<PaperclipSignInState> => ({
-      status: "connected",
-      connection: "halonic",
-      address,
-      company,
-      key: this.nextKey,
-    }),
-    confirm: async () => true,
+    poll: async (): Promise<PaperclipSignInState> => this.#keep(),
     cancel: async () => ({ status: "cancelled" as const }),
   };
 
   readonly host = {
     handOver: async (entry: PaperclipKeyHandOver) => void this.handedOver.push(entry),
-    disconnect: async () => ({ revoked: true }),
+    disconnect: async () => {
+      this.#keychain.delete("paperclip-halonic");
+      return { revoked: true };
+    },
   };
 }
 
@@ -88,11 +99,7 @@ function open(keychain: Keychain, host: FakeHost, named: string) {
   const connections = new HostAgentConnections({
     signIn: host.signIn,
     host: host.host,
-    tokens: {
-      get: async (name) => keychain.get(name) ?? null,
-      set: async (name, value) => void keychain.set(name, value),
-      remove: async (name) => void keychain.delete(name),
-    },
+    tokens: { get: async (name) => keychain.get(name) ?? null },
     workspace: named,
     wait: async () => {},
     now: () => Date.parse("2026-11-25T22:00:00.000Z"),
@@ -101,9 +108,9 @@ function open(keychain: Keychain, host: FakeHost, named: string) {
   return { connections, reported };
 }
 
-/** Lists the connections, as Settings does, unless `listFirst` is false, then signs in to the Halonic one. */
-async function signInThere(connections: HostAgentConnections, listFirst = true): Promise<void> {
-  if (listFirst) await connections.list();
+/** Lists the connections, as Settings does, then signs in to the Halonic one. */
+async function signInThere(connections: HostAgentConnections): Promise<void> {
+  await connections.list();
   const start = await connections.signIn({ address, connection: "paperclip:halonic" });
   if (start.outcome !== "started") throw new Error("expected a started sign-in");
   expect((await start.challenge.result).outcome).toBe("connected");
@@ -113,9 +120,11 @@ verifies("services.paperclip-restore", () => {
   describe("HostAgentConnections.restore, after Studio restarts", () => {
     it("gives the host back the key signed in with in this workspace, named through a link", async () => {
       const keychain: Keychain = new Map();
-      await signInThere(open(keychain, new FakeHost("/real/acme"), "/links/acme").connections);
+      await signInThere(
+        open(keychain, new FakeHost("/real/acme", keychain), "/links/acme").connections,
+      );
 
-      const afterRestart = new FakeHost("/real/acme");
+      const afterRestart = new FakeHost("/real/acme", keychain);
       const { connections, reported } = open(keychain, afterRestart, "/links/acme");
       let heard = 0;
       connections.subscribe(() => heard++);
@@ -129,22 +138,12 @@ verifies("services.paperclip-restore", () => {
       expect((await connections.list())[0]?.state).toEqual(online);
     });
 
-    it("records the real path also for a sign-in started without a list first", async () => {
-      const keychain: Keychain = new Map();
-      await signInThere(
-        open(keychain, new FakeHost("/real/acme"), "/links/acme").connections,
-        false,
-      );
-
-      expect(JSON.parse(keychain.get("paperclip-halonic") ?? "{}").workspaces).toEqual([
-        "/real/acme",
-      ]);
-    });
-
     it("keeps one entry with the newest key when a second workspace signs in", async () => {
       const keychain: Keychain = new Map();
-      await signInThere(open(keychain, new FakeHost("/real/acme"), "/real/acme").connections);
-      const second = new FakeHost("/real/acme-docs");
+      await signInThere(
+        open(keychain, new FakeHost("/real/acme", keychain), "/real/acme").connections,
+      );
+      const second = new FakeHost("/real/acme-docs", keychain);
       second.nextKey = secondKey;
       await signInThere(open(keychain, second, "/real/acme-docs").connections);
 
@@ -164,32 +163,38 @@ verifies("services.paperclip-restore", () => {
 
     it("gives nothing back to a clone the person never signed in from", async () => {
       const keychain: Keychain = new Map();
-      await signInThere(open(keychain, new FakeHost("/real/acme"), "/real/acme").connections);
+      await signInThere(
+        open(keychain, new FakeHost("/real/acme", keychain), "/real/acme").connections,
+      );
 
-      const clone = new FakeHost("/real/acme-clone");
+      const clone = new FakeHost("/real/acme-clone", keychain);
       await open(keychain, clone, "/real/acme-clone").connections.restore();
       expect(clone.handedOver).toEqual([]);
     });
 
     it("gives nothing back after Disconnect, which deletes the whole entry", async () => {
       const keychain: Keychain = new Map();
-      await signInThere(open(keychain, new FakeHost("/real/acme"), "/real/acme").connections);
-      const host = new FakeHost("/real/acme");
+      await signInThere(
+        open(keychain, new FakeHost("/real/acme", keychain), "/real/acme").connections,
+      );
+      const host = new FakeHost("/real/acme", keychain);
       const { connections } = open(keychain, host, "/real/acme");
       await connections.list();
       await connections.disconnect("paperclip:halonic");
       expect(keychain.size).toBe(0);
 
-      const afterRestart = new FakeHost("/real/acme");
+      const afterRestart = new FakeHost("/real/acme", keychain);
       await open(keychain, afterRestart, "/real/acme").connections.restore();
       expect(afterRestart.handedOver).toEqual([]);
     });
 
     it("tries again at the next list when the host couldn't list the workspace at the start", async () => {
       const keychain: Keychain = new Map();
-      await signInThere(open(keychain, new FakeHost("/real/acme"), "/real/acme").connections);
+      await signInThere(
+        open(keychain, new FakeHost("/real/acme", keychain), "/real/acme").connections,
+      );
 
-      const afterRestart = new FakeHost("/real/acme");
+      const afterRestart = new FakeHost("/real/acme", keychain);
       afterRestart.listingsRefused = 1;
       const { connections, reported } = open(keychain, afterRestart, "/real/acme");
       await connections.restore();
@@ -210,7 +215,7 @@ verifies("services.paperclip-restore", () => {
         reads++;
         return get(name);
       };
-      const host = new FakeHost("/real/acme");
+      const host = new FakeHost("/real/acme", keychain);
       const { connections } = open(keychain, host, "/real/acme");
       await connections.restore();
       expect(reads).toBe(1);
@@ -223,9 +228,11 @@ verifies("services.paperclip-restore", () => {
 
     it("hands nothing over in a workspace that never asked for a restore, such as an untrusted one", async () => {
       const keychain: Keychain = new Map();
-      await signInThere(open(keychain, new FakeHost("/real/acme"), "/real/acme").connections);
+      await signInThere(
+        open(keychain, new FakeHost("/real/acme", keychain), "/real/acme").connections,
+      );
 
-      const afterRestart = new FakeHost("/real/acme");
+      const afterRestart = new FakeHost("/real/acme", keychain);
       await open(keychain, afterRestart, "/real/acme").connections.list();
       expect(afterRestart.handedOver).toEqual([]);
     });

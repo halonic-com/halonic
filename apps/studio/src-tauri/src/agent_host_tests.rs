@@ -35,6 +35,9 @@ const TOKEN: &str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJ-_01234";
 /// Long enough for a script or a thread to start on a busy CI machine.
 const WAIT: Duration = Duration::from_secs(20);
 
+/// The fake host's answer to every sign-in poll: approved, with its key.
+const APPROVED_POLL: &str = r#"{"status":"connected","connection":"acme","address":"https://paperclip.acme.test","company":"company-acme","workspace":"/work/acme","key":"pk-from-the-host"}"#;
+
 /// What the fake host saw.
 #[derive(Debug, PartialEq, Eq)]
 enum Seen {
@@ -117,6 +120,12 @@ fn answer(connection: TcpStream, seen: &Sender<Seen>, released: &Mutex<Receiver<
     match path.as_str() {
         "/v1/health" => respond(&mut connection, 200, r#"{"ok":true,"version":"0.1.0"}"#),
         "/v1/harnesses" => respond(&mut connection, 200, "not JSON"),
+        // The approved poll is the one answer that holds a Paperclip key.
+        "/v1/paperclip/sign-in/poll" => respond(&mut connection, 200, APPROVED_POLL),
+        "/v1/paperclip/sign-in/confirm" => respond(&mut connection, 200, r#"{"confirmed":true}"#),
+        "/v1/paperclip/sign-in/cancel" => {
+            respond(&mut connection, 200, r#"{"status":"cancelled"}"#)
+        }
         "/v1/sandbox/sessions/blocked" => respond(
             &mut connection,
             404,
@@ -404,3 +413,6 @@ mod streams;
 
 #[path = "agent_host_window_routes_tests.rs"]
 mod window_routes;
+
+#[path = "agent_host_paperclip_key_tests.rs"]
+mod paperclip_key;

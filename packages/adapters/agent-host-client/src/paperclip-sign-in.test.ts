@@ -52,20 +52,37 @@ verifies("agent-host-client.paperclip-sign-in", () => {
       expect(await new AgentHostPaperclipSignIn(host, workspace).start(address)).toEqual(refusal);
     });
 
-    it("polls, confirms and cancels by the sign-in's ID", async () => {
+    it("polls and cancels by the sign-in's ID", async () => {
       const host = new FakeHost()
         .answer("POST /v1/paperclip/sign-in/poll", ok({ status: "pending" }))
-        .answer("POST /v1/paperclip/sign-in/confirm", ok({ confirmed: true }))
         .answer("POST /v1/paperclip/sign-in/cancel", ok({ status: "cancelled", keyMayWork: true }));
       const signIn = new AgentHostPaperclipSignIn(host, workspace);
       expect(await signIn.poll("sign-in-1")).toEqual({ status: "pending" });
-      expect(await signIn.confirm("sign-in-1")).toBe(true);
       expect(await signIn.cancel("sign-in-1")).toEqual({ status: "cancelled", keyMayWork: true });
       expect(host.calls.map((call) => call.body)).toEqual([
         { signInId: "sign-in-1" },
         { signInId: "sign-in-1" },
-        { signInId: "sign-in-1" },
       ]);
+    });
+
+    it("answers the approved poll as the shell passes it on, without a key", async () => {
+      const connected = { status: "connected", connection: "acme", address, company: "acme" };
+      const host = new FakeHost()
+        .answer("POST /v1/paperclip/sign-in/poll", ok(connected))
+        .answer("POST /v1/paperclip/sign-in/cancel", ok({ status: "key-not-saved" }));
+      const signIn = new AgentHostPaperclipSignIn(host, workspace);
+      expect(await signIn.poll("sign-in-1")).toEqual(connected);
+      expect(await signIn.cancel("sign-in-1")).toEqual({ status: "key-not-saved" });
+    });
+
+    it("refuses an approved answer that holds a key", async () => {
+      const withKey = { status: "connected", connection: "acme", address, company: "acme" };
+      const host = new FakeHost().answer(
+        "POST /v1/paperclip/sign-in/poll",
+        ok({ ...withKey, key: "pk-acme" }),
+      );
+      const signIn = new AgentHostPaperclipSignIn(host, workspace);
+      await expect(signIn.poll("sign-in-1")).rejects.toMatchObject({ kind: "answer_invalid" });
     });
 
     it("fails with the host's kind, or answer_invalid for another shape", async () => {

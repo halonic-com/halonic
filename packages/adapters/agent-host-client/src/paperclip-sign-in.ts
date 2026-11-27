@@ -54,16 +54,15 @@ const stateAnswer = s.discriminatedUnion("status", [
       connection: s.string(),
       address: s.string(),
       company: s.string(),
-      key: s.string(),
     })
     .strict(),
+  // The shell couldn't keep the approved key, so it cancelled the sign-in (HAL-20278).
+  s.object({ status: s.literal("key-not-saved") }).strict(),
   s.object({ status: s.literal("cancelled"), keyMayWork: s.literal(true).optional() }).strict(),
   s.object({ status: s.literal("expired"), keyMayWork: s.literal(true).optional() }).strict(),
   s.object({ status: s.literal("wrong-company") }).strict(),
   s.object({ status: s.literal("unknown") }).strict(),
 ]);
-
-const confirmAnswer = s.object({ confirmed: s.boolean() }).strict();
 
 /**
  * A connection row's state: a source's state, or `no-key` when the host holds
@@ -156,22 +155,14 @@ export class AgentHostPaperclipSignIn {
     return readAnswer(route, await this.#transport.request(route, body), startAnswer);
   }
 
-  /** Polls a sign-in once. */
+  /**
+   * Polls a sign-in once. The approved answer holds no key: the shell keeps
+   * it in the keychain and confirms it to the host itself (HAL-20278), and
+   * answers `key-not-saved` when it couldn't.
+   */
   async poll(signInId: string): Promise<PaperclipSignInState> {
     const route = "POST /v1/paperclip/sign-in/poll";
     return readAnswer(route, await this.#transport.request(route, { signInId }), stateAnswer);
-  }
-
-  /**
-   * Says the keychain has the key the approved poll answered. Until then the
-   * host keeps the sign-in, and revokes the key after a minute.
-   *
-   * @returns whether the host still had the sign-in; `false` means it revoked the key already
-   */
-  async confirm(signInId: string): Promise<boolean> {
-    const route = "POST /v1/paperclip/sign-in/confirm";
-    const answer = await this.#transport.request(route, { signInId });
-    return readAnswer(route, answer, confirmAnswer).confirmed;
   }
 
   /**

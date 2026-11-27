@@ -117,6 +117,7 @@ verifies("agent-host.paperclip-sign-in", () => {
         key: fakeBoardKey,
         name: connection.name,
         address: connection.address,
+        workspace: connection.workspace,
       });
       expect(keyStore.saved).toEqual([{ ...connection, key: fakeBoardKey }]);
       expect(await flow.confirm(started.signInId)).toBe(true);

@@ -43,6 +43,19 @@ impl SecretName {
         Ok(Self(format!("{TOKEN_PREFIX}{}", token.0)))
     }
 
+    /// The keychain name of the everyday key of the Paperclip connection
+    /// `connection` (HAL-20278): the token `paperclip-<connection>`, the
+    /// same entry the page wrote before the shell kept the key, so an entry
+    /// stored then is found without a migration. Only the shell's own
+    /// Paperclip code builds it (`halonic-agent-host`'s `paperclip_keep`).
+    pub fn paperclip_key(connection: &str) -> Result<Self, SecretError> {
+        let token = Self::parse(&format!("{PAPERCLIP_KEY_TOKEN}{connection}"))?;
+        if TOKEN_PREFIX.len() + token.0.len() > MAX_NAME_LENGTH {
+            return Err(SecretError::InvalidName);
+        }
+        Ok(Self(format!("{TOKEN_PREFIX}{}", token.0)))
+    }
+
     /// Whether the name belongs to Halonic: one of [`HALONIC_NAMES`], a
     /// token under [`TOKEN_PREFIX`], a stepper's sign-in under
     /// [`ACTION_PREFIX`], a server pairing under [`SERVER_PAIRING_PREFIX`] or
@@ -92,7 +105,11 @@ impl SecretName {
 /// The canonical prefix of every token's keychain name.
 pub const TOKEN_PREFIX: &str = "halonic_token_";
 
-/// The canonical prefix of a stepper's sign-in: the user's own token for a
+/// The token name a Paperclip connection's everyday key is kept under,
+/// before the connection's name ([`SecretName::paperclip_key`]).
+const PAPERCLIP_KEY_TOKEN: &str = "paperclip-";
+
+/// The canonical prefix of a stepper's sign-in:the user's own token for a
 /// service and the account it belongs to (`halonic-action-send`). Only the
 /// shell's `action_*` commands reach these; the secret commands, the agent
 /// host and the engine never do, so no page, agent or integration sees the

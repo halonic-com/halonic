@@ -59,8 +59,8 @@ export type SignInState =
   /**
    * The key was stored for the connection's company. This answer is the only
    * one that holds the key, and the sign-in ends with it, so no later poll
-   * gets it again (Liam's option 1, HAL-17439): Studio writes it to the
-   * keychain at once.
+   * gets it again (Liam's option 1, HAL-17439): the shell writes it to the
+   * keychain at once and passes Studio's page no key (HAL-20278).
    */
   | {
       status: "connected";
@@ -70,6 +70,8 @@ export type SignInState =
       /** The connection's name and address, from the start. */
       name: string;
       address: string;
+      /** The workspace's real path the sign-in is for, which the keychain entry names. */
+      workspace: string;
     }
   | { status: "cancelled" | "expired"; keyMayWork?: KeyMayWork }
   /** The key's user isn't in the connection's company; the key was revoked. */
@@ -305,6 +307,7 @@ export class PaperclipSignIn {
           key: open.key,
           name,
           address,
+          workspace,
         };
       }
     } catch (error) {

@@ -46,6 +46,7 @@ verifies("agent-host.paperclip-sign-in", () => {
         key: fakeBoardKey,
         name: newConnection.name,
         address: newConnection.address,
+        workspace: newConnection.workspace,
       });
       expect(keyStore.saved).toEqual([{ ...newConnection, companyId: "acme", key: fakeBoardKey }]);
     });

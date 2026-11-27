@@ -52,6 +52,9 @@ mod unfenced_allow;
 #[path = "agent_host_remote_asks.rs"]
 mod remote_asks;
 
+#[path = "agent_host_paperclip_key.rs"]
+mod paperclip_key;
+
 #[path = "agent_host_life.rs"]
 mod life;
 pub use life::{end_page_streams, host_answers, stop_host};
@@ -233,8 +236,7 @@ pub async fn agent_host_request<R: Runtime>(
     let route = named_route(&route, Answer::Json)?;
     unfenced_allow::ask_before_allow(&app, route).await?;
     remote_asks::ask_before_remote_save(&app, route, body.as_ref()).await?;
-    let response = send(&app, route, body).await?;
-    read_answer(response).await
+    paperclip_key::send_for_the_page(&app, route, body).await
 }
 
 /// Calls a stream route of the host, as the page's stream `stream`. Its

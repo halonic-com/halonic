@@ -67,6 +67,7 @@ verifies("agent-host.paperclip-sign-in", () => {
         key: fakeBoardKey,
         name: connection.name,
         address: connection.address,
+        workspace: connection.workspace,
       });
       expect(keyStore.saved).toEqual([{ ...connection, key: fakeBoardKey }]);
       // The answer that holds the key ends the sign-in: no later poll gets it again.

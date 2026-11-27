@@ -162,13 +162,15 @@ our server. Only the board's own Approve click is still to be tried live.
    in the challenge's `command` text, so the board approves only that request.
    It shows the 10 minutes the challenge lasts and cancels it when the dialog
    closes.
-3. Once a poll says `approved`, the key goes to the keychain, and
-   `/api/cli-auth/me` must show that the user belongs to the connection's
-   company.
+3. Once a poll says `approved`, `/api/cli-auth/me` must show that the user
+   belongs to the connection's company, and the key goes to the keychain.
+   Studio's shell takes it out of the engine's answer, writes the keychain
+   entry and confirms it to the engine itself, so Studio's page never sees
+   the key (HAL-20278, section 6.8 of the HAL-17491 note).
 
 When a key expires or is revoked, calls get a 401, and Studio asks the board
 to sign in again. Disconnecting revokes the key (`revoke-current`) and deletes
-the keychain entry and the cache. If the revoke fails, they are deleted anyway
+the cache, and Studio's shell deletes the keychain entry. If the revoke fails, they are deleted anyway
 and Studio says the key stays valid until its expiry and can be revoked in
 Paperclip.
 

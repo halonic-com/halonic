@@ -46,6 +46,24 @@ impl SecretsState {
         Arc::clone(&self.backend)
     }
 
+    /// The keychain the Paperclip connections' everyday keys are kept in,
+    /// handed only to the shell's own Paperclip code
+    /// (`agent_host_paperclip_key.rs`, HAL-20278), which builds every name
+    /// it uses with `SecretName::paperclip_key`. No command hands it to the
+    /// page.
+    pub(crate) fn paperclip_keychain(&self) -> Arc<dyn SecretBackend> {
+        Arc::clone(&self.backend)
+    }
+
+    /// A keychain on `backend`, for tests.
+    #[cfg(test)]
+    pub(crate) fn with_backend(backend: Arc<dyn SecretBackend>) -> Self {
+        Self {
+            backend,
+            changes: Arc::default(),
+        }
+    }
+
     /// The keychain a stepper's sign-in is kept in, handed only to the
     /// `action_*` commands (HAL-18084). It is the same backend as
     /// [`Self::host_keychain`], not one narrowed to the `action__` names:
