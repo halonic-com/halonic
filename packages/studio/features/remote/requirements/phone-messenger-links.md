@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-20070 (follow-up of HAL-19050; HAL-20040 acceptance rows L4 and L7; item 5 of the HAL-20039 design note; the security review of #6325)
 
-The phone shall show a link in a chat as a link whose accessible name is its full address followed by " opens in your browser", while it shows only the address. When the page runs in a browser instead of the Android app, a tapped link that `isAllowedWebLink` passes shall open in a new tab cut off from the page (`noopener`), and any other link shall open nothing. A chat's back button shall be named "Messenger" and shall return to the list of chats. The phone shall split a message of 100,000 characters into text and links in well under a second, whatever its characters, so no message can freeze the chat.
+The phone shall show a link in a chat as a link whose accessible name is its full address followed by " opens in your browser", while it shows only the address. When the page runs in a browser instead of the Android app, a tapped link that `isAllowedWebLink` passes shall open in a new tab cut off from the page (`noopener`), and any other link shall open nothing. A chat's back button shall be named "Messenger" and shall return to the list of chats. The phone shall split a message into text and links in time that grows in step with its length, whatever its characters, so no message can freeze the chat.
 
 ## Examples
 
@@ -19,4 +19,4 @@ The phone shall show a link in a chat as a link whose accessible name is its ful
   then the list of chats shows again.
 - Given a message of 100,000 `[`,
   when the chat shows it,
-  then splitting it takes well under a second.
+  then splitting it takes under 30 times as long as splitting 10,000 `[`.
