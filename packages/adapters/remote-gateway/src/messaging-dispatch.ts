@@ -16,6 +16,7 @@ import type { GatewayPolicy } from "./session-source.ts";
  * request each. A reaction is a write, like a message, so it counts as a send.
  * A reactions read has a kind of its own: unlike the other reads it isn't
  * served from the hub's cache, and a phone reads it each time a chat opens.
+ * A pull request's detail isn't cached either, so it shares that kind (HAL-20443).
  */
 export type GatewayRateLimited = "search" | "send" | "reactions";
 
@@ -293,6 +294,9 @@ async function readTeam(context: Context, message: MessageOf<"team-read">): Prom
   const { team } = context.messaging.view;
   const page = { type: "team-data", replyTo: message.id, what: message.what, items: [] } as const;
   if (message.what === "pull-request") {
+    if (!context.messaging.rateLimit.take("reactions")) {
+      return context.replies.refuse(message.id, "rate-limited");
+    }
     const detail = await team.pullRequest(message.pullRequest);
     if (detail === undefined) return context.replies.refuse(message.id, "not-found");
     return sendPage(context, page, [detail], undefined);
