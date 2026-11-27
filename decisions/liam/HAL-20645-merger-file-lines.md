@@ -3,6 +3,7 @@
 - Task: HAL-20645, found by Nora on #6678
 - Approval: Liam decided it as the Merger's owner on HAL-20645; Julian reviews the pull request and signs this note
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:8b2CJv25biMRcJqzRFFINgbc+M3VEoqbm/ohvSA5wTluaEebBz4D6lddTgZplydax4y6uSZAy2xmWMsco9gSCw==
 
 ## What changes
 
