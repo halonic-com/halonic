@@ -1,9 +1,10 @@
 import { Button, Input } from "@halonicjs/studio-kit";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
-import type { AgentChange, AgentSettings } from "../api.ts";
+import type { AgentChange, AgentSettings, AgentsHost } from "../api.ts";
 import { ReviewMark } from "../review/review-marks.tsx";
 import { configurationWords } from "./configuration-words.ts";
 import { type ChipWords, OptionChips } from "./option-chips.tsx";
+import { type PlacementLoad, usePlacement } from "./use-placement.ts";
 
 const words = configurationWords.sandboxFields;
 
@@ -16,6 +17,7 @@ const siteWords: ChipWords = {
 
 /** Props for {@link SandboxFields}. */
 export interface SandboxFieldsProps {
+  readonly host: AgentsHost;
   readonly settings: AgentSettings;
   /** Saves one change; resolves to whether it was written. */
   readonly save: (change: AgentChange) => Promise<boolean>;
@@ -27,17 +29,32 @@ export interface SandboxFieldsProps {
  * Each saves when it changes; the host refuses a folder or site the sandbox can't give, and the
  * page says why, as for any save that fails.
  */
-export function SandboxFields({ settings, save }: SandboxFieldsProps) {
+export function SandboxFields({ host, settings, save }: SandboxFieldsProps) {
+  const { load } = usePlacement(host, settings.hubId, settings.id);
   return (
     <div className="flex flex-col gap-6">
       <ReviewMark agent={settings} field="workingFolder">
         <WorkingFolder folder={settings.workingFolder} save={save} />
       </ReviewMark>
       <ReviewMark agent={settings} field="allowedSites">
-        <AllowedSites sites={settings.allowedSites} save={save} />
+        <AllowedSites
+          sites={settings.allowedSites}
+          fenced={settings.harness !== "halonic" && runsFenced(load)}
+          save={save}
+        />
       </ReviewMark>
     </div>
   );
+}
+
+/**
+ * Whether the agent's program runs in its sandbox, where only the allowed sites are reachable:
+ * the sandbox, or a choice on hold, which runs there until it is confirmed again. On this
+ * computer the program starts without a fence, so the list doesn't apply.
+ */
+function runsFenced(load: PlacementLoad): boolean {
+  if (load.kind !== "loaded") return false;
+  return load.placement.runsOn !== "this-computer";
 }
 
 interface WorkingFolderProps {
@@ -145,6 +162,8 @@ function FolderBox({ folder, save, close }: FolderBoxProps) {
 
 interface AllowedSitesProps {
   readonly sites: readonly string[];
+  /** Whether the sandbox limits the program to these sites, so an empty list means none. */
+  readonly fenced: boolean;
   readonly save: (change: AgentChange) => Promise<boolean>;
 }
 
@@ -152,7 +171,7 @@ interface AllowedSitesProps {
  * The allowed sites as a chip list. Adding or removing one saves the whole list at once, and the
  * list goes back to the saved one when the save fails, as the harness choice does.
  */
-function AllowedSites({ sites, save }: AllowedSitesProps) {
+function AllowedSites({ sites, fenced, save }: AllowedSitesProps) {
   const headingId = useId();
   const noSitesId = useId();
   const [shown, setShown] = useState(sites);
@@ -165,12 +184,14 @@ function AllowedSites({ sites, save }: AllowedSitesProps) {
     const saved = await save({ allowedSites: next });
     if (!saved && mine === newestChange.current) setShown(sites);
   };
+  // "None" means no site only where the sandbox's fence applies the list.
+  const noSites = fenced && shown.length === 0;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-1">
       <h2 id={headingId} className="text-caption text-fg-muted">
         {words.allowedSites}
       </h2>
-      {shown.length === 0 && (
+      {noSites && (
         <p id={noSitesId} className="text-small text-fg-muted">
           {words.noSites}
         </p>
@@ -178,7 +199,7 @@ function AllowedSites({ sites, save }: AllowedSitesProps) {
       <OptionChips
         label={words.allowedSites}
         options={shown}
-        describedBy={shown.length === 0 ? noSitesId : undefined}
+        describedBy={noSites ? noSitesId : undefined}
         onChange={(next) => void change(next)}
         chipWords={siteWords}
       />

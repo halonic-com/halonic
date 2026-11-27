@@ -157,7 +157,7 @@ export function HarnessPage({ host, settings, save }: HarnessPageProps) {
         <WhereItRuns host={host} settings={settings} />
       </div>
       <div className="mt-6">
-        <SandboxFields settings={settings} save={save} />
+        <SandboxFields host={host} settings={settings} save={save} />
       </div>
     </div>
   );

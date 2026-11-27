@@ -54,6 +54,15 @@ async function changeFolder(page: HTMLElement, folder: string, key: "Enter" | "E
   await press(box, key);
 }
 
+const noSitesLine = "None. The agent's program can't reach any site.";
+
+/** Chooses On this computer for Sorter, for its file as it is now. */
+async function chooseThisComputer(host: AgentsHost) {
+  const placement = await host.placement(ref);
+  if (placement === undefined) throw new Error("this host can't choose");
+  await host.chooseThisComputer(ref, placement.fingerprint);
+}
+
 /** Opens Add site, types `site`, presses Enter, then Esc to close the box. */
 async function addSite(page: HTMLElement, site: string) {
   await act(async () => named(page, "Add site")?.click());
@@ -201,14 +210,52 @@ verifies("agents.configuration.sandbox-fields", () => {
   });
 
   it("says an empty list of sites means no site, until one is added", async () => {
-    const noSites = "None. The agent's program can't reach any site.";
     const page = await openHarness(hostWith({}));
-    const line = [...page.querySelectorAll("p")].find((p) => p.textContent === noSites);
+    const line = [...page.querySelectorAll("p")].find((p) => p.textContent === noSitesLine);
     expect(line).toBeDefined();
     expect(named(page, "Add site")?.getAttribute("aria-describedby")).toBe(line?.id);
     await addSite(page, "api.example.com");
-    expect(page.textContent).not.toContain(noSites);
+    expect(page.textContent).not.toContain(noSitesLine);
     expect(named(page, "Add site")?.hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("doesn't say no site once On this computer is confirmed, where the list doesn't apply", async () => {
+    const host = hostWith({});
+    await chooseThisComputer(host);
+    const page = await openHarness(host);
+    expect(page.textContent).toContain("Allowed sites");
+    expect(page.textContent).not.toContain(noSitesLine);
+    expect(named(page, "Add site")?.hasAttribute("aria-describedby")).toBe(false);
+  });
+
+  it("still says no site while a choice of On this computer is on hold", async () => {
+    const host = hostWith({});
+    await chooseThisComputer(host);
+    await host.update(ref, { workingFolder: "files/out" });
+    expect((await host.placement(ref))?.runsOn).toBe("on-hold");
+    const page = await openHarness(host);
+    expect(page.textContent).toContain(noSitesLine);
+  });
+
+  it("doesn't say no site for Halonic's own loop, which starts no program", async () => {
+    const host = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [{ ...ref, name: "Sorter", harness: "halonic" }],
+    });
+    const page = await openHarness(host);
+    expect(page.textContent).toContain("Allowed sites");
+    expect(page.textContent).not.toContain(noSitesLine);
+  });
+
+  it("doesn't say no site where Studio can't tell where the agent runs", async () => {
+    const host = memoryAgentsHost({
+      hubs: [{ id: "acme", name: "acme" }],
+      agents: [{ ...ref, name: "Sorter", harness: "claude-code" }],
+      placement: false,
+    });
+    const page = await openHarness(host);
+    expect(page.textContent).toContain("Allowed sites");
+    expect(page.textContent).not.toContain(noSitesLine);
   });
 
   it("saves the whole list of sites when one is added or removed", async () => {
