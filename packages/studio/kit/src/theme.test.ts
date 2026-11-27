@@ -6,6 +6,7 @@ import {
   control,
   css,
   type Mode,
+  moreContrast,
   plainVariables,
   text,
   themeTokens,
@@ -221,10 +222,6 @@ describe("theme.css field focus", () => {
 });
 
 describe("theme.css with more contrast", () => {
-  const moreContrast = customProperties(
-    blockBody(blockBody(css, "@media (prefers-contrast: more)"), ":root"),
-  );
-
   function raisedColour(name: string, mode: Mode): Rgba {
     const pair = lightDarkPair(moreContrast.get(`--color-${name}`) ?? "");
     if (pair === undefined) {
@@ -235,10 +232,10 @@ describe("theme.css with more contrast", () => {
 
   it("raises muted text to ink 80% (white 82%) and subtle text to ink 74% (white 74%)", () => {
     expect(moreContrast.get("--color-fg-muted")).toBe(
-      "light-dark(rgb(16 16 46 / 0.8), rgb(242 242 255 / 0.82))",
+      "light-dark(rgb(0 0 0 / 0.8), rgb(255 255 255 / 0.82))",
     );
     expect(moreContrast.get("--color-fg-subtle")).toBe(
-      "light-dark(rgb(16 16 46 / 0.74), rgb(242 242 255 / 0.74))",
+      "light-dark(rgb(0 0 0 / 0.74), rgb(255 255 255 / 0.74))",
     );
   });
 

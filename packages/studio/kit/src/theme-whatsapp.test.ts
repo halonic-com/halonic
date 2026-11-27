@@ -1,7 +1,16 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { blend, contrastRatio } from "./test/contrast.ts";
-import { colourToken, control, text, themeTokens } from "./test/theme-colours.spec.ts";
+import { blend, contrastRatio, parseColour, type Rgba } from "./test/contrast.ts";
+import {
+  colourToken,
+  control,
+  css,
+  type Mode,
+  moreContrast,
+  text,
+  themeTokens,
+} from "./test/theme-colours.spec.ts";
+import { lightDarkPair } from "./test/theme-file.spec.ts";
 
 /** Every surface text sits on in the WhatsApp layout: the frame, the sidebar, panels and menus. */
 const surfaces = [
@@ -16,8 +25,21 @@ const surfaces = [
 
 const textColours = ["fg", "fg-muted", "fg-subtle"];
 
+/** A text colour as `prefers-contrast: more` raises it. */
+function moreContrastColour(name: string, mode: Mode): Rgba {
+  const pair = lightDarkPair(moreContrast.get(`--color-${name}`) ?? "");
+  if (pair === undefined) {
+    throw new Error(`--color-${name} isn't raised as light-dark() under more contrast.`);
+  }
+  return parseColour(pair[mode]);
+}
+
 verifies("kit.whatsapp-theme", () => {
   describe("theme.css WhatsApp surfaces", () => {
+    it("keeps none of Studio's old blue-violet ink", () => {
+      expect(css).not.toMatch(/16 16 46|242 242 255/);
+    });
+
     it("takes WhatsApp's frame, panels and ink in our blue's hue", () => {
       expect(themeTokens.get("--color-canvas")).toBe("light-dark(#f3f5fa, #0a1630)");
       expect(themeTokens.get("--color-app-frame")).toBe("light-dark(#f3f5fa, #0a1630)");
@@ -46,6 +68,14 @@ verifies("kit.whatsapp-theme", () => {
           }
           const edge = colourToken("border-control", mode);
           expect(contrastRatio(edge, background)).toBeGreaterThanOrEqual(control);
+        });
+
+        it(`keeps raised quiet text at 4.5:1 on ${surface} in ${mode} mode with more contrast`, () => {
+          const background = colourToken(surface, mode);
+          for (const foreground of ["fg-muted", "fg-subtle"]) {
+            const seen = blend(moreContrastColour(foreground, mode), background);
+            expect(contrastRatio(seen, background), foreground).toBeGreaterThanOrEqual(text);
+          }
         });
       }
     }

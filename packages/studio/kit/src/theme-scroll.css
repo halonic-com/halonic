@@ -19,8 +19,8 @@
  */
 :root {
   /* About 3:1 against the surface in each mode (the design check on HAL-20568). */
-  --scrollbar-thumb: light-dark(rgb(16 16 46 / 0.45), rgb(242 242 255 / 0.38));
-  --scrollbar-thumb-strong: light-dark(rgb(16 16 46 / 0.7), rgb(242 242 255 / 0.7));
+  --scrollbar-thumb: light-dark(rgb(0 0 0 / 0.45), rgb(255 255 255 / 0.38));
+  --scrollbar-thumb-strong: light-dark(rgb(0 0 0 / 0.7), rgb(255 255 255 / 0.7));
   /* Here, not on the regions, so a hovered or focused region keeps the stronger thumb too. */
   @media (prefers-contrast: more) {
     --scrollbar-thumb: var(--scrollbar-thumb-strong);
