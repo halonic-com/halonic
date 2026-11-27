@@ -43,6 +43,9 @@ pub fn open_window<R: Runtime, S: AsRef<str>>(
     if requested(arguments) {
         return Ok(true);
     }
+    // A frame that started Halonic hands over its window.
+    #[cfg(windows)]
+    crate::app_frames::hand_over(arguments);
     crate::open_windows_track::open(app, crate::focused_apps::requested(arguments))?;
     Ok(false)
 }

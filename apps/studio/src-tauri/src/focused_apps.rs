@@ -149,6 +149,13 @@ pub fn show<R: Runtime>(handle: &AppHandle<R>, app: Option<FocusedApp>) -> tauri
     if app == Some(FocusedApp::Ask) {
         return crate::quick_ask::show_box(handle);
     }
+    // On Windows the Inbox and the Messenger open in their own frames.
+    #[cfg(windows)]
+    if let Some(app) = app
+        && let Some(shown) = crate::app_frames::show(handle, app)
+    {
+        return shown;
+    }
     let label = app.map_or(STUDIO_WINDOW, FocusedApp::name);
     if let Some(window) = handle.get_webview_window(label) {
         return bring_forward(&window);
@@ -176,6 +183,9 @@ pub fn started_again<R: Runtime>(handle: &AppHandle<R>, arguments: &[String]) {
     if crate::background_start::requested(arguments) {
         return;
     }
+    // A frame that started Halonic again hands over its window.
+    #[cfg(windows)]
+    crate::app_frames::hand_over(arguments);
     // The first window after a start at login reopens the windows open at
     // the last quit with it (`open_windows_track`).
     if let Err(error) = crate::open_windows_track::open(handle, requested(arguments)) {
@@ -198,7 +208,15 @@ pub async fn show_main_window<R: Runtime>(app: AppHandle<R>) -> Result<(), &'sta
     })
 }
 
+/// Shows `window`, restored if it was minimised, with the keyboard focus:
+/// on Windows through its frame, when it sits in one.
+#[cfg(windows)]
+fn bring_forward<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
+    crate::app_frames::bring_forward(window)
+}
+
 /// Shows `window`, restored if it was minimised, with the keyboard focus.
+#[cfg(not(windows))]
 fn bring_forward<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
     window.unminimize()?;
     window.show()?;
@@ -284,6 +302,28 @@ mod tests {
             }
         }
         assert_ne!(FocusedApp::Inbox.ico(), FocusedApp::Messenger.ico());
+    }
+
+    /// `studio.src-tauri.app-frames`: each frame carries the shell's
+    /// identifier, the name and title of its app, and so its taskbar ID.
+    #[test]
+    fn each_frame_matches_its_focused_app() {
+        use halonic_app_frame::FrameApp;
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json");
+        assert_eq!(config["identifier"], halonic_app_frame::IDENTIFIER);
+        for (app, frame) in [
+            (FocusedApp::Inbox, FrameApp::Inbox),
+            (FocusedApp::Messenger, FrameApp::Messenger),
+        ] {
+            assert_eq!(frame.name(), app.name());
+            assert_eq!(frame.title(), app.title());
+            assert_eq!(
+                frame.app_user_model_id(),
+                app.app_user_model_id(halonic_app_frame::IDENTIFIER)
+            );
+            assert_eq!(Some(frame.ico()), app.ico());
+        }
     }
 
     #[test]

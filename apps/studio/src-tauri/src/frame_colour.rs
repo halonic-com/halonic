@@ -25,14 +25,27 @@ fn colour_title_bar<R: Runtime>(
     window: &WebviewWindow<R>,
     caption: halonic_window_caption::Rgb,
 ) -> Result<(), &'static str> {
-    let coloured = window
-        .hwnd()
-        .map_err(|error| format!("the window's handle: {error}"))
-        .and_then(|handle| halonic_window_caption::set(handle.0, caption));
+    // A window in its frame (HAL-20468) has no title bar: the frame's is
+    // coloured, by the frame itself.
+    let coloured = match crate::app_frames::colour_frame(window, caption) {
+        Some(coloured) => coloured,
+        None => colour_own_bar(window, caption),
+    };
     coloured.map_err(|error| {
         halonic_shell_log::record("window", format!("{}: {error}", window.label()));
         "failed"
     })
+}
+
+#[cfg(windows)]
+fn colour_own_bar<R: Runtime>(
+    window: &WebviewWindow<R>,
+    caption: halonic_window_caption::Rgb,
+) -> Result<(), String> {
+    window
+        .hwnd()
+        .map_err(|error| format!("the window's handle: {error}"))
+        .and_then(|handle| halonic_window_caption::set(handle.0, caption))
 }
 
 #[cfg(not(windows))]

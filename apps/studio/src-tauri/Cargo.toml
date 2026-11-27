@@ -167,6 +167,12 @@ halonic-screen-still = { path = "crates/screen-still" }
 halonic-elevate-start = { path = "crates/elevate-start" }
 # Each focused app's window gets its own taskbar entry (HAL-17903).
 halonic-window-app-id = { path = "crates/window-app-id" }
+# Halonic Inbox's and Messenger's frames, each its own exe, so window
+# managers tell the apps apart (HAL-20468, `app_frames.rs`).
+halonic-app-frame = { path = "crates/app-frame" }
+# The handle type Tauri takes for a window's parent (`parent_raw`), at
+# Tauri's own version, so it adds no new code to the build.
+windows = { version = "=0.62.2", features = ["Win32_Foundation"] }
 
 # The pairing scanner (HAL-12246, build plan decision 16 on HAL-12232): the
 # official barcode-scanner plugin, approved in board decision 4c. The shell
@@ -191,6 +197,9 @@ tauri = { version = "=2.12.5", features = ["test"] }
 halonic-owner-check = { path = "crates/owner-check", features = ["fake"] }
 # The .ico picker, so every platform tests each app's window icons (HAL-19716).
 halonic-window-app-id = { path = "crates/window-app-id" }
+# The frames' names and taskbar IDs, so every platform tests that they
+# match the focused apps' (HAL-20468).
+halonic-app-frame = { path = "crates/app-frame" }
 
 [lints]
 workspace = true
