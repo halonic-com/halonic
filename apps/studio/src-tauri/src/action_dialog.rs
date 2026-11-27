@@ -23,8 +23,7 @@ use tauri::http::{Method, Request, Response, StatusCode, header};
 use tauri::webview::WebviewWindowBuilder;
 use tauri::{AppHandle, Builder, Manager, Runtime, Url, Webview, WebviewUrl, WindowEvent};
 
-/// The label of the shell's main window, the dialog's parent.
-const SHELL_WINDOW: &str = "main";
+use crate::native_dialogs;
 
 /// The dialog the window shows now, and who waits for the user's answer.
 struct OpenDialog {
@@ -74,18 +73,18 @@ impl DialogState {
         }
     }
 
-    /// Reads the sent form against the open dialog's sheet and answers with
-    /// it. The body is zeroed either way.
+    /// Reads the sent form against the open dialog's sheet and answers that
+    /// same dialog with it, under one lock. The body is zeroed either way.
     fn answer_form(&self, body: &mut [u8]) {
-        let typed = {
-            let open = self.open.lock().unwrap_or_else(PoisonError::into_inner);
-            match open.as_ref().filter(|dialog| dialog.answer.is_some()) {
-                Some(dialog) => ask_page::read_form(&dialog.sheet, body),
-                None => None,
-            }
-        };
+        let mut open = self.open.lock().unwrap_or_else(PoisonError::into_inner);
+        if let Some(dialog) = open.as_mut()
+            && let Some(answer) = dialog.answer.take()
+        {
+            let typed = ask_page::read_form(&dialog.sheet, body);
+            // The receiver is gone only once `ask` has stopped waiting.
+            let _ = answer.send(typed);
+        }
         body.fill(0);
-        self.answer(None, typed);
     }
 
     /// Forgets dialog `id`, so its page is served no more.
@@ -141,8 +140,10 @@ fn log(line: String) {
     halonic_shell_log::record("actions", line);
 }
 
-/// Opens the dialog's window over the shell's window; closing it answers
-/// Cancel.
+/// Opens the dialog's window over [`native_dialogs::dialog_parent`], the
+/// app window the user just used, as the other dialogs do (HAL-17915), so a
+/// send from the Inbox doesn't ask behind a minimised Studio. Closing it
+/// answers Cancel.
 fn open_window<R: Runtime>(app: &AppHandle<R>, id: u64) -> tauri::Result<()> {
     let page = Url::parse(OPEN_URL).map_err(tauri::Error::InvalidUrl)?;
     let mut builder = WebviewWindowBuilder::new(app, WINDOW, WebviewUrl::CustomProtocol(page))
@@ -152,8 +153,8 @@ fn open_window<R: Runtime>(app: &AppHandle<R>, id: u64) -> tauri::Result<()> {
         .center()
         .minimizable(false)
         .focused(true);
-    if let Some(shell) = app.get_webview_window(SHELL_WINDOW) {
-        builder = builder.parent(&shell)?;
+    if let Some(parent) = native_dialogs::dialog_parent(app) {
+        builder = builder.parent(&parent)?;
     }
     let window = builder.build()?;
     let shell = app.clone();

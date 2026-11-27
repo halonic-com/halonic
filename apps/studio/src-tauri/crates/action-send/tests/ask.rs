@@ -150,6 +150,25 @@ fn a_secret_is_never_in_the_result_a_log_line_or_the_dialogs_sheet() {
 }
 
 #[test]
+fn a_numeric_secret_echoed_as_a_number_is_not_kept() {
+    let (result, _, _, _) = send_typing(
+        add_key(),
+        Some((None, vec![("key", "40710042")])),
+        json_answer(
+            201,
+            json!({ "id": 7, "title": "deploy", "key": 40_710_042 }),
+        ),
+    );
+    let SendResult::Answered { kept, .. } = result else {
+        panic!("{result:?}")
+    };
+    assert_eq!(kept.get("id"), Some(&json!(7)));
+    assert_eq!(kept.get("key"), None);
+    let shown = serde_json::to_string(&kept).expect("serialises");
+    assert!(!shown.contains("40710042"), "{shown}");
+}
+
+#[test]
 fn the_page_may_not_send_a_secret_field_itself() {
     let mut request = set_secret();
     request["body"] = json!({ "value": "from the page" });

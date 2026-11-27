@@ -2,11 +2,31 @@
 //!
 //! The dialog's window takes one answer for the dialog it shows: the form
 //! read against that dialog's sheet, or Cancel. One dialog at a time
-//! (HAL-18085).
+//! (HAL-18085). The navigation guard keeps its window on its own page, and
+//! it opens over the app window the user just used.
 
 use halonic_action_send::{AskSheet, ConfirmSheet};
+use tauri::test::{MockRuntime, mock_builder};
+use tauri::webview::WebviewWindowBuilder;
+use tauri::{App, Manager, Url, WebviewUrl};
 
-use super::DialogState;
+use super::{DialogState, WINDOW};
+use crate::focused_apps::FocusedApp;
+use crate::native_dialogs;
+
+/// The page's own origin: Windows' webview serves a custom scheme over
+/// `http`.
+const BASE: &str = if cfg!(windows) {
+    "http://halonic-action.localhost"
+} else {
+    "halonic-action://localhost"
+};
+
+fn shell_app() -> App<MockRuntime> {
+    crate::shell(mock_builder())
+        .build(tauri::generate_context!())
+        .expect("the shell builds on the mock runtime")
+}
 
 fn sheet() -> AskSheet {
     AskSheet {
@@ -76,4 +96,51 @@ fn one_dialog_at_a_time_and_its_page_only_while_open() {
         body.iter().all(|byte| *byte == 0),
         "zeroed with no dialog open"
     );
+}
+
+#[test]
+fn the_navigation_guard_keeps_the_dialogs_window_on_its_page() {
+    let app = shell_app();
+    let window = WebviewWindowBuilder::new(&app, WINDOW, WebviewUrl::default())
+        .build()
+        .expect("the dialog's window opens");
+    let (_, answered) = app
+        .state::<DialogState>()
+        .begin(sheet())
+        .expect("a dialog opens");
+    let decide = |url: &str| {
+        let url = Url::parse(url).expect("a test URL");
+        crate::navigation::on_navigation(window.as_ref(), &url)
+    };
+    assert!(decide(&format!("{BASE}/")), "its page loads");
+    assert!(decide(&format!("{BASE}/send")), "its form is sent");
+    for elsewhere in [
+        "https://acme.example/",
+        "tauri://localhost/studio.html",
+        "halonic-action://acme.example/",
+    ] {
+        assert!(!decide(elsewhere), "{elsewhere}");
+    }
+    assert!(
+        answered.try_recv().is_err(),
+        "a refused page answers nothing"
+    );
+    assert!(!decide(&format!("{BASE}/cancel")), "Cancel doesn't load");
+    assert!(answered.recv().expect("an answer").is_none());
+}
+
+/// `open_window` takes `native_dialogs::dialog_parent` as its parent. The
+/// mock runtime has no GTK window to make a parent of, so this checks the
+/// choice: the Inbox the user sent from, with Studio's window closed, and
+/// never the dialog's own window.
+#[test]
+fn the_dialog_opens_over_the_inbox_while_only_it_is_open() {
+    let app = shell_app();
+    for label in [FocusedApp::Inbox.name(), WINDOW] {
+        WebviewWindowBuilder::new(&app, label, WebviewUrl::default())
+            .build()
+            .expect("the window opens");
+    }
+    let parent = native_dialogs::dialog_parent(app.handle()).expect("a parent");
+    assert_eq!(parent.label(), FocusedApp::Inbox.name());
 }

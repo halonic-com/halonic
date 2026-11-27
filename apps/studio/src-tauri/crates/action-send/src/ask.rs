@@ -109,8 +109,10 @@ pub(crate) fn secret_fields(route: &CallRoute) -> Vec<String> {
 
 /// The JSON body: the checked page and constant fields, and each typed
 /// secret, in the route's order. A secret is written straight into one
-/// buffer sized so it never grows, so no other copy of it is left behind;
-/// the outgoing call wipes that buffer once it is sent.
+/// buffer sized so it never grows, so this crate leaves no other copy of it
+/// behind; the outgoing call wipes that buffer once it is sent. The HTTP
+/// client's own copy of the body, like its copy of the token, is out of
+/// the shell's reach.
 pub(crate) fn body_bytes(
     route: &CallRoute,
     checked: &Map<String, Value>,

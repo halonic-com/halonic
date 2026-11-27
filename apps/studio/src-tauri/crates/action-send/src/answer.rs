@@ -76,9 +76,9 @@ fn answer_fields(body: Value, shape: AnswerShape) -> Result<Map<String, Value>, 
 }
 
 /// The route's kept fields that the answer has as plain values. Nothing
-/// when the answer isn't a JSON object. A text value that holds a `hidden`
-/// value (the token, a typed secret) or looks like a key is left out, in
-/// case the service echoes one back.
+/// when the answer isn't a JSON object. A text or number value that holds a
+/// `hidden` value (the token, a typed secret), or text that looks like a
+/// key, is left out, in case the service echoes one back.
 pub fn kept_fields(
     answer: &Answer,
     shape: AnswerShape,
@@ -100,7 +100,9 @@ pub fn kept_fields(
                             .split_whitespace()
                             .any(|word| looks_like_a_key(word, hidden))
                 }
-                Value::Number(_) | Value::Bool(_) | Value::Null => true,
+                // A numeric secret can come back as a JSON number.
+                Value::Number(number) => !holds_hidden(&number.to_string(), hidden),
+                Value::Bool(_) | Value::Null => true,
                 Value::Array(_) | Value::Object(_) => false,
             };
             plain.then(|| (name.clone(), value.clone()))
