@@ -1,0 +1,33 @@
+// The ADR's example (HAL-17560, 1.1): sets one variable on each listed repository.
+import type { UserContext } from "@halonicjs/toolscript";
+
+export const header = {
+  format: "halonic.toolscript/1",
+  id: "acme.sync-release-variables",
+  version: 1,
+  audience: "user",
+  title: "Sync release variables",
+  summary: "Sets one variable on each listed repository.",
+  risk: "admin",
+  inputs: {
+    repos: {
+      type: "list",
+      items: { type: "string", pattern: "^acme/[a-z-]{1,40}$" },
+      max: 10,
+      description: "The repositories to change.",
+    },
+    name: { type: "string", pattern: "^[A-Z_]{1,40}$", description: "The variable's name." },
+    value: { type: "string", pattern: "^.{1,200}$", description: "The value to set." },
+  },
+  uses: ["acme.get-variable@1", "acme.set-variable@1"],
+  touches: { "acme.set-variable@1": { repo: "{input.repos[]}", name: "{input.name}" } },
+  guide: { intro: "Changes {input.name} on each repository." },
+} as const;
+
+export async function run(ctx: UserContext<typeof header>): Promise<void> {
+  for (const repo of ctx.input.repos) {
+    const current = await ctx.acme.getVariable({ repo, name: ctx.input.name });
+    if (current?.value === ctx.input.value) continue;
+    await ctx.acme.setVariable({ repo, name: ctx.input.name, value: ctx.input.value });
+  }
+}

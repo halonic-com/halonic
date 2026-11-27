@@ -1,0 +1,34 @@
+// P6: run has complexity 16, one over the limit.
+import type { AgentContext } from "@halonicjs/toolscript";
+
+export const header = {
+  format: "halonic.toolscript/1",
+  id: "acme.comment-on-task",
+  version: 1,
+  audience: "agent",
+  title: "Comment on a task",
+  summary: "Posts one comment on a task.",
+  risk: "routine",
+  inputs: { task: { type: "string", pattern: "^ACME-[0-9]{1,6}$", description: "The task." } },
+  uses: ["acme.comment@1"],
+  tool: { name: "comment_on_task", description: "Posts one comment on a task." },
+} as const;
+
+export async function run(ctx: AgentContext<typeof header>): Promise<void> {
+  if (ctx.input.task.length === 0) return;
+  if (ctx.input.task.length === 1) return;
+  if (ctx.input.task.length === 2) return;
+  if (ctx.input.task.length === 3) return;
+  if (ctx.input.task.length === 4) return;
+  if (ctx.input.task.length === 5) return;
+  if (ctx.input.task.length === 6) return;
+  if (ctx.input.task.length === 7) return;
+  if (ctx.input.task.length === 8) return;
+  if (ctx.input.task.length === 9) return;
+  if (ctx.input.task.length === 10) return;
+  if (ctx.input.task.length === 11) return;
+  if (ctx.input.task.length === 12) return;
+  if (ctx.input.task.length === 13) return;
+  if (ctx.input.task.length === 14) return;
+  await ctx.acme.comment({ task: ctx.input.task, body: "Done." });
+}
