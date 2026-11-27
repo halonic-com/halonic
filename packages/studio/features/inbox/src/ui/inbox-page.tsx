@@ -7,11 +7,14 @@ import {
   type RequesterPolicy,
   RequesterPolicyService,
   type StepperCatalog,
+  usePaperclipHosts,
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { type RunsList, RunsListService } from "@halonicjs/studio-feature-runs/api";
 import { EmptyState, List, useNarrow, usePresentation } from "@halonicjs/studio-kit";
 import {
   type ActionSteps,
+  type AgentConnections,
+  AgentConnectionsService,
   AgentMessagingService,
   actionStepsKey,
   desktopOnlyActionSteps,
@@ -112,6 +115,7 @@ export function InboxPage({ context, framed }: PlaceViewProps & { readonly frame
       actionCatalog={context.services.find(ActionCatalogService)}
       requesterPolicy={context.services.find(RequesterPolicyService)}
       actionSteps={context.services.find(actionStepsKey)}
+      agentConnections={context.services.find(AgentConnectionsService)}
       notices={notices}
       {...(context.runCommand === undefined
         ? {}
@@ -182,6 +186,8 @@ export interface InboxViewProps {
   readonly requesterPolicy?: RequesterPolicy | undefined;
   /** Runs an action request's steps; without it, as in a browser, requests can only be reviewed. */
   readonly actionSteps?: ActionSteps | undefined;
+  /** The user's connections: a Paperclip request runs only on one of them. Without it, none does. */
+  readonly agentConnections?: AgentConnections | undefined;
   /** The workspace's runs: a phone's request sheet stops waiting when the run it started ends. */
   readonly runs?: RunsList | undefined;
   /** Says a line where a screen reader hears it: "New in Needs you: …" for a sent request's card that didn't open. */
@@ -239,6 +245,7 @@ export function InboxView({
   actionCatalog = emptyActionCatalog,
   requesterPolicy = defaultRequesterPolicy,
   actionSteps = desktopOnlyActionSteps,
+  agentConnections,
   motion = kitMotion,
   seeUsage,
 }: InboxViewProps) {
@@ -247,9 +254,10 @@ export function InboxView({
   const list = useRef<HTMLDivElement>(null);
   const state = useGlidingState(subscribe, read, list, motion);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
+  const paperclipHosts = usePaperclipHosts(agentConnections);
   const agent = useAgentItems(
     agentMessaging,
-    { catalog: actionCatalog, policy: requesterPolicy, steps: actionSteps },
+    { catalog: actionCatalog, policy: requesterPolicy, steps: actionSteps, paperclipHosts },
     { list, motion, announce },
   );
   // An item of the Inbox's own that opens, by hand or on request, takes the pane from an agent's.

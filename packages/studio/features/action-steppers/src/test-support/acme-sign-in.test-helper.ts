@@ -51,6 +51,9 @@ export const signInCatalog: StepperCatalog = {
   route: () => undefined,
 };
 
+/** The hosts of the Paperclips the user connected: only the `acme` one. */
+export const acmePaperclipHosts: readonly string[] = ["paperclip.acme.example"];
+
 /** The request's id in its record. */
 export const signInRequest = "paperclip:acme/item-1";
 
@@ -73,6 +76,7 @@ export function signInView(signIn: ServiceSignInView, now: Date): StepperView {
     catalog: signInCatalog,
     policy: allowsAcme,
     now,
+    paperclipHosts: acmePaperclipHosts,
   });
   if (review.kind !== "stepper") throw new Error(review.reasons.join("; "));
   const steps = review.view.steps.map((step) =>

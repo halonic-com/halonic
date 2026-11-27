@@ -37,6 +37,7 @@ import type {
   StepView,
 } from "../stepper-view.ts";
 import { serviceName } from "../ui/stepper-words.ts";
+import { paperclipHostRefusal } from "./paperclip-host.ts";
 
 /** An Inbox item that asks the user to run a stepper. */
 export type ActionItem = InboxItem & { readonly action: InboxActionRequest };
@@ -52,6 +53,11 @@ export interface ActionReviewContext {
    * today's state next to the change, such as "Required reviews on `main` today: 1. After: 2."
    */
   readonly current?: Readonly<Record<string, ActionKeptValue>> | undefined;
+  /**
+   * The hosts of the Paperclips the user connected, such as `paperclip.acme.example`: a Paperclip
+   * request runs only on one of them. Without them, none does (`action-steppers.paperclip-host`).
+   */
+  readonly paperclipHosts?: readonly string[] | undefined;
 }
 
 /**
@@ -234,7 +240,8 @@ export function requesterName(author: MessagingAuthor): string {
 /**
  * Reviews an action item the user opened (`action-steppers.review-mode`): checks its request
  * against the installed catalog with `validateStepperRequest`, applies the user's requester policy
- * to the source the provider attests, and builds the screen's view. The stage is `expired` past
+ * to the source the provider attests, refuses a Paperclip request on a host the user didn't
+ * connect (`action-steppers.paperclip-host`), and builds the screen's view. The stage is `expired` past
  * the request's expiry, `blocked` when the policy doesn't allow its risk from that source, and
  * otherwise `desktop-only`: only the stepper run, in the desktop app, makes a request `ready`.
  *
@@ -260,6 +267,8 @@ export function reviewActionItem(
   if (definition === undefined || parsed === undefined || !parsed.ok) {
     return { kind: "unreadable", reasons: [`\`${action.definition}@${action.version}\` changed`] };
   }
+  const hostRefusal = paperclipHostRefusal(definition, action, context.paperclipHosts ?? []);
+  if (hostRefusal !== undefined) return { kind: "unreadable", reasons: [hostRefusal] };
   const expiresAt = new Date(action.expires);
   if (Number.isNaN(expiresAt.getTime())) {
     return { kind: "unreadable", reasons: ["its expiry isn't a date and time"] };

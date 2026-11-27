@@ -43,7 +43,7 @@ import {
   stepOutcome,
   stoppedOutcome,
 } from "./record-fold.ts";
-import { SignInRun, type StepperSignIn } from "./sign-in-run.ts";
+import { hasSignIn, type SignInRun, type StepperSignIn, signInRunOf } from "./sign-in-run.ts";
 import { endedStage, signInStage } from "./stages.ts";
 import { setsSecret, stepRequest } from "./step-request.ts";
 
@@ -61,6 +61,11 @@ export interface StepperRunOptions {
   readonly now: () => Date;
   /** Runs a definition's `sign-in` steps; without it, such a request can't run here. */
   readonly serviceSignIn?: StepperSignIn | undefined;
+  /**
+   * The hosts of the Paperclips the user connected, read again at every check, so a Paperclip
+   * disconnected since stops its requests. Without it, no Paperclip request runs.
+   */
+  readonly paperclipHosts?: (() => readonly string[]) | undefined;
 }
 
 /**
@@ -86,7 +91,7 @@ export class StepperRun {
     this.options = options;
     this.view = view;
     this.request = `${options.item.source}/${options.item.id}`;
-    this.signInRun = signInRunOf(view, options);
+    this.signInRun = signInRunOf(view, options.item.action, options.serviceSignIn, options.now);
   }
 
   /** What the screen shows now. */
@@ -187,8 +192,8 @@ export class StepperRun {
 
   /** Checks the item again and rebuilds the view from the record and the sign-in. */
   private async refresh(): Promise<void> {
-    const { item, source, catalog, policy, steps, now } = this.options;
-    const review = reviewActionItem(item, source, { catalog, policy, now: now() });
+    const { item, catalog, steps } = this.options;
+    const review = this.check();
     if (review.kind === "unreadable")
       return this.set({ ...this.view, stage: { kind: "not-available" } });
     const reviewed = review.view;
@@ -230,10 +235,21 @@ export class StepperRun {
     return definition;
   }
 
+  /** The item checked again now, with today's state from the checks once there is one. */
+  private check(current?: Readonly<Record<string, ActionKeptValue>>) {
+    const { item, source, catalog, policy, now, paperclipHosts } = this.options;
+    return reviewActionItem(item, source, {
+      catalog,
+      policy,
+      now: now(),
+      current,
+      paperclipHosts: paperclipHosts?.(),
+    });
+  }
+
   /** The review again, with today's state from the checks, so each preview sets it next to the change. */
   private review(current: Readonly<Record<string, ActionKeptValue>>): StepperView {
-    const { item, source, catalog, policy, now } = this.options;
-    const review = reviewActionItem(item, source, { catalog, policy, now: now(), current });
+    const review = this.check(current);
     if (review.kind === "unreadable") throw new Error("The request can't be read anymore.");
     return review.view;
   }
@@ -443,26 +459,6 @@ export class StepperRun {
     await this.options.steps.signOut(this.view.service);
     await this.signIn();
   }
-}
-
-/** Whether the request's definition has `sign-in` steps. */
-function hasSignIn(view: StepperView): boolean {
-  return view.steps.some((step) => step.action.kind === "sign-in");
-}
-
-/**
- * The run of a request's sign-in steps, from its checked parameters: the connection file's name,
- * the host the request names, and whether it is a test sign-in.
- */
-function signInRunOf(view: StepperView, options: StepperRunOptions): SignInRun | undefined {
-  if (options.serviceSignIn === undefined || !hasSignIn(view)) return undefined;
-  const { parameters } = options.item.action;
-  const ref = {
-    service: "paperclip",
-    connection: String(parameters["connection"]),
-    host: String(parameters["host"]),
-  } as const;
-  return new SignInRun(options.serviceSignIn, ref, parameters["mode"] === "test", options.now);
 }
 
 /**

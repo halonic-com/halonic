@@ -32,6 +32,7 @@ export {
 export type { StepperActions, StepperView } from "./stepper-view.ts";
 export { ActionStepper, type ActionStepperProps } from "./ui/action-stepper.tsx";
 export { RunWithClaude, type RunWithClaudeProps } from "./ui/run-with-claude.tsx";
+export { usePaperclipHosts } from "./ui/use-paperclip-hosts.ts";
 export { type StepperRunState, useStepperRun } from "./ui/use-stepper-run.ts";
 
 /**

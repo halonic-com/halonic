@@ -7,6 +7,7 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { acmeCatalog, acmeSource, actionItem } from "../test-support/acme-catalog.test-helper.ts";
+import { acmePaperclipHosts } from "../test-support/acme-sign-in.test-helper.ts";
 import { actionLine } from "../ui/stepper-words.ts";
 import { reviewActionItem } from "./action-item-review.ts";
 
@@ -51,6 +52,7 @@ verifies("action-steppers.paperclip-sign-in-review", () => {
         catalog,
         policy: defaultRequesterPolicy,
         now: new Date("2026-11-24T13:00:00.000Z"),
+        paperclipHosts: acmePaperclipHosts,
       });
       if (reviewed.kind !== "stepper") throw new Error(reviewed.reasons.join("; "));
       const actions = reviewed.view.steps.map((step) => step.action);
