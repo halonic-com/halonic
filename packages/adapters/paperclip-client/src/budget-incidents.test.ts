@@ -76,10 +76,11 @@ verifies("paperclip-client.budget-incidents", () => {
       const items = await connect(paperclip, { offline: false }).listInboxItems();
       expect(items.find((listed) => listed.id === item)?.options).toEqual([
         { id: "approve", label: "Approve", noteRequired: true, noteLabel: "New limit, in dollars" },
-        { id: "reject", label: "Reject" },
+        { id: "reject", label: "Reject", declines: true },
         {
           id: "request-changes",
           label: "Request changes",
+          declines: true,
           noteRequired: true,
           noteLabel: "What should change?",
         },

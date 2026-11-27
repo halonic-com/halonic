@@ -8,6 +8,8 @@ import { type BodyRule, fitsBodyRule } from "./request-bodies.ts";
  * makes, lists or deletes keys or tokens (`/api/board-api-keys`, an agent's
  * keys, setup tokens, gateway tokens), because nothing goes to Paperclip
  * upstream and this list is the main protection (board, HAL-10, 24 Nov).
+ * Nor may one reach secrets, an agent's configuration, rights or instructions
+ * (HAL-17491, 6.8): `security.test.ts` names those routes and fails for a row on them.
  *
  * The routes are Paperclip's as of our server's version; the README lists
  * what each answers.

@@ -48,10 +48,11 @@ verifies("paperclip-client.option-notes", () => {
     const items = await itemsOf(acmeWith([]));
     expect(items.get(`${source}:approval:p-1`)?.options).toEqual([
       { id: "approve", label: "Approve" },
-      { id: "reject", label: "Reject" },
+      { id: "reject", label: "Reject", declines: true },
       {
         id: "request-changes",
         label: "Request changes",
+        declines: true,
         noteRequired: true,
         noteLabel: "What should change?",
       },
@@ -67,15 +68,26 @@ verifies("paperclip-client.option-notes", () => {
     const confirmItem = card(plainTask, confirmCard);
     expect(labelled.get(confirmItem)?.options).toEqual([
       { id: "accept", label: "Accept" },
-      { id: "reject", label: "Reject", noteRequired: true, noteLabel: "Why not now?" },
+      {
+        id: "reject",
+        label: "Reject",
+        declines: true,
+        noteRequired: true,
+        noteLabel: "Why not now?",
+      },
     ]);
     expect(unlabelled.get(confirmItem)?.options[1]).toEqual({
       id: "reject",
       label: "Reject",
+      declines: true,
       noteRequired: true,
       noteLabel: "Why are you rejecting this?",
     });
-    expect(plain.get(confirmItem)?.options[1]).toEqual({ id: "reject", label: "Reject" });
+    expect(plain.get(confirmItem)?.options[1]).toEqual({
+      id: "reject",
+      label: "Reject",
+      declines: true,
+    });
   });
 
   it("keeps a document label with a newline and ] on one line, escaped in its link", async () => {

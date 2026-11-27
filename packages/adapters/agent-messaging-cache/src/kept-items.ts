@@ -10,6 +10,7 @@ import type {
   InboxItemState,
   InboxQuestion,
   InboxQuestionAnswer,
+  InboxReach,
   InboxStepperRequest,
   Message,
   MessageWork,
@@ -94,8 +95,25 @@ export function keptInboxItem(item: InboxItem): InboxItem {
   if (item.conversation !== undefined) kept.conversation = item.conversation;
   if (item.kind !== undefined) kept.kind = item.kind;
   if (item.risk !== undefined) kept.risk = item.risk;
+  if (item.reach !== undefined) kept.reach = keptReach(item.reach);
   if (item.webLink !== undefined)
     kept.webLink = { link: item.webLink.link, site: item.webLink.site };
+  return kept;
+}
+
+/** What a risky approve reaches, by name: the port's fields only, never anything else a source sent. */
+function keptReach(reach: InboxReach): InboxReach {
+  const kept: InboxReach = {};
+  if (reach.agent !== undefined) kept.agent = reach.agent;
+  if (reach.secret !== undefined) {
+    const { name, settingPath } = reach.secret;
+    kept.secret = settingPath === undefined ? { name } : { name, settingPath };
+  }
+  if (reach.adapter !== undefined) kept.adapter = reach.adapter;
+  if (reach.env !== undefined) {
+    kept.env = reach.env.map(({ name, bindsSecret }) => ({ name, bindsSecret }));
+  }
+  if (reach.envLeftOut !== undefined) kept.envLeftOut = reach.envLeftOut;
   return kept;
 }
 
@@ -167,6 +185,7 @@ function keptOption(option: InboxItemOption): InboxItemOption {
   const kept: InboxItemOption = { id: option.id, label: option.label };
   if (option.noteRequired !== undefined) kept.noteRequired = option.noteRequired;
   if (option.noteLabel !== undefined) kept.noteLabel = option.noteLabel;
+  if (option.declines !== undefined) kept.declines = option.declines;
   return kept;
 }
 

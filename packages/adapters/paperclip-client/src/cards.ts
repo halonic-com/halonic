@@ -27,6 +27,7 @@ import {
 import { asList, asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
 import { authorOf, fullLinksOf, type MapContext, timeOf } from "./map.ts";
 import type { PaperclipRequestName } from "./requests.ts";
+import { cardApprovesProposal, cardReach, hireReach } from "./risky-reach.ts";
 
 /** The request that answers a card or an approval, and its body. */
 export interface AnswerRequest {
@@ -93,7 +94,13 @@ function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOpti
   if (kind === "request_confirmation") {
     return [
       { id: "accept", label: text(payload, "acceptLabel") ?? "Accept" },
-      { id: "reject", label: text(payload, "rejectLabel") ?? "Reject", ...rejectNote(payload) },
+      {
+        id: "reject",
+        label: text(payload, "rejectLabel") ?? "Reject",
+        // Only the label is the agent's; the option itself is Paperclip's reject, which runs nothing.
+        declines: true,
+        ...rejectNote(payload),
+      },
     ];
   }
   if (kind === "ask_user_questions") {
@@ -226,6 +233,7 @@ export function cardToItem(
   if (state === undefined) {
     return undefined;
   }
+  const reach = cardReach(payload);
   return {
     id: context.ids.make("card", task, id),
     source: context.ids.source(),
@@ -235,8 +243,10 @@ export function cardToItem(
     ...(questions === undefined ? {} : { questions }),
     ...itemKindOf(kind),
     work: context.ids.make("task", task),
-    // A card asks a question in words and changes no one's rights, unless it lets an agent run a tool.
-    risk: asksToRunTool(payload) ? "risky" : "normal",
+    // A card asks a question in words and changes no one's rights, unless it lets an agent run a
+    // tool or its Accept approves a secret proposal (`paperclip-client.risky-reach`).
+    risk: asksToRunTool(payload) || cardApprovesProposal(payload) ? "risky" : "normal",
+    ...(reach === undefined ? {} : { reach }),
     createdAt: timeOf(record, "createdAt"),
     // The Inbox adds the files of the card's task (`card-files.ts`).
     attachments: [],
@@ -342,12 +352,15 @@ function oneQuestionRequest(
   };
 }
 
+// Reject and Request changes grant nothing, so they skip the desktop's confirmation
+// (`paperclip-client.declining-options`).
 const approvalOptions: readonly InboxItemOption[] = [
   { id: "approve", label: approvalWords.approve },
-  { id: "reject", label: approvalWords.reject },
+  { id: "reject", label: approvalWords.reject, declines: true },
   {
     id: "request-changes",
     label: approvalWords.requestChanges,
+    declines: true,
     // Request changes tells the agent what to change, so it is sent only with a note.
     noteRequired: true,
     noteLabel: approvalWords.whatShouldChange,
@@ -388,15 +401,18 @@ export function approvalToItem(
   const decided = decidedOptions.get(status);
   const closed = closedReasons.get(status);
   const note = text(record, "decisionNote");
+  const payload = asRecord(field(record, "payload"));
+  const reach = type === "hire_agent" ? hireReach(payload) : undefined;
   return {
     id: context.ids.make("approval", id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "requestedByAgentId"), text(record, "requestedByUserId")),
-    question: fullLinksOf(context, approvalQuestion(type, asRecord(field(record, "payload")))),
+    question: fullLinksOf(context, approvalQuestion(type, payload)),
     options: type === budgetOverrideType ? budgetOverrideOptions : approvalOptions,
     kind: "approval",
     ...(work === undefined ? {} : { work }),
     risk: approvalRisk(type),
+    ...(reach === undefined ? {} : { reach }),
     createdAt: timeOf(record, "createdAt"),
     // The Inbox adds the files of the card's task (`card-files.ts`).
     attachments: [],

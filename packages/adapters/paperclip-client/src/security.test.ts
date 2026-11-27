@@ -14,6 +14,7 @@ import {
 } from "./acme-data.test-helper.ts";
 import { PaperclipMessaging } from "./client.ts";
 import { FakePaperclip } from "./fake-paperclip.test-helper.ts";
+import { forbiddenRoutes, forbiddenRows } from "./forbidden-routes.test-helper.ts";
 import { buildPath, findRequest, paperclipRequests, UnsafeIdError } from "./requests.ts";
 import { everyRow, readEverything, serveShadow, shadowReader } from "./shadow-data.test-helper.ts";
 import { ShadowCallCounter, shadowRequestNames } from "./shadow-fetch.ts";
@@ -136,6 +137,33 @@ verifies("agent-host.paperclip-key", () => {
       }
       const paths = Object.values(paperclipRequests).map((request) => request.path);
       expect(paths.filter((path) => path.includes("board-api-keys"))).toEqual([]);
+    });
+
+    it("has no row on a route that reaches secrets, an agent's configuration or rights, or keys", () => {
+      expect(forbiddenRows(paperclipRequests)).toEqual([]);
+      // The board's three secret-proposal rows stay: they list and decide proposals, never a value.
+      const proposalRows = Object.entries(paperclipRequests).filter(([, { path }]) =>
+        path.includes("/secret-proposals"),
+      );
+      expect(proposalRows.map(([row, { method, path }]) => `${row} ${method} ${path}`)).toEqual([
+        "listSecretProposals GET /api/companies/:company/secret-proposals",
+        "approveSecretProposal POST /api/companies/:company/secret-proposals/:proposal/approve",
+        "rejectSecretProposal POST /api/companies/:company/secret-proposals/:proposal/reject",
+      ]);
+    });
+
+    it("fails for a row on any of those routes", () => {
+      for (const route of forbiddenRoutes) {
+        const method = route.methods?.[0] ?? "GET";
+        const rows = { ...paperclipRequests, planted: { method, path: route.sample } };
+        expect(forbiddenRows(rows), route.name).toEqual([`planted: ${route.name}`]);
+      }
+      // An approval's own approve and a task update aren't caught by the agent patterns.
+      const allowed = {
+        approve: { method: "POST", path: "/api/approvals/:approval/approve" },
+        task: { method: "PATCH", path: "/api/issues/:task" },
+      };
+      expect(forbiddenRows(allowed)).toEqual([]);
     });
 
     it("encodes every ID as one path segment and refuses `/`, `..` and empty IDs", () => {

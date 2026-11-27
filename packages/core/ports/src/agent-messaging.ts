@@ -2,6 +2,7 @@ import type { ActionResultAnswer, InboxActionRequest } from "./agent-messaging-a
 import type { ChannelResult, MessageSendOptions, MessageWork } from "./agent-messaging-channels.ts";
 import type { InboxItemKind } from "./agent-messaging-kinds.ts";
 import type { InboxQuestion, InboxQuestionsAnswer } from "./agent-messaging-questions.ts";
+import type { InboxReach } from "./agent-messaging-reach.ts";
 import type { InboxStepperRequest } from "./agent-messaging-steppers.ts";
 
 /**
@@ -188,6 +189,13 @@ export interface InboxItemOption {
    * (requirement `ports.agent-messaging-option-note`). The note goes in the option answer's `note`.
    */
   noteLabel?: string;
+  /**
+   * Set by the provider only, on its own options that turn an item down, such as an approval's
+   * Reject and Request changes: picking one grants nothing, so a `risky` item's confirmation may
+   * skip it. Never set on an option an agent wrote, such as a decision's, whatever its ID
+   * (requirement `ports.agent-messaging-reach`).
+   */
+  declines?: true;
 }
 
 /** Where an item that can't be answered here is answered instead. */
@@ -291,6 +299,11 @@ export interface InboxItem {
   kind?: InboxItemKind;
   /** Set by the provider only: `risky` is an approval that spends money or changes who may do what. Absent reads as `normal`. */
   risk?: "normal" | "risky";
+  /**
+   * Only on a `risky` item, set by the provider: what approving or accepting it reaches, by name.
+   * It never holds a value (requirement `ports.agent-messaging-reach`).
+   */
+  reach?: InboxReach;
   createdAt: string;
   state: InboxItemState;
 }

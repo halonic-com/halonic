@@ -14,6 +14,7 @@ const notPorts = new Set([
   "agent-messaging-channels.ts",
   "agent-messaging-kinds.ts",
   "agent-messaging-questions.ts",
+  "agent-messaging-reach.ts",
   "agent-messaging-steppers.ts",
   "agent-runs-not-available.ts",
   "chat.ts",

@@ -5,13 +5,16 @@ import { boardRequestWords as words } from "./board-request-words.ts";
 import type { AnswerRequest } from "./cards.ts";
 import { asRecord, field, type JsonRecord, text } from "./json.ts";
 import { authorOf, type MapContext, timeOf } from "./map.ts";
+import { joinReach, proposalReach } from "./risky-reach.ts";
 
 // Secret proposals and join requests as inbox items (`paperclip-client.board-requests`, HAL-18873).
 // A proposal's record carries fields about its value (a fingerprint, a length); this module reads
 // only the fields named below, never one about the value, so no part of a secret reaches an item.
+// Of a join request's agent defaults it reads only the names in `env` (`risky-reach.ts`).
 
 const approve: InboxItemOption = { id: "approve", label: words.approve };
-const reject: InboxItemOption = { id: "reject", label: words.reject };
+// Reject grants nothing, so it skips the desktop's confirmation (`paperclip-client.declining-options`).
+const reject: InboxItemOption = { id: "reject", label: words.reject, declines: true };
 // A proposal's reason goes to the agent, so its Reject asks why, but never requires it (HAL-19018).
 const rejectProposal: InboxItemOption = { ...reject, noteLabel: approvalWords.rejectReason };
 
@@ -73,16 +76,19 @@ export function secretProposalToItem(
   }
   const task = text(record, "originIssueId");
   const canApprove = field(record, "viewerCanApprove") !== false;
+  const from = authorOf(context, text(record, "proposedByAgentId"), undefined);
+  const reach = proposalReach(record, from.kind === "agent" ? from.name : undefined);
   return {
     id: context.ids.make("secret-proposal", id),
     source: context.ids.source(),
-    from: authorOf(context, text(record, "proposedByAgentId"), undefined),
+    from,
     question: proposalQuestion(record),
     options: canApprove ? [approve, rejectProposal] : [rejectProposal],
     kind: "approval",
     ...(task === undefined ? {} : { work: context.ids.make("task", task) }),
     // A secret changes what an agent can reach.
     risk: "risky",
+    ...(reach === undefined ? {} : { reach }),
     createdAt: timeOf(record, "createdAt"),
     attachments: [],
     state:
@@ -144,6 +150,7 @@ export function joinRequestToItem(context: MapContext, record: JsonRecord): Inbo
   if (id === undefined || itemState === undefined) {
     return undefined;
   }
+  const reach = joinReach(record);
   return {
     id: context.ids.make("join-request", id),
     source: context.ids.source(),
@@ -153,6 +160,7 @@ export function joinRequestToItem(context: MapContext, record: JsonRecord): Inbo
     kind: "approval",
     // Approving changes who may work in the company.
     risk: "risky",
+    ...(reach === undefined ? {} : { reach }),
     createdAt: timeOf(record, "createdAt"),
     attachments: [],
     state: itemState,

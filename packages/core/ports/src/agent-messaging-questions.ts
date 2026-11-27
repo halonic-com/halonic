@@ -4,6 +4,7 @@
 // answer, so apps and sources that only know those keep working.
 import type { InboxAnswer, InboxItem, InboxItemOption, InboxWebLink } from "./agent-messaging.ts";
 import { inboxItemKindFits } from "./agent-messaging-kinds.ts";
+import { inboxReachFits } from "./agent-messaging-reach.ts";
 
 /** The most questions one item asks; a source maps no more, the wire takes no more. */
 export const inboxQuestionsMax = 20;
@@ -102,14 +103,15 @@ export function optionAnswerFits(
  * `https:` address, so is a `webLink`'s link, whose `site` names its place in 1 to 80
  * characters (requirement `ports.agent-messaging-web-link`), and each question's `preselected` options are ones it
  * offers, each once, at most one for a single-select question, and its `kind` agrees with
- * its fields (requirement `ports.agent-messaging-item-kind`). A provider
+ * its fields (requirement `ports.agent-messaging-item-kind`), and its `reach` holds together
+ * (requirement `ports.agent-messaging-reach`). A provider
  * leaves out an item that doesn't.
  *
  * @example
  * inboxItemFits({ ...item, answerElsewhere: { link: "http://acme.example/t/1" } }); // false
  */
 export function inboxItemFits(item: InboxItem): boolean {
-  if (!inboxItemKindFits(item)) return false;
+  if (!inboxItemKindFits(item) || !inboxReachFits(item)) return false;
   if (item.answerElsewhere !== undefined && !isHttps(item.answerElsewhere.link)) return false;
   if (item.webLink !== undefined && !webLinkFits(item.webLink)) return false;
   return (item.questions ?? []).every((question) => {

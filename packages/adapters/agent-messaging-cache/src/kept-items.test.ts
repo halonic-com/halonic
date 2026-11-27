@@ -13,6 +13,8 @@ import type {
   InboxQuestion,
   InboxQuestionAnswer,
   InboxQuestionsAnswer,
+  InboxReach,
+  InboxReachSecret,
   InboxStepperRequest,
   InboxStepperTarget,
   InboxStepperTouch,
@@ -41,6 +43,7 @@ const option = {
   label: "Approve",
   noteRequired: true,
   noteLabel: "Why",
+  declines: true,
 } satisfies Required<InboxItemOption>;
 
 const question = {
@@ -187,6 +190,16 @@ const item = {
   conversation: "chat-1",
   kind: "action",
   risk: "risky",
+  reach: {
+    agent: "Ada",
+    secret: {
+      name: "Acme deploy token",
+      settingPath: "env.ACME_DEPLOY_TOKEN",
+    } satisfies Required<InboxReachSecret>,
+    adapter: "process",
+    env: [{ name: "ACME_DEPLOY_TOKEN", bindsSecret: true }],
+    envLeftOut: 2,
+  } satisfies Required<InboxReach>,
   createdAt: "2026-11-26T08:00:00.000Z",
   state: answered,
 } satisfies Required<InboxItem>;
@@ -307,6 +320,24 @@ verifies("agent-host.agent-messaging-cache", () => {
 
     it("keeps every field the port names on an agent, avatar included", () => {
       expect(keptAgent(agent)).toEqual(agent);
+    });
+
+    it("keeps no other field of a reach, its secret or its variables", () => {
+      const extra = { value: testKey };
+      const { reach } = item;
+      const leaky = {
+        ...item,
+        reach: {
+          ...reach,
+          ...extra,
+          secret: { ...reach.secret, ...extra },
+          env: reach.env.map((variable) => ({ ...variable, ...extra })),
+        },
+      };
+      expect(keptInboxItem(leaky)).toEqual(item);
+      const { settingPath: _, ...nameOnly } = reach.secret;
+      const bare = { ...item, reach: { secret: nameOnly } };
+      expect(keptInboxItem(bare)).toEqual(bare);
     });
 
     it("keeps no other field of a stepper request, its touches or its targets", () => {
