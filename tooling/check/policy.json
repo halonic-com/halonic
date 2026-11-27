@@ -24,7 +24,8 @@
     "@halonicjs/words",
     "@halonicjs/assistant",
     "@halonicjs/openui-lang",
-    "@halonicjs/auto-approvals"
+    "@halonicjs/auto-approvals",
+    "@halonicjs/toolscript-host"
   ],
   "apiTypes": [
     "@halonicjs/events",

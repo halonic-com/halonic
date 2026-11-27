@@ -1,0 +1,29 @@
+{
+  "name": "@halonicjs/toolscript-host",
+  "private": true,
+  "type": "module",
+  "description": "The ToolScript ctx host: which capabilities ctx gets, secret fields, touches, frozen writes, batches and previews, over any isolate.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "core",
+    "owner": "priya",
+    "coverage": {
+      "lines": 90,
+      "branches": 85
+    }
+  }
+}
