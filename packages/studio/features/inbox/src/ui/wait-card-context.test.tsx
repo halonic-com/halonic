@@ -155,7 +155,7 @@ verifies("inbox.wait-context", () => {
     });
 
     it("leaves the draft out of a box when the step's description isn't known", () => {
-      // As in the served Studio for now: the closing words may be in the draft, so no box holds them.
+      // As when a served Studio's host says nothing about the run: the closing words may be in the draft, so no box holds them.
       const { root } = openCard({
         item: reviewItem({
           waitingFor: { title: "Approve this reply?", body: `${reply}\n\n${note}` },

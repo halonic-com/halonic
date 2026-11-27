@@ -26,18 +26,33 @@ describe("the waiting list's context in the served Studio", () => {
     it("keeps a run's context after it leaves the list, the newest 200 at most", () => {
       const kept = new Map<string, InboxWaitContext>();
       const of = (workflow: string) => ({ workflow, sample: false });
-      keepNewest(kept, new Map([["r0", of("Support reply")]]));
-      keepNewest(kept, new Map());
+      keepNewest(kept, new Map([["r0", of("Support reply")]]), []);
+      keepNewest(kept, new Map(), []);
       expect(kept.get("r0")?.workflow).toBe("Support reply");
 
-      keepNewest(kept, new Map(Array.from({ length: 200 }, (_, i) => [`n${i}`, of("Weekly")])));
+      keepNewest(kept, new Map(Array.from({ length: 200 }, (_, i) => [`n${i}`, of("Weekly")])), []);
       expect(kept.size).toBe(200);
       expect(kept.has("r0")).toBe(false);
       // A run listed again counts as new, so it outlasts the ones listed before it.
-      keepNewest(kept, new Map([["n0", of("Weekly report")]]));
-      keepNewest(kept, new Map([["x", of("Support reply")]]));
+      keepNewest(kept, new Map([["n0", of("Weekly report")]]), []);
+      keepNewest(kept, new Map([["x", of("Support reply")]]), []);
       expect(kept.get("n0")?.workflow).toBe("Weekly report");
       expect(kept.has("n1")).toBe(false);
+    });
+
+    it("keeps each step's description by the step the run was listed waiting at", () => {
+      const kept = new Map<string, InboxWaitContext>();
+      const listed = (description: string) =>
+        new Map([["r1", { workflow: "Support reply", description, sample: false }]]);
+      keepNewest(kept, listed("Approve?"), [{ id: "r1", state: "review" }]);
+      keepNewest(kept, listed("Send?"), [{ id: "r1", state: "send" }]);
+      expect(Object.fromEntries(kept.get("r1")?.descriptions ?? [])).toEqual({
+        review: "Approve?",
+        send: "Send?",
+      });
+      // A run listed without a step keeps the descriptions it had.
+      keepNewest(kept, listed("Other"), [{ id: "r1", state: null }]);
+      expect(kept.get("r1")?.descriptions.size).toBe(2);
     });
   });
 });

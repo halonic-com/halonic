@@ -51,13 +51,13 @@ export function useRunFacts(list: RunsList | undefined, inbox?: Inbox): RunFacts
 /** A waiting run's facts from what its host said about it; `undefined` when it said nothing. */
 function factsOfContext(context: InboxWaitContext | undefined): RunFacts | undefined {
   if (context === undefined) return undefined;
-  const { workflow, description, startInput, sample } = context;
+  const { workflow, descriptions, startInput, sample } = context;
   return {
     workflow,
     sample,
     ...(startInput === undefined ? {} : { startInput }),
-    // The host describes only the step the run waits at, which is the step its item is for.
-    stepDescription: () => description,
+    // By the item's own step, so a card for a step the run has left never takes the next step's words.
+    stepDescription: (stateId) => descriptions.get(stateId),
   };
 }
 

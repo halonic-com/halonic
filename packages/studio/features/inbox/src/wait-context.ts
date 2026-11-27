@@ -6,8 +6,11 @@
 export interface InboxWaitContext {
   /** The run's workflow, such as "Support reply"; its id when the workspace no longer has it. */
   readonly workflow: string;
-  /** The description of the step the run waits at, as written; left out when not known. */
-  readonly description?: string | undefined;
+  /**
+   * By wait step, its description as written, for each step the host listed the run waiting at,
+   * so an earlier step's card keeps its own description after the run moves on.
+   */
+  readonly descriptions: ReadonlyMap<string, string>;
   /** What the run started with in its workflow's start field, such as the customer's email. */
   readonly startInput?: string | undefined;
   /** Every model call of the run went to the test model: it says "Sample answers". */

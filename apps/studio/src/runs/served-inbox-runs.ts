@@ -195,7 +195,7 @@ export class ServedInboxRuns implements InboxRuns {
     // Names that can't be read never fail the list: the last good ones stay, and an agent without one shows by its id.
     this.#agentNames = agentNamesOf(agents) ?? this.#agentNames;
     // A host without `context` (an older one) says nothing, so the cards read as before.
-    keepNewest(this.#contexts, waitContextsOf(context) ?? new Map());
+    keepNewest(this.#contexts, waitContextsOf(context) ?? new Map(), runs);
     return runs;
   }
 

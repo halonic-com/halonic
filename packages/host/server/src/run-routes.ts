@@ -142,24 +142,27 @@ export function createRunRoutes({
   errorLog,
   workspace,
 }: RunRoutePorts): RunRoutes {
+  async function waitingList(listed: readonly RunSummary[]): Promise<Response> {
+    const waitFacts = workspace?.waitFacts?.bind(workspace);
+    return Response.json({
+      runs: listed,
+      agents: await agentNamesOf(listed, workspace, errorLog),
+      // Only a host that gives its workflows adds `context`, so an older caller's list reads as before.
+      ...(waitFacts === undefined
+        ? {}
+        : { context: await waitContextOf(listed, waitFacts, runStore, errorLog) }),
+    });
+  }
+
   return {
     async waiting() {
       // The run store belongs to the workspace the server runs, so no other workspace's run can be in the list.
       const waiting = (await runStore.list({ status: "waiting" })).slice(0, maxWaitingRuns);
-      return this.waitingList(waiting);
+      // Not `this`, so the route still works when it is taken off the object.
+      return waitingList(waiting);
     },
 
-    async waitingList(listed) {
-      const waitFacts = workspace?.waitFacts?.bind(workspace);
-      return Response.json({
-        runs: listed,
-        agents: await agentNamesOf(listed, workspace, errorLog),
-        // Only a host that gives its workflows adds `context`, so an older caller's list reads as before.
-        ...(waitFacts === undefined
-          ? {}
-          : { context: await waitContextOf(listed, waitFacts, runStore, errorLog) }),
-      });
-    },
+    waitingList,
 
     async summary(runId) {
       const found = await runStore.get(runId);
