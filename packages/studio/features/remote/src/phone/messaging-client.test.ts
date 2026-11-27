@@ -1,8 +1,4 @@
-import {
-  type Conversation,
-  gatewayFallbackProtocolVersion,
-  gatewayMaxMessageBytes,
-} from "@halonicjs/ports";
+import { type Conversation, gatewayFallbackProtocolVersion } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GatewayScene } from "../test-support/gateway-scene.ts";
@@ -204,19 +200,7 @@ verifies("remote.phone-messaging-client", () => {
 
     it("sends nothing while the computer speaks only version 3", async () => {
       const scene = new GatewayScene();
-      scene.tunnel.status("connected");
-      scene.tunnel.open(1);
-      scene.tunnel.host(1, { type: "error", code: "unsupported-version" });
-      scene.drop();
-      scene.tunnel.status("connected");
-      scene.tunnel.open(2);
-      const replyTo = scene.tunnel.lastOf("hello").id;
-      scene.tunnel.host(2, {
-        type: "welcome",
-        replyTo,
-        version: gatewayFallbackProtocolVersion,
-        maxMessageBytes: gatewayMaxMessageBytes,
-      });
+      scene.connectAt(gatewayFallbackProtocolVersion);
       expect(scene.client.view().olderComputer).toBe(true);
       const { messaging } = scene.client;
       messaging.watch(() => undefined);

@@ -238,7 +238,7 @@ verifies("tunnel-attacks.frame-attacks", () => {
         twice.sendJson({ type: "hello", id: "h2", version: 4 });
         expect(await twice.frames(2)).toHaveLength(2);
         expect(await twice.isClosed()).toBe(true);
-        for (const version of [0, 1, 2, 3, 5, -1, 2 ** 31]) {
+        for (const version of [0, 1, 2, 3, 6, -1, 2 ** 31]) {
           const old = await opened(rig);
           old.sendJson({ type: "hello", id: "h1", version });
           expect(await old.frames(1)).toEqual([{ type: "error", code: "unsupported-version" }]);

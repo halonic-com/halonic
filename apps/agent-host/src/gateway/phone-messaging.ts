@@ -1,13 +1,22 @@
-import type { AgentMessaging, PhoneMessaging, TeamStatus } from "@halonicjs/ports";
+import type {
+  AgentMessaging,
+  MessageReactions,
+  PhoneMessaging,
+  TeamStatus,
+} from "@halonicjs/ports";
 
 /**
  * The host's allow-list view of its agent ports for a paired phone
  * (architecture note section 2.3 on HAL-17511). Each member is named and
  * forwarded on its own, with no spread and no proxy, so a member the hub
  * gains later never reaches a phone without a line here and its own "safe
- * from the phone" decision.
+ * from the phone" decision. `reactions` adds or removes only the person's own.
  */
-export function phoneMessaging(messaging: AgentMessaging, team: TeamStatus): PhoneMessaging {
+export function phoneMessaging(
+  messaging: AgentMessaging,
+  team: TeamStatus,
+  reactions: MessageReactions,
+): PhoneMessaging {
   return {
     listSources: () => messaging.listSources(),
     listAgents: () => messaging.listAgents(),
@@ -34,6 +43,10 @@ export function phoneMessaging(messaging: AgentMessaging, team: TeamStatus): Pho
       pullRequest: (id) => team.pullRequest(id),
       mergeQueue: () => team.mergeQueue(),
       changes: () => team.changes(),
+    },
+    reactions: {
+      list: (conversation) => reactions.list(conversation),
+      react: (message, emoji, on) => reactions.react(message, emoji, on),
     },
   };
 }

@@ -2,6 +2,7 @@ import { GatewayConnection } from "@halonicjs/adapter-remote-gateway";
 import {
   type AgentMessaging,
   gatewayProtocolVersion,
+  type MessageReactions,
   type PhoneMessaging,
   type TeamStatus,
 } from "@halonicjs/ports";
@@ -35,7 +36,12 @@ function recordingHub() {
       return Promise.resolve([]);
     };
   const hub = new Proxy({}, { get: (_target, name) => member(String(name)) });
-  return { calls, messaging: hub as AgentMessaging, team: hub as TeamStatus };
+  return {
+    calls,
+    messaging: hub as AgentMessaging,
+    team: hub as TeamStatus,
+    reactions: hub as MessageReactions,
+  };
 }
 
 /**
@@ -81,15 +87,17 @@ async function bytesSentFor(view: PhoneMessaging, message: { id: string }): Prom
 verifies("agent-host.gateway-phone-messaging", () => {
   describe("phoneMessaging", () => {
     it("forwards only the view's members, with no files and only `to` of the options", async () => {
-      const { calls, messaging, team } = recordingHub();
-      const view = phoneMessaging(messaging, team);
+      const { calls, messaging, team, reactions } = recordingHub();
+      const view = phoneMessaging(messaging, team, reactions);
       const file = { name: "a.png", type: "image/png", bytes: new Uint8Array(1) };
       const options = { to: ["agent-bo"], silent: true } as { to: string[] };
       await view.send("conv-1", "Go", [file], options);
       await view.team.spend("week");
+      await view.reactions?.react("msg-1", "👍", true);
       expect(calls).toEqual([
         ["send", "conv-1", "Go", undefined, { to: ["agent-bo"] }],
         ["spend", "week"],
+        ["react", "msg-1", "👍", true],
       ]);
       expect(Object.keys(view).sort()).toEqual(
         [
@@ -101,6 +109,7 @@ verifies("agent-host.gateway-phone-messaging", () => {
           "listMessages",
           "listSources",
           "listWork",
+          "reactions",
           "search",
           "send",
           "team",
@@ -122,7 +131,7 @@ verifies("agent-host.gateway-phone-messaging", () => {
       const workspace = await desktop.messaging.of(desktop.workspace);
       if (workspace === undefined) throw new Error("The workspace has no messaging.");
       await desktop.wait(30_000);
-      const view = phoneMessaging(workspace.messaging, workspace.team);
+      const view = phoneMessaging(workspace.messaging, workspace.team, workspace.reactions);
       const conversation = (await view.listConversations())[0]?.id ?? "none";
       const script = [
         ...["sources", "agents", "conversations", "inbox", "work"].map((what) => ({
@@ -140,6 +149,7 @@ verifies("agent-host.gateway-phone-messaging", () => {
           confirmed: true,
         },
         { type: "msg-send", id: "m1", conversation, body: "Go on" },
+        { type: "msg-read", id: "r-reactions", what: "reactions", conversation },
         { type: "msg-watch", id: "w1" },
         ...["parts", "seats", "pull-requests", "queue"].map((what) => ({
           type: "team-read",

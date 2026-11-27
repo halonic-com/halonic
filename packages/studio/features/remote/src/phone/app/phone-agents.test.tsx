@@ -2,7 +2,6 @@
 
 import {
   gatewayFallbackProtocolVersion,
-  gatewayMaxMessageBytes,
   type InboxItem,
   type PairingQrPayload,
 } from "@halonicjs/ports";
@@ -265,19 +264,7 @@ verifies("remote.phone-computer-agents", () => {
     if (computer === undefined || host === undefined) throw new Error("No gateway client held.");
     await step(() => {
       tunnel.push(computer, { state: "connected" });
-      host.tunnel.status("connected");
-      host.tunnel.open(1);
-      host.tunnel.host(1, { type: "error", code: "unsupported-version" });
-      host.drop();
-      host.generation = 2;
-      host.tunnel.status("connected");
-      host.tunnel.open(2);
-      host.host({
-        type: "welcome",
-        replyTo: host.tunnel.lastOf("hello").id,
-        version: gatewayFallbackProtocolVersion,
-        maxMessageBytes: gatewayMaxMessageBytes,
-      });
+      host.connectAt(gatewayFallbackProtocolVersion);
       host.list([reporter]);
     });
     // The Inbox tab is p05c, whole: its title, its text and its hint, and nothing else.

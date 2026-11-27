@@ -1,6 +1,5 @@
 import {
   gatewayFallbackProtocolVersion,
-  gatewayMaxMessageBytes,
   gatewayMaxMessagingIdLength,
   type gatewayTeamLists,
 } from "@halonicjs/ports";
@@ -163,18 +162,7 @@ verifies("remote.phone-team-read", () => {
 
     it("sends no team-read while the computer speaks only version 3", async () => {
       const scene = new GatewayScene();
-      scene.tunnel.status("connected");
-      scene.tunnel.open(1);
-      scene.tunnel.host(1, { type: "error", code: "unsupported-version" });
-      scene.drop();
-      scene.tunnel.status("connected");
-      scene.tunnel.open(2);
-      scene.tunnel.host(2, {
-        type: "welcome",
-        replyTo: scene.tunnel.lastOf("hello").id,
-        version: gatewayFallbackProtocolVersion,
-        maxMessageBytes: gatewayMaxMessageBytes,
-      });
+      scene.connectAt(gatewayFallbackProtocolVersion);
       for (const [, read] of reads) {
         expect(await read(scene.client.messaging)).toEqual({ kind: "not-sent", reason: "off" });
       }

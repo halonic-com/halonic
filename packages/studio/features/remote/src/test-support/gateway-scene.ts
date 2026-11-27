@@ -2,6 +2,7 @@ import {
   type GatewayEventBody,
   type GatewaySession,
   gatewayMaxMessageBytes,
+  gatewayPhoneProtocolVersions,
   gatewayProtocolVersion,
 } from "@halonicjs/ports";
 import { GatewayClient, type OwnerCheckAvailable } from "../phone/gateway-client.ts";
@@ -24,6 +25,33 @@ export class GatewayHost {
       type: "welcome",
       replyTo: this.tunnel.lastOf("hello").id,
       version: gatewayProtocolVersion,
+      maxMessageBytes: gatewayMaxMessageBytes,
+    });
+  }
+
+  /**
+   * A computer of message `version`: it closes on each `hello` of another
+   * version, one session each, until the phone steps down to `version`, and
+   * welcomes that one.
+   */
+  connectAt(version: number): void {
+    // One session per version the phone can step down through, and no more.
+    for (let tries = 0; ; tries += 1) {
+      if (tries === gatewayPhoneProtocolVersions.length) {
+        throw new Error(`The phone never said hello with version ${version}.`);
+      }
+      this.generation += 1;
+      this.tunnel.status("connected");
+      this.tunnel.open(this.generation);
+      const hello = this.tunnel.lastOf("hello");
+      if (hello.version === version) break;
+      this.host({ type: "error", code: "unsupported-version" });
+      this.drop();
+    }
+    this.host({
+      type: "welcome",
+      replyTo: this.tunnel.lastOf("hello").id,
+      version,
       maxMessageBytes: gatewayMaxMessageBytes,
     });
   }

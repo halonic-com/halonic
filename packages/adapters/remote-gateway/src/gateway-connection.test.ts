@@ -22,8 +22,17 @@ verifies("remote-gateway.connection", () => {
       const t = openConnection();
       await t.hello();
       expect(t.sent).toEqual([
+        { type: "welcome", replyTo: "h1", version: 5, maxMessageBytes: gatewayMaxMessageBytes },
+      ]);
+    });
+
+    it("welcomes a version 4 hello in version 4, so a phone not yet updated keeps its Inbox", async () => {
+      const t = openConnection();
+      await t.say({ type: "hello", id: "h1", version: 4 });
+      expect(t.sent).toEqual([
         { type: "welcome", replyTo: "h1", version: 4, maxMessageBytes: gatewayMaxMessageBytes },
       ]);
+      expect(t.transport.closed).toBe(false);
     });
 
     it("closes with malformed on any message before hello", async () => {

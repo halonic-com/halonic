@@ -21,21 +21,36 @@ import { gatewayMessagingRefusalCodes } from "./remote-gateway-messaging.ts";
  * so nobody in the middle can change it. It is not the session version the
  * Noise prologue names (`gatewaySessionVersion`), which changes only with the
  * handshake or the framing; so a phone and a host of different message
- * versions still connect and can say so. A host speaks exactly one and there
- * is no negotiation. The host answers a `hello` with another version with
- * `unsupported-version` and closes; the phone closes on a `welcome` with
- * another version. Either way the phone shows that an update is needed.
+ * versions still connect and can say so. The host speaks the versions in
+ * {@link gatewayHostProtocolVersions} and answers in the one the `hello`
+ * named; it answers any other with `unsupported-version` and closes. The
+ * phone closes on a `welcome` of another version than its `hello`'s.
  *
  * Version 3 added `answersRisky` and the pushed `sessions`. Version 4 added
  * the Inbox, Messenger and team status (`remote-gateway-messaging.ts`).
+ * Version 5 added message reactions (HAL-19139).
  */
-export const gatewayProtocolVersion = 4;
+export const gatewayProtocolVersion = 5;
 
 /**
- * The version a version 4 phone falls back to, for one release, when the
- * desktop answers `unsupported-version`: it says `hello` again with this one
- * and shows only Agents. The host itself speaks only
- * {@link gatewayProtocolVersion}.
+ * The versions the host speaks, newest first. It still speaks version 4, so a
+ * phone not yet updated keeps its Inbox and Messenger, without reactions.
+ */
+export const gatewayHostProtocolVersions = [5, 4] as const;
+
+/** The first version with message reactions: `msg-react` and the `reactions` read. */
+export const gatewayReactionsProtocolVersion = 5;
+
+/**
+ * The versions a phone says `hello` with, in order, when the computer answers
+ * `unsupported-version`: one step down per session, starting again from the
+ * top on the next. Version 4 has no reactions; version 3 shows only Agents.
+ */
+export const gatewayPhoneProtocolVersions = [5, 4, 3] as const;
+
+/**
+ * The version a phone falls back to last, for one release: it shows only
+ * Agents there. The host doesn't speak it.
  */
 export const gatewayFallbackProtocolVersion = 3;
 
@@ -224,8 +239,8 @@ export type GatewayPairDeniedReason = "denied" | "timed-out";
  * {@link gatewayClosingErrorCodes}, without `replyTo`, then closes the
  * connection, for:
  * - `too-large`: more than {@link gatewayMaxMessageBytes} bytes;
- * - `unsupported-version`: a `hello` whose `version` isn't
- *   {@link gatewayProtocolVersion};
+ * - `unsupported-version`: a `hello` whose `version` isn't one of
+ *   {@link gatewayHostProtocolVersions};
  * - `malformed`: anything else that isn't exactly one listed message. That is
  *   bytes that aren't valid UTF-8, text that isn't one JSON object, an
  *   unlisted `type`, a missing, extra or wrongly typed field, an id that
@@ -236,7 +251,7 @@ export type GatewayPairDeniedReason = "denied" | "timed-out";
  *   that limit, a `msg-search` text that is empty or longer than
  *   `gatewayMaxSearchLength`, a `msg-answer` without `confirmed: true`, a
  *   `team-read` `range` with anything but `spend`, any message before `hello`,
- *   and a second `hello`.
+ *   a second `hello`, and a reactions message after a version 4 `hello`.
  *
  * A well-formed message the host won't carry out gets an `error` with a code
  * from {@link gatewayRefusalCodes} and its `replyTo`, and the connection

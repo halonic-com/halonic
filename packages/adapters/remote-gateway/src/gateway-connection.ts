@@ -1,10 +1,11 @@
 import {
   type GatewayClientMessage,
   type GatewayHostMessage,
+  gatewayHostProtocolVersions,
   gatewayMaxBufferedBytes,
   gatewayMaxMessageBytes,
   gatewayMaxWatches,
-  gatewayProtocolVersion,
+  gatewayReactionsProtocolVersion,
   type gatewayRefusalCodes,
 } from "@halonicjs/ports";
 import { fitEvent } from "./fit-event.ts";
@@ -60,6 +61,8 @@ export class GatewayConnection {
   private readonly watches = new Map<string, Watch>();
   private readonly messagingWatch = new MessagingWatch();
   private greeted = false;
+  /** The message version the phone's `hello` named, once it was one the host speaks. */
+  private version = 0;
   private closed = false;
   private pendingFrames = 0;
   private chain: Promise<void> = Promise.resolve();
@@ -158,6 +161,10 @@ export class GatewayConnection {
   /** The Inbox, Messenger and team status, through the dispatcher table only. */
   private serveMessaging(message: Parameters<typeof dispatchMessaging>[1]): Promise<void> | void {
     const { messaging, policy } = this.deps;
+    // Reactions are version 5's: a version 4 phone can't have sent one.
+    if (isReactionsMessage(message) && this.version < gatewayReactionsProtocolVersion) {
+      return this.closeWith("malformed");
+    }
     if (messaging === undefined) return this.refuse(message.id, "not-supported");
     const context: MessagingContext = {
       messaging,
@@ -191,15 +198,17 @@ export class GatewayConnection {
       this.closeWith("malformed");
       return;
     }
-    if (message.version !== gatewayProtocolVersion) {
+    const version = gatewayHostProtocolVersions.find((spoken) => spoken === message.version);
+    if (version === undefined) {
       this.closeWith("unsupported-version");
       return;
     }
     this.greeted = true;
+    this.version = version;
     this.reply({
       type: "welcome",
       replyTo: message.id,
-      version: gatewayProtocolVersion,
+      version,
       maxMessageBytes: gatewayMaxMessageBytes,
     });
   }
@@ -338,4 +347,11 @@ export class GatewayConnection {
     this.deps.transport.send(json);
     if (this.deps.transport.bufferedBytes() > gatewayMaxBufferedBytes) this.close();
   }
+}
+
+/** Whether `message` is one of version 5's reactions messages. */
+function isReactionsMessage(message: Parameters<typeof dispatchMessaging>[1]): boolean {
+  return (
+    message.type === "msg-react" || (message.type === "msg-read" && message.what === "reactions")
+  );
 }
