@@ -19,7 +19,6 @@ import {
   TextArea,
   waitingSince,
 } from "@halonicjs/studio-kit";
-import type { EndedCardState } from "@halonicjs/studio-kit/settle";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import {
   agentItemBody,
@@ -43,8 +42,9 @@ import {
   type ManualAnswer,
   useEveryMinute,
 } from "./card-parts.tsx";
-import { EndedLine, endedElsewhere } from "./ended-line.tsx";
+import { endedElsewhere } from "./ended-line.tsx";
 import { OptionButtons } from "./option-buttons.tsx";
+import { ReasonLine } from "./reason-line.tsx";
 
 /** Props for {@link AgentItemCard}. */
 export interface AgentItemCardProps {
@@ -61,6 +61,11 @@ export interface AgentItemCardProps {
   readonly readAttachment: (attachment: MessagingId) => Promise<AttachmentRead>;
   /** Whether its title takes the focus when it opens: in a bundle, only the first card's does. */
   readonly focusOnOpen?: boolean;
+  /**
+   * Called when its line says how it ended elsewhere and takes the focus, so a screen reader
+   * already read it out and the page doesn't say it again.
+   */
+  readonly onEndedRead?: (() => void) | undefined;
   /**
    * For an action item whose request Halonic can't read: why, one reason each. The card then says
    * so and offers only **Decline** (`inbox.agent-action-items`).
@@ -111,6 +116,7 @@ export function AgentItemCard({
   readAttachment,
   focusOnOpen = true,
   cannotRun = [],
+  onEndedRead,
 }: AgentItemCardProps) {
   useEveryMinute();
   const titleId = useId();
@@ -156,7 +162,14 @@ export function AgentItemCard({
         <AgentAttachments attachments={item.attachments} read={readAttachment} />
       </div>
       <div className="flex flex-col gap-3 border-t border-border p-4">
-        <ReasonLine id={reasonId} item={item} ended={ended} decided={decided} down={down} />
+        <ReasonLine
+          id={reasonId}
+          item={item}
+          ended={ended}
+          decided={decided}
+          down={down}
+          onEndedRead={onEndedRead}
+        />
         <FailedLine
           onRetry={sent.kind === "failed" ? () => void send(sent.answer) : null}
           detail={sent.kind === "failed" ? failureDetailOf(sent.error) : null}
@@ -182,38 +195,6 @@ export function AgentItemCard({
         <PageLink item={item} />
       </div>
     </section>
-  );
-}
-
-/**
- * The line over the buttons, with the `id` that says why they're off: the final state once the
- * item ended elsewhere, how this card answered it, or why its source can't take an answer.
- */
-function ReasonLine({
-  id,
-  item,
-  ended,
-  decided,
-  down,
-}: {
-  readonly id: string;
-  readonly item: AgentItem;
-  readonly ended: EndedCardState | undefined;
-  readonly decided: string | null;
-  readonly down: string | null;
-}) {
-  if (ended !== undefined) return <EndedLine id={id} item={item} state={ended} />;
-  if (decided !== null) {
-    return (
-      <Callout tone="info" announce="polite">
-        <span id={id}>{decided}</span>
-      </Callout>
-    );
-  }
-  return down === null ? null : (
-    <p id={id} className="text-small text-fg-muted">
-      {down}
-    </p>
   );
 }
 
@@ -370,7 +351,7 @@ function answeredWith(
 
 /**
  * The line once the item is answered by this card, else as the refusal said until the item is read
- * again; an item the source says ended shows its final state instead ({@link EndedLine}).
+ * again; an item the source says ended shows its final state instead (`EndedLine`).
  */
 function decidedLine(item: AgentItem, sent: Sent): string | null {
   if (sent.kind === "answered") {

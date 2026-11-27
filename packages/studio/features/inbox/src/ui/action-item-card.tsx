@@ -61,8 +61,11 @@ function ActionRun({ reviewed, card, catalog, policy, steps }: ActionRunProps) {
   const run = useStepperRun(reviewed, { item, source, catalog, policy, steps, answer, now });
   const stage = run.view.stage.kind;
   // Ended here, the stepper keeps saying how; answered by someone else, the card says by whom.
+  // It was already open, so its title doesn't take the focus: its line may have, as the stepper went.
   const endedHere = stage === "declined" || stage === "finished";
-  if (item.state.kind !== "open" && !endedHere) return <AgentItemCard {...card} />;
+  if (item.state.kind !== "open" && !endedHere) {
+    return <AgentItemCard {...card} focusOnOpen={false} />;
+  }
   const failed = run.failure !== undefined;
   return (
     <div className="flex flex-col">
