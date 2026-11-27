@@ -16,6 +16,13 @@ scan run the same rules and can't drift apart.
 - `tooling/check/policy.json` lists `@halonicjs/tooling-check` under
   `toolingUsesCore` and `./secret-rules` under std's `extraExports`.
 
+- The rules stay guarded after the move: `packages/core/std/src/secret-rules.ts`
+  joins the guard's own paths (`guardedPaths`, the `check.guard-own-paths`
+  requirement and its test) and CODEOWNERS next to `/tooling/check/src/leaks/`.
+  A change to it needs a decision note, as it did under `tooling/check/`, so a
+  plain `std` pull request can't loosen a rule and switch off part of the leak
+  guard. It isn't a trust root: the guard runs from the merge base's copy.
+
 `tooling/check/package.json` and `toolingUsesCore` are trust roots, so this
 note needs both guardians' signatures.
 
@@ -26,4 +33,7 @@ leak guard. A copy would drift; a core module both import can't.
 
 ## Covers
 
+- .github/
 - tooling/check/
+- packages/core/std/src/secret-rules.ts
+- check.guard-own-paths

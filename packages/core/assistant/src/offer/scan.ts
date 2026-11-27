@@ -9,8 +9,11 @@ import { findRealEmails } from "./emails.ts";
  *
  * Two scans run here: the repo's secret rules, and the user's own values
  * (the integration's setting values, the profile name and e-mail, and any
- * e-mail address outside the example domains). Stored key values are
- * checked by the shell, so they never reach the page.
+ * e-mail address outside the example domains). A user value is also found
+ * as it is written in a JSON or JS string and in a URL or form body; any
+ * other address only as written. Stored key values are not checked here:
+ * row 4 of the I6 plan (HAL-18392) adds a shell command for them, so they
+ * never reach the page.
  */
 
 /** One file of the offer, with the exact text that would be sent. */
@@ -61,7 +64,10 @@ export interface OfferScan {
 /** A shorter value, such as `eu` or `10`, would match all over ordinary code. */
 export const shortestCheckedValue = 4;
 
-/** A user value and how to find it: the whole value, in any case, not inside a longer word. */
+/**
+ * A user value and how to find it: any of its written forms, whole, in any
+ * case, not inside a longer word.
+ */
 interface UserValuePattern {
   readonly kind: UserValueKind;
   readonly pattern: RegExp;
@@ -69,6 +75,17 @@ interface UserValuePattern {
 
 function escapeForPattern(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+}
+
+/**
+ * How a value can appear in the files: as typed, escaped inside a JSON or
+ * JS string (`"` and `\`), and encoded in a URL (`@` as `%40`) or a form
+ * body (a space as `+`).
+ */
+function writtenForms(value: string): string[] {
+  const inUrl = encodeURIComponent(value);
+  const forms = [value, JSON.stringify(value).slice(1, -1), inUrl, inUrl.replaceAll("%20", "+")];
+  return [...new Set(forms)];
 }
 
 function userValuePatterns(user: UserValues): {
@@ -94,10 +111,10 @@ function userValuePatterns(user: UserValues): {
       notChecked.push(kind);
       continue;
     }
-    const word = escapeForPattern(value);
+    const anyForm = writtenForms(value).map(escapeForPattern).join("|");
     patterns.push({
       kind,
-      pattern: new RegExp(`(?<![\\p{L}\\p{N}])${word}(?![\\p{L}\\p{N}])`, "iu"),
+      pattern: new RegExp(`(?<![\\p{L}\\p{N}])(?:${anyForm})(?![\\p{L}\\p{N}])`, "iu"),
     });
   }
   return { patterns, notChecked };

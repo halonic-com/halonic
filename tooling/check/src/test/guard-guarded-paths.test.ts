@@ -20,6 +20,7 @@ verifies("check.guard-own-paths", () => {
       "packages/testing/parity/allowed-differences.json",
     ],
     ["packages/testing/spec/", "packages/testing/spec/src/verifies.ts"],
+    ["packages/core/std/src/secret-rules.ts", "packages/core/std/src/secret-rules.ts"],
     ["tooling/check/", "tooling/check/src/guard/guard.ts"],
     ["tooling/config/src/vitest-preset.ts", "tooling/config/src/vitest-preset.ts"],
     ["turbo.json", "turbo.json"],

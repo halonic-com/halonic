@@ -96,6 +96,22 @@ describe("scanOffer", () => {
     }
   });
 
+  it("finds a user value escaped in JSON and encoded in a URL or form body", () => {
+    const quoted = { name: "shopName", value: 'Rivers "Harbour" Goods' };
+    const withQuote = { ...user, settings: [quoted] };
+    const recording = file(
+      "recordings/order.json",
+      `{ "shop": ${JSON.stringify(quoted.value)} }`,
+      `{ "url": "https://api.shop.test/find?owner=${encodeURIComponent(profileEmail)}" }`,
+      `{ "form": "shop=${encodeURIComponent(quoted.value).replaceAll("%20", "+")}" }`,
+    );
+    expect(scanOffer([recording], withQuote).findings).toEqual([
+      { kind: "setting", setting: "shopName", file: recording.path, line: 1 },
+      { kind: "profile-email", file: recording.path, line: 2 },
+      { kind: "setting", setting: "shopName", file: recording.path, line: 3 },
+    ]);
+  });
+
   it("names values too short to check instead of matching them everywhere", () => {
     const code = file("backend/index.js", 'const region = "eu";');
     expect(scanOffer([code], user)).toEqual({
