@@ -159,7 +159,8 @@ describe("tooling/check: layers", () => {
       files: {
         "src/leaks/scan.ts": `import "${rules}";\n`,
         "src/leaks/other.ts": 'import "../../../../packages/core/std/src/index.ts";\n',
-        "src/rules/x.ts": `import "../${rules}";\n`,
+        // The same file from another folder of the check, so only the folder check refuses it.
+        "src/rules/x.ts": `import "${rules}";\n`,
       },
     };
     const outside = runChecks([std, check], { coreOrder })
