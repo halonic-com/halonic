@@ -21,6 +21,3 @@ The board's rule: our code bases never name the app the design was modelled on.
 - kit.new-design-theme
 - packages/studio/kit/src/theme.test.ts
 - packages/studio/kit/src/theme-new-design.test.ts
-- decisions/owen/HAL-20674-whatsapp-theme.md
-- kit.whatsapp-theme
-- packages/studio/kit/src/theme-whatsapp.test.ts

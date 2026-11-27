@@ -34,9 +34,9 @@ export interface FolderFacts {
 }
 
 /**
- * The rail entries a feature may add. The set is fixed by design (the WhatsApp layout in HAL-20617),
- * as WhatsApp's own rail is: a feature can't make up a sub-app. It is a list of names only, kept
- * here so a misspelt entry fails at once; the order, name, icon and rule belong to each entry.
+ * The rail entries a feature may add. The set is fixed by design (the layout in HAL-20617): a feature
+ * can't make up a sub-app. It is a list of names only, kept here so a misspelt entry fails at once;
+ * the order, name, icon and rule belong to each entry.
  * Home and Settings are left out because the shell adds them itself.
  */
 export const railEntryIds = ["code", "library", "messenger", "inbox", "runs", "changes"] as const;
