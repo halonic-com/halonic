@@ -30,6 +30,7 @@ function spyMotion() {
     flip: vi.fn<InboxMotion["flip"]>(async (_list, change) => change()),
     enter: vi.fn<InboxMotion["enter"]>(async () => {}),
     swap: vi.fn<InboxMotion["swap"]>(async (_pane, show) => show()),
+    leave: vi.fn<InboxMotion["leave"]>(async () => {}),
   };
 }
 

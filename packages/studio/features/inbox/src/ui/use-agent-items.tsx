@@ -11,7 +11,14 @@ import type {
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { Button, type ListRow, StatusChip, waitingFor } from "@halonicjs/studio-kit";
 import type { ActionSteps } from "@halonicjs/studio-services";
-import { type ReactNode, useCallback, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   type AgentBundle,
   bundleAgentItems,
@@ -34,6 +41,7 @@ import { lineEndingInWait, wholeLine } from "./inbox-row.tsx";
 import type { ItemHeading } from "./item-header.tsx";
 import { ProjectTag } from "./project-tag.tsx";
 import { agentMark } from "./row-marks.tsx";
+import { type SettlingRowsOptions, settledRow, useSettlingRows } from "./settling-rows.tsx";
 import { type AskerPicture, useAskerPictures } from "./use-asker-pictures.ts";
 
 /** What the Inbox page shows of the agents' items, next to its own. */
@@ -68,6 +76,8 @@ export interface AgentItems {
   readonly close: () => void;
   /** The open row's cards, or `otherwise` while none is open. */
   readonly card: (now: () => Date, otherwise: ReactNode) => ReactNode;
+  /** Holds the rows that ended, then sends them away (`inbox.final-state`); rendered once on the page. */
+  readonly settlers: ReactNode;
 }
 
 /** A row that waits: its key, how many items it holds and their keys, oldest first. */
@@ -126,6 +136,7 @@ function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: 
 export function useAgentItems(
   messaging: AgentMessaging | undefined,
   checks: ActionChecks,
+  settle: Omit<SettlingRowsOptions, "answeredHere">,
 ): AgentItems {
   const inbox = useMemo(
     () => (messaging === undefined ? undefined : new AgentInbox(messaging)),
@@ -140,6 +151,13 @@ export function useAgentItems(
   const [opened, setOpened] = useState<Opened | undefined>(undefined);
   const waiting = state.items.filter((item) => item.state.kind === "open");
   const bundles = bundleAgentItems(waiting);
+  // The items answered from their card here, which said so already, so they aren't read out again.
+  const answeredHere = useRef(new Set<string>());
+  const ended = useSettlingRows(bundles, state.items, {
+    ...settle,
+    answeredHere: answeredHere.current,
+  });
+  const endedKeys = new Set(ended.bundles.map((bundle) => bundle.key));
   const sourceOf = (item: AgentItem) => state.sources.find((source) => source.id === item.source);
   const workOf = (item: AgentItem) => state.work.find((work) => work.id === item.work);
   // From every item, answered too, so an answered card stays open and says who answered it.
@@ -159,9 +177,13 @@ export function useAgentItems(
     })),
     waitingItems: waiting,
     rows: (now, filter) =>
-      bundles
+      ended
+        .inPlace(bundles)
         .filter((bundle) => bundle.items.some((item) => agentItemShows(item, filter)))
-        .map((bundle) => bundleRow(bundle, state, now, pictureOf)),
+        .map((bundle) => {
+          const row = bundleRow(bundle, state, now, pictureOf);
+          return endedKeys.has(bundle.key) ? settledRow(row, bundle) : row;
+        }),
     lines: (now) => (
       <SourceLines
         sources={state.sources}
@@ -221,13 +243,17 @@ export function useAgentItems(
               work={workOf(item)}
               agents={state.agents}
               now={now}
-              answer={(answer) => inbox.answer(item.id, answer)}
+              answer={(answer) => {
+                answeredHere.current.add(item.id);
+                return inbox.answer(item.id, answer);
+              }}
               readAttachment={(attachment) => inbox.readAttachment(attachment)}
               focusOnOpen={index === 0}
             />
           ))}
         </div>
       ),
+    settlers: ended.settlers,
   };
 }
 
