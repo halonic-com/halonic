@@ -124,9 +124,9 @@ verifies("quick-ask.automatic-notes", () => {
       messenger.reply(chief, "The release card is with the board.", "2026-11-25T13:41:00.000Z");
       await act(async () => messenger.change("acme"));
       expect(page.querySelector("footer")?.textContent).toBe("CopyOpen in Messenger");
-      expect(page.querySelector("[data-answer]")?.textContent).toBe(
-        "The release card is with the board.",
-      );
+      expect(
+        page.querySelector('[data-answer] [data-chat-message="reply"] > div')?.textContent,
+      ).toBe("The release card is with the board.");
     });
   });
 });
