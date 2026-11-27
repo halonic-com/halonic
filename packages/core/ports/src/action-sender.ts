@@ -61,7 +61,7 @@ export interface ActionCallRoute extends ActionRouteBase {
   /** The path with `{name}` placeholders, such as `/repos/{owner}/{repo}/actions/runs/{runId}/approve`. */
   path: string;
   body: readonly ActionBodyField[];
-  /** The top-level fields of a successful answer the sender hands back, named one by one. */
+  /** The fields of a successful answer the sender hands back, named one by one; a dotted name (at most 3 keys) reads inside objects. */
   keep: readonly string[];
 }
 

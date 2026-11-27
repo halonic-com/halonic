@@ -17,6 +17,8 @@ export const maxActionValueLength = 1000;
 const maxIdLength = 200;
 const maxFlatEntries = 50;
 const fieldName = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+// Up to 3 object keys joined by `.`; a key can't start with a digit, so no name reaches into a list.
+const keptName = /^[A-Za-z][A-Za-z0-9_]{0,63}(?:\.[A-Za-z][A-Za-z0-9_]{0,63}){0,2}$/;
 const isoUtc = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
 
 type FieldKind =
@@ -73,13 +75,27 @@ export const actionOutcomes: readonly ActionOutcome[] = [
 export const maxActionStep = 100;
 
 /**
+ * Whether `name` may name a kept field: a plain name, or up to 3 of them
+ * joined by `.` for a value inside objects of the answer, such as
+ * `triggering_actor.login`. The shell's route list checks the same grammar.
+ *
+ * @example
+ * isActionKeptName("triggering_actor.login"); // => true
+ * isActionKeptName("pull_requests.0.url"); // => false
+ */
+export function isActionKeptName(name: string): boolean {
+  return keptName.test(name);
+}
+
+/**
  * Checks the kept fields of a successful step: plain values (or `null`) under
- * plain names, so no object, list or long text can hide in them.
+ * names `isActionKeptName` allows, so no object, list or long text can hide
+ * in them.
  *
  * @returns the problem, never naming a value; `undefined` when the fields fit
  */
 export function actionKeptProblem(value: unknown): string | undefined {
-  return flatProblem(value, true);
+  return flatProblem(value, true, keptName);
 }
 
 /** The allow-list: every field each action event may carry. Anything else is refused. */
@@ -209,12 +225,16 @@ function wholeNumberProblem(value: unknown, least: number, most: number): string
 }
 
 /** A record of plain values under plain names: no object, list or long text can hide in it. */
-function flatProblem(value: unknown, allowsNull: boolean): string | undefined {
+function flatProblem(
+  value: unknown,
+  allowsNull: boolean,
+  names: RegExp = fieldName,
+): string | undefined {
   if (!isRecord(value)) return "not an object";
   const entries = Object.entries(value);
   if (entries.length > maxFlatEntries) return `more than ${maxFlatEntries} fields`;
   for (const [name, entry] of entries) {
-    if (!fieldName.test(name)) return "a field name that isn't plain";
+    if (!names.test(name)) return "a field name that isn't plain";
     if (!isPlainValue(entry, allowsNull)) return `${name} isn't a plain value`;
   }
   return undefined;

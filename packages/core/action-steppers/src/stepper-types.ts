@@ -83,7 +83,7 @@ export interface CallStep {
   /** The path with `{name}` placeholders, each a parameter, such as `/repos/{owner}/{repo}/actions/variables/{name}`. */
   path: string;
   body: readonly CallBodyField[];
-  /** The top-level fields of a successful answer to keep, each a plain value. */
+  /** The fields of a successful answer to keep, each a plain value; a dotted name such as `triggering_actor.login` reads inside objects. */
   keep: readonly string[];
   manual: ManualForm;
 }
@@ -121,7 +121,7 @@ export interface CheckStep {
   kind: "check";
   /** The path with `{name}` placeholders, each a parameter. */
   path: string;
-  /** The top-level fields of the answer to keep, each a plain value. */
+  /** The fields of the answer to keep, each a plain value; a dotted name such as `triggering_actor.login` reads inside objects. */
   keep: readonly string[];
   /**
    * A kept field holding a time that must be later than when the stepper
