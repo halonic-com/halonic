@@ -1,6 +1,12 @@
 import { moveAgent, releaseRun, runsToRelease } from "./act.ts";
 import type { SeatApi } from "./api.ts";
-import { type AgentPlace, type Seat, targetRefusal } from "./checklist.ts";
+import {
+  type AgentPlace,
+  arrivedSinceReading,
+  type Seat,
+  seatedOn,
+  targetRefusal,
+} from "./checklist.ts";
 import { planMoves, type SeatPlan } from "./plan.ts";
 import { buildSeats, parseConnections, parseSeatReadings } from "./readings.ts";
 import { batchComment, moveLine, stuckNote } from "./report.ts";
@@ -35,6 +41,14 @@ export interface SeatMoverMemory {
   readonly stuckNoted?: readonly string[];
   /** Agent id → when the mover last moved it, for the cooldown; older entries are dropped. */
   readonly movedAt?: Readonly<Record<string, string>>;
+  /** Agent id → the seat the mover last moved it to, kept as long as its `movedAt` (HAL-19695). */
+  readonly movedTo?: Readonly<Record<string, string>>;
+}
+
+/** Where the mover last moved an agent, and when. */
+export interface RecentMove {
+  readonly connectionId: string;
+  readonly at: string;
 }
 
 export interface SeatMoverDeps {
@@ -103,9 +117,27 @@ export function recentlyMovedIds(
   );
 }
 
+/** Agent id → where and when the mover moved it less than the cooldown ago, from its memory. */
+export function recentMoves(
+  memory: SeatMoverMemory,
+  settings: SeatMoverSettings,
+  now: Date,
+): Map<string, RecentMove> {
+  const moves = new Map<string, RecentMove>();
+  for (const agentId of recentlyMovedIds(memory, settings, now)) {
+    const connectionId = memory.movedTo?.[agentId];
+    const at = memory.movedAt?.[agentId];
+    if (connectionId !== undefined && at !== undefined) {
+      moves.set(agentId, { connectionId, at });
+    }
+  }
+  return moves;
+}
+
 /**
- * Where each agent sits, whether it has runs parked on that seat, and whether
- * the mover moved it lately. A run pinned to the agent's seat counts, and so
+ * Where each agent sits, whether it has runs parked on that seat, whether
+ * the mover moved it lately, and when, if it moved it onto the seat it sits
+ * on now (HAL-19695). A run pinned to the agent's seat counts, and so
  * does one that names no seat (the board's audit rule 1), unless the mover
  * moved the agent lately: such a run is released after the move, and until
  * then it would move the agent again every pass.
@@ -115,12 +147,14 @@ export function agentPlaces(
   parked: readonly ParkedRun[],
   now: Date,
   recentlyMoved: ReadonlySet<string> = new Set(),
+  moves: ReadonlyMap<string, RecentMove> = new Map(),
 ): AgentPlace[] {
   const waiting = stillWaiting(parked, now);
   return agents
     .filter((agent) => agent.status !== "terminated")
     .map((agent) => {
       const connectionId = connectionOf(agent);
+      const lastMove = moves.get(agent.id);
       return {
         id: agent.id,
         key: (agent.urlKey ?? agent.name).toLowerCase(),
@@ -135,6 +169,10 @@ export function agentPlaces(
               (run.connectionId === undefined && !recentlyMoved.has(agent.id))),
         ),
         recentlyMoved: recentlyMoved.has(agent.id),
+        arrivedAt:
+          lastMove !== undefined && lastMove.connectionId === connectionId
+            ? lastMove.at
+            : undefined,
       };
     });
 }
@@ -167,8 +205,10 @@ export async function seatMoverPass(deps: SeatMoverDeps): Promise<SeatPlan | und
     settings.quotaFullMinutes,
   );
   const seats = new Map(seatList.map((seat) => [seat.connectionId, seat]));
-  const recentlyMoved = recentlyMovedIds(await deps.memory.get(), settings, now);
-  const agents = agentPlaces(agentRows, parked, now, recentlyMoved);
+  const memory = await deps.memory.get();
+  const recentlyMoved = recentlyMovedIds(memory, settings, now);
+  const moves = recentMoves(memory, settings, now);
+  const agents = agentPlaces(agentRows, parked, now, recentlyMoved, moves);
   const plan = planMoves(seatList, agents, settings, now);
   if (plan.refused.length > 0) {
     deps.logError("Seat mover: the batch would break the checklist, so nobody moves this pass.", {
@@ -209,7 +249,9 @@ async function shadowReport(deps: SeatMoverDeps, plan: SeatPlan, seats: Readonly
  * Sends each move; answers agent id → the seat it now sits on, for the moves
  * that went through. Before each move its target is checked again against
  * where agents actually sit, so a move that failed earlier in the batch (an
- * agent that didn't leave) never lets a later one break the checklist.
+ * agent that didn't leave) never lets a later one break the checklist. Its
+ * arrivals are the moves sent this pass and the earlier passes' moves since
+ * the target's reading (HAL-19695).
  */
 async function applyMoves(
   deps: SeatMoverDeps,
@@ -225,7 +267,9 @@ async function applyMoves(
     }
   }
   for (const move of plan.moves) {
-    const arriving = [...moved.values()].filter((seat) => seat === move.to.connectionId).length;
+    const arriving = seatedOn(move.to.connectionId, actual, agents).filter(
+      (agent) => moved.has(agent.id) || arrivedSinceReading(agent, move.to),
+    ).length;
     const { settings, now } = deps;
     const refusal = targetRefusal(move.to, move.agent, actual, agents, settings, now, arriving);
     if (refusal !== undefined) {
@@ -258,16 +302,29 @@ async function applyMoves(
   return moved;
 }
 
-/** Notes when each agent moved, for the cooldown, and drops entries past it. */
+/**
+ * Notes when each agent moved and to which seat, for the cooldown and the
+ * arrivals since a seat's reading, and drops entries past the cooldown.
+ */
 async function rememberMoves(deps: SeatMoverDeps, moved: ReadonlyMap<string, string>) {
   const memory = await deps.memory.get();
   const recent = recentlyMovedIds(memory, deps.settings, deps.now);
-  const kept = Object.entries(memory.movedAt ?? {}).filter(([agentId]) => recent.has(agentId));
+  const keep = (entries: Readonly<Record<string, string>>) =>
+    Object.entries(entries).filter(([agentId]) => recent.has(agentId));
+  const keptAt = keep(memory.movedAt ?? {});
+  const keptTo = keep(memory.movedTo ?? {});
   const movedNow = [...moved.keys()].map((agentId) => [agentId, deps.now.toISOString()]);
-  if (movedNow.length === 0 && kept.length === Object.keys(memory.movedAt ?? {}).length) {
+  const unchanged =
+    keptAt.length === Object.keys(memory.movedAt ?? {}).length &&
+    keptTo.length === Object.keys(memory.movedTo ?? {}).length;
+  if (movedNow.length === 0 && unchanged) {
     return;
   }
-  await deps.memory.set({ ...memory, movedAt: Object.fromEntries([...kept, ...movedNow]) });
+  await deps.memory.set({
+    ...memory,
+    movedAt: Object.fromEntries([...keptAt, ...movedNow]),
+    movedTo: Object.fromEntries([...keptTo, ...moved.entries()]),
+  });
 }
 
 /** Releases runs parked on seats their agents have left; wakes each task once. Answers how many. */

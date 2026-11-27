@@ -334,6 +334,14 @@ verifies("paperclip.seat-mover-job", () => {
       expect(fake.writes).toEqual(["move a-elena c-Finance"]);
     });
 
+    test("the mover remembers which seat it moved each agent to", async () => {
+      const agents = [row("kim", "Full")];
+      const fake = world({ Full: [85, 10], B: [10, 10] }, agents);
+      const run = deps(fake, agents, { settings: { mode: "act" } });
+      await seatMoverPass(run.deps);
+      expect(run.memory.value.movedTo).toEqual({ "a-kim": "c-B" });
+    });
+
     test("a paused agent is never moved, even off a full seat", async () => {
       const agents = [row("kim", "Full", "paused")];
       const fake = world({ Full: [100, 99], B: [10, 10] }, agents);
@@ -375,6 +383,57 @@ verifies("paperclip.seat-mover-reset", () => {
       ];
       await seatMoverPass(deps(fake, agents, { settings: { mode: "act" }, parked: due }).deps);
       expect(fake.writes).toEqual([]);
+    });
+  });
+});
+
+verifies("paperclip.seat-mover-checklist", () => {
+  describe("the mover's own moves since a seat's reading (HAL-19695)", () => {
+    // The readings are from 09:47; Mara was moved onto B by an earlier pass.
+    const agents = [row("kim", "Full"), row("mara", "B")];
+    const moved = (at: string, seat = "c-B") => ({
+      value: { movedAt: { "a-mara": at }, movedTo: { "a-mara": seat } },
+    });
+    const afterReading = "2026-11-26T09:55:00.000Z";
+    const beforeReading = "2026-11-26T09:30:00.000Z";
+
+    test("a move onto a seat after its reading counts toward its headroom; an older one doesn't", async () => {
+      // B at 65%: 65 + 10 for Kim fits under the 80% stop, 65 + 10 for Mara + 10 for Kim doesn't.
+      const usage: Usage = { Full: [85, 10], B: [65, 10] };
+      const recent = world(usage, agents);
+      const memory = moved(afterReading);
+      await seatMoverPass(deps(recent, agents, { settings: { mode: "act" }, memory }).deps);
+      expect(recent.writes).toEqual([]);
+
+      const older = world(usage, agents);
+      const olderMemory = moved(beforeReading);
+      await seatMoverPass(
+        deps(older, agents, { settings: { mode: "act" }, memory: olderMemory }).deps,
+      );
+      expect(older.writes).toEqual(["move a-kim c-B"]);
+    });
+
+    test("a move since the reading puts its seat after one nobody was sent to", async () => {
+      const usage: Usage = { Full: [85, 10], B: [40, 10], C: [45, 10] };
+      const recent = world(usage, agents);
+      await seatMoverPass(
+        deps(recent, agents, { settings: { mode: "act" }, memory: moved(afterReading) }).deps,
+      );
+      expect(recent.writes).toEqual(["move a-kim c-C"]);
+
+      const older = world(usage, agents);
+      await seatMoverPass(
+        deps(older, agents, { settings: { mode: "act" }, memory: moved(beforeReading) }).deps,
+      );
+      expect(older.writes).toEqual(["move a-kim c-B"]);
+    });
+
+    test("a move to a seat the agent has since left doesn't count", async () => {
+      const usage: Usage = { Full: [85, 10], B: [65, 10] };
+      const fake = world(usage, agents);
+      const memory = moved(afterReading, "c-Other");
+      await seatMoverPass(deps(fake, agents, { settings: { mode: "act" }, memory }).deps);
+      expect(fake.writes).toEqual(["move a-kim c-B"]);
     });
   });
 });
