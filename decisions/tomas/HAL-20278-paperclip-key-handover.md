@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20278 (plan approved by Liam, PR 2; 6.8 decided on HAL-20274, signed by Julian on HAL-20277; `mayStart` option (b) with Julian's five conditions on HAL-20292, note revision 18)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:P96W2ZF6CzPO5wndBugcMSabyz6LVOmoR29VKBx2NQXqtmf9G7BenGfQ5Cz0fiHC1lWKiZXB+IUMz70rjOLtCQ==
 
 Condition 1 of section 6.8 of the HAL-17491 note, second part: after this,
 no page code reads, writes or holds the everyday Paperclip key. The first
