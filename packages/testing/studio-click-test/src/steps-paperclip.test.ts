@@ -277,7 +277,59 @@ verifies("studio-click-test.paperclip-steps", () => {
       studio.windows.set("messenger", { text: seedNames.agent, buttons: new Map() });
       shortcutsOpen(studio, { "Halonic Inbox": `Inbox ${screenText.nothingWaiting.text}` });
       await expect(startMenuShortcuts.run(studio.context)).resolves.toEqual({ passed: true });
-      expect(studio.shortcuts).toEqual(["Halonic Inbox", "Halonic Messenger"]);
+      // Each starts a second time, to show it opens no second frame.
+      expect(studio.shortcuts).toEqual([
+        "Halonic Inbox",
+        "Halonic Inbox",
+        "Halonic Messenger",
+        "Halonic Messenger",
+      ]);
+    });
+
+    function studioWithInbox(): FakeStudio {
+      const studio = fakeStudio("Acme");
+      studio.windows.set("messenger", { text: seedNames.agent, buttons: new Map() });
+      shortcutsOpen(studio, { "Halonic Inbox": `Inbox ${screenText.nothingWaiting.text}` });
+      return studio;
+    }
+
+    it("fails as NO_FRAME when the Inbox has no top-level window of Halonic Inbox.exe", async () => {
+      const studio = studioWithInbox();
+      studio.topLevel.set("Halonic Inbox.exe", 0);
+      await expect(startMenuShortcuts.run(studio.context)).resolves.toMatchObject({
+        code: "NO_FRAME",
+        note: expect.stringContaining("Halonic Inbox.exe"),
+      });
+    });
+
+    it("fails as NOT_IN_FRAME when the shortcut gave Halonic.exe a new top-level window", async () => {
+      const studio = studioWithInbox();
+      const open = studio.context.openShortcut;
+      Object.assign(studio.context, {
+        openShortcut: async (name: string) => {
+          await open(name);
+          studio.topLevel.set("Halonic.exe", 2);
+        },
+      });
+      await expect(startMenuShortcuts.run(studio.context)).resolves.toMatchObject({
+        code: "NOT_IN_FRAME",
+      });
+    });
+
+    it("fails as SECOND_FRAME when a second start opens a second frame", async () => {
+      const studio = studioWithInbox();
+      const open = studio.context.openShortcut;
+      Object.assign(studio.context, {
+        openShortcut: async (name: string) => {
+          await open(name);
+          const frame = `${name}.exe`;
+          studio.topLevel.set(frame, studio.shortcuts.filter((each) => each === name).length);
+        },
+      });
+      await expect(startMenuShortcuts.run(studio.context)).resolves.toMatchObject({
+        code: "SECOND_FRAME",
+        note: expect.stringContaining("2 top-level windows of Halonic Inbox.exe"),
+      });
     });
 
     it("doesn't take an Inbox window that was open before for the shortcut's", async () => {

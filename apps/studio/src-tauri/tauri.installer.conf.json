@@ -8,7 +8,9 @@
     ],
     "externalBin": [
       "binaries/halonic-agent-host",
-      "binaries/halonic-sandbox-elevate"
+      "binaries/halonic-sandbox-elevate",
+      "binaries/Halonic Inbox",
+      "binaries/Halonic Messenger"
     ],
     "resources": {
       "binaries/srt-win.exe": "srt-win.exe",

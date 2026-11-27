@@ -17,6 +17,8 @@ export interface FakeStudio {
   /** What typing into each XPath's element does, such as Enter on a place opening its page. */
   readonly onType: Map<string, () => void>;
   readonly shortcuts: string[];
+  /** How many visible top-level windows each exe has; one it doesn't name has one. */
+  readonly topLevel: Map<string, number>;
   /** The page root's attributes, such as `data-theme`. */
   readonly rootAttributes: Map<string, string>;
   current: string;
@@ -61,6 +63,7 @@ export function fakeStudio(text = ""): FakeStudio {
     typed: [],
     onType: new Map(),
     shortcuts: [],
+    topLevel: new Map(),
     rootAttributes: new Map(),
     current: "main",
     title: "",
@@ -171,6 +174,8 @@ export function fakeStudio(text = ""): FakeStudio {
       openShortcut: async (name: string, args: readonly string[] = []) => {
         studio.shortcuts.push([name, ...args].join(" "));
       },
+      topLevelWindows: async (exe: string) =>
+        Array.from({ length: studio.topLevel.get(exe) ?? 1 }, () => exe),
       mainWindow: "main",
       approveSignIn: async () => studio.approval,
       paperclip,

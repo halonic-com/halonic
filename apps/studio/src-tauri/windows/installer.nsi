@@ -1600,6 +1600,9 @@ Section Uninstall
   !endif
 
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+  ; Halonic change (HAL-20480): the frames of the Inbox and the Messenger quit
+  ; after Halonic, so one may still hold its exe here.
+  Call un.WaitUntilHelpersAreClosed
 
   ; Halonic change (HAL-6214): sessions let srt's sandbox account read the
   ; attributes of the folders above them in the user profile. Remove those
@@ -1689,6 +1692,11 @@ Section Uninstall
     ; Halonic change (HAL-14221): "Start Halonic when I log in" is this
     ; user's Run value (crates/login-item). An update keeps it.
     DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "${PRODUCTNAME}"
+
+    ; Halonic change (HAL-20480): where the Inbox's and the Messenger's frames
+    ; last closed (crates/app-frame, placement.rs). An update keeps it.
+    DeleteRegKey HKCU "Software\Halonic\Frames"
+    DeleteRegKey /ifempty HKCU "Software\Halonic"
 
     ; Remove start menu shortcut
     StrCpy $AppStartMenuFolder "${STARTMENUFOLDER}"
@@ -1909,16 +1917,24 @@ FunctionEnd
   !define FOCUSEDAPPFOLDER "$SMPROGRAMS"
 !endif
 
-; The shortcut `${title}.lnk` for the focused app `${app}`.
+; The shortcut `${title}.lnk` for the focused app `${app}`. Halonic change
+; (HAL-20480): it starts the app's frame, `${title}.exe` next to Halonic.exe,
+; which asks Halonic for the page, so window managers such as FancyZones keep
+; the app's place apart from Studio's (crates/app-frame).
 !macro FocusedAppShortcut title app
-  CreateShortcut "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe" "--app ${app}" "$INSTDIR\icons\${app}.ico" 0
+  CreateShortcut "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${title}.exe" "" "$INSTDIR\icons\${app}.ico" 0
   !insertmacro SetLnkAppUserModelIdTo "${FOCUSEDAPPFOLDER}\${title}.lnk" "${BUNDLEID}.${app}"
 !macroend
 
-; Removes the shortcut `${title}.lnk`, only when it still starts this install.
+; Removes the shortcut `${title}.lnk`, only when it still starts this install:
+; its frame, or Halonic.exe with `--app`, as before the frames (HAL-20480).
 !macro RemoveFocusedAppShortcut title
-  !insertmacro IsShortcutTarget "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+  !insertmacro IsShortcutTarget "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${title}.exe"
   Pop $0
+  ${If} $0 <> 1
+    !insertmacro IsShortcutTarget "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${MAINBINARYNAME}.exe"
+    Pop $0
+  ${EndIf}
   ${If} $0 = 1
     !insertmacro UnpinShortcut "${FOCUSEDAPPFOLDER}\${title}.lnk"
     Delete "${FOCUSEDAPPFOLDER}\${title}.lnk"
@@ -2090,6 +2106,16 @@ Function IsHalonicOpen
   !insertmacro RestartManager_StartSession $R0
   ${If} $R0 != ""
     !insertmacro RestartManager_RegisterFile $R0 "$INSTDIR\${MAINBINARYNAME}.exe"
+    ; Halonic change (HAL-20480): a frame of the Inbox or the Messenger that is
+    ; still open counts too. An install from before the frames has none.
+    ${If} $0 = 0
+    ${AndIf} ${FileExists} "$INSTDIR\${PRODUCTNAME} Inbox.exe"
+      !insertmacro RestartManager_RegisterFile $R0 "$INSTDIR\${PRODUCTNAME} Inbox.exe"
+    ${EndIf}
+    ${If} $0 = 0
+    ${AndIf} ${FileExists} "$INSTDIR\${PRODUCTNAME} Messenger.exe"
+      !insertmacro RestartManager_RegisterFile $R0 "$INSTDIR\${PRODUCTNAME} Messenger.exe"
+    ${EndIf}
     ${If} $0 = 0
       System::Call 'RSTRTMGR::RmGetList(p R0, *i .r1, *i .r2, p 0, *i .r3) i .r0'
       ${IfThen} $0 = ${ERROR_MORE_DATA} ${|} StrCpy $4 1 ${|}
@@ -2126,8 +2152,12 @@ FunctionEnd
 ; with the new version half copied and Halonic never reopened. Waits up to
 ; 30 s for each helper's file to be free; if one still isn't, goes on as before.
 ; Halonic.exe counts too (HAL-11982), for the update that starts while
-; Studio itself is still closing.
-Function WaitUntilHelpersAreClosed
+; Studio itself is still closing. So do the frames of the Inbox and the
+; Messenger (HAL-20480), which quit once Halonic's window in them is gone.
+; The uninstaller has its own copy, so a frame still closing never keeps its
+; exe from being removed.
+!macro WaitUntilHelpersAreClosed un
+Function ${un}WaitUntilHelpersAreClosed
   Push $0
   Push $1
   Push $2
@@ -2136,13 +2166,17 @@ Function WaitUntilHelpersAreClosed
   StrCpy $2 0
   ${Do}
     StrCpy $1 0
-    ${ForEach} $0 1 4 + 1
+    ${ForEach} $0 1 6 + 1
       ${If} $0 = 1
         StrCpy $R9 "$INSTDIR\halonic-agent-host.exe"
       ${ElseIf} $0 = 2
         StrCpy $R9 "$INSTDIR\halonic-sandbox-elevate.exe"
       ${ElseIf} $0 = 3
         StrCpy $R9 "$INSTDIR\srt-win.exe"
+      ${ElseIf} $0 = 4
+        StrCpy $R9 "$INSTDIR\${PRODUCTNAME} Inbox.exe"
+      ${ElseIf} $0 = 5
+        StrCpy $R9 "$INSTDIR\${PRODUCTNAME} Messenger.exe"
       ${Else}
         StrCpy $R9 "$INSTDIR\${MAINBINARYNAME}.exe"
       ${EndIf}
@@ -2167,6 +2201,9 @@ Function WaitUntilHelpersAreClosed
   Pop $1
   Pop $0
 FunctionEnd
+!macroend
+!insertmacro WaitUntilHelpersAreClosed ""
+!insertmacro WaitUntilHelpersAreClosed "un."
 
 ; Sets $SandboxReady to 1 when the installed Halonic's sandbox passes the
 ; check Settings uses, else 0. Asked when the run-again page opens. An

@@ -6,14 +6,17 @@
 # Start menu an older version's shortcuts first and checks what the install
 # left. Each shortcut, and Messenger pinned to the taskbar, must also have
 # this version's copy of its icon (HAL-20463, studio.installer-icon-refresh).
+# The focused apps' shortcuts start their frames, Halonic Inbox.exe and
+# Halonic Messenger.exe next to Halonic.exe (HAL-20480).
 
 $FocusedApps = [ordered]@{ 'Halonic Inbox' = 'inbox'; 'Halonic Messenger' = 'messenger' }
 $Programs = [Environment]::GetFolderPath('Programs')
 $StartMenuFolder = Join-Path $Programs 'Halonic'
 $PinnedFolder = Join-Path $env:APPDATA 'Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar'
 
-# Makes the Start menu look as an older Halonic in $InstallFolder left it: no
-# focused apps' shortcuts, one this version no longer makes in Halonic's
+# Makes the Start menu look as older Halonics in $InstallFolder left it: no
+# Halonic Inbox, Halonic Messenger as it was before the frames (Halonic.exe
+# with --app messenger), one this version no longer makes in Halonic's
 # folder, and Halonic's at the top of the Start menu, where Tauri put it
 # before the folder.
 function Set-OlderStartMenu([string]$InstallFolder) {
@@ -22,9 +25,15 @@ function Set-OlderStartMenu([string]$InstallFolder) {
   }
   New-Item -ItemType Directory -Force $StartMenuFolder | Out-Null
   $links = New-Object -ComObject WScript.Shell
-  foreach ($path in @((Join-Path $StartMenuFolder 'Halonic Studio.lnk'), (Join-Path $Programs 'Halonic.lnk'))) {
+  $older = [ordered]@{
+    (Join-Path $StartMenuFolder 'Halonic Studio.lnk')    = ''
+    (Join-Path $Programs 'Halonic.lnk')                  = ''
+    (Join-Path $StartMenuFolder 'Halonic Messenger.lnk') = '--app messenger'
+  }
+  foreach ($path in $older.Keys) {
     $link = $links.CreateShortcut($path)
     $link.TargetPath = Join-Path $InstallFolder 'Halonic.exe'
+    $link.Arguments = $older[$path]
     $link.Save()
   }
   # HAL-20463: Messenger pinned to the taskbar on the icon path an older
@@ -65,12 +74,12 @@ function Assert-PinnedIcons([string]$InstallFolder, [string]$When) {
 }
 
 # Throws unless Halonic's Start menu folder holds exactly Halonic, Halonic
-# Inbox and Halonic Messenger, each starting $InstallFolder's Halonic.exe
-# (the focused apps with `--app <name>`) with its own app ID, so the Start
-# menu lists each as its own app, and nothing is left at the top of the Start
-# menu. $When says which install it checks.
+# Inbox and Halonic Messenger, Halonic starting $InstallFolder's Halonic.exe
+# and each focused app its frame there, `<name>.exe`, with no arguments, each
+# with its own app ID, so the Start menu lists each as its own app, and
+# nothing is left at the top of the Start menu. $When says which install it
+# checks.
 function Assert-StartMenu([string]$InstallFolder, [string]$When) {
-  $halonicExe = [IO.Path]::GetFullPath((Join-Path $InstallFolder 'Halonic.exe'))
   $expected = @{ 'Halonic' = '' }
   foreach ($name in $FocusedApps.Keys) { $expected[$name] = $FocusedApps[$name] }
   $found = @(Get-ChildItem $StartMenuFolder -Filter '*.lnk' -ErrorAction SilentlyContinue | ForEach-Object { $_.BaseName } | Sort-Object)
@@ -84,9 +93,10 @@ function Assert-StartMenu([string]$InstallFolder, [string]$When) {
   foreach ($name in $expected.Keys) {
     $app = $expected[$name]
     $link = $links.CreateShortcut((Join-Path $StartMenuFolder "$name.lnk"))
-    if ([IO.Path]::GetFullPath($link.TargetPath) -ne $halonicExe) { throw "$name starts $($link.TargetPath) after $When, not $halonicExe" }
-    $arguments = if ($app) { "--app $app" } else { '' }
-    if ($link.Arguments -ne $arguments) { throw "$name starts Halonic with '$($link.Arguments)' after $When, not '$arguments'" }
+    $exe = [IO.Path]::GetFullPath((Join-Path $InstallFolder "$name.exe"))
+    if (-not (Test-Path $exe -PathType Leaf)) { throw "$exe isn't installed after $When" }
+    if ([IO.Path]::GetFullPath($link.TargetPath) -ne $exe) { throw "$name starts $($link.TargetPath) after $When, not $exe" }
+    if ($link.Arguments -ne '') { throw "$name starts with '$($link.Arguments)' after $When, not with no arguments" }
     $id = "$($folder.ParseName("$name.lnk").ExtendedProperty('System.AppUserModel.ID'))"
     $own = if ($app) { $id.EndsWith(".$app") } else { $id -and -not $id.EndsWith('.inbox') -and -not $id.EndsWith('.messenger') }
     if (-not $own) { throw "$name carries the app ID '$id' after $When, not its own" }

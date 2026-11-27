@@ -21,6 +21,11 @@ export interface StepContext {
    * starts the shortcut's program with them instead, such as `--app ask`, which has no shortcut.
    */
   readonly openShortcut: (name: string, args?: readonly string[]) => Promise<void>;
+  /**
+   * The process images of the visible top-level windows whose image is named `exe`, such as
+   * "Halonic Inbox.exe", one per window: the image window managers such as FancyZones key on.
+   */
+  readonly topLevelWindows: (exe: string) => Promise<string[]>;
   /** The handle of Studio's main window, which the session started on. */
   readonly mainWindow: string;
   /**

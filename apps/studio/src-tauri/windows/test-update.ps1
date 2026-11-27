@@ -16,7 +16,9 @@
 # Halonic, Halonic Inbox and Halonic Messenger in the Start menu; before 1
 # and 5 it gets an older version's shortcuts (HAL-18322). In 1 the Inbox is
 # open before "Restart to update", so 0.1.1 reopens it while it starts: in
-# its frame, Halonic Inbox.exe, when the install has one (HAL-21117).
+# its frame, Halonic Inbox.exe, when the install has one (HAL-21117). The
+# frame quits with Halonic, and the installer waits for it before it
+# replaces the frame's exe (HAL-20480).
 # The updater is driven through the Studio page's own update_* commands
 # (update-driver.mjs), so the test takes the path a person takes.
 param(
@@ -223,7 +225,8 @@ try {
   # The Inbox, through its frame where the installer made one, or else as
   # an older shortcut starts it. Recorded open, so 0.1.1 reopens it at start.
   $inboxFrame = Join-Path $dir 'Halonic Inbox.exe'
-  if (Test-Path $inboxFrame) { Start-Process $inboxFrame | Out-Null } else { Start-Process (Join-Path $dir 'Halonic.exe') -ArgumentList '--app', 'inbox' | Out-Null }
+  $frame = $null
+  if (Test-Path $inboxFrame) { $frame = Start-Process $inboxFrame -PassThru } else { Start-Process (Join-Path $dir 'Halonic.exe') -ArgumentList '--app', 'inbox' | Out-Null }
   $openWindows = Join-Path $profileFolder 'studio\open-windows.json'
   Wait-Until { (Get-Content $openWindows -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json).windows.label -contains 'inbox' } 60 'the Inbox opening and being recorded open'
   Invoke-Driver call update_restart
@@ -247,6 +250,7 @@ try {
   $entry = Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic'
   if ($entry.DisplayVersion -ne '0.1.1') { throw "the uninstall entry says $($entry.DisplayVersion)" }
   Assert-StartMenu $dir 'the update to 0.1.1'
+  if ($frame -and (Get-Process -Id $frame.Id -ErrorAction SilentlyContinue)) { throw "0.1.0's Inbox frame is still running after the update" }
   # The new version's first start reads the install record and clears it,
   # then proves it starts, and the installer kept for 0.1.0 goes.
   Wait-Until { $saved = Get-Record; $saved -and -not $saved.install } 60 "0.1.1 clearing the install record"

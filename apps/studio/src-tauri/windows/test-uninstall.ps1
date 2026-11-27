@@ -10,7 +10,9 @@
 #   - with those rights it starts nothing from -InstallFolder but the helper:
 #     a sandbox-remove.ps1 swapped in there doesn't run;
 #   - the Start menu's Halonic Inbox and Halonic Messenger (HAL-17903), there
-#     after the install and each starting Halonic with its --app, are gone.
+#     after the install and each starting its frame, Halonic Inbox.exe or
+#     Halonic Messenger.exe (HAL-20480), are gone, and so are the frames and
+#     the places they keep in the registry.
 #   - the login item (HAL-14221), this user's Run value Halonic, is gone.
 # The runner is an administrator, so the removal needs no prompt here; the
 # refused prompt needs a desktop Windows machine.
@@ -137,16 +139,22 @@ if ($LASTEXITCODE -ne 0) { throw "srt-win acl grant --persistent ended with $LAS
 
 # The focused apps' Start menu shortcuts, beside Halonic's (HAL-17903).
 $startMenu = Join-Path ([Environment]::GetFolderPath('Programs')) 'Halonic'
-$focusedApps = @{ 'Halonic Inbox' = '--app inbox'; 'Halonic Messenger' = '--app messenger' }
+$focusedApps = @('Halonic Inbox', 'Halonic Messenger')
 $halonicExe = [IO.Path]::GetFullPath((Join-Path $InstallFolder 'Halonic.exe'))
 $links = New-Object -ComObject WScript.Shell
-foreach ($name in $focusedApps.Keys) {
+foreach ($name in $focusedApps) {
   $path = Join-Path $startMenu "$name.lnk"
   if (-not (Test-Path $path)) { throw "The Start menu has no $name after the install" }
+  $frame = [IO.Path]::GetFullPath((Join-Path $InstallFolder "$name.exe"))
+  if (-not (Test-Path $frame -PathType Leaf)) { throw "$frame isn't installed" }
   $link = $links.CreateShortcut($path)
-  if ([IO.Path]::GetFullPath($link.TargetPath) -ne $halonicExe) { throw "$name starts $($link.TargetPath), not $halonicExe" }
-  if ($link.Arguments -ne $focusedApps[$name]) { throw "$name starts Halonic with '$($link.Arguments)', not '$($focusedApps[$name])'" }
+  if ([IO.Path]::GetFullPath($link.TargetPath) -ne $frame) { throw "$name starts $($link.TargetPath), not $frame" }
+  if ($link.Arguments -ne '') { throw "$name starts with '$($link.Arguments)', not with no arguments" }
 }
+# Where the frames last closed, as crates/app-frame keeps it.
+$framesKey = 'HKCU:\Software\Halonic\Frames'
+New-Item -Path $framesKey -Force | Out-Null
+New-ItemProperty -Path $framesKey -Name 'inbox' -Value ([byte[]](1, 2, 3, 4)) -PropertyType Binary -Force | Out-Null
 
 # The login item as Settings › Startup writes it (crates/login-item).
 $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
@@ -204,8 +212,10 @@ if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Halonic
 if (Test-Path (Join-Path $profileFolder 'trust')) { throw 'The trust records are still there' }
 if (Test-Path (Join-Path $profileFolder 'workspaces\k1\harness-settings')) { throw 'The harness settings are still there' }
 if (-not (Test-Path (Join-Path $profileFolder 'workspaces\k1\runs\r1.log'))) { throw 'The settings box removed the runs' }
-foreach ($name in $focusedApps.Keys) {
+foreach ($name in $focusedApps) {
   if (Test-Path (Join-Path $startMenu "$name.lnk")) { throw "$name is still in the Start menu after uninstalling" }
+  if (Test-Path (Join-Path $InstallFolder "$name.exe")) { throw "$name.exe is still there after uninstalling" }
 }
+if (Test-Path $framesKey) { throw "The frames' places are still in the registry after uninstalling" }
 if ($null -ne (Get-ItemProperty -Path $runKey -Name 'Halonic' -ErrorAction SilentlyContinue)) { throw 'The login item is still there after uninstalling' }
-Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, removed the Inbox and Messenger shortcuts and the login item, and said how to end the kept access'
+Write-Output 'uninstall: Enter cancelled; Uninstall removed Halonic, the sandbox and the settings, kept the runs, removed the Inbox and Messenger shortcuts, their frames and places, and the login item, and said how to end the kept access'

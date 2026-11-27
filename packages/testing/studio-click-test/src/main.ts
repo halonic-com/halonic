@@ -25,6 +25,7 @@ import { allPassed, type LeftOut, resultsMarkdown } from "./results.ts";
 import { runSteps, type StepContext } from "./runner.ts";
 import { clickTestSteps } from "./steps.ts";
 import { seedPaperclip, testPaperclip } from "./test-paperclip.ts";
+import { parseTopLevelWindows, topLevelWindowsScript } from "./top-level-windows.ts";
 import { type Driver, openSession } from "./webdriver.ts";
 
 const environment = process.env;
@@ -104,6 +105,7 @@ async function contextFor(current: Driver): Promise<StepContext> {
     sleep,
     shellLog,
     openShortcut,
+    topLevelWindows,
     mainWindow,
     approveSignIn: () => board.approveSignIn(30_000, sleep),
     paperclip,
@@ -182,17 +184,33 @@ async function openShortcut(name: string, args: readonly string[] = []): Promise
   );
 }
 
-/** Runs one PowerShell command; the values it needs go in the environment, not the command line. */
-async function powershell(command: string, values: Record<string, string> = {}): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn("powershell.exe", ["-NoProfile", "-Command", command], {
+/** The process images of the visible top-level windows whose image is named `exe`. */
+async function topLevelWindows(exe: string): Promise<string[]> {
+  return parseTopLevelWindows(await powershell(topLevelWindowsScript, { CLICK_TEST_EXE: exe }));
+}
+
+/**
+ * Runs one PowerShell command and gives back what it printed. The values it needs go in the
+ * environment, not the command line, and the command goes encoded, so Windows PowerShell keeps
+ * its quotes and line breaks.
+ */
+async function powershell(command: string, values: Record<string, string> = {}): Promise<string> {
+  const encoded = Buffer.from(command, "utf16le").toString("base64");
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn("powershell.exe", ["-NoProfile", "-EncodedCommand", encoded], {
       env: { ...environment, ...values },
-      stdio: "inherit",
+      stdio: ["ignore", "pipe", "inherit"],
       windowsHide: true,
     });
+    let output = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      output += chunk;
+    });
     child.on("error", reject);
-    child.on("exit", (code) =>
-      code === 0 ? resolve() : reject(new Error(`${command} exited ${code}`)),
+    // "close", not "exit": only then has all it printed arrived.
+    child.on("close", (code) =>
+      code === 0 ? resolve(output) : reject(new Error(`${command} exited ${code}`)),
     );
   });
 }
