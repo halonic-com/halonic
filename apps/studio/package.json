@@ -12,6 +12,7 @@
     "studio": "vite --mode studio"
   },
   "dependencies": {
+    "@halonicjs/action-catalog": "workspace:*",
     "@halonicjs/adapter-agent-host-client": "workspace:*",
     "@halonicjs/adapter-coordination-node": "workspace:*",
     "@halonicjs/adapter-doctor-node": "workspace:*",
@@ -69,6 +70,7 @@
   "devDependencies": {
     "@halonicjs/app-agent-host": "workspace:*",
     "@halonicjs/adapter-fs-node": "workspace:*",
+    "@halonicjs/adapter-paperclip-client": "workspace:*",
     "@halonicjs/host-server": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/testing-spec": "workspace:*",

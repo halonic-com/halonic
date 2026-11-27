@@ -1,3 +1,4 @@
+import { shippedCatalog } from "@halonicjs/action-catalog";
 import {
   LiveEventsConnection,
   type LiveSignal,
@@ -54,6 +55,8 @@ export function paperclipProvider(
   return new PaperclipConnectionProvider(options.reportUserRead, {
     ...guarded,
     label: `Paperclip · ${options.label}`,
+    // A card pinned to a stepper request this Halonic ships becomes an action item.
+    stepperCatalog: shippedCatalog,
     ...network(options),
   });
 }

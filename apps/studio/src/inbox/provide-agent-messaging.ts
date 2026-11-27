@@ -21,6 +21,7 @@ import {
   scopeToAccount,
 } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
+import { provideActionSteppers } from "./provide-action-steppers.ts";
 
 /** The window listeners that tell the host whether the window is in front; the folder's registry removes them when it closes. */
 export const agentMessagingFocusKey: ServiceKey<Disposable> = serviceKey<Disposable>(
@@ -102,5 +103,7 @@ export function provideAgentMessagingReaders(
   services.provide(AgentActivityService, new AgentHostActivity(transport, location));
   services.provide(SyncDiagnosticsService, new AgentHostSyncDiagnostics(transport));
   services.provide(MessageReactionsService, new AgentHostReactions(transport, location));
+  // The agents' action requests open in the Inbox, checked against the shipped catalog.
+  provideActionSteppers(services);
   return messaging;
 }
