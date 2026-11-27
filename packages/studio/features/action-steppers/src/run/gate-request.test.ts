@@ -107,7 +107,8 @@ verifies("action-steppers.shell-gate-request", () => {
       const { fake, answers, open } = await runOf(unexpected);
       const { first, again } = await runAllAndReopen(open);
 
-      const missing = 'This request doesn\'t say what the requester saw: "head_sha".';
+      const missing =
+        "This request leaves out what the agent saw before asking, so Halonic can't check this step. Decline it and ask again.";
       expect(methods(fake.sent)).toEqual(["GET"]);
       expect(first.current().stage).toEqual({ kind: "changed", message: missing, changes: [] });
       expect(again.current().stage).toEqual({ kind: "changed", message: missing, changes: [] });
