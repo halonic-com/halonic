@@ -18,14 +18,17 @@ function declarations(css: string, selector: string): Map<string, string> {
   );
 }
 
+/** The CSS with each run of white space as one space, so a nested rule reads on one line. */
+function squeezed(css: string): string {
+  return css.replace(/\s+/g, " ");
+}
+
 verifies("kit.slim-scrollbars", () => {
   it("gives every region a thin bar on a see-through track, its thumb shown on hover and focus", async () => {
-    const css = await buildCss([]);
-    const rest = declarations(css, "*");
-    expect(rest.get("scrollbar-width")).toBe("thin");
-    expect(rest.get("scrollbar-color")).toBe("transparent transparent");
-    const shown = declarations(css, "*:hover, *:focus-within");
-    expect(shown.get("scrollbar-color")).toBe("var(--scrollbar-thumb) transparent");
+    const css = squeezed(await buildCss([]));
+    expect(css).toContain(
+      "* { scrollbar-width: thin; scrollbar-color: transparent transparent; &:hover { @media (hover: hover) { scrollbar-color: var(--scrollbar-thumb) transparent; } } &:focus-within { scrollbar-color: var(--scrollbar-thumb) transparent; }",
+    );
     // One alpha of the mode's ink in each mode, so the thumb fits light and dark.
     expect(css).toMatch(
       /--scrollbar-thumb: light-dark\(rgb\(16 16 46 \/ [\d.]+\), rgb\(242 242 255/,
@@ -33,24 +36,35 @@ verifies("kit.slim-scrollbars", () => {
   });
 
   it("draws a 6px rounded thumb where WebKit reads only its own scrollbar parts", async () => {
-    const css = await buildCss([]);
+    const css = squeezed(await buildCss([]));
     const webkit = css.slice(css.indexOf("@supports not (scrollbar-color: auto)"));
     expect(declarations(webkit, "::-webkit-scrollbar").get("width")).toBe("10px");
-    const thumb = declarations(webkit, "::-webkit-scrollbar-thumb");
     // A 10px bar less a 2px see-through border on each side.
-    expect(thumb.get("border")).toBe("2px solid transparent");
-    expect(thumb.get("background-clip")).toBe("padding-box");
-    expect(thumb.get("border-radius")).toBe("var(--radius-full)");
+    expect(webkit).toContain(
+      "::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: var(--radius-full); background-clip: padding-box; background-color: transparent;",
+    );
+    expect(webkit).toContain(
+      ":hover::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); }",
+    );
+    expect(webkit).toContain(
+      ":focus-within::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); }",
+    );
   });
 
-  it("keeps the thumb shown at rest under more contrast, and the system's bar in forced colours", async () => {
-    const css = await buildCss([]);
-    const contrast = css.slice(css.indexOf("@media (prefers-contrast: more)"));
-    expect(declarations(contrast, "*, *:hover, *:focus-within").get("scrollbar-color")).toBe(
-      "var(--scrollbar-thumb-hover) transparent",
+  it("keeps the thumb shown at rest under more contrast", async () => {
+    const css = squeezed(await buildCss([]));
+    expect(css).toContain(
+      "@media (prefers-contrast: more) { scrollbar-color: var(--scrollbar-thumb) transparent; } }",
     );
-    const forced = css.slice(css.indexOf("@media (forced-colors: active)"));
-    expect(declarations(forced, "*, *:hover, *:focus-within").get("scrollbar-color")).toBe("auto");
+    expect(css).toContain(
+      "background-color: transparent; @media (prefers-contrast: more) { background-color: var(--scrollbar-thumb); } }",
+    );
+  });
+
+  it("leaves forced colours to the system's own bar: no theme rule sets a scrollbar there", async () => {
+    // Forced colours reset `scrollbar-color` to `auto` themselves (CSS Color Adjust).
+    const css = await buildCss([]);
+    expect(css).not.toMatch(/@media \(forced-colors: active\) \{[^@]*scrollbar/);
   });
 
   it("lets a part that hides its bar on purpose win, as the theme's rules sit in the base layer", async () => {
