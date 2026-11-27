@@ -2,6 +2,7 @@
 
 - Approval: the designer decided the wording on HAL-19570, and the opening state was designed on HAL-19384 for HAL-19510; team decisions on details of an approved screen (HAL-2282 rule); Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:cQb4O04HVKGJKdsTRcp6dBQXvTHlTv5fEvw7STQs9ovLH6dGrHT2ujI68O04rEpM19I8rVgHgRXgZk1u7D1JCw==
 
 Settings → Keyboard showed one refusal in two wordings: Send feedback's row says
 "{shortcut} is taken by another app. Choose another." and Quick ask's row, right
