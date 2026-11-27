@@ -20,9 +20,15 @@ type Answers = Record<string, { status: string; result?: unknown; shows?: string
 /**
  * A connected Studio whose Inbox lists the Inbox copy of `fixture` and whose Messenger chat shows
  * its Messenger copy; each copy's buttons answer it on the fake Paperclip as `inbox` and
- * `messenger` say. `chatText` is added to the chat, such as the line a card says under it.
+ * `messenger` say. `chatText` is added to the chat, such as the line a card says under it. With
+ * `leftOpen`, the Inbox opens on an answered card that hides the list until Back to Inbox.
  */
-function cardStudio(fixture: CardFixture, inbox: Answers, messenger: Answers, chatText = "") {
+function cardStudio(
+  fixture: CardFixture,
+  inbox: Answers,
+  messenger: Answers,
+  { chatText = "", leftOpen = false } = {},
+) {
   const studio = fakeStudio("Acme");
   const inboxPrompt = promptOn(fixture, "Inbox");
   const main = () => studio.windows.get("main") ?? { text: "", buttons: new Map() };
@@ -34,13 +40,18 @@ function cardStudio(fixture: CardFixture, inbox: Answers, messenger: Answers, ch
       });
     }
   };
+  const showList = () => {
+    main().text = `Needs you ${inboxPrompt}`;
+    button(studio, "main", inboxPrompt, () => {
+      main().text = `${inboxPrompt} ${buttonLabels.accept.text}`;
+      answer("inbox", main, inbox);
+    });
+  };
   button(studio, "main", screenText.places.text, () => {
     button(studio, "main", screenText.inbox.text, () => {
-      main().text = `Needs you ${inboxPrompt}`;
-      button(studio, "main", inboxPrompt, () => {
-        main().text = `${inboxPrompt} ${buttonLabels.accept.text}`;
-        answer("inbox", main, inbox);
-      });
+      if (!leftOpen) return showList();
+      main().text = "Acme: the plan card Answered at 13:50: Reject.";
+      button(studio, "main", screenText.backToInbox.text, showList);
     });
   });
   Object.assign(studio.context, {
@@ -72,6 +83,30 @@ verifies("studio-click-test.card-steps", () => {
       expect(statusOf(studio, "inbox-yes-no")).toBe("accepted");
       expect(statusOf(studio, "messenger-yes-no")).toBe("rejected");
       expect(studio.shortcuts).toEqual(["Halonic Messenger"]);
+    });
+
+    it("goes back to the list when the step before left its answered card open", async () => {
+      const studio = cardStudio(yesNoCard, accept, reject, { leftOpen: true });
+      await expect(cardYesNo.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(studio.clicks).toContain(screenText.backToInbox.text);
+      expect(statusOf(studio, "inbox-yes-no")).toBe("accepted");
+    });
+
+    it("fails as NO_ROW with the screen and the shell log when the Inbox never lists the copy", async () => {
+      const studio = cardStudio(yesNoCard, accept, reject);
+      button(studio, "main", screenText.places.text, () => {
+        button(studio, "main", screenText.inbox.text, () => {
+          const main = studio.windows.get("main");
+          if (main !== undefined) main.text = "Needs you Nothing is waiting for you.";
+        });
+      });
+      await expect(cardYesNo.run(studio.context)).resolves.toMatchObject({
+        code: "NO_ROW",
+        note: expect.stringMatching(
+          /^Inbox: Needs you Nothing is waiting for you\.\nshell\.log:\nengine: crashed/,
+        ),
+      });
+      expect(statusOf(studio, "messenger-yes-no")).toBe("rejected");
     });
 
     it("answers in Messenger's window, not in an Inbox window that names the agent too", async () => {
@@ -134,7 +169,7 @@ verifies("studio-click-test.card-steps", () => {
           shows: screenText.rejectReason.text,
         },
       };
-      const studio = cardStudio(planCard, inbox, accept, noteLine);
+      const studio = cardStudio(planCard, inbox, accept, { chatText: noteLine });
       await expect(cardPlan.run(studio.context)).resolves.toEqual({ passed: true });
       expect(studio.typed).toEqual([rejectReason]);
       expect(statusOf(studio, "messenger-plan")).toBe("accepted");
@@ -142,7 +177,7 @@ verifies("studio-click-test.card-steps", () => {
 
     it("fails as NO_REASON_FIELD when Reject sends without asking for a reason", async () => {
       const inbox = { [buttonLabels.reject.text]: { status: "rejected" } };
-      const studio = cardStudio(planCard, inbox, accept, noteLine);
+      const studio = cardStudio(planCard, inbox, accept, { chatText: noteLine });
       await expect(cardPlan.run(studio.context)).resolves.toMatchObject({
         code: "NO_REASON_FIELD",
       });

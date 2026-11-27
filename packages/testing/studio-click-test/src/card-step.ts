@@ -2,7 +2,7 @@ import { type CardFixture, promptOn, type Surface, surfaces } from "./card-fixtu
 import type { CardRecord, CardRef } from "./card-seed.ts";
 import { messengerWindowLabel } from "./main-window.ts";
 import type { Step, StepContext, StepOutcome } from "./runner.ts";
-import { clickRow, lastWords, waitForText, xpathString } from "./screen.ts";
+import { clickRow, clickWhenShown, lastWords, waitForText, xpathString } from "./screen.ts";
 import { openAppWindow } from "./steps/app-window.ts";
 import { closeDialogs, onWorkspace, openPlace } from "./steps/open-demo.ts";
 import { seedNames } from "./test-paperclip.ts";
@@ -11,6 +11,8 @@ import { screenText } from "./words.ts";
 /** How long a surface gets to show a newly seeded card, and Paperclip to have its answer. */
 const cardWaitMs = 90_000;
 const answerPolls = 15;
+/** How long an open card's Back to Inbox gets to show; without an open card there's none. */
+const backWaitMs = 2_000;
 
 /**
  * What a card step clicks on one surface once its copy shows: `card` is an XPath for that copy,
@@ -86,7 +88,11 @@ async function answerOn(
   return answerOnPaperclip(context, ref, spec.answered[surface]);
 }
 
-/** The main window's Inbox, with the copy's row clicked open. */
+/**
+ * The main window's Inbox, with the copy's row clicked open. The card step before can leave its
+ * answered card open, and in the 800 px window that card hides the list, so the step goes back to
+ * the list first, as step 9 does (run 46006509779).
+ */
 async function openInInbox(context: StepContext, prompt: string): Promise<StepOutcome> {
   const workspace = await onWorkspace(context);
   if (!workspace.passed) return workspace;
@@ -94,10 +100,10 @@ async function openInInbox(context: StepContext, prompt: string): Promise<StepOu
   if (!(await openPlace(context, screenText.inbox.text))) {
     return { passed: false, code: "NO_INBOX", note: "No Inbox in Places." };
   }
+  await clickWhenShown(context, screenText.backToInbox.text, backWaitMs);
   if (await clickRow(context, prompt, cardWaitMs)) return { passed: true };
   const { text } = await waitForText(context, 0, () => undefined);
-  // The engine's reads are in the log, which tells a card Paperclip never sent from one the
-  // Inbox didn't show (run 46000541525).
+  // The shell log has the engine's lines up to the failure, for whoever looks into it next.
   const log = await context.shellLog();
   return { passed: false, code: "NO_ROW", note: `${lastWords(text)}\nshell.log:\n${log}` };
 }
