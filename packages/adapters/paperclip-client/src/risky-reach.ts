@@ -11,20 +11,28 @@ import { asRecord, field, type JsonRecord, text } from "./json.ts";
 // shell's own confirmation. Each function reads only the fields it names. Of an environment
 // binding it reads only `type`, never `value` or `secretId`, so no value can reach an item.
 
-/** The binding types whose value is a secret Paperclip keeps: a company's or a person's. */
-const secretBindingTypes: ReadonlySet<string> = new Set(["secret_ref", "user_secret_ref"]);
-
 /**
- * `value` as a name a confirmation shows on one line: control characters and runs of white space
- * become one space, and a name longer than the port takes is cut, ending in "…".
+ * `value` as a name a confirmation shows on one line: format characters and lone surrogates are
+ * dropped, control characters and runs of white space become one space, and a name longer than
+ * the port takes is cut between code points, ending in "…", so no surrogate pair is split.
  */
 function shown(value: string | undefined): string | undefined {
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it removes.
-  const line = value?.replace(/[\s\u0000-\u001f\u007f]+/g, " ").trim();
+  const line = value
+    ?.replace(/[\p{Cf}\p{Cs}]/gu, "")
+    .replace(/[\s\p{Cc}]+/gu, " ")
+    .trim();
   if (line === undefined || line === "") {
     return undefined;
   }
-  return line.length <= inboxReachNameMax ? line : `${line.slice(0, inboxReachNameMax - 1)}…`;
+  if (line.length <= inboxReachNameMax) {
+    return line;
+  }
+  let cut = "";
+  for (const codePoint of line) {
+    if (cut.length + codePoint.length > inboxReachNameMax - 1) break;
+    cut += codePoint;
+  }
+  return `${cut}…`;
 }
 
 /**
@@ -41,9 +49,11 @@ function envReach(env: unknown): Pick<InboxReach, "env" | "envLeftOut"> {
     .filter((name) => reachNameFits(name))
     .slice(0, inboxReachEnvMax)
     .map((name) => {
-      // A plain binding is an object with a value, or a legacy bare string: only `type` is read.
-      const type = text(asRecord(field(bindings, name)), "type");
-      return { name, bindsSecret: type !== undefined && secretBindingTypes.has(type) };
+      // A plain binding is `type: "plain"` or a legacy bare string: only `type` is read. Any other
+      // shape, such as a binding type Paperclip adds later, counts as binding a secret.
+      const binding = field(bindings, name);
+      const plain = typeof binding === "string" || text(asRecord(binding), "type") === "plain";
+      return { name, bindsSecret: !plain };
     });
   const leftOut = names.length - named.length;
   return {

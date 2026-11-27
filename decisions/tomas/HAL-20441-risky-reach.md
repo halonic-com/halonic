@@ -18,6 +18,14 @@ adapter defaults set, so the provider now reads the names in
   watches each binding and shows only `type` is read, and that a planted
   value and secret ID reach neither the item nor `reach`.
 
+After the security review on HAL-20469, the provider also marks its own
+Reject and Request changes options with the port's new `declines` flag
+(`paperclip-client.declining-options`), so the next pull request exempts
+only those from the confirmation, never a decision's option an agent named
+`reject`. `decisions.ts` doesn't change: it never sets the flag. Three tests
+of other requirements (`budget-incidents`, `option-notes`, the port's
+reads) now expect `declines` on those options; none of them expects less.
+
 The user sees nothing different yet: `reach` is shown only by the shell's
 confirmation, in the next pull request of this stack.
 

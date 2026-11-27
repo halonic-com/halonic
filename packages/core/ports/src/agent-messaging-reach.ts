@@ -47,14 +47,18 @@ export interface InboxReach {
 
 /**
  * Whether an item's `reach` holds together: only a `risky` item has one, and each name in it is
- * 1 to {@link inboxReachNameMax} characters with no control character, so a confirmation can show
- * it on one line, with at most {@link inboxReachEnvMax} variables, each named once, and any
- * `envLeftOut` a whole number above 0.
+ * 1 to {@link inboxReachNameMax} characters with no control, format or lone surrogate character,
+ * so a confirmation can show it on one line as it is, with at most {@link inboxReachEnvMax}
+ * variables, each named once, and any `envLeftOut` a whole number above 0. An option's
+ * `declines`, when set, is `true`.
  *
  * @example
  * inboxReachFits({ ...item, risk: "normal", reach: { agent: "Ada" } }); // false
  */
 export function inboxReachFits(item: InboxItem): boolean {
+  if (!item.options.every((option) => option.declines === undefined || option.declines === true)) {
+    return false;
+  }
   const reach = item.reach;
   if (reach === undefined) return true;
   if (item.risk !== "risky") return false;
@@ -67,10 +71,14 @@ export function inboxReachFits(item: InboxItem): boolean {
   return [...names, ...envNames].every((name) => name === undefined || reachNameFits(name));
 }
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: control characters are what it refuses.
-const controlCharacter = /[\u0000-\u001f\u007f]/;
+// Control characters break a line; format characters (Cf), such as U+202E and U+200B, can reorder
+// or hide parts of it next to the app's own words in a native dialog. A lone surrogate (Cs) isn't
+// text at all, and JSON readers such as serde_json refuse it.
+const controlOrFormatCharacter = /[\p{Cc}\p{Cf}\p{Cs}]/u;
 
-/** Whether `name` fits a reach: not blank, short enough, and on one line. */
+/** Whether `name` fits a reach: not blank, short enough, and shown on one line as it is. */
 export function reachNameFits(name: string): boolean {
-  return name.trim() !== "" && name.length <= inboxReachNameMax && !controlCharacter.test(name);
+  return (
+    name.trim() !== "" && name.length <= inboxReachNameMax && !controlOrFormatCharacter.test(name)
+  );
 }

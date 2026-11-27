@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { type InboxItem, type InboxReach, inboxItemFits, inboxReachFits } from "./index.ts";
+import { inboxReachFits } from "./agent-messaging-reach.ts";
+import { type InboxItem, type InboxReach, inboxItemFits } from "./index.ts";
 
 const hire: InboxItem = {
   id: "acme:approval:1",
@@ -53,6 +54,20 @@ verifies("ports.agent-messaging-reach", () => {
     );
     const twice = { name: "ACME_REGION", bindsSecret: false };
     expect(inboxItemFits(reaching({ env: [twice, { ...twice, bindsSecret: true }] }))).toBe(false);
+  });
+
+  it("refuses a name with a format character or a lone surrogate", () => {
+    expect(inboxItemFits(reaching({ agent: "Ada\u202Eevil" }))).toBe(false);
+    expect(inboxItemFits(reaching({ agent: "Ada\u200B" }))).toBe(false);
+    expect(inboxItemFits(reaching({ adapter: "process\uD83D" }))).toBe(false);
+    expect(inboxItemFits(reaching({ agent: "Ada 🚀" }))).toBe(true);
+  });
+
+  it("takes a declining option only with declines set to true", () => {
+    const declining = { id: "reject", label: "Reject", declines: true } as const;
+    expect(inboxItemFits({ ...hire, options: [declining] })).toBe(true);
+    const wrong = JSON.parse('{"id":"reject","label":"Reject","declines":false}');
+    expect(inboxItemFits({ ...hire, options: [wrong] })).toBe(false);
   });
 
   it("names at most 100 variables, and counts any more as a whole number above 0", () => {

@@ -189,6 +189,13 @@ export interface InboxItemOption {
    * (requirement `ports.agent-messaging-option-note`). The note goes in the option answer's `note`.
    */
   noteLabel?: string;
+  /**
+   * Set by the provider only, on its own options that turn an item down, such as an approval's
+   * Reject and Request changes: picking one grants nothing, so a `risky` item's confirmation may
+   * skip it. Never set on an option an agent wrote, such as a decision's, whatever its ID
+   * (requirement `ports.agent-messaging-reach`).
+   */
+  declines?: true;
 }
 
 /** Where an item that can't be answered here is answered instead. */

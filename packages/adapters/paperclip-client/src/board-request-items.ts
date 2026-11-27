@@ -13,7 +13,8 @@ import { joinReach, proposalReach } from "./risky-reach.ts";
 // Of a join request's agent defaults it reads only the names in `env` (`risky-reach.ts`).
 
 const approve: InboxItemOption = { id: "approve", label: words.approve };
-const reject: InboxItemOption = { id: "reject", label: words.reject };
+// Reject grants nothing, so it skips the desktop's confirmation (`paperclip-client.declining-options`).
+const reject: InboxItemOption = { id: "reject", label: words.reject, declines: true };
 // A proposal's reason goes to the agent, so its Reject asks why, but never requires it (HAL-19018).
 const rejectProposal: InboxItemOption = { ...reject, noteLabel: approvalWords.rejectReason };
 

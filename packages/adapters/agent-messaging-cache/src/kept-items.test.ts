@@ -13,6 +13,8 @@ import type {
   InboxQuestion,
   InboxQuestionAnswer,
   InboxQuestionsAnswer,
+  InboxReach,
+  InboxReachSecret,
   InboxStepperRequest,
   InboxStepperTarget,
   InboxStepperTouch,
@@ -41,6 +43,7 @@ const option = {
   label: "Approve",
   noteRequired: true,
   noteLabel: "Why",
+  declines: true,
 } satisfies Required<InboxItemOption>;
 
 const question = {
@@ -189,11 +192,14 @@ const item = {
   risk: "risky",
   reach: {
     agent: "Ada",
-    secret: { name: "Acme deploy token", settingPath: "env.ACME_DEPLOY_TOKEN" },
+    secret: {
+      name: "Acme deploy token",
+      settingPath: "env.ACME_DEPLOY_TOKEN",
+    } satisfies Required<InboxReachSecret>,
     adapter: "process",
     env: [{ name: "ACME_DEPLOY_TOKEN", bindsSecret: true }],
     envLeftOut: 2,
-  },
+  } satisfies Required<InboxReach>,
   createdAt: "2026-11-26T08:00:00.000Z",
   state: answered,
 } satisfies Required<InboxItem>;

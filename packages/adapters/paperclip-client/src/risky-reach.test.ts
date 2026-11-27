@@ -161,5 +161,21 @@ verifies("paperclip-client.risky-reach", () => {
       );
       expect(item !== undefined && inboxItemFits(item)).toBe(true);
     });
+
+    it("counts a binding of a type it doesn't know, or of no type, as binding a secret", () => {
+      const env = { ACME_VAULT: { type: "vault_ref", path: plantedValue }, ACME_ODD: {} };
+      expect(hireReach({ adapterConfig: { env } })?.env).toEqual([
+        { name: "ACME_VAULT", bindsSecret: true },
+        { name: "ACME_ODD", bindsSecret: true },
+      ]);
+    });
+
+    it("drops format characters and cuts a long name between code points", () => {
+      expect(hireReach({ name: "Iris\u202E\u2066\u200Bevil\uD800" })?.agent).toBe("Irisevil");
+      const agent = hireReach({ name: `${"I".repeat(198)}🚀🚀` })?.agent;
+      expect(agent).toBe(`${"I".repeat(198)}…`);
+      const item = approvalToItem(context, hire(hireEnv(), `${"I".repeat(198)}🚀🚀`), undefined);
+      expect(item !== undefined && inboxItemFits(item)).toBe(true);
+    });
   });
 });

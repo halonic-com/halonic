@@ -89,7 +89,6 @@ export {
   type InboxReachEnv,
   type InboxReachSecret,
   inboxReachEnvMax,
-  inboxReachFits,
   inboxReachNameMax,
   reachNameFits,
 } from "./agent-messaging-reach.ts";

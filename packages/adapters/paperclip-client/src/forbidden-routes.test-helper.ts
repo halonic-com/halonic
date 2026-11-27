@@ -44,6 +44,33 @@ export const forbiddenRoutes: readonly ForbiddenRoute[] = [
     path: /^\/api\/agents\/[^/]+\/keys(\/|$)/,
     sample: "/api/agents/:id/keys",
   },
+  {
+    name: "an agent's configuration rollback",
+    path: /\/config-revisions\/[^/]+\/rollback$/,
+    sample: "/api/agents/:agent/config-revisions/:revision/rollback",
+  },
+  {
+    name: "where an agent's instructions come from",
+    path: /\/instructions-path$/,
+    sample: "/api/agents/:agent/instructions-path",
+  },
+  {
+    name: "a new agent",
+    methods: ["POST", "PUT"],
+    path: /^\/api\/companies\/[^/]+\/agents$/,
+    sample: "/api/companies/:company/agents",
+  },
+  { name: "a hire", path: /\/agent-hires(\/|$)/, sample: "/api/companies/:company/agent-hires" },
+  {
+    name: "an agent's sign-in",
+    path: /\/claude-login$/,
+    sample: "/api/agents/:agent/claude-login",
+  },
+  {
+    name: "adopting a connection for an agent",
+    path: /\/connection-intents\/[^/]+\/adopt$/,
+    sample: "/api/agents/:agent/connection-intents/:interaction/adopt",
+  },
   { name: "board keys", path: /\/board-api-keys(\/|$)/, sample: "/api/board-api-keys/:key" },
   {
     name: "sign-in challenges",

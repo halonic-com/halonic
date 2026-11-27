@@ -121,7 +121,7 @@ verifies("ports.agent-messaging", () => {
       ]);
       expect(items[0]?.options).toEqual([
         { id: "accept", label: "Yes, Friday" },
-        { id: "reject", label: "Reject" },
+        { id: "reject", label: "Reject", declines: true },
       ]);
       expect(items[0]?.from).toEqual({
         kind: "agent",

@@ -94,7 +94,13 @@ function optionsOf(kind: string, payload: JsonRecord | undefined): InboxItemOpti
   if (kind === "request_confirmation") {
     return [
       { id: "accept", label: text(payload, "acceptLabel") ?? "Accept" },
-      { id: "reject", label: text(payload, "rejectLabel") ?? "Reject", ...rejectNote(payload) },
+      {
+        id: "reject",
+        label: text(payload, "rejectLabel") ?? "Reject",
+        // Only the label is the agent's; the option itself is Paperclip's reject, which runs nothing.
+        declines: true,
+        ...rejectNote(payload),
+      },
     ];
   }
   if (kind === "ask_user_questions") {
@@ -343,12 +349,15 @@ function oneQuestionRequest(
   };
 }
 
+// Reject and Request changes grant nothing, so they skip the desktop's confirmation
+// (`paperclip-client.declining-options`).
 const approvalOptions: readonly InboxItemOption[] = [
   { id: "approve", label: approvalWords.approve },
-  { id: "reject", label: approvalWords.reject },
+  { id: "reject", label: approvalWords.reject, declines: true },
   {
     id: "request-changes",
     label: approvalWords.requestChanges,
+    declines: true,
     // Request changes tells the agent what to change, so it is sent only with a note.
     noteRequired: true,
     noteLabel: approvalWords.whatShouldChange,

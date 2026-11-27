@@ -185,6 +185,7 @@ function keptOption(option: InboxItemOption): InboxItemOption {
   const kept: InboxItemOption = { id: option.id, label: option.label };
   if (option.noteRequired !== undefined) kept.noteRequired = option.noteRequired;
   if (option.noteLabel !== undefined) kept.noteLabel = option.noteLabel;
+  if (option.declines !== undefined) kept.declines = option.declines;
   return kept;
 }
 
