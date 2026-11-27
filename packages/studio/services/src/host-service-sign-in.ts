@@ -1,6 +1,7 @@
-import type {
-  PaperclipConnectionList,
-  PaperclipConnectionRow,
+import {
+  AgentHostError,
+  type PaperclipConnectionList,
+  type PaperclipConnectionRow,
 } from "@halonicjs/adapter-agent-host-client";
 import type {
   ActionAccount,
@@ -15,6 +16,7 @@ import {
   type AgentConnection,
   type AgentConnections,
   type SignInRefusal as ConnectionRefusal,
+  type DisconnectResult,
   type SignInChallenge,
   type SignInResult,
   signInLimitMs,
@@ -26,6 +28,12 @@ export interface HostServiceSignInOptions {
   readonly listed: () => Promise<PaperclipConnectionList>;
   /** The sign-in and Disconnect that Settings › Connections uses: a `HostAgentConnections`. */
   readonly connections: Pick<AgentConnections, "list" | "signIn" | "disconnect">;
+  /**
+   * Whether the shell's keychain holds an entry for the connection, by its file's name: one bit,
+   * never the key (`agent_host_paperclip_key_kept`). The entry is per connection name, so it may
+   * be one signed in from another workspace that the agent host doesn't hold.
+   */
+  readonly keyKept: (connection: string) => Promise<boolean>;
   /** The time now, in milliseconds; tests pass a clock of their own. */
   readonly now: () => number;
   /** Hears a failure nobody else is told about, such as a revoke after a close that failed. */
@@ -39,6 +47,8 @@ interface StartedSignIn {
   readonly challenge: SignInChallenge;
   /** Whether it ended signed in and its key is still kept. */
   signedIn: boolean;
+  /** The Disconnect that forgets its key, once one has started: it runs once. */
+  forgotten?: Promise<void>;
 }
 
 /**
@@ -70,17 +80,24 @@ export class HostServiceSignIn implements ServiceSignIn {
     const row = await this.#row(ref.connection);
     if (row === undefined) return refused("no-connection");
     if (originOf(row.address) !== `https://${ref.host}`) return refused("other-host");
-    // A test may only ever revoke the key it made itself (condition 1). The
-    // keychain is the shell's alone (HAL-20278), so the host's row says
-    // whether the connection has a key: any state but `no-key`.
-    if (options.test && row.state.kind !== "no-key") return refused("already-signed-in");
+    const kept = await this.#options.keyKept(row.name).then(
+      (answer) => answer,
+      (error: unknown) => {
+        this.#options.report(error);
+        return undefined;
+      },
+    );
+    // Without the shell's answer, a sign-in could write over a key it can't see.
+    if (kept === undefined) return refused("unreachable");
+    if (replacesKey(row, kept, options.test)) return refused("already-signed-in");
     // The sign-in names the connection by its listed ID, which the list call keeps.
     await connections.list();
     const startedAt = now();
     const started = await connections.signIn({ address: row.address, connection: row.id });
     if (started.outcome === "refused") return refused(refusalOf(started.reason));
     const { challenge } = started;
-    if (!isApprovalPage(row.address, challenge.approvalUrl)) {
+    const approvalUrl = approvalPageOf(row.address, challenge.approvalUrl);
+    if (approvalUrl === undefined) {
       await challenge.cancel();
       return refused("other-host");
     }
@@ -93,7 +110,7 @@ export class HostServiceSignIn implements ServiceSignIn {
       outcome: "started",
       signInId,
       code: challenge.phrase,
-      approvalUrl: challenge.approvalUrl,
+      approvalUrl,
       expiresAt: new Date(expiresAt).toISOString(),
     };
   }
@@ -137,17 +154,14 @@ export class HostServiceSignIn implements ServiceSignIn {
     if (started === undefined || !started.test || !started.signedIn) {
       return { outcome: "not-a-test" };
     }
-    const disconnected = await this.#options.connections.disconnect(started.row.id).then(
-      (result) => result,
-      (error: unknown) => {
-        this.#options.report(error);
-        return undefined;
-      },
-    );
     started.signedIn = false;
     this.#started.delete(signInId);
-    // Disconnect deletes the keychain entry even when Paperclip can't be asked.
-    if (disconnected === undefined) return { outcome: "unreachable" };
+    let disconnected: DisconnectResult;
+    try {
+      disconnected = await this.#options.connections.disconnect(started.row.id);
+    } catch (error) {
+      return this.#revokeFailed(error);
+    }
     const after = await this.#row(started.row.name);
     const refused = after === undefined || accountOf(after) === undefined;
     return disconnected.revoked && refused ? { outcome: "revoked" } : { outcome: "still-works" };
@@ -167,10 +181,32 @@ export class HostServiceSignIn implements ServiceSignIn {
     }
   }
 
-  /** Revokes and deletes a key the stepper must not keep; a failure is reported, the entry still goes. */
-  async #forget(started: StartedSignIn): Promise<void> {
+  /**
+   * What a test revoke whose Disconnect failed answers. The shell deletes the keychain entry even
+   * when Paperclip can't be asked; when the delete itself failed, this computer may still keep the
+   * key, and Disconnect in Settings › Connections tries again.
+   */
+  #revokeFailed(error: unknown): SignInRevoke {
+    if (error instanceof AgentHostError && error.kind === "keychain") {
+      this.#options.report(
+        new Error("The test key's keychain entry couldn't be deleted.", { cause: error }),
+      );
+      return { outcome: "still-works" };
+    }
+    this.#options.report(error);
+    return { outcome: "unreachable" };
+  }
+
+  /**
+   * Revokes and deletes a key the stepper must not keep, once: a late approval reaches it from both
+   * the cancel and the follow. A failure is reported, the entry still goes.
+   */
+  #forget(started: StartedSignIn): Promise<void> {
     started.signedIn = false;
-    await this.#options.connections.disconnect(started.row.id).catch(this.#options.report);
+    started.forgotten ??= this.#options.connections
+      .disconnect(started.row.id)
+      .then(() => undefined, this.#options.report);
+    return started.forgotten;
   }
 
   async #row(name: string): Promise<PaperclipConnectionRow | undefined> {
@@ -186,19 +222,38 @@ export class HostServiceSignIn implements ServiceSignIn {
  * stepper opens it; that function's package uses Node, so Studio can't load it.
  */
 export function isApprovalPage(address: string, url: string): boolean {
+  return approvalPageOf(address, url) !== undefined;
+}
+
+/**
+ * The approval page `url` as parsed, when {@link isApprovalPage} holds: the stepper opens the
+ * address that was checked, not the text it was read from.
+ */
+function approvalPageOf(address: string, url: string): string | undefined {
   let page: URL;
   try {
     page = new URL(url);
   } catch {
-    return false;
+    return undefined;
   }
-  return (
+  const isPage =
     page.protocol === "https:" &&
     page.origin === originOf(address) &&
     page.username === "" &&
     page.password === "" &&
-    /^\/cli-auth\/[A-Za-z0-9_-]+$/.test(page.pathname)
-  );
+    /^\/cli-auth\/[A-Za-z0-9_-]+$/.test(page.pathname);
+  return isPage ? page.href : undefined;
+}
+
+/**
+ * Whether a sign-in for `row` would write over a key: one the shell keeps (`kept`) or the agent
+ * host holds. A test may only ever revoke the key it made itself (condition 1), so it starts only
+ * where there is none. Any other sign-in may replace only a key Paperclip no longer takes
+ * (`signed-out`): a key it still takes would lose its only copy here without being revoked.
+ */
+function replacesKey(row: PaperclipConnectionRow, kept: boolean, test: boolean): boolean {
+  if (!test && row.state.kind === "signed-out") return false;
+  return kept || row.state.kind !== "no-key";
 }
 
 function originOf(address: string): string | undefined {

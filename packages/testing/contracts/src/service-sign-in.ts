@@ -10,8 +10,15 @@ import { describe, expect, it } from "vitest";
 /** What the suite gives a sign-in under test: connection files, the keys already kept and the approver. */
 export interface ServiceSignInSetup {
   connections: Readonly<Record<string, SignInConnection>>;
-  /** The connections that already have a key in the keychain. */
+  /** The connections that already have a key in the keychain, which Paperclip takes. */
   keys: readonly string[];
+  /**
+   * The connections whose keychain entry was signed in from another workspace: the agent host
+   * doesn't hold it, but a sign-in would write over it.
+   */
+  shellOnly: readonly string[];
+  /** The connections whose kept key Paperclip no longer takes. */
+  signedOut: readonly string[];
   /** The account name the stand-in board approves as. */
   approver: string;
   /** The injected clock. */
@@ -38,8 +45,10 @@ const acme: SignInConnectionRef = {
   host: "paperclip.acme.example",
 };
 const setup: ServiceSignInSetup = {
-  connections: { acme: acmeFile, kept: acmeFile },
+  connections: { acme: acmeFile, kept: acmeFile, elsewhere: acmeFile, stale: acmeFile },
   keys: ["kept"],
+  shellOnly: ["elsewhere"],
+  signedOut: ["stale"],
   approver: "Acme Board",
   now: () => now,
 };
@@ -49,6 +58,11 @@ async function started(harness: ServiceSignInHarness, test: boolean) {
   if (answer.outcome !== "started") throw new Error(`the sign-in didn't start: ${answer.reason}`);
   return answer;
 }
+
+/** The same connection reference, for the connection file `connection`. */
+const on = (connection: string): SignInConnectionRef => ({ ...acme, connection });
+
+const refused = (reason: string): SignInStart => ({ outcome: "refused", reason }) as SignInStart;
 
 /** Lets the stand-in's pending answers arrive. */
 const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -74,8 +88,6 @@ function startCases(make: MakeServiceSignIn): void {
     const { signIn } = await make(setup);
     expect(await signIn.connection(acme)).toEqual(acmeFile);
     expect(await signIn.connection({ ...acme, connection: "other" })).toBeUndefined();
-    const refused = (reason: string): SignInStart =>
-      ({ outcome: "refused", reason }) as SignInStart;
     expect(await signIn.start({ ...acme, connection: "other" }, { test: false })).toEqual(
       refused("no-connection"),
     );
@@ -85,6 +97,24 @@ function startCases(make: MakeServiceSignIn): void {
     expect(await signIn.start({ ...acme, connection: "kept" }, { test: true })).toEqual(
       refused("already-signed-in"),
     );
+  });
+
+  it("refuses a sign-in that would write over a kept key, and keeps that key", async () => {
+    const harness = await make(setup);
+    const { signIn } = harness;
+    // An entry signed in from another workspace counts, though the host doesn't hold it.
+    for (const test of [true, false]) {
+      expect(await signIn.start(on("elsewhere"), { test })).toEqual(refused("already-signed-in"));
+    }
+    expect(await signIn.start(on("kept"), { test: false })).toEqual(refused("already-signed-in"));
+    expect(await signIn.start(on("stale"), { test: true })).toEqual(refused("already-signed-in"));
+    expect(harness.hasKey("elsewhere")).toBe(true);
+    expect(harness.hasKey("kept")).toBe(true);
+  });
+
+  it("signs in again over a key Paperclip no longer takes", async () => {
+    const { signIn } = await make(setup);
+    expect((await signIn.start(on("stale"), { test: false })).outcome).toBe("started");
   });
 
   it("starts with a code, an approval page on the connection's own address and at most 10 minutes", async () => {

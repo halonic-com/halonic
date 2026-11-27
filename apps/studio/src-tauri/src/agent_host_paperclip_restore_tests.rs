@@ -174,3 +174,72 @@ fn a_workspace_the_person_never_picked_gets_nothing_and_no_entry_is_read() {
     // The restore is over, and the host saw no hand-over.
     assert!(fake.seen.try_recv().is_err());
 }
+
+/// Asks the shell's `agent_host_paperclip_key_kept` for `connection` of
+/// `workspace`, against `keychain` and `picked`.
+fn key_kept(
+    shell: &Shell,
+    keychain: Arc<CountingKeychain>,
+    picked: PickedFolders,
+    workspace: &str,
+    connection: &str,
+) -> Result<bool, super::HostRefusal> {
+    tauri::async_runtime::block_on(super::super::paperclip_key::key_kept_for(
+        &shell.handle(),
+        keychain,
+        picked,
+        workspace.to_owned(),
+        connection.to_owned(),
+    ))
+}
+
+#[test]
+fn a_picked_workspace_learns_an_entry_from_another_workspace_is_kept_and_nothing_more() {
+    let scratch = Scratch::new("kept");
+    let list = scratch.picked_list();
+    let real_path = TrustState::default()
+        .pick_remembered(
+            &OpenedFolders::new(),
+            &list,
+            |_| FolderPlace::Apart,
+            || Some(scratch.workspace()),
+        )
+        .expect("picked")
+        .expect("a location");
+    let fake = FakeHost::serve();
+    let shell = Shell::new(&fake, AfterHandshake::WaitForInput);
+
+    let kept = key_kept(
+        &shell,
+        keychain_for("/work/other"),
+        list,
+        &real_path,
+        "acme",
+    );
+
+    assert!(kept.expect("an answer"));
+    assert_eq!(next_request(&fake).0, "POST /v1/paperclip/connections");
+    // The host saw no hand-over: the answer is one bit.
+    assert!(fake.seen.try_recv().is_err());
+}
+
+#[test]
+fn a_workspace_the_person_never_picked_learns_nothing_and_no_entry_is_read() {
+    let scratch = Scratch::new("kept-not-picked");
+    let real_path = scratch.workspace().to_string_lossy().into_owned();
+    let keychain = keychain_for(&real_path);
+    let fake = FakeHost::serve();
+    let shell = Shell::new(&fake, AfterHandshake::WaitForInput);
+
+    let refusal = key_kept(
+        &shell,
+        keychain.clone(),
+        scratch.picked_list(),
+        &real_path,
+        "acme",
+    )
+    .expect_err("refused");
+
+    assert_eq!(refusal.kind, "not_picked");
+    assert_eq!(keychain.reads.load(Ordering::SeqCst), 0);
+}
