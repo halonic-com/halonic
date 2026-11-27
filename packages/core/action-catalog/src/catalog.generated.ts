@@ -7,8 +7,11 @@ import { definition as deviceCheckWindowsBuild } from "./device/check-windows-bu
 import { definition as githubChangeBranchProtection } from "./github/change-branch-protection.ts";
 import { definition as githubChangeRuleset } from "./github/change-ruleset.ts";
 import { definition as githubCreateActionsVariable } from "./github/create-actions-variable.ts";
+import { definition as githubRemoveRunner } from "./github/remove-runner.ts";
 import { definition as githubSetActionsSecret } from "./github/set-actions-secret.ts";
 import { definition as githubSetActionsVariable } from "./github/set-actions-variable.ts";
+import { definition as githubSetRepoMergeOptions } from "./github/set-repo-merge-options.ts";
+import { definition as githubSetRepoVisibility } from "./github/set-repo-visibility.ts";
 import { definition as githubUploadSocialPreview } from "./github/upload-social-preview.ts";
 import { definition as googleConfigureOauthConsent } from "./google/configure-oauth-consent.ts";
 import { definition as googleCreateCloudProject } from "./google/create-cloud-project.ts";
@@ -52,6 +55,10 @@ export const catalogEntries = {
     definition: githubCreateActionsVariable,
     sourceHash: "b354aa3555f21c4d2154940a890c4f422cc660d035fd84148acbe6e350667ef4",
   },
+  "github/remove-runner": {
+    definition: githubRemoveRunner,
+    sourceHash: "854e0f4e520e6ba7e282c280ef448f3ae24c59d70e52696338d51403962e1500",
+  },
   "github/set-actions-secret": {
     definition: githubSetActionsSecret,
     sourceHash: "13936f707d7cd5eb6da6abf2621454d5055106c8e30a2f7b7244048d17fd8874",
@@ -59,6 +66,14 @@ export const catalogEntries = {
   "github/set-actions-variable": {
     definition: githubSetActionsVariable,
     sourceHash: "1f703d5990649fc388f269740368b777d03b3aa0a57135ef4a4d638c7cfd53cb",
+  },
+  "github/set-repo-merge-options": {
+    definition: githubSetRepoMergeOptions,
+    sourceHash: "7ff05bd16407a718a8ca0e9c8a821ef9c210b0fa24adc5bd96bf148b20148c07",
+  },
+  "github/set-repo-visibility": {
+    definition: githubSetRepoVisibility,
+    sourceHash: "3557cd4f6f0bf9b48e746e0bdbabcc39ac925eae10155227441b8c399e568127",
   },
   "github/upload-social-preview": {
     definition: githubUploadSocialPreview,

@@ -1,0 +1,84 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/actions/runners/23"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "id": 23,
+            "name": "acme-builder-2",
+            "os": "linux",
+            "status": "offline",
+            "busy": false,
+            "labels": [
+              {
+                "id": 1,
+                "name": "self-hosted",
+                "type": "read-only"
+              },
+              {
+                "id": 2,
+                "name": "Linux",
+                "type": "read-only"
+              }
+            ]
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    },
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "DELETE",
+        "url": "https://api.github.com/repos/acme/app/actions/runners/23"
+      },
+      "response": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {},
+        "status": 204
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1",
+  "integration": "github-remove-runner",
+  "scenario": "offline-and-remove",
+  "scrubReport": [
+    {
+      "count": 1,
+      "path": "exchanges[0].request.headers.authorization",
+      "rule": "secret-header"
+    },
+    {
+      "count": 1,
+      "path": "exchanges[1].request.headers.authorization",
+      "rule": "secret-header"
+    }
+  ]
+}
