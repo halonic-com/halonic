@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: stream HAL-17560 (ToolScript); ADR on HAL-17560, section 3.2 (S9); task HAL-17570
 
-When a script calls `ctx.batch` with a list of `{ use, args }` items, the toolscript-host package shall check and freeze every item, confirm them all with one `confirm` call, and then send them in order; and shall refuse the batch before `confirm` with `toolscript.irreversible-in-batch` if any item is `irreversible`, or with `toolscript.bad-argument` if an item is a read or a capability the script doesn't use.
+When a script calls `ctx.batch` with a list of `{ use, args }` items, the toolscript-host package shall check and freeze every item, confirm them all with one `confirm` call, and then send them in order; and shall refuse the batch before `confirm` with `toolscript.irreversible-in-batch` if any item is `irreversible`, with `toolscript.bad-argument` if an item is a read or a capability the script doesn't use, or with `limit.calls` if the calls already sent plus its items go over the run's call limit.
 
 ## Examples
 

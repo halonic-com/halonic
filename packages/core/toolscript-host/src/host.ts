@@ -73,7 +73,7 @@ async function runOnce(
   // A bad request limit is the caller's own bug: its RangeError rejects (the port's rule).
   limits = effectiveToolScriptLimits(limits, request.limits);
   const table = new SecretTable(options.randomBytes);
-  const run = new HostRun(request, checked, table, now);
+  const run = new HostRun(request, checked, table, now, limits.calls);
   try {
     const result = await options.isolate.run({
       runId: request.runId,

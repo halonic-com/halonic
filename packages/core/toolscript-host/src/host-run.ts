@@ -40,17 +40,20 @@ export class HostRun {
   readonly #view: HeaderView;
   readonly #table: SecretTable;
   readonly #now: () => string;
+  readonly #callLimit: number;
 
   constructor(
     request: ToolScriptRunRequest,
     view: HeaderView,
     table: SecretTable,
     now: () => string,
+    callLimit: number,
   ) {
     this.#request = request;
     this.#view = view;
     this.#table = table;
     this.#now = now;
+    this.#callLimit = callLimit;
   }
 
   /**
@@ -102,6 +105,8 @@ export class HostRun {
   ): Promise<ToolScriptIsolateValue> {
     if (!Array.isArray(items) || items.length === 0)
       throw new ToolScriptStop("toolscript.bad-argument");
+    // The isolate counts a batch as one call, so its items count here against the run's limit.
+    if (this.calls.length + items.length > this.#callLimit) throw new ToolScriptStop("limit.calls");
     const prepared = items.map((item: ToolScriptIsolateValue) => this.#batchItem(item));
     await this.#confirm(prepared, context);
     const answers: ToolScriptIsolateValue[] = [];
@@ -135,8 +140,9 @@ export class HostRun {
     if (capability.acceptsArguments !== undefined && !capability.acceptsArguments(frozen)) {
       throw new ToolScriptStop("toolscript.bad-argument");
     }
-    const { touches } = this.#view;
-    // A header without `touches` declares no targets to hold writes to; one with it covers every write (S14).
+    // A user header without `touches` declares no targets, so it allows no write (S14).
+    const touches =
+      this.#view.touches ?? (this.#request.artifact.header.audience === "user" ? {} : undefined);
     if (capability.kind === "write" && touches !== undefined) {
       if (!withinTouches(frozen, touches[capability.id], this.#request.input)) {
         throw new ToolScriptStop("toolscript.undeclared-target");

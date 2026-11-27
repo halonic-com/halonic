@@ -172,6 +172,8 @@ export async function runAcme(script: AcmeScript, options: AcmeRunOptions): Prom
       version: 1,
       audience: options.audience ?? "user",
       uses: options.uses ?? options.capabilities.map((capability) => capability.id),
+      // An empty entry per capability allows any target; a test about `touches` sets its own.
+      touches: Object.fromEntries(options.capabilities.map((capability) => [capability.id, {}])),
       ...options.header,
     },
     code,

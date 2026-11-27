@@ -33,6 +33,19 @@ describe("batches, touches and previews", () => {
       expect(sent).toEqual(["acme.set-note@1", "acme.set-tag@1"]);
     });
 
+    it("refuses a batch whose items go over the call limit before confirm", async () => {
+      const items = [
+        { use: "acme.set-note@1", args: { name: "a" } },
+        { use: "acme.set-note@1", args: { name: "b" } },
+      ];
+      const { result, confirmed } = await runAcme(async (ctx) => ctxCall(ctx, "batch", items), {
+        capabilities: [acmeCapability("acme.set-note@1")],
+        header: { limits: { calls: 1 } },
+      });
+      expect(result).toMatchObject({ ok: false, reason: "limit.calls", calls: [] });
+      expect(confirmed).toEqual([]);
+    });
+
     it("refuses an irreversible write in a batch before confirm", async () => {
       const items = [
         { use: "acme.set-note@1", args: { name: "a" } },
@@ -97,6 +110,19 @@ describe("batches, touches and previews", () => {
         expect(result).toMatchObject({ ok: false, reason: "toolscript.undeclared-target" });
         expect(confirmed).toEqual([]);
       }
+    });
+
+    it("refuses every write in a user run whose header has no touches", async () => {
+      const { result, confirmed } = await runAcme((ctx) => setNote(ctx, { name: "note-a" }), {
+        capabilities: [acmeCapability("acme.set-note@1")],
+        header: { touches: undefined },
+      });
+      expect(result).toMatchObject({
+        ok: false,
+        reason: "toolscript.undeclared-target",
+        calls: [],
+      });
+      expect(confirmed).toEqual([]);
     });
   });
 
