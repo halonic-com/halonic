@@ -87,7 +87,8 @@ verifies("action-steppers.check-gate-request", () => {
         check: 1,
         cause: "missing-expect",
         changes: [],
-        message: `This request doesn't say what the requester saw: "head_sha".`,
+        message:
+          "This request leaves out what the agent saw before asking, so Halonic can't check this step. Decline it and ask again.",
       });
     });
 

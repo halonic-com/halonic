@@ -58,14 +58,16 @@ export function checkStepGate(
       (each.requires?.length ?? 0) > 0 ||
       (each.requiredExpect?.length ?? 0) > 0;
     if (!comparesSomething) continue;
-    const missing = (each.requiredExpect ?? []).filter((name) => !Object.hasOwn(expect, name));
-    if (missing.length > 0) {
+    const lacksRequired = (each.requiredExpect ?? []).some(
+      (name) => !Object.hasOwn(expect, name),
+    );
+    if (lacksRequired) {
       return {
         ok: false,
         check: number,
         cause: "missing-expect",
         changes: [],
-        message: missingExpect(missing),
+        message: missingExpect,
       };
     }
     const refusal = refusalOf(each, seen, kept.get(number), parameters);
@@ -119,11 +121,12 @@ function holds(
 }
 
 /**
- * Halonic's own sentence for a request that doesn't name what the requester
- * saw. The names come from the reviewed definition, never from the request.
+ * Halonic's own sentence for a request that leaves out what the agent saw.
+ * The person can't fix the request, so it says what they can do. The field
+ * names stay out: they mean nothing to the person, and a developer finds them
+ * in the `requiredExpect` of the step that `check` names.
  */
-function missingExpect(names: readonly string[]): string {
-  return `This request doesn't say what the requester saw: ${names.map((name) => `"${name}"`).join(", ")}.`;
-}
+const missingExpect =
+  "This request leaves out what the agent saw before asking, so Halonic can't check this step. Decline it and ask again.";
 
 const notCheckedYet = "Run the check before this step first.";
