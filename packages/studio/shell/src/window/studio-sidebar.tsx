@@ -91,13 +91,13 @@ export function StudioSidebar(props: StudioSidebarProps) {
 
   return (
     <>
-      <div
-        id={sidebarId}
-        style={{ width }}
-        className="flex shrink-0 flex-col gap-2 overflow-y-auto py-2 ps-2"
-      >
-        {props.switcher === undefined ? null : <WorkspaceSwitcher {...props.switcher} />}
-        <SidebarSearch platform={props.platform} onOpen={props.onSearch} />
+      <div id={sidebarId} style={{ width }} className="flex shrink-0 flex-col pt-2">
+        <div className="flex shrink-0 flex-col gap-2 ps-2">
+          {props.switcher === undefined ? null : <WorkspaceSwitcher {...props.switcher} />}
+          <SidebarSearch platform={props.platform} onOpen={props.onSearch} />
+        </div>
+        {/* Only the places or the picked view scroll, inside the sidebar; the switcher, Search,
+            the Studio | Files switch and the footer stay put (`shell.sidebar-scroll`). */}
         <SidebarViews
           views={props.views ?? noViews}
           contextFor={contextFor}
@@ -123,7 +123,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
           }
         />
         {props.footer === undefined ? null : (
-          <div data-sidebar-footer="" className="mt-auto flex flex-col pt-2">
+          <div data-sidebar-footer="" className="flex shrink-0 flex-col ps-2 pb-2">
             <StatusBarItems items={footerItems(props.footer)} contextFor={contextFor} />
           </div>
         )}

@@ -28,6 +28,12 @@
   [data-force-state="focus"] &,
   &[data-force-state="focus"]
 );
+/* A scrolling region shows its scrollbar while keyboard focus is inside it (`kit.slim-scrollbars`). */
+@custom-variant scroll-focus (
+  &:has(:focus-visible),
+  [data-force-state="focus"] &,
+  &[data-force-state="focus"]
+);
 @custom-variant field-focus (
   &:has([data-field-text]:focus),
   &:has([data-field-text][data-force-state="focus"]),

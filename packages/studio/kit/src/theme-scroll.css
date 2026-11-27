@@ -1,0 +1,89 @@
+/*
+ * The one scrollbar every scrolling region uses (`kit.slim-scrollbars`, HAL-20556), split out of
+ * theme.css by concept. theme.css imports this file.
+ *
+ * Slim and rounded, in the mode's ink at a low alpha, and shown only while the pointer is over the
+ * region or keyboard focus is inside it, so a sidebar, a list and a thread don't each draw a bar at
+ * rest. Keyboard focus only: after a click on a row focus stays in the list, and its bar would stay
+ * shown with the pointer gone. More contrast keeps the bar shown at rest, and stronger. Hover and
+ * focus go through Tailwind's variants, so the states page can force them as it does the parts'
+ * own. In `@layer base`, so a part that hides its bar on purpose (`[scrollbar-width:none]`, the
+ * tab strip) still wins.
+ *
+ * Two ways in. Every engine with the `::-webkit-scrollbar` parts (WebView2's Chromium, and WebKit
+ * on macOS and Linux) gets a 6px thumb in a 10px bar from them: Chromium's own `scrollbar-width:
+ * thin` bar has an arrow button at each end, and Chromium ignores the parts once `scrollbar-width`
+ * or `scrollbar-color` is set, so those standard properties are only for engines without the parts
+ * (Firefox). Forced colours get the system's own bar: the parts stay out there, and forced colours
+ * reset `scrollbar-color` themselves.
+ */
+:root {
+  /* About 3:1 against the surface in each mode (the design check on HAL-20568). */
+  --scrollbar-thumb: light-dark(rgb(16 16 46 / 0.45), rgb(242 242 255 / 0.38));
+  --scrollbar-thumb-strong: light-dark(rgb(16 16 46 / 0.7), rgb(242 242 255 / 0.7));
+  /* Here, not on the regions, so a hovered or focused region keeps the stronger thumb too. */
+  @media (prefers-contrast: more) {
+    --scrollbar-thumb: var(--scrollbar-thumb-strong);
+  }
+}
+
+/* Keyboard focus inside the region only; the states page replaces it to force the state. */
+@custom-variant scroll-focus (&:has(:focus-visible));
+
+@layer base {
+  /*
+   * The colour lives in a property on the region, and the thumb reads it: Chromium works out a
+   * `::-webkit-scrollbar-thumb` style once and doesn't redo it when the region's `:hover` changes,
+   * so a `:hover::-webkit-scrollbar-thumb` rule never shows after the first paint. A property
+   * change on the region repaints the thumb.
+   */
+  * {
+    --scrollbar-thumb-now: transparent;
+    @variant hover {
+      --scrollbar-thumb-now: var(--scrollbar-thumb);
+    }
+    @variant scroll-focus {
+      --scrollbar-thumb-now: var(--scrollbar-thumb);
+    }
+    @media (prefers-contrast: more) {
+      --scrollbar-thumb-now: var(--scrollbar-thumb);
+    }
+  }
+
+  /*
+   * Only for a mouse or trackpad in the desktop layout. A phone, and the phone layout of a narrow
+   * window, keep the system's overlay bar: it takes no room and shows while scrolling, where a
+   * 10px bar here would take 10px from every region and, with no hover, never show.
+   */
+  @media (hover: hover) and (pointer: fine) and (width >= 600px) {
+    @supports not selector(::-webkit-scrollbar) {
+      * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--scrollbar-thumb-now) transparent;
+      }
+    }
+
+    @supports selector(::-webkit-scrollbar) {
+      @media not (forced-colors: active) {
+        ::-webkit-scrollbar {
+          width: 10px;
+          height: 10px;
+          background: transparent;
+        }
+        ::-webkit-scrollbar-button {
+          display: none;
+        }
+        ::-webkit-scrollbar-corner {
+          background: transparent;
+        }
+        /* 2px of see-through border on each side leaves a 6px rounded thumb. */
+        ::-webkit-scrollbar-thumb {
+          border: 2px solid transparent;
+          border-radius: var(--radius-full);
+          background-clip: padding-box;
+          background-color: var(--scrollbar-thumb-now);
+        }
+      }
+    }
+  }
+}

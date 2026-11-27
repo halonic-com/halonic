@@ -15,3 +15,15 @@
 @source "../..";
 /* READMEs and AGENTS.md files mention classes too, including "not allowed" examples. */
 @source not "../../**/*.md";
+
+/* The window never scrolls (`studio.fixed-window`, HAL-20556): each window's layout fills it and
+   its regions scroll on their own, so content that overflows one by mistake is cut off rather
+   than giving the whole window a scrollbar. Here, not in the kit: the kit's states page scrolls. */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+}
