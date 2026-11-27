@@ -60,10 +60,10 @@ verifies("settings.server-session", () => {
       expect(store.stored.size).toBe(0);
     });
 
-    it("stays hidden with the unfinished sections", () => {
+    it("shows now that the Inbox offers Run with Claude, unfinished sections hidden or not", () => {
       const ids = (showUnfinished: boolean) =>
         settingsSectionsFor(showUnfinished).map((section) => section.id);
-      expect(ids(false)).not.toContain("server-session");
+      expect(ids(false)).toContain("server-session");
       expect(ids(true)).toContain("server-session");
     });
   });

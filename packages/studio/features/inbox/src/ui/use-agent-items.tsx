@@ -4,14 +4,8 @@ import type {
   MessagingProject,
   MessagingSource,
 } from "@halonicjs/ports";
-import type {
-  ActionItem,
-  ConnectedPaperclip,
-  RequesterPolicy,
-  StepperCatalog,
-} from "@halonicjs/studio-feature-action-steppers/api";
+import type { ActionItem } from "@halonicjs/studio-feature-action-steppers/api";
 import { Button, type ListRow, waitingFor } from "@halonicjs/studio-kit";
-import type { ActionSteps } from "@halonicjs/studio-services";
 import {
   type ReactNode,
   useCallback,
@@ -42,6 +36,8 @@ import type { ItemHeading } from "./item-header.tsx";
 import { ProjectTag } from "./project-tag.tsx";
 import { agentMark } from "./row-marks.tsx";
 import { type SettlingRowsOptions, settledRow, useSettlingRows } from "./settling-rows.tsx";
+import { StepperItemCard } from "./stepper-item-card.tsx";
+import type { ActionChecks } from "./use-action-checks.ts";
 import { type AskerPicture, useAskerPictures } from "./use-asker-pictures.ts";
 
 /** What the Inbox page shows of the agents' items, next to its own. */
@@ -99,25 +95,21 @@ const nothing: AgentInboxState = {
 /** Couldn't read the agents' items; said over the list, with **Try again**. */
 export const agentLoadFailed = "Couldn't load the items from your agents.";
 
-/**
- * What an action item is checked against when it opens, the installed catalog, the user's policy
- * and the Paperclips they connected, and what runs its steps.
- */
-export interface ActionChecks {
-  readonly catalog: StepperCatalog;
-  readonly policy: RequesterPolicy;
-  readonly steps: ActionSteps;
-  readonly paperclips: readonly ConnectedPaperclip[];
-}
-
 function isActionItem(item: AgentItem): item is ActionItem {
   return item.action !== undefined;
 }
 
-/** An agent's card, or for an action item the stepper in review mode (`inbox.agent-action-items`). */
+/**
+ * An agent's card, or for an action item the stepper in review mode (`inbox.agent-action-items`),
+ * or for a stored stepper request its card with **Run with Claude** when it offers a server
+ * session (`inbox.run-with-claude`).
+ */
 function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: ActionChecks }) {
   const { item } = card;
-  if (!isActionItem(item)) return <AgentItemCard {...card} />;
+  if (!isActionItem(item)) {
+    if (item.stepper !== undefined) return <StepperItemCard {...card} checks={checks} />;
+    return <AgentItemCard {...card} />;
+  }
   return (
     <ActionItemCard
       {...card}

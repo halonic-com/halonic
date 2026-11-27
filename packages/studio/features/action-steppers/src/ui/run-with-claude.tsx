@@ -150,10 +150,13 @@ export function RunWithClaude({
   async function start() {
     if (shell === undefined) return;
     setPhase({ kind: "starting" });
+    // Only what the shell needs: who asked stays on the confirm screen.
+    const { task, brief, requestHash } = offer;
     let answer: ServerSessionAnswer;
     try {
-      answer = await shell.open(offer);
-    } catch {
+      answer = await shell.open({ task, brief, requestHash });
+    } catch (error) {
+      console.error("The desktop app couldn't open the server session", error);
       answer = { kind: "refused", reason: words.desktopAppFailed };
     }
     setPhase({ kind: "answered", answer });

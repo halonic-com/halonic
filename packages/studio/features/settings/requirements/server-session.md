@@ -2,9 +2,9 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-17844 (plan on HAL-17834, section 3; approvals stream HAL-17488, PR 22c)
+- Source: HAL-17844 (plan on HAL-17834, section 3; approvals stream HAL-17488, PR 22c); shown since HAL-18256
 
-The Settings feature shall have a host section "Your server" with the fields Server, User and Port, kept in the host settings as `server-session.host`, `server-session.user` and `server-session.port`, never in a workspace. Each field shall save its trimmed value when the person leaves it, and an emptied field shall remove its saved value, so the desktop shell finds no server. Port shall be empty or a whole number from 1 to 65535: "Enter a whole number from 1 to 65535, or leave it empty.", and nothing is saved while it shows that. The section shall stay hidden with the unfinished sections until the Inbox offers "Run with Claude".
+The Settings feature shall have a host section "Your server" with the fields Server, User and Port, kept in the host settings as `server-session.host`, `server-session.user` and `server-session.port`, never in a workspace. Each field shall save its trimmed value when the person leaves it, and an emptied field shall remove its saved value, so the desktop shell finds no server. Port shall be empty or a whole number from 1 to 65535: "Enter a whole number from 1 to 65535, or leave it empty.", and nothing is saved while it shows that. The section shall show in Settings, no longer hidden with the unfinished sections, since the Inbox offers "Run with Claude".
 
 ## Examples
 

@@ -20,6 +20,7 @@
     "@halonicjs/studio-feature-account-menu": "workspace:*",
     "@halonicjs/studio-feature-action-steppers": "workspace:*",
     "@halonicjs/studio-feature-runs": "workspace:*",
+    "@halonicjs/studio-feature-settings": "workspace:*",
     "@halonicjs/studio-kit": "workspace:*",
     "@halonicjs/studio-services": "workspace:*",
     "@halonicjs/studio-shell": "workspace:*",

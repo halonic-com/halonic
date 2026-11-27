@@ -4323,6 +4323,9 @@ importers:
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../runs
+      '@halonicjs/studio-feature-settings':
+        specifier: workspace:*
+        version: link:../settings
       '@halonicjs/studio-kit':
         specifier: workspace:*
         version: link:../../kit
