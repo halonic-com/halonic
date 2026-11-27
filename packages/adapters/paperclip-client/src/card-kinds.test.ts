@@ -102,9 +102,45 @@ function expectSent(path: string, answer: InboxAnswer, body: unknown) {
 
 const verdictOptions = [
   { id: "approve", label: "Approve" },
-  { id: "reject", label: "Reject" },
+  {
+    id: "reject",
+    label: "Reject",
+    noteRequired: true,
+    noteLabel: "Why are you rejecting this?",
+  },
   { id: "defer", label: "Defer" },
 ];
+
+verifies("paperclip-client.verdict-reason", () => {
+  it("asks for a reason on each verdict the card lists in requireReasonOn", async () => {
+    serve({
+      [verdicts]: {
+        payload: {
+          version: 1,
+          prompt: "Review each page.",
+          items: [{ id: "intro", label: "Intro page" }],
+          verdicts: ["approve", "reject", "defer"],
+          requireReasonOn: ["defer"],
+        },
+      },
+    });
+    const items = await client().listInboxItems();
+    const verdictCard = items.find((item) => item.id === card(plainTask, verdicts));
+    expect(verdictCard?.questions?.[0]?.options).toEqual([
+      { id: "approve", label: "Approve" },
+      { id: "reject", label: "Reject" },
+      { id: "defer", label: "Defer", noteRequired: true },
+    ]);
+  });
+
+  it("asks for a reason on Reject when the card lists none", async () => {
+    serve();
+    const items = await client().listInboxItems();
+    const verdictCard = items.find((item) => item.id === card(plainTask, verdicts));
+    const reject = verdictCard?.questions?.[0]?.options.find((option) => option.id === "reject");
+    expect(reject).toMatchObject({ noteRequired: true, noteLabel: "Why are you rejecting this?" });
+  });
+});
 
 verifies("paperclip-client.card-kinds", () => {
   it("maps checkbox, verdict and task cards into questions with no options", async () => {

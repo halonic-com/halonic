@@ -36,7 +36,10 @@ export interface InboxQuestionAnswer {
   /** The question's `id`. */
   question: string;
   options: readonly string[];
-  /** A written answer the source kept with it, such as Paperclip's "other" text. Apps don't send one yet. */
+  /**
+   * A written answer kept with it, such as Paperclip's "other" text. Apps send one as the note of
+   * a picked option that takes a note, such as the reason for a rejected item.
+   */
   text?: string;
 }
 

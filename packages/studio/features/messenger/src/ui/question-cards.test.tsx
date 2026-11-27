@@ -2,8 +2,9 @@
 import type { InboxItem, InboxQuestion } from "@halonicjs/ports";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { byText, openChat, openMessenger, press, said } from "../test-support/page.tsx";
+import { byText, openChat, openMessenger, press, said, settle } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
@@ -43,8 +44,27 @@ const decisions: readonly InboxQuestion[] = [
   },
 ];
 
-/** Acme's Chief with a chat and one card asking `decisions`, open unless `state` says otherwise. */
-function chiefAsks(state?: InboxItem["state"]) {
+/** A verdict card's item whose Reject needs a reason, as the Paperclip provider maps it. */
+const verdict: readonly InboxQuestion[] = [
+  {
+    id: "intro",
+    prompt: "Intro page",
+    selection: "single",
+    required: false,
+    options: [
+      { id: "approve", label: "Approve" },
+      {
+        id: "reject",
+        label: "Reject",
+        noteRequired: true,
+        noteLabel: "Why are you rejecting this?",
+      },
+    ],
+  },
+];
+
+/** Acme's Chief with a chat and one card asking `questions`, open unless `state` says otherwise. */
+function chiefAsks(state?: InboxItem["state"], questions: readonly InboxQuestion[] = decisions) {
   const clock = { now: new Date(2026, 10, 24, 10, 0) };
   const messaging = new FakeAgentMessaging({ now: () => clock.now });
   const acme = messaging.addSource({ label: "Paperclip · Acme" });
@@ -55,7 +75,7 @@ function chiefAsks(state?: InboxItem["state"]) {
     question: "Three open decisions",
     from: { kind: "agent", agent: chief.id, name: "Chief" },
     options: [],
-    questions: decisions,
+    questions,
     ...(state === undefined ? {} : { state }),
   });
   return { messaging, clock, card };
@@ -65,6 +85,16 @@ function option(page: HTMLElement, label: string): HTMLInputElement {
   const input = byText(page, "main fieldset label", label)?.querySelector("input");
   if (input == null) throw new Error(`no option "${label}"`);
   return input;
+}
+
+async function writeNote(page: HTMLElement, text: string): Promise<void> {
+  const field = page.querySelector("main form textarea");
+  if (!(field instanceof HTMLTextAreaElement)) throw new Error("no note field");
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(field, text);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await settle();
 }
 
 function submit(page: HTMLElement): HTMLButtonElement | undefined {
@@ -134,6 +164,23 @@ verifies("messenger.question-cards", () => {
       expect(page.querySelector("main ol")?.textContent).not.toContain("Three open decisions");
       expect(page.querySelector("main fieldset")).toBeNull();
       expect(page.querySelector("[data-cards-bar]")).toBeNull();
+    });
+
+    it("asks for the reason a Reject needs, and sends it with that item's verdict", async () => {
+      const { messaging, card } = chiefAsks(undefined, verdict);
+      const answer = vi.spyOn(messaging, "answer");
+      const page = await openMessenger(messaging);
+      await openChat(page, "Chief");
+      await press(option(page, "Reject"));
+      expect(page.querySelector("main form")?.textContent).toContain("Why are you rejecting this?");
+      expect(submit(page)?.getAttribute("aria-disabled")).toBe("true");
+
+      await writeNote(page, "Add the install step");
+      await press(submit(page));
+      expect(answer).toHaveBeenCalledWith(card.id, {
+        kind: "answers",
+        answers: [{ question: "intro", options: ["reject"], text: "Add the install step" }],
+      });
     });
 
     it("pressing the bar focuses the open card's first option", async () => {
