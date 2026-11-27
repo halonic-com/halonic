@@ -36,13 +36,14 @@ function frameOf(container: HTMLElement): string[] {
 }
 
 verifies("kit.prompt-look", () => {
-  it("draws the composer as a rounded box with the prompt edge, surface and shadow", () => {
+  it("draws the composer as the new design's pill, its edge see-through until focus", () => {
     const frame = frameOf(render(composer()).container);
     for (const name of [
-      "rounded-prompt",
-      "border-border-prompt",
-      "bg-surface-prompt",
-      "shadow-prompt",
+      "rounded-[26px]",
+      "min-h-[52px]",
+      "border-transparent",
+      "bg-surface-raised",
+      "shadow-[0_1px_6px_0_rgb(0_0_0/0.12)]",
       "focus-prompt",
     ]) {
       expect(frame).toContain(name);

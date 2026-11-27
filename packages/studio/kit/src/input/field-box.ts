@@ -123,6 +123,8 @@ export function fieldBoxClasses(
  */
 export type FieldLook = "field" | "prompt";
 
+const composerShadow = "shadow-[0_1px_6px_0_rgb(0_0_0/0.12)]";
+
 const promptStateClasses: Record<FieldBoxState, string> = {
   default: "border-border-prompt bg-surface-prompt shadow-prompt focus-prompt",
   invalid: "border-danger bg-surface-prompt shadow-prompt focus-field-danger",
@@ -137,6 +139,24 @@ const promptStateClasses: Record<FieldBoxState, string> = {
 export function promptBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "center"): string {
   const box = "flex w-full gap-2 rounded-prompt border transition";
   return `${box} ${alignClasses[align]} ${promptStateClasses[state]}`;
+}
+
+// The chat's message box in the new design (HAL-20728): the floating pill of Noah's recipe, with
+// an edge that shows only on focus or an error and the composer's lighter shadow.
+const composerStateClasses: Record<FieldBoxState, string> = {
+  default: `border-transparent bg-surface-raised ${composerShadow} focus-prompt`,
+  invalid: `border-danger bg-surface-raised ${composerShadow} focus-field-danger`,
+  "read-only": `border-transparent bg-surface-subtle ${composerShadow} focus-prompt`,
+  disabled: "cursor-not-allowed border-transparent bg-surface-subtle text-fg-disabled",
+};
+
+/**
+ * The chat composer's box for a state: a prompt box with 26px corners at least 52px tall, on the
+ * raised surface, its 1px edge see-through until focus or an error (`kit.prompt-look`).
+ */
+export function composerBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "center"): string {
+  const box = "flex w-full gap-2 min-h-[52px] rounded-[26px] border transition";
+  return `${box} ${alignClasses[align]} ${composerStateClasses[state]}`;
 }
 
 /** Which look a field has, from its props and its Field. Disabled wins, then an error. */

@@ -18,7 +18,7 @@ export interface ContentHeaderProps {
 /**
  * The header over an open item in a two-pane app, the Messenger's chat and the Inbox's item alike
  * (HAL-19192, `kit.content-header`): a 40px picture, the title as a level-2 heading over one muted
- * line, and the item's actions at the end, above a 1px line.
+ * line, and the item's actions at the end, 16px apart, over a soft shadow.
  *
  * @example
  * <ContentHeader
@@ -30,10 +30,12 @@ export interface ContentHeaderProps {
  */
 export function ContentHeader({ picture, title, line, actions }: ContentHeaderProps) {
   return (
-    <header className="flex items-center gap-3 border-b border-border px-4 py-3">
+    // 64px tall with a soft shadow instead of a line, the new design's chat header (HAL-20728).
+    <header className="relative z-10 flex h-16 shrink-0 items-center gap-4 bg-surface px-4 shadow-[0_1px_4px_0_rgb(10_10_10/0.12)]">
       {picture}
-      <div className="flex min-w-0 flex-1 flex-col">
-        <h2 className="truncate text-body-strong">
+      {/* 16px apart like the actions, less 1px: the recipe's 15px from picture to name. */}
+      <div className="-ml-px flex min-w-0 flex-1 flex-col">
+        <h2 className="truncate text-input-touch leading-[21px]">
           <bdi>{title}</bdi>
         </h2>
         {line === undefined ? null : <p className="truncate text-small text-fg-muted">{line}</p>}
