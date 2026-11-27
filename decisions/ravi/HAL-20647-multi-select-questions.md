@@ -2,6 +2,7 @@
 
 - Approval: HAL-20647
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:SD7Q91KNutKWHsu/pclplm3FB2tP5pbR+nvmxX1Jb2yCgeDQ851pOq5/Q7cK0BMCmN7XUkZ50j5ZGs+oVibiAw==
 
 `paperclip-client.question-cards` named the wire value `selectionMode: "multiple"`, but Paperclip
 sends `"multi"` for a multi-select question (`askUserQuestionsQuestionSchema` in 2026.1117.0, the
