@@ -3,6 +3,7 @@
 - Task: HAL-19432
 - Approval: the board chose the template design on HAL-19432 (step 1 only: its own file `template.yaml`, no `acme` fallback), after Liam's review of the `template-design` document. Liam approved this pull request on HAL-19432.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qUv639N9sgVEAT+Ngf/ixBKKa3z+xnTHhyAW9KO627kpp7Q9n5Luh+MyHhnIR7qhX+gtNqrTB/S3zormpzG4Dw==
 
 ## What changes
 
