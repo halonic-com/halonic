@@ -118,8 +118,9 @@ export function fieldBoxClasses(
 
 /**
  * `field`, the default, is a form field's clear edge. `prompt` is only for the boxes where you type
- * to an agent (Quick ask, the palette, the chat search): the board's rounder search-box look, with a
- * soft edge and shadow, so it reads as "start here" (HAL-19142).
+ * to an agent. On an `Input`, such as the chat search, it's the board's rounder search-box look,
+ * with a soft edge and shadow, so it reads as "start here" (HAL-19142). On a `TextArea` it's the
+ * chat's message box, the new design's pill (`composerBoxClasses`); only the `ChatComposer` uses it.
  */
 export type FieldLook = "field" | "prompt";
 

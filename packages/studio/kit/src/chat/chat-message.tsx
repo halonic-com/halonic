@@ -27,7 +27,7 @@ interface ReplyMessage {
 export type ChatMessageProps = YourMessage | ReplyMessage;
 
 /**
- * One message row of a chat transcript. The person's message sits on the right in a
+ * One message row of a chat transcript. The person's message sits on the right in an
  * own-message bubble at most 65% wide; a reply takes the full width, with no box, under
  * a heading only screen readers see. Both keep the text's line breaks and wrap long words.
  *

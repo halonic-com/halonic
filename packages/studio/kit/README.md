@@ -2181,8 +2181,9 @@ dark) and the `shadow-prompt` shadow. With focus the edge turns `accent` and the
 placeholder and the shadow mark the box. Under More contrast it takes the field's 3:1 edge
 (`border-control`), as every edge does. Its text is 15px, as in every prompt box, and a search
 in it hides the browser's own clear button, since the box carries its own Esc. Form fields, such
-as Settings, keep the default look. `TextArea` takes the same `look`, with round buttons in
-`leading` and `trailing`. The `ChatComposer` draws its own box, the new design's pill (see its row), with the same round buttons. Those `soft` buttons fill with
+as Settings, keep the default look. On a `TextArea`, `look="prompt"` draws the chat's message box instead: the new design's
+pill (see the `ChatComposer` row), with round buttons in `leading` and `trailing`; only the
+`ChatComposer` uses it. Those `soft` buttons fill with
 `surface-soft`: `surface-muted` in light, 8% white in dark, so they stay a step above the box.
 
 **Width.** The box fills its column (`width="full"`, the default). For a small number, such as a

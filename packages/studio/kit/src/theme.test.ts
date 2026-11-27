@@ -79,6 +79,8 @@ const contrastPairs: ContrastPair[] = [
   ...["fg", "fg-muted", "fg-subtle"].flatMap((foreground) =>
     onSurfaces(foreground, text, ["surface-muted"]),
   ),
+  // The person's message in its bubble (HAL-20728).
+  onFill("fg", "surface-own-message"),
   ...onSurfaces("accent-text", text),
   ...onSoftFill("accent-text", "accent-soft"),
   onFill("on-primary", "primary"),

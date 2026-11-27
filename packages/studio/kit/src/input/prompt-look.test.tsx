@@ -124,6 +124,13 @@ verifies("kit.prompt-look", () => {
     expect(rule).toContain("max-height: calc(var(--max-rows) * var(--text-reading--line-height))");
   });
 
+  it("builds the message box's 26px corners, 52px height and composer shadow", async () => {
+    const css = await buildCss(["rounded-composer", "min-h-composer", "shadow-composer"]);
+    expect(css).toContain("--radius-composer: 26px");
+    expect(css).toContain("--spacing-composer: 52px");
+    expect(css).toContain("--shadow-composer: 0 1px 6px 0 var(--shade-composer)");
+  });
+
   it("builds the board's values in light and the lighter box in dark", async () => {
     const css = await buildCss(["rounded-prompt", "border-border-prompt", "shadow-prompt"]);
     expect(css).toContain("--radius-prompt: 24px");

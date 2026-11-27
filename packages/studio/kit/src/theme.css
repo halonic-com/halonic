@@ -93,10 +93,10 @@
   /* The round buttons inside a prompt box (the `soft` Button). In dark, surface-muted sat almost
      on the box's 6% white, so the circle vanished; 8% white over the box keeps it a step above. */
   --color-surface-soft: light-dark(var(--color-surface-muted), rgb(255 255 255 / 0.08));
+  --color-surface-soft-hover: light-dark(var(--color-border), rgb(255 255 255 / 0.14));
   /* Your own message's bubble in the new design (HAL-20728): the board's own-message blue, a step
      brighter in dark than accent-soft, which is the selected chips' tint. */
   --color-surface-own-message: light-dark(#dbe7fe, #143170);
-  --color-surface-soft-hover: light-dark(var(--color-border), rgb(255 255 255 / 0.14));
 
   /* ---------------------------------------------------------------- Colour: text (text-fg*) */
   /* The new design's ink: near-black and near-white, the quieter text at 60% (HAL-20674). */
