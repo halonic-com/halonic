@@ -72,6 +72,7 @@ fn served_page_test_sees_the_agent_host_granted_to_the_local_main_window_only() 
             "allow-agent-host-stream-end",
             "allow-agent-host-security-updates",
             "allow-agent-host-sandbox-choice-save",
+            "allow-agent-host-paperclip-restore",
             "allow-engine-ready",
             "allow-start-status"
         ])

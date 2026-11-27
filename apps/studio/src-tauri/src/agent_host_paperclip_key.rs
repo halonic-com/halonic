@@ -11,19 +11,28 @@
 //! - Disconnect deletes the connection's keychain entry once the host has
 //!   answered, also when the host refused or couldn't be asked.
 //! - Every other Paperclip answer passes on without a `key` field.
+//!
+//! When a workspace opens, the page asks `agent_host_paperclip_restore`
+//! once, and the shell hands the kept keys back to the host itself
+//! (`halonic_agent_host::restore_paperclip_keys`), on a route no page can
+//! name.
 
 use std::sync::{Arc, LazyLock};
 
 use halonic_agent_host::{
-    HostCallFailed, KeepTurns, Route, SIGN_IN_CANCEL, SIGN_IN_CONFIRM, SignInHost,
-    forget_paperclip_key, keep_poll_answer, page_answer, page_cancel_answer,
+    HandOver, HostCallFailed, KEY_HAND_OVER, KeepTurns, RestoreChecks, RestoreHost, Route,
+    SIGN_IN_CANCEL, SIGN_IN_CONFIRM, SignInHost, find_route, forget_paperclip_key,
+    keep_poll_answer, page_answer, page_cancel_answer, restore_paperclip_keys, same_workspace,
 };
 use halonic_secrets::SecretBackend;
+use halonic_trust_grant::PickedFolders;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Manager, Runtime};
+use url::Url;
 
 use super::{HostAnswer, HostRefusal, read_answer, send};
 use crate::secrets::SecretsState;
+use crate::trust::picked_folders;
 
 /// The paths of the Paperclip routes, whose answers never pass on a key.
 const PAPERCLIP_PATHS: &str = "/v1/paperclip/";
@@ -119,6 +128,119 @@ async fn for_the_page<R: Runtime>(
                 .map_err(|error| HostRefusal::new("keychain", error))?;
             answer.map(|answer| with_body(answer, page_answer))
         }
+    }
+}
+
+/// Hands the kept Paperclip keys of the workspace `workspace` names back to
+/// the agent host, when it opens, and answers how many went back. The page
+/// only says when: the shell asks the host itself whether the workspace may
+/// start a run and which connections need a key, checks the folder and each
+/// entry, and sends each key on a route no page can name. It is refused as
+/// `host_unavailable` only when the host couldn't list the workspace's
+/// connections, so the page asks again later; anything else it can't do goes
+/// to the shell's log, and that connection stays on Sign in again.
+#[tauri::command]
+pub async fn agent_host_paperclip_restore<R: Runtime>(
+    app: AppHandle<R>,
+    workspace: String,
+) -> Result<usize, HostRefusal> {
+    let keychain = keychain(&app)?;
+    let picked = picked_folders(&app).map_err(|refusal| {
+        HostRefusal::new(
+            "io",
+            format!("the picked folders can't be read: {refusal:?}"),
+        )
+    })?;
+    restore_for(&app, keychain, picked, workspace).await
+}
+
+/// The restore of `agent_host_paperclip_restore`, against `keychain` and
+/// the folders `picked` remembers.
+pub(super) async fn restore_for<R: Runtime>(
+    app: &AppHandle<R>,
+    keychain: Arc<dyn SecretBackend>,
+    picked: PickedFolders,
+    workspace: String,
+) -> Result<usize, HostRefusal> {
+    let host = ShellRestore { app: app.clone() };
+    on_worker(move || {
+        let checks = ShellChecks { picked };
+        restore_paperclip_keys(keychain.as_ref(), &host, &checks, &workspace)
+    })
+    .await?
+    .map_err(|HostCallFailed| {
+        HostRefusal::new(
+            "host_unavailable",
+            "the agent host couldn't list the workspace's connections",
+        )
+    })
+}
+
+/// The restore's calls, on the host that serves them.
+struct ShellRestore<R: Runtime> {
+    app: AppHandle<R>,
+}
+
+impl<R: Runtime> ShellRestore<R> {
+    /// Sends `route` with `body`, and answers the host's body when it took
+    /// the call. It runs on a worker thread, so it waits for the host.
+    fn call(&self, route: Route, body: Value) -> Result<Value, HostCallFailed> {
+        let answer = tauri::async_runtime::block_on(async {
+            let response = send(&self.app, route, Some(body)).await?;
+            read_answer(response).await
+        });
+        match answer {
+            Ok(answer) if answer.status == 200 => Ok(answer.body),
+            _ => Err(HostCallFailed),
+        }
+    }
+}
+
+impl<R: Runtime> RestoreHost for ShellRestore<R> {
+    fn connections(&self, workspace: &str) -> Result<Value, HostCallFailed> {
+        let route = find_route(
+            "POST /v1/paperclip/connections",
+            halonic_agent_host::Answer::Json,
+        )
+        .ok_or(HostCallFailed)?;
+        self.call(route, json!({ "workspace": workspace, "mayStart": true }))
+    }
+
+    fn hand_over(&self, hand_over: &HandOver) -> Result<(), HostCallFailed> {
+        self.call(KEY_HAND_OVER, hand_over.body()).map(|_| ())
+    }
+}
+
+/// The restore's checks, with what the shell knows: the folders the person
+/// picked, and how an address's origin reads.
+struct ShellChecks {
+    picked: PickedFolders,
+}
+
+impl RestoreChecks for ShellChecks {
+    fn is_still_picked(&self, real_path: &str) -> bool {
+        self.picked.is_still_picked(real_path, same_workspace)
+    }
+
+    fn same_origin(&self, first: &str, second: &str) -> bool {
+        same_origin(first, second)
+    }
+}
+
+/// Whether two addresses have the same scheme, host and port, as the host's
+/// key guard compares them: `https://PAPERCLIP.acme.test:443/` is the origin
+/// of `https://paperclip.acme.test`. An address without one (not a URL, or
+/// one with no host) matches nothing.
+pub(super) fn same_origin(first: &str, second: &str) -> bool {
+    let origin = |address: &str| {
+        Url::parse(address)
+            .ok()
+            .map(|url| url.origin())
+            .filter(url::Origin::is_tuple)
+    };
+    match (origin(first), origin(second)) {
+        (Some(first), Some(second)) => first == second,
+        _ => false,
     }
 }
 

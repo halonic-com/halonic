@@ -239,14 +239,7 @@ verifies("agent-host.messaging-engine", () => {
       desktop = await startDesktop();
       const on = desktop;
       await pairWithServer(on);
-      const key = await on.transport.request("POST /v1/paperclip/key", {
-        workspace: on.workspace,
-        connection: "halonic",
-        key: testKey,
-        ...acme,
-      });
-      expect(key.status).toBe(409);
-      expect(key.body).toMatchObject({ error: { kind: "server_engine" } });
+      await expect(handOver(on)).rejects.toMatchObject({ status: 409, kind: "server_engine" });
       expect(on.keys.madeFor({ workspace: on.workspace, connection: "halonic" })).toBeUndefined();
 
       const disconnect = await on.transport.request("POST /v1/paperclip/disconnect", {

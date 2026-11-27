@@ -1,8 +1,8 @@
 //! Requirement `studio.src-tauri.paperclip-key-keep`: through
 //! `agent_host_request`, the approved sign-in poll reaches the page without
-//! its key, the shell confirms it itself, the page can't send the confirm,
-//! and Disconnect deletes the keychain entry whatever the host answers, or
-//! tells the page when the keychain refused.
+//! its key, the shell confirms it itself, the page can't send the confirm
+//! or hand a key over, and Disconnect deletes the keychain entry whatever
+//! the host answers, or tells the page when the keychain refused.
 //! Against the stand-in host of `agent_host_tests.rs`.
 
 use std::net::TcpListener;
@@ -99,6 +99,47 @@ fn the_page_cant_send_the_sign_ins_confirm() {
     assert!(as_json(&refusal).contains(r#""kind":"unknown_route""#));
     // Refused before anything reached a host: none was even started.
     assert_eq!(shell.starts(), 0);
+}
+
+#[test]
+fn the_page_cant_hand_a_key_over() {
+    let fake = FakeHost::serve();
+    let shell = Shell::new(&fake, AfterHandshake::WaitForInput);
+
+    let refusal = request(
+        &shell.handle(),
+        "POST /v1/paperclip/key",
+        Some(json!({
+            "workspace": "/work/acme",
+            "connection": "acme",
+            "key": "pk-from-the-page",
+            "address": "https://paperclip.acme.test",
+            "company": "company-acme",
+        })),
+    )
+    .expect_err("only the shell hands a key over");
+
+    assert!(as_json(&refusal).contains(r#""kind":"unknown_route""#));
+    assert!(!as_json(&refusal).contains("pk-from-the-page"));
+    // Refused before anything reached a host: none was even started.
+    assert_eq!(shell.starts(), 0);
+}
+
+#[test]
+fn the_restore_compares_addresses_by_origin() {
+    use super::super::paperclip_key::same_origin;
+
+    let address = "https://paperclip.acme.test";
+    assert!(same_origin(address, "https://PAPERCLIP.acme.test:443/"));
+    assert!(same_origin(
+        "http://localhost:3100",
+        "http://localhost:3100/api"
+    ));
+    assert!(!same_origin(address, "http://paperclip.acme.test"));
+    assert!(!same_origin(address, "https://paperclip.acme.test:8443"));
+    assert!(!same_origin(address, "https://evil.test"));
+    assert!(!same_origin("not an address", "not an address"));
+    assert!(!same_origin("data:text/plain,acme", "data:text/plain,acme"));
 }
 
 #[test]

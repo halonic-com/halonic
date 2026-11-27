@@ -14,7 +14,11 @@ import type {
 import type { SignInConnection } from "@halonicjs/ports";
 import { HostAgentConnections } from "./host-agent-connections.ts";
 import { HostServiceSignIn } from "./host-service-sign-in.ts";
-import { paperclipKeyEntryText, paperclipKeyTokenName } from "./paperclip-key.ts";
+
+/** The shell's keychain token of a connection's key (`SecretName::paperclip_key`). */
+function paperclipKeyTokenName(connection: string): string {
+  return `paperclip-${connection}`;
+}
 
 /** The request `/api/cli-auth/revoke-current`, as the stand-in Paperclip logs it. */
 export const revokeCurrent = "POST /api/cli-auth/revoke-current";
@@ -97,18 +101,20 @@ export class StandInPaperclipHost {
 
   /** Studio's own `ServiceSignIn`, over this stand-in. */
   serviceSignIn(report: (error: unknown) => void): HostServiceSignIn {
-    const tokens = { get: async (name: string) => this.keychain.get(name) ?? null };
     const connections = new HostAgentConnections({
       signIn: this.signInRoutes(),
-      host: { handOver: async () => {}, disconnect: (ref) => this.disconnect(ref) },
-      tokens,
+      host: { disconnect: (ref) => this.disconnect(ref) },
+      // The host already holds every key `setup.keys` names, so the shell gives none back.
+      restoreKeys: async () => 0,
       workspace: "/work/acme",
       wait: () => new Promise((resolve) => setTimeout(resolve, 0)),
       now: this.#setup.now,
       report,
     });
+    // Studio asks the shell for a restore when the workspace opens.
+    void connections.restore();
     const listed = () => this.signInRoutes().listed();
-    return new HostServiceSignIn({ listed, connections, tokens, now: this.#setup.now, report });
+    return new HostServiceSignIn({ listed, connections, now: this.#setup.now, report });
   }
 
   /** The host's `/v1/paperclip/sign-in/*` and connections routes. */
@@ -182,7 +188,7 @@ export class StandInPaperclipHost {
   #entryText(connection: string, key: string): string {
     // Only a listed connection file's key is kept.
     const { address, company } = this.#setup.connections[connection] as SignInConnection;
-    return paperclipKeyEntryText({ key, address, company, workspaces: ["/work/acme"] });
+    return JSON.stringify({ key, address, company, workspaces: ["/work/acme"] });
   }
 
   #confirm(signInId: string): void {

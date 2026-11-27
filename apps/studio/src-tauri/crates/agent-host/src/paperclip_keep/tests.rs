@@ -146,11 +146,15 @@ fn an_approved_poll_keeps_the_key_and_confirms_and_the_page_gets_no_key() {
 
 #[test]
 fn the_entry_is_the_token_the_page_wrote_before() {
-    let token = SecretName::token("paperclip-acme").expect("a token name");
-    assert_eq!(entry_name(), token);
+    // The page's `TokenStore` wrote `halonic_token_` and the token's
+    // canonical name; the token commands now refuse that name, so the
+    // test names the keychain entry itself.
+    assert_eq!(entry_name().as_str(), "halonic_token_paperclip_acme");
     assert_eq!(
-        SecretName::paperclip_key("Acme_Two").expect("a connection's entry"),
-        SecretName::token("paperclip-acme-two").expect("a token name"),
+        SecretName::paperclip_key("Acme_Two")
+            .expect("a connection's entry")
+            .as_str(),
+        "halonic_token_paperclip_acme_two",
     );
 }
 
@@ -426,4 +430,12 @@ fn no_page_can_name_the_sign_ins_confirm() {
 fn the_key_never_shows_in_debug_output() {
     let shown = format!("{:?}", PaperclipKey("pk-secret".to_owned()));
     assert!(!shown.contains("pk-secret"), "{shown}");
+}
+
+#[test]
+fn spellings_of_one_keychain_entry_share_one_turn() {
+    let turns = KeepTurns::default();
+    // `acme-x` and `Acme_X` name one keychain entry, so one turn.
+    assert!(Arc::ptr_eq(&turns.of("acme-x"), &turns.of("Acme_X")));
+    assert!(!Arc::ptr_eq(&turns.of("acme-x"), &turns.of("acme-y")));
 }

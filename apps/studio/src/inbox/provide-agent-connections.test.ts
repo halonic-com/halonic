@@ -50,9 +50,12 @@ function trustOfFolder(reader = new FileSystemFolderReader(folder, folder)): Wor
   });
 }
 
-/** An agent host that lists no connections and records every route Studio asks it. */
+/**
+ * An agent host that lists no connections, and the shell's restore, which
+ * gives no key back; it records every route and restore Studio asks for.
+ */
 function recordingHost() {
-  const asked: AgentHostRequestRoute[] = [];
+  const asked: string[] = [];
   const { promise: firstAsk, resolve } = Promise.withResolvers<void>();
   const transport = {
     request: async (route: AgentHostRequestRoute) => {
@@ -61,6 +64,11 @@ function recordingHost() {
       return { status: 200, body: { workspace: folder, connections: [] } };
     },
     stream: async () => ({ ok: false as const, answer: { status: 404, body: null } }),
+    restorePaperclipKeys: async (workspace: string) => {
+      asked.push(`agent_host_paperclip_restore ${workspace}`);
+      resolve();
+      return 0;
+    },
   };
   return { asked, firstAsk, transport };
 }
@@ -79,7 +87,7 @@ verifies("services.paperclip-restore", () => {
 
     expect(trust.needsNoTrust).toBe(true);
     expect(trust.isTrusted()).toBe(false);
-    expect(host.asked).toEqual(["POST /v1/paperclip/connections"]);
+    expect(host.asked).toEqual([`agent_host_paperclip_restore ${folder}`]);
   });
 
   it("asks the host nothing while the check runs, or after it failed", async () => {

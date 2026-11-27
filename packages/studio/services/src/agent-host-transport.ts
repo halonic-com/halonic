@@ -84,6 +84,21 @@ export class TauriAgentHostTransport implements AgentHostTransport {
     return hostAnswer(command, await this.#invoke(command, { backend }));
   }
 
+  /**
+   * Asks the shell's `agent_host_paperclip_restore` to give the kept Paperclip
+   * keys of `workspace` back to the agent host, when it opens. The shell
+   * decides what goes back and hands it over itself (HAL-20278); the answer
+   * is how many keys went back, never a key. A refusal (`host_unavailable`
+   * while the host can't list the workspace yet) rejects as
+   * {@link shellRefusal} says.
+   */
+  async restorePaperclipKeys(workspace: string): Promise<number> {
+    const command = "agent_host_paperclip_restore";
+    const answer = await this.#invoke(command, { workspace });
+    if (typeof answer === "number" && Number.isInteger(answer) && answer >= 0) return answer;
+    throw invalid(command);
+  }
+
   async stream(
     route: AgentHostStreamRoute,
     body: unknown,

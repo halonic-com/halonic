@@ -185,6 +185,7 @@ fn served_page_is_refused_every_app_and_plugin_command() {
         "agent_host_stream_end",
         "agent_host_security_updates",
         "agent_host_sandbox_choice_save",
+        "agent_host_paperclip_restore",
         "engine_ready",
         "start_status",
         "engine_request",

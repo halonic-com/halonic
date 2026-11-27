@@ -31,10 +31,19 @@ impl SecretName {
     /// token's canonical name, at most 128 characters in all. The page's
     /// `TokenStore` adds the same prefix (`tokenNamePrefix` in
     /// `@halonicjs/ports`), so tokens stored before the token commands are
-    /// found under the same entry.
+    /// found under the same entry. A Paperclip connection's key, a server
+    /// pairing and an owner's session are refused in every spelling: only
+    /// the shell's own code reaches them (HAL-20278, HAL-18501, HAL-18944).
     pub fn token(name: &str) -> Result<Self, SecretError> {
         let token = Self::parse(name)?;
-        if token.0.starts_with(SERVER_PAIRING_PREFIX) || token.0.starts_with(OWNER_SESSION_PREFIX) {
+        let is_shell_only = [
+            SERVER_PAIRING_PREFIX,
+            OWNER_SESSION_PREFIX,
+            PAPERCLIP_KEY_PREFIX,
+        ]
+        .iter()
+        .any(|prefix| token.0.starts_with(prefix));
+        if is_shell_only {
             return Err(SecretError::ReservedName);
         }
         if TOKEN_PREFIX.len() + token.0.len() > MAX_NAME_LENGTH {
@@ -108,6 +117,11 @@ pub const TOKEN_PREFIX: &str = "halonic_token_";
 /// The token name a Paperclip connection's everyday key is kept under,
 /// before the connection's name ([`SecretName::paperclip_key`]).
 const PAPERCLIP_KEY_TOKEN: &str = "paperclip-";
+
+/// [`PAPERCLIP_KEY_TOKEN`] in canonical form, which the token commands
+/// refuse in every spelling, so no page reads, writes or deletes a
+/// connection's key (HAL-20278).
+const PAPERCLIP_KEY_PREFIX: &str = "paperclip_";
 
 /// The canonical prefix of a stepper's sign-in: the user's own token for a
 /// service and the account it belongs to (`halonic-action-send`). Only the

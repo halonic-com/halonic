@@ -83,6 +83,13 @@ impl PickedFolders {
             .find(|folder| folder.location == location)
     }
 
+    /// The first entry whose location `matches`, if the person picked one.
+    pub(crate) fn find_where(&self, matches: impl Fn(&str) -> bool) -> Option<PickedFolder> {
+        self.read()
+            .into_iter()
+            .find(|folder| matches(&folder.location))
+    }
+
     /// Puts `folder` first, dropping an older entry for the same location
     /// and the oldest entries past [`MAX_PICKED_FOLDERS`].
     pub(crate) fn remember(&self, folder: PickedFolder) -> Result<(), TrustRefusal> {

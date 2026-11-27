@@ -10,7 +10,6 @@ import type {
   SignInEnd,
   SignInRevoke,
   SignInStart,
-  TokenStore,
 } from "@halonicjs/ports";
 import {
   type AgentConnection,
@@ -20,7 +19,6 @@ import {
   type SignInResult,
   signInLimitMs,
 } from "./agent-connections.ts";
-import { paperclipKeyTokenName } from "./paperclip-key.ts";
 
 /** What {@link HostServiceSignIn} needs. */
 export interface HostServiceSignInOptions {
@@ -28,8 +26,6 @@ export interface HostServiceSignInOptions {
   readonly listed: () => Promise<PaperclipConnectionList>;
   /** The sign-in and Disconnect that Settings › Connections uses: a `HostAgentConnections`. */
   readonly connections: Pick<AgentConnections, "list" | "signIn" | "disconnect">;
-  /** The keychain, only to see whether a connection already has a key. */
-  readonly tokens: Pick<TokenStore, "get">;
   /** The time now, in milliseconds; tests pass a clock of their own. */
   readonly now: () => number;
   /** Hears a failure nobody else is told about, such as a revoke after a close that failed. */
@@ -70,13 +66,14 @@ export class HostServiceSignIn implements ServiceSignIn {
   }
 
   async start(ref: SignInConnectionRef, options: { test: boolean }): Promise<SignInStart> {
-    const { connections, tokens, now } = this.#options;
+    const { connections, now } = this.#options;
     const row = await this.#row(ref.connection);
     if (row === undefined) return refused("no-connection");
     if (originOf(row.address) !== `https://${ref.host}`) return refused("other-host");
-    // A test may only ever revoke the key it made itself (condition 1).
-    const kept = await tokens.get(paperclipKeyTokenName(row.name));
-    if (options.test && kept !== null) return refused("already-signed-in");
+    // A test may only ever revoke the key it made itself (condition 1). The
+    // keychain is the shell's alone (HAL-20278), so the host's row says
+    // whether the connection has a key: any state but `no-key`.
+    if (options.test && row.state.kind !== "no-key") return refused("already-signed-in");
     // The sign-in names the connection by its listed ID, which the list call keeps.
     await connections.list();
     const startedAt = now();

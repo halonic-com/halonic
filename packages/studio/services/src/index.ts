@@ -89,13 +89,6 @@ export {
   type OpenItemWindow,
   openMessagingItem,
 } from "./open-messaging-item.ts";
-export {
-  connectPaperclip,
-  type PaperclipConnectResult,
-  type PaperclipKeyEntry,
-  paperclipKeyEntryText,
-  paperclipKeyTokenName,
-} from "./paperclip-key.ts";
 export { type RestoreTrust, restoreWhenMayStart } from "./paperclip-restore.ts";
 export {
   isQuiet,

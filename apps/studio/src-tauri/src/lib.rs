@@ -340,6 +340,7 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             agent_host::agent_host_stream,
             agent_host::agent_host_stream_end,
             agent_host::choice_save::agent_host_sandbox_choice_save,
+            agent_host::paperclip_key::agent_host_paperclip_restore,
             agent_host::updates::agent_host_security_updates,
             agent_host::progress::engine_ready,
             agent_host::progress::start_status,

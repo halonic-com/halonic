@@ -53,6 +53,8 @@ async function started(startProvider = async (_binding: PaperclipBinding) => {})
         await startProvider(binding);
       },
       log: (text) => logged.push(text),
+      // Every workspace here may start a run; `paperclip-key-may-start.test.ts` covers one that may not.
+      mayStart: async () => true,
     }),
   );
   const close = async () => {

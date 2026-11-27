@@ -1,6 +1,6 @@
 {
   "identifier": "desktop-agent-host",
-  "description": "On desktop, the app's own page may call the agent host through the agent_host_* commands: the shell starts the host for the profile and makes each call, so the launch token stays in the shell (crates/agent-host). The page names a route of the host's table, never a URL, and saves the sandbox choice only by naming a backend (agent_host_sandbox_choice_save), never a file. engine_ready tells the shell the page's engine is ready, which starts the host, and start_status answers how far Studio's start has got, as fixed values only (HAL-13408). It is local only, so the Studio the computer serves gets no agent host.",
+  "description": "On desktop, the app's own page may call the agent host through the agent_host_* commands: the shell starts the host for the profile and makes each call, so the launch token stays in the shell (crates/agent-host). The page names a route of the host's table, never a URL, and saves the sandbox choice only by naming a backend (agent_host_sandbox_choice_save), never a file. agent_host_paperclip_restore asks the shell, once a workspace opens, to hand the Paperclip keys it keeps back to the host itself; the page only names the workspace, and the shell decides what goes back and never answers a key (HAL-20278). engine_ready tells the shell the page's engine is ready, which starts the host, and start_status answers how far Studio's start has got, as fixed values only (HAL-13408). It is local only, so the Studio the computer serves gets no agent host.",
   "local": true,
   "windows": [
     "main",
@@ -18,6 +18,7 @@
     "allow-agent-host-stream-end",
     "allow-agent-host-security-updates",
     "allow-agent-host-sandbox-choice-save",
+    "allow-agent-host-paperclip-restore",
     "allow-engine-ready",
     "allow-start-status"
   ]

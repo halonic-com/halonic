@@ -9,16 +9,14 @@
 // approvals), which fails safe: a run calls no connector.
 import { realpath } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 import { nodeCommandSearch } from "@halonicjs/adapter-doctor-node";
 import { FolderDefinitionStore, FolderRunStore } from "@halonicjs/adapter-fs-node";
-import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { connectorHostClass } from "@halonicjs/adapter-http-kit";
 import { createNodeHttpClient } from "@halonicjs/adapter-http-node";
 import {
   type EnginePlace,
   type LocalEngine,
-  type OpenedHistory,
   openLocalEngine,
   type TrustReadMachine,
   type VersionChecks,
@@ -47,6 +45,7 @@ import type { EngineArguments } from "./engine-arguments.ts";
 import { type EngineListener, listenForEngine } from "./engine-listener.ts";
 import type { EngineRoleParts, RunningEngine } from "./engine-role.ts";
 import { engineTrustSentences } from "./engine-trust-sentences.ts";
+import { openGitHistory } from "./git-history.ts";
 import { runUpdatesFeed } from "./run-updates-feed.ts";
 import { EngineSchedule, runningEngine } from "./running-engine.ts";
 import type { SecretRedactor } from "./secret-redactor.ts";
@@ -318,19 +317,6 @@ function closingVersionsWith(engine: LocalEngine, versions: WatchedVersions): Lo
       await closeVersions();
     },
   };
-}
-
-/** The workspace's git history, read only, or `null` when the folder isn't a repository. */
-async function openGitHistory(root: string): Promise<OpenedHistory | null> {
-  const isRepository = await realpath(join(root, ".git")).then(
-    () => true,
-    () => false,
-  );
-  if (!isRepository) return null;
-  const runner = await GitRunner.create();
-  // The engine only reads the history, so it never commits as this author.
-  const vcs = new GitVcs(root, { runner, author: { name: "Halonic", email: "halonic@localhost" } });
-  return { vcs, close: () => runner.close() };
 }
 
 /** The zone a routine's schedule runs in when it names none: this computer's. */

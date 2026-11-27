@@ -41,10 +41,10 @@ verifies("studio-click-test.affected-steps", () => {
     });
 
     it("runs a step whose requirement file changed", () => {
-      expect(idsRun(["packages/studio/services/requirements/paperclip-connect.md"])).toEqual([
+      expect(idsRun(["packages/studio/services/requirements/paperclip-restore.md"])).toEqual([
         ...shortCheck,
         "connect-paperclip",
-        // The restart's requirement lives in the same package as Connect Paperclip's; Disconnect's is the shell's.
+        // The restart's requirement lives in the same package as one of Connect Paperclip's; Disconnect's is the shell's.
         "restart-keeps-sign-in",
       ]);
     });

@@ -17,7 +17,7 @@ export const connectPaperclip: Step = {
     "studio.desktop-connections",
     "connections.connect-dialog",
     "connections.connection-row",
-    "services.paperclip-connect",
+    "studio.src-tauri.paperclip-key-keep",
   ],
   run: async (context) => {
     const { driver } = context;
