@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20278 (plan approved by Liam; 6.8 decided on HAL-20274, signed by Julian on HAL-20277)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xo7s51PAMvXriMrsA6Uqflw2GIgiwGuO4wNRPt8uPEND4Njq+BL6YhWArODePogEUQCu68RLzeZ30ETWGR+KCg==
 
 Condition 1 of section 6.8 of the HAL-17491 note: the everyday Paperclip key
 leaves Studio's page. This first part moves the sign-in's keychain write, its
