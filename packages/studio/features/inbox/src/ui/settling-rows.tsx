@@ -28,8 +28,11 @@ export interface SettlingRowsOptions {
   readonly motion: InboxMotion;
   /** The page's one place a screen reader hears a line; without it nothing is read out. */
   readonly announce: ((line: string) => void) | undefined;
-  /** The items answered from their open card here, whose card already said so. */
-  readonly answeredHere: ReadonlySet<string>;
+  /**
+   * The items whose open card here already said how they ended: answered from it, or its line
+   * took the focus and was read out.
+   */
+  readonly saidHere: ReadonlySet<string>;
 }
 
 /** The agents' rows that ended while the Inbox showed them, and what holds them, then sends them away. */
@@ -177,22 +180,22 @@ function useGroups(settling: readonly AgentBundle[]): readonly SettlingGroup[] {
 /**
  * Reads out each group once as it starts to settle: one card's title and final state, "Merge
  * #6512: Approved by Ada · 14:02", or for several the one line of {@link endedTogetherLine}. A
- * card answered here isn't read again, since its card already said so.
+ * card whose open card already said how it ended isn't read again.
  */
 function useSayEnded(groups: readonly SettlingGroup[], options: SettlingRowsOptions): void {
   const said = useRef(new Set<number>());
-  const { announce, answeredHere } = options;
+  const { announce, saidHere } = options;
   useEffect(() => {
     for (const group of groups) {
       if (said.current.has(group.id)) continue;
       said.current.add(group.id);
       const cards = group.bundles
         .flatMap((bundle) => bundle.items)
-        .filter((item) => !answeredHere.has(item.id));
+        .filter((item) => !saidHere.has(item.id));
       const line = endedLine(cards);
       if (line !== undefined) announce?.(line);
     }
-  }, [groups, announce, answeredHere]);
+  }, [groups, announce, saidHere]);
 }
 
 function endedLine(cards: readonly AgentItem[]): string | undefined {

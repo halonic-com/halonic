@@ -19,20 +19,27 @@ export function endedElsewhere(item: AgentItem, answeredHere: boolean): EndedCar
  * "Cancelled · 14:02". When the line says only "Answered", the answer under it says how: the
  * option picked, or the reply in quotes. Its `id` describes the form of a
  * card that asked several questions, which stays ticked. When the focus was on a button that went
- * with it, the line takes the focus, so it never falls back to the page.
+ * with it, the line takes the focus, so it never falls back to the page, and `onRead` says the
+ * screen reader already read it out.
  */
 export function EndedLine({
   id,
   item,
   state,
+  onRead,
 }: {
   readonly id: string;
   readonly item: AgentItem;
   readonly state: EndedCardState;
+  readonly onRead: (() => void) | undefined;
 }) {
   const line = useRef<HTMLParagraphElement>(null);
+  // The line takes the focus only as it appears, so it's the first render's `onRead` that hears it.
+  const read = useRef(onRead);
   useEffect(() => {
-    if (document.activeElement === document.body) line.current?.focus({ preventScroll: true });
+    if (document.activeElement !== document.body) return;
+    line.current?.focus({ preventScroll: true });
+    read.current?.();
   }, []);
   const { line: text, tone } = finalState(state);
   const how = howAnswered(item, state, text);

@@ -136,7 +136,7 @@ function AgentCard({ checks, ...card }: AgentItemCardProps & { readonly checks: 
 export function useAgentItems(
   messaging: AgentMessaging | undefined,
   checks: ActionChecks,
-  settle: Omit<SettlingRowsOptions, "answeredHere">,
+  settle: Omit<SettlingRowsOptions, "saidHere">,
 ): AgentItems {
   const inbox = useMemo(
     () => (messaging === undefined ? undefined : new AgentInbox(messaging)),
@@ -151,11 +151,11 @@ export function useAgentItems(
   const [opened, setOpened] = useState<Opened | undefined>(undefined);
   const waiting = state.items.filter((item) => item.state.kind === "open");
   const bundles = bundleAgentItems(waiting);
-  // The items answered from their card here, which said so already, so they aren't read out again.
-  const answeredHere = useRef(new Set<string>());
+  // The items whose card here said how they ended already, so they aren't read out again.
+  const saidHere = useRef(new Set<string>());
   const ended = useSettlingRows(bundles, state.items, {
     ...settle,
-    answeredHere: answeredHere.current,
+    saidHere: saidHere.current,
   });
   const endedKeys = new Set(ended.bundles.map((bundle) => bundle.key));
   const sourceOf = (item: AgentItem) => state.sources.find((source) => source.id === item.source);
@@ -244,9 +244,10 @@ export function useAgentItems(
               agents={state.agents}
               now={now}
               answer={(answer) => {
-                answeredHere.current.add(item.id);
+                saidHere.current.add(item.id);
                 return inbox.answer(item.id, answer);
               }}
+              onEndedRead={() => saidHere.current.add(item.id)}
               readAttachment={(attachment) => inbox.readAttachment(attachment)}
               focusOnOpen={index === 0}
             />

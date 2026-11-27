@@ -3,7 +3,7 @@
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -30,14 +30,20 @@ async function openCard() {
     question: "Ship the release?",
     from: { kind: "person", name: "Ada" },
   });
+  const announce = vi.fn<(line: string) => void>();
   const root = render(
-    <InboxView inbox={new Inbox(fakeRuns([]).runs)} now={() => asked} agentMessaging={messaging} />,
+    <InboxView
+      inbox={new Inbox(fakeRuns([]).runs)}
+      now={() => asked}
+      agentMessaging={messaging}
+      announce={announce}
+    />,
   );
   await settled();
   const cell = root.querySelector<HTMLElement>('[role="grid"] tr [role="gridcell"]');
   await act(async () => cell?.click());
   await settled();
-  return { root, messaging, item };
+  return { root, messaging, item, announce };
 }
 
 const buttons = (root: HTMLElement, name: string) =>
@@ -107,6 +113,30 @@ verifies("inbox.final-state-open", () => {
       await settled();
 
       expect(document.activeElement?.textContent).toBe("Cancelled · 10:00");
+    });
+
+    it("isn't read out again by the page once its line took the focus", async () => {
+      const { root, messaging, item, announce } = await openCard();
+      buttons(root, "Yes")[0]?.closest("button")?.focus();
+
+      await act(async () => messaging.closeElsewhere(item.id, "cancelled"));
+      await settled();
+
+      expect(document.activeElement?.textContent).toBe("Cancelled · 10:00");
+      expect(announce.mock.calls).toEqual([]);
+    });
+
+    it("is read out once by the page when the focus was outside the card", async () => {
+      const { root, messaging, item, announce } = await openCard();
+      const cell = root.querySelector<HTMLElement>('[role="grid"] tr [role="gridcell"]');
+      cell?.focus();
+      expect(document.activeElement).toBe(cell);
+
+      await act(async () => messaging.closeElsewhere(item.id, "cancelled"));
+      await settled();
+
+      expect(document.activeElement?.textContent).not.toBe("Cancelled · 10:00");
+      expect(announce.mock.calls).toEqual([["Ship the release?: Cancelled · 10:00"]]);
     });
   });
 });
