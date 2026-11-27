@@ -19,6 +19,7 @@ import {
   TextArea,
   waitingSince,
 } from "@halonicjs/studio-kit";
+import type { EndedCardState } from "@halonicjs/studio-kit/settle";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import {
   agentItemBody,
@@ -42,6 +43,7 @@ import {
   type ManualAnswer,
   useEveryMinute,
 } from "./card-parts.tsx";
+import { EndedLine, endedElsewhere } from "./ended-line.tsx";
 import { OptionButtons } from "./option-buttons.tsx";
 
 /** Props for {@link AgentItemCard}. */
@@ -92,8 +94,9 @@ type Sent =
  * An agent's card or question (`inbox.agent-inbox-items`): its title, its source and since when it
  * waits, the question as safe Markdown, and one button per option, with a field for an option that
  * takes a note (`inbox.option-note`), a form of its questions when it asks several
- * (`inbox.question-cards`), or a reply field when it has none. Once answered, here or elsewhere, a
- * line says by whom and how, and the buttons stay, off (render 5f). It names the work it came
+ * (`inbox.question-cards`), or a reply field when it has none. Once answered here, a line says how,
+ * and the buttons stay, off (render 5f); once it ended elsewhere, its bar is the final state and
+ * the buttons go (`inbox.final-state-open`). It names the work it came
  * from, whatever made it (`inbox.every-waiting-item`), and
  * lists its files, showing a picture only once asked (`inbox.agent-item-media`). While its source
  * is offline or signed out the buttons are off and say why; nothing is kept to send later.
@@ -128,9 +131,10 @@ export function AgentItemCard({
     }
   };
 
-  const decided = decidedLine(item, sent);
-  const down = decided === null ? sourceDownLine(source, now()) : null;
-  const reason = decided ?? down;
+  const ended = endedElsewhere(item, sent.kind === "answered");
+  const decided = ended === undefined ? decidedLine(item, sent) : null;
+  const down = decided === null && ended === undefined ? sourceDownLine(source, now()) : null;
+  const reason = ended ?? decided ?? down;
   const unavailable = reason === null ? undefined : { reason: reasonId };
   const busy = (chosen: InboxAnswer) => sent.kind === "sending" && sameChoice(sent.answer, chosen);
   const since = item.state.kind === "open" ? waitingSince(new Date(item.createdAt), now()) : null;
@@ -152,22 +156,13 @@ export function AgentItemCard({
         <AgentAttachments attachments={item.attachments} read={readAttachment} />
       </div>
       <div className="flex flex-col gap-3 border-t border-border p-4">
-        {decided === null ? null : (
-          <Callout tone="info" announce="polite">
-            <span id={reasonId}>{decided}</span>
-          </Callout>
-        )}
-        {down === null ? null : (
-          <p id={reasonId} className="text-small text-fg-muted">
-            {down}
-          </p>
-        )}
+        <ReasonLine id={reasonId} item={item} ended={ended} decided={decided} down={down} />
         <FailedLine
           onRetry={sent.kind === "failed" ? () => void send(sent.answer) : null}
           detail={sent.kind === "failed" ? failureDetailOf(sent.error) : null}
           manual={sent.kind === "bad-answer" ? badAnswerLine : null}
         />
-        {item.action === undefined ? null : (
+        {item.action === undefined || ended !== undefined ? null : (
           <CannotRun
             reasons={cannotRun}
             unavailable={unavailable}
@@ -178,6 +173,7 @@ export function AgentItemCard({
         <AnswerControls
           item={item}
           sent={sent}
+          ended={ended !== undefined}
           unavailable={unavailable}
           answeredReason={reasonId}
           busy={busy}
@@ -189,9 +185,43 @@ export function AgentItemCard({
   );
 }
 
+/**
+ * The line over the buttons, with the `id` that says why they're off: the final state once the
+ * item ended elsewhere, how this card answered it, or why its source can't take an answer.
+ */
+function ReasonLine({
+  id,
+  item,
+  ended,
+  decided,
+  down,
+}: {
+  readonly id: string;
+  readonly item: AgentItem;
+  readonly ended: EndedCardState | undefined;
+  readonly decided: string | null;
+  readonly down: string | null;
+}) {
+  if (ended !== undefined) return <EndedLine id={id} item={item} state={ended} />;
+  if (decided !== null) {
+    return (
+      <Callout tone="info" announce="polite">
+        <span id={id}>{decided}</span>
+      </Callout>
+    );
+  }
+  return down === null ? null : (
+    <p id={id} className="text-small text-fg-muted">
+      {down}
+    </p>
+  );
+}
+
 interface AnswerControlsProps {
   readonly item: AgentItem;
   readonly sent: Sent;
+  /** It ended elsewhere: the buttons and the reply field go, a form of questions stays, ticked. */
+  readonly ended: boolean;
   readonly unavailable: { readonly reason: string } | undefined;
   /** The `id` of the callout that says how the item was answered. */
   readonly answeredReason: string;
@@ -207,6 +237,7 @@ interface AnswerControlsProps {
 function AnswerControls({
   item,
   sent,
+  ended,
   unavailable,
   answeredReason,
   busy,
@@ -214,6 +245,7 @@ function AnswerControls({
 }: AnswerControlsProps) {
   const [reply, setReply] = useState("");
   if (item.action !== undefined) return null;
+  if (item.questions === undefined && ended) return null;
   if (item.questions !== undefined) {
     return (
       <QuestionForm
@@ -336,14 +368,13 @@ function answeredWith(
   return undefined;
 }
 
-/** The line once the item is answered: by this card, else as the source last said, else as the refusal said. */
+/**
+ * The line once the item is answered by this card, else as the refusal said until the item is read
+ * again; an item the source says ended shows its final state instead ({@link EndedLine}).
+ */
 function decidedLine(item: AgentItem, sent: Sent): string | null {
   if (sent.kind === "answered") {
     return answeredLine(true, { kind: "me" }, sent.answeredAt, answerText(item, sent.answer));
-  }
-  if (item.state.kind === "answered") {
-    const { by, answeredAt, answer } = item.state;
-    return answeredLine(false, by, answeredAt, answerText(item, answer));
   }
   return sent.kind === "elsewhere"
     ? answeredLine(false, sent.by, sent.answeredAt, undefined)

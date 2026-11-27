@@ -143,9 +143,9 @@ verifies("inbox.question-cards", () => {
       expect(option(root, "Dark").getAttribute("aria-disabled")).toBe("true");
       expect(submit(root)).toBeUndefined();
       expect(root.textContent).not.toContain("Answered 24 Nov");
-      const callout = [...root.querySelectorAll("span[id]")].find(
-        (each) =>
-          each.textContent === "Answered elsewhere by Liam at 18:43: Separate repo, Dark, Compact.",
+      // The final state, as the row says it; the ticks say how (`inbox.final-state-open`).
+      const callout = [...root.querySelectorAll("p[id]")].find(
+        (each) => each.textContent === "Answered by Liam · 18:43",
       );
       expect(callout).toBeDefined();
       expect(option(root, "Dark").getAttribute("aria-describedby")).toContain(callout?.id);
