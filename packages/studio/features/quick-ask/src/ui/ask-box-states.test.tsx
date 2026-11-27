@@ -87,6 +87,24 @@ verifies("quick-ask.box-states", () => {
       expect(page.querySelector('button[aria-label="Ask Chief. Change agent."]')).not.toBeNull();
       expect(page.querySelector('button[aria-label="Ask"]')?.className).toContain("bg-primary");
     });
+
+    it("draws the chip's outline before the text box from the first frame, with the circle and a name bar inside", async () => {
+      vi.useFakeTimers();
+      const { messenger } = slowMessenger();
+      const { page } = await openBox(messenger);
+      // Drawn before the text box by `order-first`, but after it in the page, so the focus starts there.
+      const slot = textBox(page).nextElementSibling;
+      const classes = slot?.className.split(" ") ?? [];
+
+      expect(slot?.tagName).toBe("SPAN");
+      expect(classes).toEqual(
+        expect.arrayContaining(["order-first", "mt-0.5", "h-8", "rounded-full", "border"]),
+      );
+      expect(classes).not.toContain("hover:bg-surface-muted");
+      const skeleton = slot?.querySelector("[data-agent-skeleton]");
+      expect(skeleton?.querySelector(".rounded-full.size-7")).not.toBeNull();
+      expect(skeleton?.querySelector("[data-name-bar].w-16 .h-2")).not.toBeNull();
+    });
   });
 
   describe("couldn't load the agents", () => {
