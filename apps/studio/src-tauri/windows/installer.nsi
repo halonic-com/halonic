@@ -1158,6 +1158,11 @@ Section Install
   Call CreateOrUpdateStartMenuShortcut
   Call CreateFocusedAppShortcuts
 
+  ; Halonic change (HAL-20463): after the shortcuts are made, so they get this
+  ; version's icons too.
+  Call CopyVersionedIcons
+  Call RefreshShortcutIcons
+
   ; Halonic change (HAL-17810): Microsoft's vcruntime140.dll, under a name
   ; nothing loads, only for the sandbox step, whose helper puts it beside
   ; srt-win (crates/sandbox-elevate). With pages, the box was ticked and
@@ -1631,6 +1636,12 @@ Section Uninstall
   {{#each resources}}
     Delete "$INSTDIR\\{{this.[1]}}"
   {{/each}}
+
+  ; Halonic change (HAL-20463): the copies of the icons an install made, which
+  ; aren't resources, so the icons folder can go.
+  Delete "$INSTDIR\icons\halonic-*.ico"
+  Delete "$INSTDIR\icons\inbox-*.ico"
+  Delete "$INSTDIR\icons\messenger-*.ico"
   ; Halonic change (HAL-17810): not a resource, as only the sandbox step installs it.
   Delete "$INSTDIR\vcruntime140.dll.pinned"
 
@@ -1926,6 +1937,86 @@ FunctionEnd
 Function un.RemoveFocusedAppShortcuts
   !insertmacro RemoveFocusedAppShortcut "${PRODUCTNAME} Inbox"
   !insertmacro RemoveFocusedAppShortcut "${PRODUCTNAME} Messenger"
+FunctionEnd
+
+; ---------------------------------------------------------------------------
+; Halonic change (HAL-20463): Windows keeps a shortcut's icon in its icon cache
+; under the icon file's path and index. When an update changes an icon but not
+; that path, the taskbar keeps the old one, even after unpinning and pinning
+; again. So every install copies each app's icon to a path with the version in
+; it, `icons\<app>-<version>.ico`, points the shortcuts that start this
+; Halonic at it (in Halonic's Start menu folder, on the desktop and pinned to
+; the taskbar), and tells Explorer that icons changed. It never deletes the
+; icon cache or restarts Explorer: that is what malware does, and antivirus
+; tools say so. src/studio/installer-icon-refresh.test.ts checks this.
+; ---------------------------------------------------------------------------
+
+; Replaces the copies of `icons\${app}.ico` an earlier version made with this
+; version's.
+!macro CopyVersionedIcon app
+  Delete "$INSTDIR\icons\${app}-*.ico"
+  CopyFiles /SILENT "$INSTDIR\icons\${app}.ico" "$INSTDIR\icons\${app}-${VERSION}.ico"
+!macroend
+
+Function CopyVersionedIcons
+  SetDetailsPrint none
+  !insertmacro CopyVersionedIcon "halonic"
+  !insertmacro CopyVersionedIcon "inbox"
+  !insertmacro CopyVersionedIcon "messenger"
+  SetDetailsPrint both
+FunctionEnd
+
+; $R0: a shortcut. When it starts this install's Halonic, its icon becomes this
+; version's copy of its app's icon: Inbox's for `--app inbox`, Messenger's for
+; `--app messenger`, Halonic's otherwise. Any other shortcut is left as it is.
+Function PointShortcutAtVersionedIcon
+  !insertmacro ComHlpr_CreateInProcInstance ${CLSID_ShellLink} ${IID_IShellLink} r0 ""
+  ${If} $0 P= 0
+    Return
+  ${EndIf}
+  ${IUnknown::QueryInterface} $0 '("${IID_IPersistFile}", .r1)'
+  ${If} $1 P<> 0
+    ${IPersistFile::Load} $1 '("$R0", ${STGM_READWRITE})'
+    ${IShellLink::GetPath} $0 '(.r2, ${NSIS_MAX_STRLEN}, 0, 0)'
+    ${If} $2 == "$INSTDIR\${MAINBINARYNAME}.exe"
+      ${IShellLink::GetArguments} $0 '(.r3, ${NSIS_MAX_STRLEN})'
+      StrCpy $4 "halonic"
+      ${If} $3 == "--app inbox"
+        StrCpy $4 "inbox"
+      ${ElseIf} $3 == "--app messenger"
+        StrCpy $4 "messenger"
+      ${EndIf}
+      ${IShellLink::SetIconLocation} $0 '("$INSTDIR\icons\$4-${VERSION}.ico", 0)'
+      ${IPersistFile::Save} $1 '("$R0", 1)'
+    ${EndIf}
+    ${IUnknown::Release} $1 ""
+  ${EndIf}
+  ${IUnknown::Release} $0 ""
+FunctionEnd
+
+; Points every shortcut in ${folder} that starts this Halonic at its icon.
+!macro RefreshShortcutIconsIn folder
+  FindFirst $R2 $R1 "${folder}\*.lnk"
+  ${DoWhile} $R1 != ""
+    StrCpy $R0 "${folder}\$R1"
+    Call PointShortcutAtVersionedIcon
+    FindNext $R2 $R1
+  ${Loop}
+  FindClose $R2
+!macroend
+
+; Also with `/NS`, which makes no shortcuts but must not leave the ones there
+; on an icon this install removed.
+Function RefreshShortcutIcons
+  !insertmacro RefreshShortcutIconsIn "${FOCUSEDAPPFOLDER}"
+  StrCpy $R0 "$DESKTOP\${PRODUCTNAME}.lnk"
+  ${If} ${FileExists} $R0
+    Call PointShortcutAtVersionedIcon
+  ${EndIf}
+  !insertmacro RefreshShortcutIconsIn "$APPDATA\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
+  ; SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, NULL, NULL): Explorer
+  ; reads the shortcuts' icons again.
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
 FunctionEnd
 
 ; ---------------------------------------------------------------------------

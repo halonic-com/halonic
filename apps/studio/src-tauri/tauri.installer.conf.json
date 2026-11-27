@@ -17,6 +17,7 @@
       "../../../LICENSE": "LICENSE",
       "../../../NOTICE": "NOTICE",
       "legal/THIRD-PARTY-NOTICES.txt": "THIRD-PARTY-NOTICES.txt",
+      "icons/icon.ico": "icons/halonic.ico",
       "icons/apps/inbox.ico": "icons/inbox.ico",
       "icons/apps/messenger.ico": "icons/messenger.ico"
     },
