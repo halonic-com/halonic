@@ -36,13 +36,15 @@ function frameOf(container: HTMLElement): string[] {
 }
 
 verifies("kit.prompt-look", () => {
-  it("draws the composer as a rounded box with the prompt edge, surface and shadow", () => {
+  it("draws the composer as the new design's pill, its edge see-through but 3:1 under More contrast", () => {
     const frame = frameOf(render(composer()).container);
     for (const name of [
-      "rounded-prompt",
-      "border-border-prompt",
-      "bg-surface-prompt",
-      "shadow-prompt",
+      "rounded-composer",
+      "min-h-composer",
+      "border-transparent",
+      "contrast-more:border-border-control",
+      "bg-surface-raised",
+      "shadow-composer",
       "focus-prompt",
     ]) {
       expect(frame).toContain(name);
@@ -120,6 +122,13 @@ verifies("kit.prompt-look", () => {
     const css = await buildCss(["max-h-rows-reading"]);
     const rule = css.slice(css.indexOf(".max-h-rows-reading"));
     expect(rule).toContain("max-height: calc(var(--max-rows) * var(--text-reading--line-height))");
+  });
+
+  it("builds the message box's 26px corners, 52px height and composer shadow", async () => {
+    const css = await buildCss(["rounded-composer", "min-h-composer", "shadow-composer"]);
+    expect(css).toContain("--radius-composer: 26px");
+    expect(css).toContain("--spacing-composer: 52px");
+    expect(css).toContain("--shadow-composer: 0 1px 6px 0 var(--shade-composer)");
   });
 
   it("builds the board's values in light and the lighter box in dark", async () => {

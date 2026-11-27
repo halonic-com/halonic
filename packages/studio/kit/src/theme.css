@@ -94,6 +94,9 @@
      on the box's 6% white, so the circle vanished; 8% white over the box keeps it a step above. */
   --color-surface-soft: light-dark(var(--color-surface-muted), rgb(255 255 255 / 0.08));
   --color-surface-soft-hover: light-dark(var(--color-border), rgb(255 255 255 / 0.14));
+  /* Your own message's bubble in the new design (HAL-20728): the board's own-message blue, a step
+     brighter in dark than accent-soft, which is the selected chips' tint. */
+  --color-surface-own-message: light-dark(#dbe7fe, #143170);
 
   /* ---------------------------------------------------------------- Colour: text (text-fg*) */
   /* The new design's ink: near-black and near-white, the quieter text at 60% (HAL-20674). */
@@ -193,6 +196,9 @@
   --text-body-strong: 14px;
   --text-body-strong--line-height: 20px;
   --text-body-strong--font-weight: 500;
+  --text-chat-title: 16px; /* the name in a chat header (HAL-20728) */
+  --text-chat-title--line-height: 21px;
+  --text-chat-title--font-weight: 400;
   --text-reading: 15px; /* chat messages, docs, long text */
   --text-reading--line-height: 24px;
   --text-reading--font-weight: 400;
@@ -236,6 +242,7 @@
   --spacing-phone-bar: 56px; /* the phone's top bar and bottom navigation (h-phone-bar) */
   --spacing-nav-pill: 56px; /* width of the "where you are" pill in the bottom navigation */
   --spacing-rail: 64px; /* the icon rail on the window's left edge (HAL-20674) */
+  --spacing-composer: 52px; /* the chat's message box at one line (min-h-composer, HAL-20728) */
   --spacing-row: 72px; /* a list row with an avatar in the two-column layout */
   --spacing-qr-tile: 232px; /* the QR tile's smallest side, so a phone scans it from arm's length */
   --spacing-input-short: 6ch; /* the text of a short Input, in its own font: a small number */
@@ -259,9 +266,11 @@
   --radius-segment: 6px; /* a tab inside the Tabs track: radius-sm less the track's 2px padding */
   --radius-md: 12px; /* cards, panels, menus, toasts */
   --radius-lg: 16px; /* dialogs */
-  --radius-prompt: 24px; /* the chat composer, Quick ask, the palette and the chat search */
+  --radius-prompt: 24px; /* Quick ask, the palette and the chat search */
   --radius-full: 9999px; /* avatars, toggles, counters */
   --radius-panel: 8px; /* the panels on the window frame (HAL-20674) */
+  --radius-bubble: 7.5px; /* a chat message's bubble (HAL-20728) */
+  --radius-composer: 26px; /* the chat's message box, half its one-line height (HAL-20728) */
 
   /* ---------------------------------------------------------------- Elevation (shadow-1/2/3) */
   /* 1: a card lifted from its surface (approval cards at rest, others on hover). 2: menus, popovers,
@@ -272,9 +281,14 @@
   --shadow-3:
     0 0 0 1px var(--shade-edge), 0 24px 48px -12px var(--shade-deep),
     0 4px 12px -4px var(--shade-mid);
-  /* The board's search-box shadow for the chat composer and the chat search, deeper on focus. */
+  /* The board's search-box shadow for the prompt boxes, deeper on focus; the chat's message box
+     takes it on focus too. */
   --shadow-prompt: 0 4px 18px -2px var(--shade-prompt);
   --shadow-prompt-focus: 0 4px 18px -2px var(--shade-prompt-focus);
+  /* The new design's conversation (HAL-20728): the chat header's, a bubble's and the message box's. */
+  --shadow-header: 0 1px 4px 0 var(--shade-header);
+  --shadow-bubble: 0 1px 0.5px 0 var(--shade-bubble);
+  --shadow-composer: 0 1px 6px 0 var(--shade-composer);
 
   /* ---------------------------------------------------------------- Motion (ease-*, animate-*) */
   /* Colour changes and short fades, plus three movements (design review HAL-18481): things that
@@ -329,6 +343,10 @@
   /* The board's grey in light (HAL-19142); in dark a plain shadow barely shows, so it's deeper. */
   --shade-prompt: light-dark(rgb(60 64 67 / 0.12), rgb(0 0 0 / 0.5));
   --shade-prompt-focus: light-dark(rgb(60 64 67 / 0.2), rgb(0 0 0 / 0.6));
+  /* The recipes' measured shades (HAL-20672), the same in both modes as there. */
+  --shade-header: light-dark(rgb(10 10 10 / 0.12), rgb(10 10 10 / 0.12));
+  --shade-bubble: light-dark(rgb(11 20 26 / 0.13), rgb(11 20 26 / 0.13));
+  --shade-composer: light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.12));
 
   /* The halo: the brand's two hues, the site's dark accent blue and the spectrum's violet (its
      dark twin, as bright as the blue). Never flat fills; only through the six halo utilities. A

@@ -79,6 +79,8 @@ const contrastPairs: ContrastPair[] = [
   ...["fg", "fg-muted", "fg-subtle"].flatMap((foreground) =>
     onSurfaces(foreground, text, ["surface-muted"]),
   ),
+  // The person's message in its bubble (HAL-20728).
+  onFill("fg", "surface-own-message"),
   ...onSurfaces("accent-text", text),
   ...onSoftFill("accent-text", "accent-soft"),
   onFill("on-primary", "primary"),
@@ -370,6 +372,8 @@ describe("theme.css scales", () => {
       "--radius-prompt",
       "--radius-full",
       "--radius-panel",
+      "--radius-bubble",
+      "--radius-composer",
     ]);
     expect(namesStartingWith(themeTokens, "--spacing")).toEqual([
       "--spacing",
@@ -386,6 +390,7 @@ describe("theme.css scales", () => {
       "--spacing-phone-bar",
       "--spacing-nav-pill",
       "--spacing-rail",
+      "--spacing-composer",
       "--spacing-row",
       "--spacing-qr-tile",
       "--spacing-input-short",
@@ -398,6 +403,9 @@ describe("theme.css scales", () => {
       "--shadow-3",
       "--shadow-prompt",
       "--shadow-prompt-focus",
+      "--shadow-header",
+      "--shadow-bubble",
+      "--shadow-composer",
     ]);
     expect(namesStartingWith(themeTokens, "--animate-")).toEqual([
       "--animate-spin",

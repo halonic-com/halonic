@@ -13,12 +13,12 @@ import { describedBy } from "../field/control.ts";
 import { useFieldControl } from "../field/field.tsx";
 import { isComposing } from "../keyboard/is-composing.ts";
 import {
+  composerBoxClasses,
   type FieldLook,
   fieldBoxClasses,
   fieldBoxState,
   fieldTextClasses,
   focusTextOnPress,
-  promptBoxClasses,
   promptTextClasses,
 } from "./field-box.ts";
 
@@ -172,7 +172,7 @@ export function TextArea({
   const promptPadding = `p-[7px] ${leading === undefined ? "ps-4" : ""} ${trailing === undefined ? "pe-4" : ""}`;
   const boxClasses =
     look === "prompt"
-      ? `${promptBoxClasses(state, "end")} ${promptPadding}`
+      ? `${composerBoxClasses(state, "end")} ${promptPadding}`
       : `${fieldBoxClasses(state, "md", "start")} py-2 phone:py-3`;
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: a mouse convenience only; the keyboard reaches the text itself.

@@ -27,8 +27,8 @@ interface ReplyMessage {
 export type ChatMessageProps = YourMessage | ReplyMessage;
 
 /**
- * One message row of a chat transcript. The person's message sits on the right in a
- * `surface-muted` box at most four fifths wide; a reply takes the full width, with no box, under
+ * One message row of a chat transcript. The person's message sits on the right in an
+ * own-message bubble at most 65% wide; a reply takes the full width, with no box, under
  * a heading only screen readers see. Both keep the text's line breaks and wrap long words.
  *
  * @example
@@ -42,8 +42,9 @@ export function ChatMessage(props: ChatMessageProps) {
   if (props.from === "you") {
     return (
       <div className="flex justify-end" data-chat-message="you">
-        {/* `rounded-lg`, as the person's bubble in the Messenger (`kit.chat-message-corner`). */}
-        <p className="max-w-4/5 rounded-lg bg-surface-muted px-3 py-2 text-reading text-fg whitespace-pre-wrap wrap-break-word">
+        {/* The new design's bubble (HAL-20728): 7.5px corners, padding 6 / 7 / 8 / 9px and its
+            one-pixel shadow, at most 65% wide (`kit.chat-message-corner`). */}
+        <p className="max-w-[65%] rounded-bubble bg-surface-own-message pt-[6px] pr-[7px] pb-2 pl-[9px] text-body text-fg shadow-bubble whitespace-pre-wrap wrap-break-word">
           {props.children}
         </p>
       </div>

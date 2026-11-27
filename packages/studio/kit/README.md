@@ -648,7 +648,7 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
 | `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks. Its Markdown never becomes HTML and loads no image. A link shows its words and its address as text that opens nothing; with `openLink` (such as `useOpenExternal()`, for an agent's message) the words are an `ExternalLink` that opens outside the app |
 | `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
 | `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place). A `button` given `unavailable` waits in its place with a visible reason, as Try again does while the engine isn't answering |
-| `ChatComposer` | The message box in the prompt look (24px corners, a soft edge and shadow; HAL-19142) with its round Send inside it at the right, grey while blank and blue once there's text, and an optional round `leading` button at the left. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box. A `picker` (such as a channel's `@` members) opens a list above the box: the box is then a combobox naming the active row with `aria-activedescendant`, ↑↓ move it, Enter picks it instead of sending, Esc calls `onClose`, and focus stays in the box |
+| `ChatComposer` | The new design's message box (HAL-20728): a floating pill with 26px corners (`rounded-composer`), at least 52px tall (`min-h-composer`), on the raised surface with `shadow-composer`, its edge see-through until focus turns it `accent` (`border-control` under More contrast), with its round Send inside it at the right, grey while blank and blue once there's text, and an optional round `leading` button at the left. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box. A `picker` (such as a channel's `@` members) opens a list above the box: the box is then a combobox naming the active row with `aria-activedescendant`, ↑↓ move it, Enter picks it instead of sending, Esc calls `onClose`, and focus stays in the box |
 | `ChatBoxLine` | The line under the box: `warning` (triangle) for what stops a message, such as no key or a key in the message, `muted` for a calm fact; its actions follow the sentence |
 
 Nothing in the transcript is a live region: a reply isn't read while it streams in. The composer's line under the box sits in a status region, so it's read once when it appears. The feature announces the
@@ -2181,8 +2181,9 @@ dark) and the `shadow-prompt` shadow. With focus the edge turns `accent` and the
 placeholder and the shadow mark the box. Under More contrast it takes the field's 3:1 edge
 (`border-control`), as every edge does. Its text is 15px, as in every prompt box, and a search
 in it hides the browser's own clear button, since the box carries its own Esc. Form fields, such
-as Settings, keep the default look. `TextArea` takes the same `look`, with round buttons in
-`leading` and `trailing`; the `ChatComposer` uses it. Those `soft` buttons fill with
+as Settings, keep the default look. On a `TextArea`, `look="prompt"` draws the chat's message box instead: the new design's
+pill (see the `ChatComposer` row), with round buttons in `leading` and `trailing`; only the
+`ChatComposer` uses it. Those `soft` buttons fill with
 `surface-soft`: `surface-muted` in light, 8% white in dark, so they stay a step above the box.
 
 **Width.** The box fills its column (`width="full"`, the default). For a small number, such as a

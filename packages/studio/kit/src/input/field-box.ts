@@ -118,10 +118,14 @@ export function fieldBoxClasses(
 
 /**
  * `field`, the default, is a form field's clear edge. `prompt` is only for the boxes where you type
- * to an agent (the chat composer, the chat search): the board's rounder search-box look, with a
- * soft edge and shadow, so it reads as "start here" (HAL-19142).
+ * to an agent. On an `Input`, such as the chat search, it's the board's rounder search-box look,
+ * with a soft edge and shadow, so it reads as "start here" (HAL-19142). On a `TextArea` it's the
+ * chat's message box, the new design's pill (`composerBoxClasses`); only the `ChatComposer` uses it.
  */
 export type FieldLook = "field" | "prompt";
+
+// Its edge is see-through, so under More contrast it takes the 3:1 edge every other edge has.
+const composerEdge = "border-transparent contrast-more:border-border-control";
 
 const promptStateClasses: Record<FieldBoxState, string> = {
   default: "border-border-prompt bg-surface-prompt shadow-prompt focus-prompt",
@@ -137,6 +141,24 @@ const promptStateClasses: Record<FieldBoxState, string> = {
 export function promptBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "center"): string {
   const box = "flex w-full gap-2 rounded-prompt border transition";
   return `${box} ${alignClasses[align]} ${promptStateClasses[state]}`;
+}
+
+// The chat's message box in the new design (HAL-20728): the floating pill of Noah's recipe, with
+// an edge that shows only on focus or an error and the composer's lighter shadow.
+const composerStateClasses: Record<FieldBoxState, string> = {
+  default: `${composerEdge} bg-surface-raised shadow-composer focus-prompt`,
+  invalid: "border-danger bg-surface-raised shadow-composer focus-field-danger",
+  "read-only": `${composerEdge} bg-surface-subtle shadow-composer focus-prompt`,
+  disabled: "cursor-not-allowed border-transparent bg-surface-subtle text-fg-disabled",
+};
+
+/**
+ * The chat composer's box for a state: a prompt box with 26px corners at least 52px tall, on the
+ * raised surface, its 1px edge see-through until focus or an error (`kit.prompt-look`).
+ */
+export function composerBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "center"): string {
+  const box = "flex w-full gap-2 min-h-composer rounded-composer border transition";
+  return `${box} ${alignClasses[align]} ${composerStateClasses[state]}`;
 }
 
 /** Which look a field has, from its props and its Field. Disabled wins, then an error. */

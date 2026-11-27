@@ -21,8 +21,9 @@ verifies("kit.content-header", () => {
     const heading = header.querySelector("h2") as HTMLElement;
 
     expect(header.className.split(" ")).toEqual(
-      expect.arrayContaining(["border-b", "border-border"]),
+      expect.arrayContaining(["h-16", "gap-4", "shadow-header"]),
     );
+    expect(header.className.split(" ")).not.toContain("border-b");
     expect(header.firstElementChild?.className.split(" ")).toContain("size-10");
     expect(heading.textContent).toBe("Chief");
     expect(heading.className.split(" ")).toContain("truncate");
