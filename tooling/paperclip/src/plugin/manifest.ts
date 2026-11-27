@@ -3,7 +3,7 @@ import { frontBotConfigProperties } from "../front-bot/settings.ts";
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { workerReadTables } from "../worker-agents/tables.ts";
 import { chiefLine } from "./chief-line-settings.ts";
-import { frontBotRoutes } from "./front-bot-routes.ts";
+import { frontBotRoutes } from "./front-bot-notes.ts";
 import { capabilities } from "./manifest-capabilities.ts";
 import { mergeControlJob } from "./merge-control-declaration.ts";
 import { mergerWakeConfigProperties, mergerWakeJob } from "./merger-wake-declaration.ts";

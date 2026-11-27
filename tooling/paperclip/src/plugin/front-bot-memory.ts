@@ -18,6 +18,7 @@ import type { SecretRef } from "../task-effort/settings.ts";
 import type { FrontBotApi, RecordBase } from "./front-bot.ts";
 import { countSpend, readBudget, recordCall } from "./front-bot-budget.ts";
 import { askFrontBot, type FrontBotDeps } from "./front-bot-calls.ts";
+import { chatMemoryClearRouteKey } from "./front-bot-notes.ts";
 
 /**
  * Where the front bot keeps its memory (HAL-19597, front-bot/memory.ts): the
@@ -25,10 +26,6 @@ import { askFrontBot, type FrontBotDeps } from "./front-bot-calls.ts";
  * before a reply with two state reads; rewritten after a posted reply by one
  * background call; read and cleared by the board on the chat-memory route.
  */
-
-/** The route's key, as the manifest declares it, next to chat-notes. */
-export const chatMemoryRouteKey = "chat-memory";
-export const chatMemoryClearRouteKey = "chat-memory-clear";
 
 type StateGet = Pick<PluginStateClient, "get">;
 type StateGetSetDelete = Pick<PluginStateClient, "get" | "set" | "delete">;

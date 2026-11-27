@@ -14,12 +14,13 @@ import { fetchHonouringSignal } from "./fetch-signal.ts";
 import { frontBot } from "./front-bot.ts";
 import { serial } from "./front-bot-budget.ts";
 import { gitHubPrStatus } from "./front-bot-lookup.ts";
+import { handleChatMemory } from "./front-bot-memory.ts";
 import {
   chatMemoryClearRouteKey,
   chatMemoryRouteKey,
-  handleChatMemory,
-} from "./front-bot-memory.ts";
-import { chatNotesRouteKey, handleChatNotes } from "./front-bot-notes.ts";
+  chatNotesRouteKey,
+  handleChatNotes,
+} from "./front-bot-notes.ts";
 import { progressNotes } from "./front-bot-progress.ts";
 import { pendingMessages, registerRunChoice } from "./front-bot-run-choice.ts";
 import { handleGhGuard } from "./gh-guard-route.ts";

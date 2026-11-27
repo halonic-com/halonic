@@ -11,13 +11,8 @@ import {
   frontBotHarness,
   plantedKey,
 } from "./front-bot.test-helper.ts";
-import {
-  chatMemoryClearRouteKey,
-  chatMemoryRouteKey,
-  handleChatMemory,
-  readMemory,
-  writeMemory,
-} from "./front-bot-memory.ts";
+import { handleChatMemory, readMemory, writeMemory } from "./front-bot-memory.ts";
+import { chatMemoryClearRouteKey, chatMemoryRouteKey } from "./front-bot-notes.ts";
 
 const remembered = {
   summary: "Asked about the 0.3 release notes earlier.",
