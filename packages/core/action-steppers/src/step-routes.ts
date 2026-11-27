@@ -1,6 +1,6 @@
 import type { ActionBodyField, ActionCallRoute, ActionRoute } from "@halonicjs/ports";
 import { assert } from "@halonicjs/std";
-import type { CallBodyField, Step, StepperDefinition } from "./stepper-types.ts";
+import type { CallBodyField, CheckStep, Step, StepperDefinition } from "./stepper-types.ts";
 import { type ParameterField, parameterFieldsOf } from "./strict-parameters.ts";
 
 type Fields = Readonly<Record<string, ParameterField>>;
@@ -54,9 +54,28 @@ function placeholdersOf(template: string, fields: Fields, where: string): Record
 
 function bodyFieldOf(field: CallBodyField, fields: Fields, where: string): ActionBodyField {
   if (field.kind === "constant") return { name: field.name, kind: "constant", value: field.value };
+  if (field.kind === "parameter-list") {
+    const item = fieldOf(fields, field.parameter, where);
+    assert(
+      item.kind === "integer",
+      `${where}: list field ${field.name} needs an integer parameter, and {${field.parameter}} isn't one`,
+    );
+    return { name: field.name, kind: "integer-list" };
+  }
   const parameter = fieldOf(fields, field.name, where);
   if (parameter.kind === "integer") return { name: field.name, kind: "integer" };
   return { name: field.name, kind: "string", pattern: patternOf(field.name, parameter) };
+}
+
+/** Each field a check's `requires` and `requiredExpect` name must be kept, and each parameter exist. */
+function assertCheckNames(step: CheckStep, fields: Fields, where: string): void {
+  for (const rule of step.requires ?? []) {
+    assert(step.keep.includes(rule.name), `${where}: requires ${rule.name} isn't a kept field`);
+    if ("equalsParameter" in rule) fieldOf(fields, rule.equalsParameter, where);
+  }
+  for (const name of step.requiredExpect ?? []) {
+    assert(step.keep.includes(name), `${where}: requiredExpect ${name} isn't a kept field`);
+  }
 }
 
 function routeOf(
@@ -101,9 +120,7 @@ function routeOf(
         step.changedAfterStart === undefined || step.keep.includes(step.changedAfterStart),
         `${where}: changedAfterStart "${step.changedAfterStart}" isn't a kept field`,
       );
-      for (const rule of step.requires ?? []) {
-        assert(step.keep.includes(rule.name), `${where}: requires ${rule.name} isn't a kept field`);
-      }
+      assertCheckNames(step, fields, where);
       // A read runs without the native dialog, whatever the definition's risk (ToolScript ADR, S9).
       return {
         ...base,
@@ -128,12 +145,15 @@ function routeOf(
  * holds them (architecture note, 2.4): a `guided` step's address, a `call`
  * step's method, path, body and kept fields, and a `check` as a `GET` with no
  * body that runs without the native dialog. Each placeholder and body field
- * takes its pattern from the parameter of the same name. An `input`,
+ * takes its pattern from the parameter of the same name; a `parameter-list`
+ * field is an `integer-list`. An `input`,
  * `script` or `sign-in` step has no route.
  *
  * @throws Error when a step names a placeholder or body field that isn't a
- *   parameter, a `requires` rule names a field its check doesn't keep, or the parameters weren't built with `strictParameters`: a bug
- *   in the reviewed definition, which the catalog's tests catch
+ *   parameter, a list field whose parameter isn't an integer, a `requires`
+ *   rule or `requiredExpect` name a field its check doesn't keep or a
+ *   parameter that doesn't exist, or the parameters weren't built with
+ *   `strictParameters`: a bug in the reviewed definition, which the catalog's tests catch
  *
  * @example
  * routesOf(definition).find((route) => route.step === 2);
