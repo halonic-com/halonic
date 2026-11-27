@@ -76,9 +76,26 @@ export function toolsWithoutAskingOf(
 }
 
 /**
+ * The names of the secrets a connector's file names, never their values, as the workspace check
+ * reads them: its own `secret` (the HTTP bearer token), a local program's `secretEnv` values and a
+ * local integration's `secrets` values. A Google connector names none: its sign-in comes from
+ * the account's Google setup.
+ */
+export function connectorSecretsOf(connector: Connector): readonly string[] {
+  const { transport } = connector;
+  const names: string[] = [];
+  if (connector.secret !== undefined && !("google" in transport)) names.push(connector.secret);
+  if ("stdio" in transport) names.push(...Object.values(transport.stdio.secretEnv ?? {}));
+  if ("integration" in transport) {
+    names.push(...Object.values(transport.integration.secrets ?? {}));
+  }
+  return [...new Set(names)];
+}
+
+/**
  * The skills, knowledge and connectors the hub can use: its own, then the shared ones, only those
  * its `uses` lists when it has one (as the workspace check allows); connectors say how many of
- * their tools can run without asking first.
+ * their tools can run without asking first, and the names of the secrets they use.
  */
 export function toolOptionsOf(
   workspace: LoadedWorkspace,
@@ -103,9 +120,13 @@ export function toolOptionsOf(
   return {
     skills: optionsOf("skills", "skill").map(named),
     knowledge: optionsOf("knowledge", "knowledge").map(named),
-    connectors: optionsOf("connectors", "connector").map((connector) => ({
-      ...named(connector),
-      toolsWithoutAsking: toolsWithoutAskingOf(connector.tools),
-    })),
+    connectors: optionsOf("connectors", "connector").map((connector) => {
+      const secrets = connectorSecretsOf(connector);
+      return {
+        ...named(connector),
+        toolsWithoutAsking: toolsWithoutAskingOf(connector.tools),
+        ...(secrets.length > 0 && { secrets }),
+      };
+    }),
   };
 }

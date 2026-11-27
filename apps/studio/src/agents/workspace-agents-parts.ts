@@ -4,6 +4,7 @@ import type {
   AgentLiveState,
   AgentRef,
   AgentsHost,
+  ConnectorKeys,
   HarnessReadiness,
   HarnessSignIn,
   SavedChatsPlace,
@@ -94,6 +95,8 @@ export interface WorkspaceAgentsParts {
    * without its key (H19). Absent where keys can't be asked, which shows no line.
    */
   readonly hasKey?: HasKey;
+  /** See {@link AgentsHost.connectorKeys}; absent where keys can't be changed here. */
+  readonly connectorKeys?: ConnectorKeys;
   /** See {@link AgentsHost.budgetReached}; absent where the budget can't be read. */
   readonly budgetReached?: NonNullable<AgentsHost["budgetReached"]>;
 }
