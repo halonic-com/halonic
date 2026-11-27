@@ -7,6 +7,7 @@ import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { projectColour } from "../agent/project-colour.ts";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
+import { fakeSetups, setupEntry } from "../fake-setups.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
@@ -53,8 +54,11 @@ const studio = { id: "p-studio", name: "Studio app" };
 const engine = { id: "p-engine", name: "Engine" };
 const website = { id: "p-web", name: "Halonic marketing website" };
 
-/** Two Studio app questions, one each in Engine and the website, and one with no project. */
-async function inboxWithProjects() {
+/**
+ * Two Studio app questions, one each in Engine and the website, and one with no project; with
+ * `setUp`, also a fixed setup item of the Inbox's own, listed but no longer waiting.
+ */
+async function inboxWithProjects({ setUp = false } = {}) {
   const messaging = new FakeAgentMessaging({ now: () => new Date(2026, 10, 24, 10, 0) });
   const source = messaging.addSource({ label: "Paperclip · Acme" });
   const add = (question: string, project?: MessagingProject) =>
@@ -64,9 +68,17 @@ async function inboxWithProjects() {
   add("Retry the nightly job?", engine);
   add("Publish the new home page?", website);
   add("Send the weekly digest?");
+  const inbox = new Inbox(fakeRuns([]).runs);
+  if (setUp) {
+    const fixed = setupEntry("acct-1", new Date(2026, 10, 24, 9, 0).toISOString(), {
+      fixed: true,
+      title: "Google is set up",
+    });
+    inbox.addSetupSource(fakeSetups("google", [fixed]).source);
+  }
   const root = render(
     <InboxView
-      inbox={new Inbox(fakeRuns([]).runs)}
+      inbox={inbox}
       now={() => new Date(2026, 10, 24, 10, 2)}
       agentMessaging={messaging}
     />,
@@ -121,6 +133,61 @@ verifies("inbox.project-line", () => {
       "Halonic marketing website1",
       "No project1",
     ]);
+    // The kit hides the count's chip from a screen reader, so each entry's name carries it.
+    expect(
+      [...root.querySelectorAll("[role=menuitemradio]")].map((entry) =>
+        entry.getAttribute("aria-label"),
+      ),
+    ).toEqual([
+      "All projects, 5",
+      "Studio app, 2",
+      "Engine, 1",
+      "Halonic marketing website, 1",
+      "No project, 1",
+    ]);
+  });
+
+  it("counts only items that wait, not a fixed setup item still listed", async () => {
+    const root = await inboxWithProjects({ setUp: true });
+    expect(names(root)[0]).toBe("All projects, 5");
+    expect(menu(root)).toContain("No project1");
+  });
+
+  it("clips the hidden copy of the chips, so the page doesn't scroll sideways", async () => {
+    const root = await inboxWithProjects();
+    const wrapper = root.querySelector('fieldset[aria-label="Project"]')?.parentElement;
+    expect(wrapper?.classList.contains("overflow-x-clip")).toBe(true);
+  });
+
+  it("keeps focus on the line when an unpicked project no longer fits", async () => {
+    const root = await inboxWithProjects();
+    const entry = [...root.querySelectorAll<HTMLElement>("[role=menuitemradio]")].find((each) =>
+      each.textContent?.startsWith("Halonic marketing website"),
+    );
+    await press(entry);
+    const picked = line(root)[1];
+    picked?.focus();
+    await press(picked);
+    expect(names(root)).toEqual(["All projects, 5", "Studio app", "+3 more projects"]);
+    expect(document.activeElement).toBe(line(root)[0]);
+  });
+
+  it("keeps focus on the line when picking All projects from +N makes +N go", async () => {
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      get: () => 60,
+    });
+    const root = await inboxWithProjects();
+    expect(names(root)).toHaveLength(5);
+    await press(line(root)[2]);
+    expect(names(root)).toEqual(["All projects", "Engine", "+3 more projects"]);
+    line(root)[2]?.focus();
+    const all = [...root.querySelectorAll<HTMLElement>("[role=menuitemradio]")].find((each) =>
+      each.textContent?.startsWith("All projects"),
+    );
+    await press(all);
+    expect(names(root)).toHaveLength(5);
+    expect(document.activeElement).toBe(line(root)[0]);
   });
 
   it("shows a project picked from +N alone after All, with the rest under +N", async () => {

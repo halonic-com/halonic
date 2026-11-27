@@ -1,5 +1,5 @@
 import { CloseIcon, Menu, type MenuEntry, type MenuTriggerProps } from "@halonicjs/studio-kit";
-import { type ReactNode, useRef } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { ProjectChip, ProjectFilter } from "../agent/project-filter.ts";
 import { useChipsThatFit } from "./project-line-fit.ts";
 import { projectDotClass } from "./project-tag.tsx";
@@ -14,10 +14,11 @@ export interface ProjectLineProps {
 
 /**
  * A pill as the kit's filter chips draw it: 28px on desktop, 32px on a phone or a touch screen,
- * with a 48px hit area.
+ * with a 48px hit area. "All", "+N" and the hidden copy's chips keep their width (`shrink-0`); a
+ * project chip on the line may narrow, since its name cuts with "…".
  */
 const chip =
-  "relative inline-flex min-h-control-sm shrink-0 items-center gap-1.5 rounded-full border px-3 text-small transition-colors focus-ring phone:min-h-8 phone:hit-touch touch:min-h-8 touch:hit-touch";
+  "relative inline-flex min-h-control-sm items-center gap-1.5 rounded-full border px-3 text-small transition-colors focus-ring phone:min-h-8 phone:hit-touch touch:min-h-8 touch:hit-touch";
 const off =
   "border-border-control bg-surface text-fg-muted hover:bg-surface-subtle active:bg-surface-subtle";
 const on =
@@ -36,12 +37,15 @@ export function ProjectLine({ options, value, onChange }: ProjectLineProps) {
   const sample = useRef<HTMLDivElement>(null);
   const [all, ...choices] = options;
   const fit = useChipsThatFit(line, sample, choices.map((choice) => choice.label).join("\n"));
+  const choose = useFocusKept(line, onChange);
   if (all === undefined) return null;
   const picked = choices.find((choice) => choice.value === value);
   const shown = picked === undefined ? choices.slice(0, fit) : [picked];
   const hidden = choices.filter((choice) => !shown.includes(choice));
   return (
-    <div className="relative min-w-0 px-4 py-2">
+    // `overflow-x-clip`: the hidden copy is as wide as every chip side by side, and without a clip
+    // its overflow would scroll the whole page sideways (#6757 review).
+    <div className="relative min-w-0 overflow-x-clip px-4 py-2">
       {/* A fieldset is a group already; min-w-0 lets it narrow instead of growing to its chips. */}
       <fieldset
         ref={line}
@@ -52,8 +56,8 @@ export function ProjectLine({ options, value, onChange }: ProjectLineProps) {
           type="button"
           aria-pressed={picked === undefined}
           aria-label={picked === undefined ? `All projects, ${all.count}` : "All projects"}
-          className={`${chip} ${picked === undefined ? on : off}`}
-          onClick={() => onChange("all")}
+          className={`${chip} shrink-0 ${picked === undefined ? on : off}`}
+          onClick={() => choose("all")}
         >
           All
           {picked === undefined ? <span>{all.count}</span> : null}
@@ -64,7 +68,7 @@ export function ProjectLine({ options, value, onChange }: ProjectLineProps) {
             type="button"
             aria-pressed={choice === picked}
             className={`${chip} min-w-0 ${choice === picked ? on : off}`}
-            onClick={() => onChange(choice === picked ? "all" : choice.value)}
+            onClick={() => choose(choice === picked ? "all" : choice.value)}
           >
             <ChoiceWords choice={choice} />
             {choice === picked ? (
@@ -77,7 +81,7 @@ export function ProjectLine({ options, value, onChange }: ProjectLineProps) {
         {hidden.length > 0 ? (
           <Menu
             trigger={(props) => <MoreButton {...props} count={hidden.length} />}
-            entries={menuEntries(options, value, onChange)}
+            entries={menuEntries(options, value, choose)}
           />
         ) : null}
       </fieldset>
@@ -87,18 +91,43 @@ export function ProjectLine({ options, value, onChange }: ProjectLineProps) {
         aria-hidden="true"
         className="invisible absolute start-0 top-0 flex gap-2 whitespace-nowrap"
       >
-        <span className={`${chip} ${on}`}>
+        <span className={`${chip} shrink-0 ${on}`}>
           All<span>{all.count}</span>
         </span>
         {choices.map((choice) => (
-          <span key={choice.value} className={`${chip} ${off}`}>
+          <span key={choice.value} className={`${chip} shrink-0 ${off}`}>
             <ChoiceWords choice={choice} />
           </span>
         ))}
-        <span className={`${chip} ${off}`}>+{choices.length}</span>
+        <span className={`${chip} shrink-0 ${off}`}>+{choices.length}</span>
       </div>
     </div>
   );
+}
+
+/**
+ * Picks a choice and keeps focus on the line: when the chip or "+N" that had focus leaves it, as
+ * when an unpicked project no longer fits or "+N" goes, focus moves to the pressed choice instead
+ * of dropping to the page.
+ */
+function useFocusKept(
+  line: { readonly current: HTMLElement | null },
+  onChange: (value: ProjectFilter) => void,
+): (value: ProjectFilter) => void {
+  const picking = useRef(false);
+  useEffect(() => {
+    if (!picking.current) return;
+    picking.current = false;
+    const focused = document.activeElement;
+    if (focused !== null && focused !== document.body && focused.isConnected) return;
+    line.current?.querySelector<HTMLElement>('button[aria-pressed="true"]')?.focus();
+  });
+  return (value) => {
+    // Only a pick made from the line, the "+N" menu's included, moves focus back to it.
+    const focused = document.activeElement;
+    picking.current = focused !== null && (line.current?.contains(focused) ?? false);
+    onChange(value);
+  };
 }
 
 /** A choice's dot and name, cut with "…" at 144px. */
@@ -122,7 +151,7 @@ function MoreButton({ count, ...props }: MenuTriggerProps & { readonly count: nu
       type="button"
       {...props}
       aria-label={`+${count} more projects`}
-      className={`${chip} ${off}`}
+      className={`${chip} shrink-0 ${off}`}
     >
       +{count}
     </button>
@@ -142,6 +171,8 @@ function menuEntries(
     id: choice.value,
     label: choice.label,
     count: String(choice.count),
+    // The kit hides the count's chip from a screen reader, so the name says it.
+    name: `${choice.label}, ${choice.count}`,
     checked: choice.value === value,
     onSelect: () => onChange(choice.value),
     // "All projects" gets an empty dot so its name lines up with the projects' (sketch A).
