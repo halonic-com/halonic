@@ -3,6 +3,7 @@
 - Task: HAL-19614 (split from HAL-19599, point 4 of its Do list)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19531 (the CTO: "Say it in plain words ('Agent host is still starting'); don't let it fall through.")
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:O84U+JxRyDdxSkWt2G5GKxTkWts/nY763YTjxc+NECkmWeWu9ujOS+XPNweVXOqTVgrgqEWT0LuD6OfR4t5rAw==
 
 ## What changes
 
