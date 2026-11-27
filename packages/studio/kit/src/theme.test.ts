@@ -268,8 +268,13 @@ describe("theme.css with more contrast", () => {
     });
   }
 
-  it("gives every edge and divider the control edge's 3:1", () => {
-    for (const edge of ["--color-border", "--color-border-strong", "--shade-edge"]) {
+  it("gives every edge and divider the control edge's 3:1, the prompt boxes' edge too", () => {
+    for (const edge of [
+      "--color-border",
+      "--color-border-strong",
+      "--color-border-prompt",
+      "--shade-edge",
+    ]) {
       expect(moreContrast.get(edge), edge).toBe("var(--color-border-control)");
     }
   });
@@ -290,6 +295,7 @@ describe("theme.css with more contrast", () => {
       "--color-fg-subtle",
       "--color-border",
       "--color-border-strong",
+      "--color-border-prompt",
       "--shade-edge",
       "--focus-ring",
       "--focus-ring-inset",
