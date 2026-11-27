@@ -4,9 +4,9 @@ import { checkExpect, routesOf } from "@halonicjs/action-steppers";
 import type { ActionSendResult } from "@halonicjs/ports";
 import { parse } from "@halonicjs/schema-kit";
 import { FakeActionSender, type SentActionCall } from "@halonicjs/testing-contracts";
-import { type RecordingFile, recordingFormat } from "@halonicjs/testing-integration";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
+import { type GithubRecording, parseGithubRecording } from "../github-replay.test-helper.ts";
 import { manualGuideFor } from "../guide.test-helper.ts";
 import { definition } from "./change-branch-protection.ts";
 
@@ -26,14 +26,11 @@ const fixtureFolder = join(
   "github-change-branch-protection",
 );
 
-type Exchange = RecordingFile["exchanges"][number];
+type Exchange = GithubRecording["exchanges"][number];
 
 /** Reads one recorded scenario and checks it is a `halonic.recording/1` file. */
-function readRecording(scenario: string): RecordingFile {
-  const text = readFileSync(join(fixtureFolder, `${scenario}.json`), "utf8");
-  const recording = JSON.parse(text) as RecordingFile;
-  if (recording.format !== recordingFormat) throw new Error(`${scenario}: not ${recordingFormat}`);
-  return recording;
+function readRecording(scenario: string): GithubRecording {
+  return parseGithubRecording(readFileSync(join(fixtureFolder, `${scenario}.json`), "utf8"));
 }
 
 /** One recorded request, as the fake sender's `sent` lists it. */

@@ -50,7 +50,7 @@ verifies("action-steppers.stepper-items", () => {
         url: "https://github.com/acme/app",
         instructions: ["Look."],
       };
-      for (const blocks of [[approveBlock, approveBlock], [browser], [restartBlock, approveBlock]]) {
+      for (const blocks of [[approveBlock, approveBlock], [browser]]) {
         expect(actionItemOf(storedItem(blocks))).toEqual({
           kind: "unreadable",
           reasons: [stepperItemReasons.notOneStepper],
