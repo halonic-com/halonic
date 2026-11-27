@@ -68,6 +68,7 @@ export function fakeHost(
             ...issue,
           })),
       listComments: async (issueId: string) => comments[issueId] ?? [],
+      listInteractions: async () => [],
       createComment: async (issueId: string, body: string) => {
         writes.push({ kind: "comment", issueId, body });
         return {};

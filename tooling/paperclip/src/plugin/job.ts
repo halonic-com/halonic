@@ -36,6 +36,7 @@ import { readWatchersSettings, runMergeWatchers, type WatchersSettings } from ".
 import { chiefLinePrPass } from "./chief-line-prs.ts";
 import { readChiefLineSettings } from "./chief-line-settings.ts";
 import { type CompanySource, listedCompanies } from "./companies.ts";
+import { closeGuardsOf, runDoneOpen } from "./done-open-host.ts";
 import type { LifecycleRunner } from "./fast-track-lifecycle-job.ts";
 import { type HostApi, paperclipHost } from "./host.ts";
 import { passStateKey } from "./merge-control-lock.ts";
@@ -350,6 +351,9 @@ async function watchCompany(
   const recorder = watcherRecorder();
   const log = (line: string) => ctx.logger.info(line, { companyId });
   const config = await companyConfig(ctx.config, companyId);
+  // One read of each base branch's newest green run per pass, shared by every task.
+  const facts = snapshotFacts({ snapshot, query, fallback, greenSince: baseGreenSince(get) });
+  const conflictFiles = gitHubConflictFiles(get);
   const summary = await tick({
     paperclip: {
       ...paperclip,
@@ -359,8 +363,7 @@ async function watchCompany(
       },
     },
     discover: async () => found,
-    // One read of each base branch's newest green run per pass, shared by every task.
-    facts: snapshotFacts({ snapshot, query, fallback, greenSince: baseGreenSince(get) }),
+    facts,
     dryRun: settings.dryRun,
     log,
     now,
@@ -371,7 +374,8 @@ async function watchCompany(
     ),
     route: gitHubRoute(get),
     rebaseOnly: gitHubRebaseOnly(get, stackRebase?.tried.baseOf),
-    conflictFiles: gitHubConflictFiles(get),
+    conflictFiles,
+    closeGuards: closeGuardsOf(ctx, companyId, config ?? {}),
     held: await heldOf(ctx, companyId, settings.repos[0] ?? defaultRepos[0] ?? ""),
     observe: recorder.observe,
     acted: recorder.acted,
@@ -382,6 +386,8 @@ async function watchCompany(
       ? { lastCheck: monitorChecks(ctx, companyId).get }
       : {}),
   });
+  const doneInput = { companyId, snapshot, found, tasks, facts, conflictFiles, log };
+  await runDoneOpen(ctx, { ...doneInput, dryRun: settings.dryRun });
   // After the watcher's tick, so a task it just marked done unblocks its dependents in the same pass.
   const unblocked = await unblockPass({
     paperclip: unblockHost(ctx, companyId, ctx.state),

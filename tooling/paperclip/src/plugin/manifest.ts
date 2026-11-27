@@ -237,6 +237,13 @@ export const manifest: PaperclipPluginManifestV1 = {
         items: { type: "string" },
         default: ["liam", "julian"],
       },
+      mergeWindowHours: {
+        type: "number",
+        title: "PR watcher: merge window for done",
+        description:
+          "The PR watcher marks a task done only when its last pull request merged at most this many hours ago (HAL-18284). An older merge leaves the task to its author.",
+        default: 12,
+      },
       ...trialResultsConfigProperties,
       ...statePacketConfigProperties,
       ...wakeHoldConfigProperties,

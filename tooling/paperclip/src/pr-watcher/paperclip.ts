@@ -33,6 +33,8 @@ export interface TaskRow {
   readonly priority?: string;
   /** It is in `blocked`: the 6-hour escalation leaves its pull requests alone while a blocker is set (HAL-17938). */
   readonly blocked?: boolean;
+  /** Its description, for the watcher's text guard on done (HAL-18284); unset when unknown. */
+  readonly description?: string | null;
 }
 
 /** A task comment: who wrote it, when, and what it says. */

@@ -1,3 +1,4 @@
+import { type CloseGuards, guardDone } from "./close-guards.ts";
 import { type ConflictFiles, conflictFilesOf } from "./conflict-files.ts";
 import {
   branchesOwner,
@@ -71,6 +72,8 @@ export interface TickOptions {
   readonly limits?: ReviewerLimits | undefined;
   /** A task's last kept monitor check, by identifier, to move a short check that adds nothing (HAL-20175); off when unset. */
   readonly lastCheck?: (identifier: string) => Promise<MonitorCheck | undefined>;
+  /** The merge window, board card and text guards on done (HAL-18284); off when unset. */
+  readonly closeGuards?: CloseGuards;
 }
 
 /** Called with what the watcher read about one task its author holds. */
@@ -242,7 +245,12 @@ async function decideTask(
       ? readMemory(await options.paperclip.comments(task.id), ownerId)
       : emptyMemory;
   options.observe?.(task, ownerId, pulls, memory);
-  return stackStep(options, task, decide(task, ownerId, pulls, memory));
+  const guards = { guards: options.closeGuards, now: options.now };
+  return stackStep(
+    options,
+    task,
+    await guardDone(task, decide(task, ownerId, pulls, memory), memory, guards),
+  );
 }
 
 /** Carries out a decision; false when it did nothing (a skip, or the task closed meanwhile). */

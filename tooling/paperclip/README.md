@@ -188,6 +188,23 @@ you comment again without the line. A hold line written before the last merge
 doesn't count (HAL-17692): HAL-17445 had it under every comment, so its merged
 task, and the task it blocked, stayed open for 4 hours.
 
+**Close guards (HAL-18284).** On top of that, the watcher leaves a task open
+when its last merge is older than the `mergeWindowHours` setting (12 by
+default), when it has a board card (in `in_review` held by a person, or a card
+nobody answered), or when its description or its 3 newest comments say
+"PR 1 of N", "more PRs" or "stacked on". Its author closes it then.
+
+**Done with an open PR (HAL-18284).** The tick reads open tasks only, so after
+it the watcher also reads each `done` task that a branch with an open pull
+request names. When that pull request conflicts, the task goes back to `todo`
+and its author is woken once per head with the conflicting files; otherwise
+the watcher comments once per head that the pull request is still open. When
+the pull request moved to another task, put this line in your newest comment:
+
+```text
+PR watcher: moved to HAL-<n>
+```
+
 **Unblocking.** After the tick, the watcher sweeps every `blocked` task an
 agent holds with no run going. When everything in its "blocked by" is done or
 cancelled, it sets the task to `todo`, comments which tasks it waited on and
