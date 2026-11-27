@@ -154,6 +154,7 @@ interface AllowedSitesProps {
  */
 function AllowedSites({ sites, save }: AllowedSitesProps) {
   const headingId = useId();
+  const noSitesId = useId();
   const [shown, setShown] = useState(sites);
   useEffect(() => setShown(sites), [sites]);
   // Counts the changes, so a slow failed save doesn't undo a newer one.
@@ -169,9 +170,15 @@ function AllowedSites({ sites, save }: AllowedSitesProps) {
       <h2 id={headingId} className="text-caption text-fg-muted">
         {words.allowedSites}
       </h2>
+      {shown.length === 0 && (
+        <p id={noSitesId} className="text-small text-fg-muted">
+          {words.noSites}
+        </p>
+      )}
       <OptionChips
         label={words.allowedSites}
         options={shown}
+        describedBy={shown.length === 0 ? noSitesId : undefined}
         onChange={(next) => void change(next)}
         chipWords={siteWords}
       />

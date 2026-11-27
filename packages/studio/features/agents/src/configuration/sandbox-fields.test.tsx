@@ -200,6 +200,17 @@ verifies("agents.configuration.sandbox-fields", () => {
     expect(chipsOf(page)).toEqual(newer);
   });
 
+  it("says an empty list of sites means no site, until one is added", async () => {
+    const noSites = "None. The agent's program can't reach any site.";
+    const page = await openHarness(hostWith({}));
+    const line = [...page.querySelectorAll("p")].find((p) => p.textContent === noSites);
+    expect(line).toBeDefined();
+    expect(named(page, "Add site")?.getAttribute("aria-describedby")).toBe(line?.id);
+    await addSite(page, "api.example.com");
+    expect(page.textContent).not.toContain(noSites);
+    expect(named(page, "Add site")?.hasAttribute("aria-describedby")).toBe(false);
+  });
+
   it("saves the whole list of sites when one is added or removed", async () => {
     const host = hostWith({ allowedSites: ["registry.npmjs.org"] });
     const page = await openHarness(host);
