@@ -186,7 +186,11 @@ verifies("kit.toast", () => {
     expect(action.parentElement?.firstElementChild?.className).toContain("flex-[1_1_10rem]");
     expect(action.className).toContain("max-w-full flex-none");
     expect(action.className).toContain("min-h-control-md rounded-full py-1.5");
-    expect(action.className).toContain("bg-surface-muted");
+    expect(action.className).toContain("bg-surface-soft");
+    // Pulled 6px into the line above and below, so the 32px pill keeps the title line 20px high.
+    expect(action.className).toContain("-my-1.5");
+    // Forced colours drop the fill: the transparent outline inside it becomes the pill's edge.
+    expect(action.className).toContain("outline-1 -outline-offset-1 outline-transparent");
     expect(action.className).toContain("phone:hit-touch");
   });
 

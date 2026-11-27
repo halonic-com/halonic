@@ -297,6 +297,14 @@ verifies("kit.menu", () => {
     expect(items[0]?.firstElementChild?.className).toContain("text-fg-muted");
   });
 
+  it("draws a danger item's leading icon in the item's own colour, not fg-muted", () => {
+    const { items } = renderMenu([
+      { id: "delete", label: "Delete agent", icon: <svg />, danger: true, onSelect: vi.fn() },
+    ]);
+    expect(items[0]?.className).toContain("text-danger");
+    expect(items[0]?.firstElementChild?.className).not.toContain("text-fg-muted");
+  });
+
   it("makes items with checked radio items, the current one with a 16px accent check", () => {
     const { menu } = renderMenu([
       { id: "all", label: "All hubs", checked: false, onSelect: vi.fn() },

@@ -4,7 +4,7 @@
 - Since: 0.1.0
 - Source: HAL-3521; base component specs 20.2 (revision 17) and 14; visual review kit T1-F51
 
-The kit's `Menu` shall take an optional `description`, a sentence that explains the menu. When it has one, the kit shall show it as the menu's first row, above the items, in `text-small` `fg-muted`, with 8px of padding above and at the sides and 6px below, at most 300px wide and wrapping, and with the Menu's divider under it. The description shall not be an item: it shall have no `role`, shall not be focusable, and the arrow keys, Home, End and type-to-find shall pass it by. The menu shall point `aria-describedby` at it, so a screen reader reads it once when the menu opens. Without a `description`, the menu shall have no `aria-describedby` and start with its first item.
+The kit's `Menu` shall take an optional `description`, a sentence that explains the menu. When it has one, the kit shall show it as the menu's first row, above the items, in `text-small` `fg-muted`, with 8px of padding above, 12px at the sides (in line with the item labels) and 6px below, at most 300px wide and wrapping, and with the Menu's divider under it. The description shall not be an item: it shall have no `role`, shall not be focusable, and the arrow keys, Home, End and type-to-find shall pass it by. The menu shall point `aria-describedby` at it, so a screen reader reads it once when the menu opens. Without a `description`, the menu shall have no `aria-describedby` and start with its first item.
 
 ## Examples
 

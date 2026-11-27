@@ -34,11 +34,14 @@ const card = [
 ].join(" ");
 
 /**
- * A 32px pill on a `surface-muted` tint (COMPONENTS.md, Toast), pulled 6px into the line above and
- * below so it keeps the title line 20px high; on touch its 48px hit area is a pseudo-element.
+ * A 32px pill on the `surface-soft` fill (COMPONENTS.md, Toast), which stays visible on the dark
+ * card where `surface-muted` doesn't. It is pulled 6px into the line above and below so it keeps
+ * the title line 20px high; forced colours drop the fill, so a transparent outline inside it
+ * becomes its edge there. On touch its 48px hit area is a pseudo-element.
  */
 const actionButton = [
-  "-my-1.5 min-h-control-md rounded-full py-1.5 bg-surface-muted px-3 text-left text-body-strong text-fg",
+  "-my-1.5 min-h-control-md rounded-full py-1.5 bg-surface-soft px-3 text-left text-body-strong text-fg",
+  "outline-1 -outline-offset-1 outline-transparent",
   "hover:bg-surface-soft-hover focus-ring",
   "phone:hit-touch touch:hit-touch",
 ].join(" ");

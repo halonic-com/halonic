@@ -73,7 +73,7 @@
   --color-surface: light-dark(#ffffff, #060d1d); /* pages, panels, cards, inputs */
   --color-surface-subtle: light-dark(#f3f5fa, #081124); /* sidebar, table header, row hover */
   --color-surface-muted: light-dark(#e9edf5, #0d1c3e); /* button and menu hover, neutral badge */
-  --color-surface-raised: light-dark(#ffffff, #0a1630); /* menus, dialogs, toasts */
+  --color-surface-raised: light-dark(#ffffff, #0a1630); /* dialogs, toasts */
   /* The focused Halonic Inbox and Messenger windows (HAL-17358): the new design's frame and panel, as
      canvas and surface (HAL-20674). In light the grey-blue frame and the list on it stand apart
      from the white panel; in dark the frame is the lighter one. */

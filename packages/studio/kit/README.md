@@ -387,7 +387,7 @@ screen unmounts it to close it.
 | Prop | What it is |
 | --- | --- |
 | `title` | The dialog's name, in `text-heading` |
-| `size` | `sm` 440px (the default), `md` 560px for a form with hints, `lg` 720px for Settings |
+| `size` | `sm` 500px (the default), `md` 560px for a form with hints, `lg` 720px for Settings |
 | `height` | A fixed height in px instead of one that follows the content (Settings: 640). Desktop |
 | `flush` | No body padding, for a body that lays out and scrolls its own columns |
 | `form` | The body is a form: the confirming button submits it, focus starts in the first field |
@@ -1760,7 +1760,7 @@ menu and let the browser open it. Divide groups with `"divider"`.
 
 | State | What shows |
 | --- | --- |
-| Default | `surface-raised`, radius 12px, `shadow-2`, 4px padding, at least 180px wide and never wider than the window less 8px each side; 32px items |
+| Default | `surface`, a 1px `border` edge, radius 16px, `shadow-2`, 4px padding, at least 180px wide and never wider than the window less 8px each side; 32px items with a 12px radius and 12px at the sides; a leading icon draws 18px in a 20px box in `fg-muted`; dividers inset 8px |
 | Hover and active | The item under the pointer or the keyboard has focus and the `surface-muted` fill; no ring |
 | Danger | `danger` text, always last, below a divider |
 | Disabled | `fg-disabled`; still listed, but the arrow keys and type-to-find skip it |
@@ -1948,7 +1948,7 @@ Spread the props `children` gets on the control: they link it to the tooltip.
 | State | What shows |
 | --- | --- |
 | Hidden | Nothing |
-| Shown | `fg` fill, `surface` text (so it inverts in dark mode), `text-caption`, radius 4px, ≤240px |
+| Shown | `fg` fill, `surface` text (so it inverts in dark mode), `text-caption`, radius 8px, ≤240px |
 | Shortcut | The keys 8px after the words, `font-mono`, 6px apart, without the Kbd's box |
 
 It shows after 500ms of hover or at once on keyboard focus, and hides on leave, blur or Escape;
@@ -2680,9 +2680,9 @@ toasts.show({
 | `list()`, `subscribe` | Every toast, oldest first, and a listener for changes |
 
 Bottom right, 16px in, 360px wide (`w-toast`), 8px apart, newest at the bottom, at
-`--layer-toast`. A card is `surface-raised`, 12px radius, `shadow-2`: the tone's icon, the title,
-one line in `fg-muted`, at most one action as an `accent-text` text button on the title line
-(underlined on hover, no fill), and a close button named "Close" and the title. Tones are those of
+`--layer-toast`. A card is `surface-raised`, 16px radius, `shadow-2`, 16px padding on the left: the tone's icon,
+the title, one line in `fg-muted`, up to two actions as 32px pills on a `surface-soft` fill on the
+title line (which stays 20px high), and a close button named "Close" and the title. Tones are those of
 the Status chip: `success`, `info` (accent), `running`, `warning`, `danger`. Only the icon carries
 the tone; the box is the same for all. It fades in and out in 120ms; nothing slides. In forced
 colours a transparent outline becomes its edge.
