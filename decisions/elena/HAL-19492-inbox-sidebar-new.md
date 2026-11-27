@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19492
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dccNsZKnIMSZuOleEYu9clUwD7I9ovnBI6pilOwOXOQrZP/A/BnwVa3G5qUcspTjz/3ywNk1LePDBSk83gmdDg==
 
 The read and unread rule the board approved on HAL-19192 has the sidebar show how many items are
 **new**, and Sofia's sketch G there and her acceptance rows A3.1 and A3.2 on HAL-20100 spell it
