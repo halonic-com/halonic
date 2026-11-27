@@ -28,6 +28,7 @@
         "tooling/check/src/lib/**",
         "tooling/check/src/rules/**",
         "tooling/check/src/leaks/**",
+        "packages/core/std/src/secret-rules.ts",
         "tooling/check/src/guard/decision-notes.ts",
         "tooling/check/src/guard/git-objects.ts",
         "tooling/check/src/guard/signatures.ts",
