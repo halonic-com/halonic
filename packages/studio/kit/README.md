@@ -2172,7 +2172,8 @@ agent, such as the Messenger's chat search (requirement `kit.prompt-look`, HAL-1
 with 24px corners, the `border-prompt` edge, the `surface-prompt` fill (6% white over the panel in
 dark) and the `shadow-prompt` shadow. With focus the edge turns `accent` and the shadow deepens
 (`focus-prompt`), with no 3px ring. Its edge is softer than a field's 3:1 on purpose: the
-placeholder and the shadow mark the box. Its text is 15px, as in every prompt box, and a search
+placeholder and the shadow mark the box. Under More contrast it takes the field's 3:1 edge
+(`border-control`), as every edge does. Its text is 15px, as in every prompt box, and a search
 in it hides the browser's own clear button, since the box carries its own Esc. Form fields, such
 as Settings, keep the default look. `TextArea` takes the same `look`, with round buttons in
 `leading` and `trailing`; the `ChatComposer` uses it. Those `soft` buttons fill with
