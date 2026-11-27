@@ -3,6 +3,7 @@
 - Task: HAL-20675
 - Approval: Liam signs this note for HAL-20675 (build plan P2 on HAL-20617, approved; filter chips are in Ravi's part of P2, HAL-20725). A team decision on an approved plan.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:tH6wJ+4jRltJ8ChOrJgRxZnhSKK3io3UIKgr8NOSqU9xrLZ6JZVnLyXET+e/hFW0yLev9vVx/0Sx8gpDayJbAg==
 
 ## What changes
 
