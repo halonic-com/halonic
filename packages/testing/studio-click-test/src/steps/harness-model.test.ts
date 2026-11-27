@@ -3,22 +3,23 @@ import { expect, it } from "vitest";
 import { button, type FakeStudio, fakeStudio } from "../fake-studio.test-helper.ts";
 import { clickTestSteps } from "../steps.ts";
 import { configurationText } from "../words.ts";
-import { harnessModel } from "./harness-model.ts";
+import { harnessModel, panelButton } from "./harness-model.ts";
 import { writerBox } from "./try-it.ts";
 
 const { configuration, harness, model, halonic, codex, codexRefused, testModel } =
   configurationText;
 
 /**
- * Writer's page after the Try it steps: Configuration's Harness page saves Codex or Halonic, and
- * the Model page's test model shows Codex's sentence while Writer is in Codex, if `refuses`.
+ * Writer's page after the Try it steps, in the installed app's 800 px window: the chat only, with
+ * the panel's button showing the views' tabs. Configuration's Harness page saves Codex or Halonic,
+ * and the Model page's test model shows Codex's sentence while Writer is in Codex, if `refuses`.
  */
 function studioOnWriter(refuses = true): FakeStudio {
   const studio = fakeStudio("Acme Writer");
   const main = studio.windows.get("main");
   let inCodex = false;
   button(studio, "main", writerBox);
-  button(studio, "main", configuration.text);
+  button(studio, "main", panelButton, () => button(studio, "main", configuration.text));
   button(studio, "main", harness.text);
   button(studio, "main", model.text);
   button(studio, "main", codex.text, () => {
@@ -48,6 +49,7 @@ verifies("studio-click-test.harness-model-step", () => {
     await expect(harnessModel.run(studio.context)).resolves.toEqual({ passed: true });
     expect(studio.clicks).toEqual([
       writerBox,
+      panelButton,
       configuration.text,
       harness.text,
       codex.text,
@@ -56,6 +58,23 @@ verifies("studio-click-test.harness-model-step", () => {
       harness.text,
       halonic.text,
     ]);
+  });
+
+  it("opens Configuration straight from its tab in a window wide enough for the panel", async () => {
+    const studio = studioOnWriter();
+    button(studio, "main", configuration.text);
+
+    await expect(harnessModel.run(studio.context)).resolves.toEqual({ passed: true });
+    expect(studio.clicks).not.toContain(panelButton);
+  });
+
+  it("fails as NO_CONFIGURATION when neither the tab nor the panel's button shows", async () => {
+    const studio = studioOnWriter();
+    studio.windows.get("main")?.buttons.delete(panelButton);
+
+    await expect(harnessModel.run(studio.context)).resolves.toMatchObject({
+      code: "NO_CONFIGURATION",
+    });
   });
 
   it("fails as NO_REFUSAL without the sentence, and still puts Writer back on Halonic", async () => {
