@@ -3,7 +3,6 @@
 import {
   type Conversation,
   gatewayFallbackProtocolVersion,
-  gatewayMaxMessageBytes,
   type Message,
   type PairingQrPayload,
 } from "@halonicjs/ports";
@@ -176,19 +175,7 @@ verifies("remote.phone-messenger-tab", () => {
     const { tunnel, computer, host } = await openComputer();
     await act(async () => {
       tunnel.push(computer, { state: "connected" });
-      host.tunnel.status("connected");
-      host.tunnel.open(1);
-      host.tunnel.host(1, { type: "error", code: "unsupported-version" });
-      host.drop();
-      host.generation = 2;
-      host.tunnel.status("connected");
-      host.tunnel.open(2);
-      host.host({
-        type: "welcome",
-        replyTo: host.tunnel.lastOf("hello").id,
-        version: gatewayFallbackProtocolVersion,
-        maxMessageBytes: gatewayMaxMessageBytes,
-      });
+      host.connectAt(gatewayFallbackProtocolVersion);
       host.list([reporter]);
     });
     await settle();
