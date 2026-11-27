@@ -3,6 +3,7 @@
 - Task: HAL-20260
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20260 (Julian's `[major]` on #6579, agreed there as this follow-up; the task picks a new kind as the simplest fix, the number for Julian's sign-off)
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:HfhZF4u9TxP4rFNb037zKfA7ZJsKPnZEbSRqT8jfn7NG4uxLPfuUwI9TzFaXljOTA5EwvtLbJwcnqs1VupUpCQ==
 
 ## What changes
 
