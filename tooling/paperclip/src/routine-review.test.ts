@@ -130,6 +130,7 @@ verifies("paperclip.routine-review", () => {
   });
 
   test.each([
+    "tooling/paperclip/src/merge-control/fill.ts",
     "tooling/paperclip/src/merge-control/gate.ts",
     "tooling/paperclip/src/merge-control/write-client.ts",
     "tooling/paperclip/src/merge-control/checks.test.ts",

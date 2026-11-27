@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
-import { build } from "esbuild";
+import { type BuildOptions, build } from "esbuild";
 import { expect, test } from "vitest";
 import { approvalOf } from "./merge-control/approval.ts";
 import {
@@ -26,13 +26,14 @@ const manifests = [
   "tooling/paperclip/src/seats/plugin/manifest.ts",
 ];
 
-/** The build files in `manifestImports`: they bundle the manifests rather than being bundled. */
-const buildFiles = [
-  "tooling/paperclip/package.json",
-  "tooling/paperclip/src/plugin/build-options.ts",
+/** The scripts `build:plugin` and `build:seats-plugin` run, which write the manifests into `dist/`. */
+const buildScripts = [
   "tooling/paperclip/src/plugin/build.ts",
   "tooling/paperclip/src/seats/plugin/build.ts",
 ];
+
+/** The package's pointer to the build scripts, in `manifestImports` beside them. */
+const packageFile = "tooling/paperclip/package.json";
 
 /**
  * Every repo file in a manifest's bundle, as `build:plugin` bundles it: type-only
@@ -40,9 +41,28 @@ const buildFiles = [
  * `node_modules` aren't ours to list; a workspace package would show by its path.
  */
 async function closureOf(manifest: string): Promise<string[]> {
+  return await repoInputsOf({ ...workerBuildOptions, entryPoints: [manifest] });
+}
+
+/**
+ * Every repo file a build script runs, as Node runs it: only esbuild stays outside,
+ * so a workspace package would show by its path, and type-only imports drop
+ * out, as Node's type stripping drops them.
+ */
+async function buildClosureOf(script: string): Promise<string[]> {
+  return await repoInputsOf({
+    entryPoints: [script],
+    bundle: true,
+    platform: "node",
+    format: "esm",
+    external: ["esbuild"],
+  });
+}
+
+/** The repo files esbuild reads for this build, named from the repo's root. */
+async function repoInputsOf(options: BuildOptions): Promise<string[]> {
   const result = await build({
-    ...workerBuildOptions,
-    entryPoints: [manifest],
+    ...options,
     absWorkingDir: repoRoot,
     write: false,
     metafile: true,
@@ -63,15 +83,33 @@ verifies("paperclip.manifest-closure", () => {
     }
   });
 
-  test("manifestImports names only modules in a closure, and the build files", async () => {
-    const closures = new Set((await Promise.all(manifests.map(closureOf))).flat());
-    const stale = manifestImports.filter(
-      (path) => !closures.has(path) && !buildFiles.includes(path),
-    );
-    expect(stale, "remove these from manifestImports and the deployer's list").toEqual([]);
-    for (const path of buildFiles) {
-      expect(existsSync(`${repoRoot}${path}`), path).toBe(true);
+  test("manifestFileOf names every module the build scripts run", async () => {
+    for (const script of buildScripts) {
+      const closure = await buildClosureOf(script);
+      expect(closure).toContain(script);
+      const missed = closure.filter((path) => manifestFileOf([path]) === undefined);
+      expect(missed, `add these to manifestImports and the deployer's MANIFEST_IMPORTS`).toEqual(
+        [],
+      );
     }
+  });
+
+  test("the build scripts don't run the merge rules", async () => {
+    for (const script of buildScripts) {
+      const closure = await buildClosureOf(script);
+      expect(closure, script).not.toContain("tooling/paperclip/src/merge-control/decide-file.ts");
+    }
+  });
+
+  test("manifestImports names only modules in a closure, and the package file", async () => {
+    const closures = new Set(
+      (
+        await Promise.all([...manifests.map(closureOf), ...buildScripts.map(buildClosureOf)])
+      ).flat(),
+    );
+    const stale = manifestImports.filter((path) => !closures.has(path) && path !== packageFile);
+    expect(stale, "remove these from manifestImports and the deployer's list").toEqual([]);
+    expect(existsSync(`${repoRoot}${packageFile}`)).toBe(true);
   });
 
   test("a change to a module two imports down, or to a build file, needs Julian", () => {

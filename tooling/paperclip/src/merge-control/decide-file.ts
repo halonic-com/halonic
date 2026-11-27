@@ -1,5 +1,6 @@
 import { pluginVersion } from "../plugin/version.ts";
 import { decide } from "./decide.ts";
+import { rulesHashPlaceholder } from "./rules-hash.ts";
 import type { MergeSnapshot } from "./snapshot.ts";
 import {
   type Decision,
@@ -24,12 +25,6 @@ import {
  * dequeue with an empty comment, which posts none, HAL-18506).
  */
 export const decideFileFormat = 3;
-
-/**
- * Stands for the bundle's own hash until `build:plugin` writes the file:
- * the build hashes the bundle with this text in it, then puts the hash here.
- */
-export const rulesHashPlaceholder = "rules-hash-placeholder";
 
 /**
  * Which rules answered, for the Merger's log: `halonic.agent-tools@<version>+<hash>`.
