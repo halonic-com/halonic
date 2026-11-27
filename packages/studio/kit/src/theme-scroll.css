@@ -21,25 +21,39 @@
   /* About 3:1 against the surface in each mode (the design check on HAL-20568). */
   --scrollbar-thumb: light-dark(rgb(16 16 46 / 0.45), rgb(242 242 255 / 0.38));
   --scrollbar-thumb-strong: light-dark(rgb(16 16 46 / 0.7), rgb(242 242 255 / 0.7));
+  /* Here, not on the regions, so a hovered or focused region keeps the stronger thumb too. */
+  @media (prefers-contrast: more) {
+    --scrollbar-thumb: var(--scrollbar-thumb-strong);
+  }
 }
 
 /* Keyboard focus inside the region only; the states page replaces it to force the state. */
 @custom-variant scroll-focus (&:has(:focus-visible));
 
 @layer base {
+  /*
+   * The colour lives in a property on the region, and the thumb reads it: Chromium works out a
+   * `::-webkit-scrollbar-thumb` style once and doesn't redo it when the region's `:hover` changes,
+   * so a `:hover::-webkit-scrollbar-thumb` rule never shows after the first paint. A property
+   * change on the region repaints the thumb.
+   */
+  * {
+    --scrollbar-thumb-now: transparent;
+    @variant hover {
+      --scrollbar-thumb-now: var(--scrollbar-thumb);
+    }
+    @variant scroll-focus {
+      --scrollbar-thumb-now: var(--scrollbar-thumb);
+    }
+    @media (prefers-contrast: more) {
+      --scrollbar-thumb-now: var(--scrollbar-thumb);
+    }
+  }
+
   @supports not selector(::-webkit-scrollbar) {
     * {
       scrollbar-width: thin;
-      scrollbar-color: transparent transparent;
-      @variant hover {
-        scrollbar-color: var(--scrollbar-thumb) transparent;
-      }
-      @variant scroll-focus {
-        scrollbar-color: var(--scrollbar-thumb) transparent;
-      }
-      @media (prefers-contrast: more) {
-        scrollbar-color: var(--scrollbar-thumb-strong) transparent;
-      }
+      scrollbar-color: var(--scrollbar-thumb-now) transparent;
     }
   }
 
@@ -61,22 +75,7 @@
         border: 2px solid transparent;
         border-radius: var(--radius-full);
         background-clip: padding-box;
-        background-color: transparent;
-        @media (prefers-contrast: more) {
-          background-color: var(--scrollbar-thumb-strong);
-        }
-      }
-      * {
-        @variant hover {
-          &::-webkit-scrollbar-thumb {
-            background-color: var(--scrollbar-thumb);
-          }
-        }
-        @variant scroll-focus {
-          &::-webkit-scrollbar-thumb {
-            background-color: var(--scrollbar-thumb);
-          }
-        }
+        background-color: var(--scrollbar-thumb-now);
       }
     }
   }

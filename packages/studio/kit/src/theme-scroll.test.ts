@@ -32,10 +32,17 @@ const standardOnly = "@supports not selector(::-webkit-scrollbar) {";
 const parts = "@supports selector(::-webkit-scrollbar) { @media not (forced-colors: active) {";
 
 verifies("kit.slim-scrollbars", () => {
-  it("gives an engine without the scrollbar parts a thin bar, its thumb shown on hover and keyboard focus", async () => {
+  it("shows a region's thumb colour on hover and keyboard focus only, through a property on the region", async () => {
     const css = squeezed(await buildCss([]));
     expect(css).toContain(
-      `${standardOnly} * { scrollbar-width: thin; scrollbar-color: transparent transparent; &:hover { @media (hover: hover) { scrollbar-color: var(--scrollbar-thumb) transparent; } } &:has(:focus-visible) { scrollbar-color: var(--scrollbar-thumb) transparent; }`,
+      "* { --scrollbar-thumb-now: transparent; &:hover { @media (hover: hover) { --scrollbar-thumb-now: var(--scrollbar-thumb); } } &:has(:focus-visible) { --scrollbar-thumb-now: var(--scrollbar-thumb); }",
+    );
+  });
+
+  it("gives an engine without the scrollbar parts a thin bar in the region's thumb colour", async () => {
+    const css = squeezed(await buildCss([]));
+    expect(css).toContain(
+      `${standardOnly} * { scrollbar-width: thin; scrollbar-color: var(--scrollbar-thumb-now) transparent; } }`,
     );
   });
 
@@ -59,14 +66,14 @@ verifies("kit.slim-scrollbars", () => {
     expect(declarations(webkit, "::-webkit-scrollbar-button").get("display")).toBe("none");
     // A 10px bar less a 2px see-through border on each side.
     expect(webkit).toContain(
-      "::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: var(--radius-full); background-clip: padding-box; background-color: transparent;",
+      "::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: var(--radius-full); background-clip: padding-box; background-color: var(--scrollbar-thumb-now); }",
     );
-    expect(webkit).toContain(
-      ":hover::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); }",
-    );
-    expect(webkit).toContain(
-      ":has(:focus-visible)::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); }",
-    );
+  });
+
+  it("never styles the thumb from the region's state, which Chromium doesn't redo after the first paint", async () => {
+    const css = squeezed(await buildCss([]));
+    const theme = css.slice(css.indexOf("--scrollbar-thumb:"), css.indexOf(":where( button"));
+    expect(theme).not.toMatch(/:(hover|has\([^)]*\))::-webkit-scrollbar/);
   });
 
   it("doesn't show the thumb for focus a pointer click left behind", async () => {
@@ -75,16 +82,13 @@ verifies("kit.slim-scrollbars", () => {
     expect(theme).not.toContain("focus-within");
   });
 
-  it("keeps the thumb shown at rest, and stronger, under more contrast", async () => {
+  it("keeps the thumb shown at rest, and stronger on hover and focus too, under more contrast", async () => {
     const css = squeezed(await buildCss([]));
     expect(css).toContain(
-      "--scrollbar-thumb-strong: light-dark(rgb(16 16 46 / 0.7), rgb(242 242 255 / 0.7));",
+      "--scrollbar-thumb-strong: light-dark(rgb(16 16 46 / 0.7), rgb(242 242 255 / 0.7)); @media (prefers-contrast: more) { --scrollbar-thumb: var(--scrollbar-thumb-strong); }",
     );
-    expect(block(css, standardOnly)).toContain(
-      "@media (prefers-contrast: more) { scrollbar-color: var(--scrollbar-thumb-strong) transparent; } }",
-    );
-    expect(block(css, parts)).toContain(
-      "background-color: transparent; @media (prefers-contrast: more) { background-color: var(--scrollbar-thumb-strong); } }",
+    expect(css).toContain(
+      "@media (prefers-contrast: more) { --scrollbar-thumb-now: var(--scrollbar-thumb); } }",
     );
   });
 
