@@ -11,6 +11,6 @@ While Studio runs as the desktop app and the Inbox has the action steps app serv
 - Given the desktop app, signed in to GitHub, and an admin request from Paperclip · Acme that the user's settings allow,
   when the user presses **Run step 1 of 1** and the step succeeds,
   then the item is answered with a `succeeded` result for step 1.
-- Given the desktop app and a `paperclip.connect-and-test@1` request for a connection whose file exists,
+- Given the action steps and `ServiceSignIn` app services, and a `paperclip.connect-and-test@1` request for a connection whose file exists,
   when the user opens it,
   then the stepper offers **Run step 1 of 4**.

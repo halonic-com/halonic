@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { RecentWorkspaces } from "@halonicjs/studio-feature-workspace";
+import type { OpenExternal } from "@halonicjs/studio-kit";
 import type { FocusedWindowProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -8,6 +9,8 @@ import { type StartedStudio, startStudio } from "./start-studio.ts";
 
 /** Every set of props a focused app's window was drawn with, in order. */
 const focusedWindowsDrawn = vi.hoisted((): FocusedWindowProps[] => []);
+/** The `openExternal` each focused app's window was mounted with. */
+const focusedOpeners = vi.hoisted((): (OpenExternal | undefined)[] => []);
 
 // The shell's own focused window, recording what it's drawn with: the region format reaches the
 // app's times only through these props (`kit.time-stamp`).
@@ -15,9 +18,10 @@ vi.mock("@halonicjs/studio-shell", async (importOriginal) => {
   const shell = await importOriginal<typeof import("@halonicjs/studio-shell")>();
   return {
     ...shell,
-    mountFocusedWindow: (element: Element, props: FocusedWindowProps) => {
+    mountFocusedWindow: (element: Element, props: FocusedWindowProps, open?: OpenExternal) => {
       focusedWindowsDrawn.push(props);
-      const mounted = shell.mountFocusedWindow(element, props);
+      focusedOpeners.push(open);
+      const mounted = shell.mountFocusedWindow(element, props, open);
       return {
         unmount: () => mounted.unmount(),
         update: (next: FocusedWindowProps) => {
@@ -97,6 +101,7 @@ afterEach(async () => {
   started = undefined;
   element.remove();
   focusedWindowsDrawn.length = 0;
+  focusedOpeners.length = 0;
 });
 
 function start(label: string, remembered = true, called: string[] = [], region?: string) {
@@ -122,6 +127,24 @@ verifies("studio.focused-app-window", () => {
     // Studio's window opens the engine for the routines; the engine lock is held per window.
     const said = errors.mock.calls.map((call) => String(call[0]));
     expect(said).not.toContain("The engine didn't open for the routines");
+    vi.restoreAllMocks();
+  }, 30_000);
+
+  it("opens the Inbox's outside pages through the page's location, as Studio's window does", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const asked: string[] = [];
+    const location = { origin: "tauri://localhost", assign: (url: string) => asked.push(url) };
+    started = startStudio({
+      element,
+      window: { ...webviewLabelled("inbox"), location },
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      storage: storageWithAcme(true),
+    });
+    await vi.waitFor(() => expect(focusedOpeners).toHaveLength(1), { timeout: 15_000 });
+
+    await focusedOpeners[0]?.("https://paperclip.acme.example/approve");
+
+    expect(asked).toEqual(["https://paperclip.acme.example/approve"]);
     vi.restoreAllMocks();
   }, 30_000);
 

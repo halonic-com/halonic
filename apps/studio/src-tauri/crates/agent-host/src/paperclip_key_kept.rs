@@ -10,10 +10,12 @@
 //!
 //! The shell answers only for a workspace that is still a folder the person
 //! picked, as the host resolves its real path, and only for a connection the
-//! host lists for that workspace from its connection file. So the page can't
-//! probe an entry no connection file of the person's names. The name's form
-//! is checked before anything else, and the keychain is asked last. Nothing
-//! here knows Tauri.
+//! host lists for that workspace from its connection file. That is no fence
+//! against page script: it can write `connections/paperclip/<name>.yaml` into
+//! a picked folder, so it can learn the bit for any name of that form. The
+//! bit is worth little: it says an entry exists, never what it holds or where
+//! it goes. The name's form is checked before anything else, and the keychain
+//! is asked last. Nothing here knows Tauri.
 
 use halonic_secrets::{SecretBackend, SecretName};
 use serde_json::Value;

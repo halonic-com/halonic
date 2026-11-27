@@ -107,7 +107,8 @@ export function startFocusedApp(page: StudioPage, parts: FocusedAppParts): Start
     chosenFormat: chosenFormatOf(display),
     openStudio: () => showStudio(ipc),
   };
-  const mounted = mountFocusedWindow(page.element, windowProps);
+  // The app's approval pages and outside links open in the system browser, as in Studio's window.
+  const mounted = mountFocusedWindow(page.element, windowProps, desktopOpenExternal(page.window));
   let stopped = false;
   const redraw = (change: Partial<FocusedWindowProps>) => {
     windowProps = { ...windowProps, ...change };

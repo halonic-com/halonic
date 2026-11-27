@@ -5,10 +5,20 @@
 
 The Inbox card now gets the desktop app's `ServiceSignIn` (a `HostServiceSignIn`
 over the same connections Settings › Connections uses, provided under
-`serviceSignInKey`). So a `paperclip.connect-and-test@1` request runs instead of
-showing as not available. In a browser there is none, and it still does.
+`serviceSignInKey`). Once the Inbox also has the action steps app service, a
+`paperclip.connect-and-test@1` request runs instead of showing as not
+available. Users see none of this yet: nothing in the app provides the action
+steps (`provideActionSteps`), the catalog or the requester policy. #6789
+(HAL-18125) gives the steps their records, and HAL-18517 provides them in the
+app.
 
-- `inbox.agent-action-run` says so.
+What users do see: the Inbox's and the Messenger's own windows now open
+outside pages with the desktop app's `openExternal`, as Studio's window does.
+Without it the kit called `window.open`, which the shell ignores, so their
+links went nowhere, and a sign-in's approval page would have opened nowhere.
+
+- `studio.focused-app-window` says so, with an example.
+- `inbox.agent-action-run` says the sign-in runs once both services are there.
 - `action-steppers.stepper-resume`: a sign-in whose `keep` part is recorded
   and that isn't a test now resumes at the parts left. It no longer starts
   again from its first part, which would make a second key. A test sign-in
@@ -31,6 +41,7 @@ showing as not available. In a browser there is none, and it still does.
 
 ## Covers
 
+- studio.focused-app-window
 - action-steppers.stepper-resume
 - action-steppers.paperclip-sign-in-run
 - action-steppers.paperclip-sign-in-review
