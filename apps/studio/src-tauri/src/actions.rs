@@ -3,7 +3,8 @@
 //! HAL-18084; architecture note on HAL-17491, 2.4, 3.1 and 6.7). Each one
 //! wraps `halonic-action-send`, which decides what may be sent or opened;
 //! this file gives it the network, the keychain, the native dialogs and the
-//! opener, and keeps the sign-in that is running.
+//! opener, and keeps the sign-in that is running. Each request's record
+//! is kept by the `action_record_*` commands in [`records`].
 //!
 //! Only the app's own windows are granted these commands
 //! (`capabilities/desktop-actions.json`): the Studio the computer serves
@@ -45,13 +46,15 @@ struct RunningSignIn {
     cancel: Arc<SignInCancel>,
 }
 
-/// The compiled route list, the open limit and the sign-in that is running.
+/// The compiled route list, the open limit, the sign-in that is running
+/// and the requests' records.
 pub struct ActionState {
     routes: RouteList,
     limiter: OpenLimiter,
     /// Counts the open limit's milliseconds; it only goes forward.
     started: Instant,
     sign_in: Mutex<Option<RunningSignIn>>,
+    records: records::RecordsState,
 }
 
 impl Default for ActionState {
@@ -61,6 +64,7 @@ impl Default for ActionState {
             limiter: OpenLimiter::default(),
             started: Instant::now(),
             sign_in: Mutex::default(),
+            records: records::RecordsState::default(),
         }
     }
 }
@@ -336,6 +340,9 @@ fn open<R: Runtime>(app: &AppHandle<R>, page: &Url) -> OpenResult {
         }
     }
 }
+
+#[path = "action_records.rs"]
+pub mod records;
 
 #[cfg(test)]
 #[path = "actions_tests.rs"]

@@ -1,5 +1,6 @@
 /**
- * The shell's `action_*` commands (`apps/studio/src-tauri/src/actions.rs`).
+ * The shell's `action_*` commands (`apps/studio/src-tauri/src/actions.rs`
+ * and, for the records, `action_records.rs`).
  * Only the app's own windows are granted them; the Studio the computer
  * serves gets none. Each takes a step by its name and its placeholders,
  * never an address, and none takes or gives a token.
@@ -19,6 +20,10 @@ export const actionCommands = {
   signOut: "action_sign_out",
   /** `{ service }` → the account, or `null`. */
   account: "action_account",
+  /** `{ event }` → nothing; refuses an event the allow-list refuses as `refused-event`, writing nothing. */
+  recordAppend: "action_record_append",
+  /** `{ request }` → the request's events, oldest first. */
+  recordRead: "action_record_read",
 } as const;
 
 /** A channel the page opened for a command to send messages back over. */

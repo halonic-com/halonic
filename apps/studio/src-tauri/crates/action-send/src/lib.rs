@@ -14,6 +14,8 @@
 //! - [`account`]: where the token and the signed-in account are kept.
 //! - [`DeviceFlow::sign_in`]: GitHub's device-flow sign-in, which runs
 //!   only while its stepper is open and stores the token with [`account`].
+//! - [`RecordFiles`]: each request's record, one user-only file per
+//!   request, holding only events [`check_record_event`] takes.
 
 pub mod account;
 mod answer;
@@ -24,6 +26,8 @@ mod device_flow;
 mod kinds;
 mod opens;
 mod pattern;
+mod record_check;
+mod record_files;
 mod routes;
 mod send;
 mod services;
@@ -39,6 +43,11 @@ pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};
 pub use device_flow::{DEVICE_PAGE, DeviceFlow, NEVER_EXPIRES, is_client_id};
 pub use opens::{ANY_PAGE_GAP_MS, OpenLimiter, SAME_PAGE_GAP_MS, open_guided, open_page};
 pub use pattern::{MAX_VALUE_CHARS, Pattern};
+pub use record_check::{
+    MAX_ID_CHARS, MAX_KEPT_FIELDS, MAX_KEPT_VALUE_CHARS, check_record_event, check_request_id,
+    seconds_of,
+};
+pub use record_files::{KEEP_FINISHED_SECONDS, MAX_RECORD_BYTES, Record, RecordError, RecordFiles};
 pub use routes::{FORMAT, Risk, RouteList};
 pub use send::{Answer, ConfirmSheet, Dialogs, Outgoing, SendResult, Sender, Tokens, Transport};
 pub use services::{AnswerShape, CLOUDFLARE, GITHUB, SERVICES, Service, service};

@@ -5,4 +5,5 @@ export {
   actionCommands,
   type ShellChannel,
 } from "./shell.ts";
+export { TauriActionRecords } from "./tauri-action-records.ts";
 export { TauriActionSender } from "./tauri-action-sender.ts";

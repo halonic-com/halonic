@@ -129,6 +129,8 @@ fn main() {
         "action_account",
         "action_open_guided",
         "action_open_page",
+        "action_record_append",
+        "action_record_read",
         "update_status",
         "update_watch",
         "update_check",
