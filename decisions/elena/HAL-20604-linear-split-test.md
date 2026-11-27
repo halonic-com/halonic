@@ -28,9 +28,9 @@ is at least 1 ms, so a split too quick to time still gives a ratio.
 
 ## What the test no longer catches
 
-A split that stays linear but gets slower. In review, raising the splitter's length limits made
-100,000 `[` take 3.7 s and 100,000 characters of `[](` take 2.0 s, still linear; the old 500 ms
-check failed both, the new one passes both. The requirement now promises only growth in step with
+A split that stays linear but gets slower. In review, raising both of the splitter's length limits
+to 5,000 made 100,000 `[` take 1.0 s at a ratio of 12.7, still linear; the old 500 ms check fails
+that, the new one passes it. With limits of 10,000 it took 2.0 s at a ratio of 20.1, also a pass. The requirement now promises only growth in step with
 the length, which is what keeps a long message from freezing the chat.
 
 ## Tests
