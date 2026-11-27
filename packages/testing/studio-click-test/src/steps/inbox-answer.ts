@@ -1,8 +1,9 @@
 import type { Step, StepContext, StepOutcome } from "../runner.ts";
-import { clickRow, clickWhenShown, lastWords, waitForText } from "../screen.ts";
+import { clickRow, clickWhenShown, lastWords, rowContaining, waitForText } from "../screen.ts";
 import { seedNames } from "../test-paperclip.ts";
 import { buttonLabels, screenText } from "../words.ts";
 import { closeDialogs, onWorkspace, openPlace } from "./open-demo.ts";
+import { sidebarRowSize } from "./plain-row-size.ts";
 
 /** How long the Inbox may take to read the newly connected Paperclip. */
 const cardWaitMs = 90_000;
@@ -31,6 +32,13 @@ async function stale(context: StepContext, text: string): Promise<StepOutcome> {
 /** The Inbox's stale line, which names the load that failed. */
 const staleLine = "//*[@data-failed]";
 
+/** The seeded card's row in the Inbox's plain List: its box, and its avatar's 60px place. */
+const cardRow = rowContaining(screenText.strategyApproval.text);
+const cardRowParts = {
+  row: `${cardRow}/*[1]`,
+  picture: `${cardRow}//*[contains(concat(' ', normalize-space(@class), ' '), ' size-15 ')]`,
+} as const;
+
 /**
  * Goes back from the answered card to the list, which then shows Needs you and any stale line.
  * An answered Paperclip card can stay open with its "Answered at" line, and in a narrow window it
@@ -49,8 +57,8 @@ async function backToList(
  * Step 9: the Inbox shows the seeded board card, and Approve answers it. The
  * row shows the card's type; the card shows its title, from a fresh read: no
  * line says the Inbox shows what it read last, over the card or over the list after the answer
- * (HAL-19190). The click must reach
- * the test Paperclip: its API says approved, and the card leaves Needs you.
+ * (HAL-19190). The card's row is exactly 80px high with a 60px avatar (HAL-20558). The click must
+ * reach the test Paperclip: its API says approved, and the card leaves Needs you.
  */
 export const inboxAnswer: Step = {
   id: "inbox-answer",
@@ -60,6 +68,7 @@ export const inboxAnswer: Step = {
     "inbox.decisions",
     "paperclip-client.approval-fields",
     "studio.desktop-agent-messaging",
+    "kit.plain-row-size",
   ],
   needs: ["connect-paperclip"],
   run: async (context) => {
@@ -75,6 +84,9 @@ export const inboxAnswer: Step = {
     );
     if (card.value !== true) return { passed: false, code: "NO_CARD", note: lastWords(card.text) };
     if (isStale(card.text)) return stale(context, card.text);
+    // Read while the card is open: once answered, it leaves the list.
+    const size = await sidebarRowSize(context, "The Inbox's card row", cardRowParts);
+    if (!size.passed) return size;
     if (!(await clickWhenShown(context, buttonLabels.approve.text, 10_000))) {
       return { passed: false, code: "NO_ANSWER_BUTTON", note: lastWords(card.text) };
     }

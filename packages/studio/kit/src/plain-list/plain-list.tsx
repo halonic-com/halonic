@@ -60,7 +60,7 @@ export interface PlainRowProps {
 /**
  * A list of plain rows for a two-pane app's list, the Messenger's chats and the Inbox's items
  * (HAL-19192, `kit.plain-list`): no borders or box, 4px apart. Its rows are a sidebar's bigger
- * ones (HAL-19735, `kit.plain-row-size`): at least 80px high, a 60px picture, a 15px title over a
+ * ones (HAL-19735, `kit.plain-row-size`): exactly 80px high, a 60px picture, a 15px title over a
  * 14px line. Rows without a picture keep the 56px list row.
  */
 export function PlainList({ label, children, listRef }: PlainListProps) {

@@ -94,3 +94,12 @@ verifies("kit.list-meta-end", () => {
     expect(meta?.querySelector('[data-part="meta-end"]')).toBeNull();
   });
 });
+
+verifies("kit.plain-row-size", () => {
+  it("keeps a plain row exactly 80px, and lets one with a part under its meta line grow", () => {
+    expect(classesOf(rowParts(refund, true).inside)).toContain("h-20");
+    const grown = rowParts({ ...refund, under: <span>Two files</span> }, true).inside;
+    expect(classesOf(grown)).toEqual(expect.arrayContaining(["min-h-20", "py-2.5"]));
+    expect(classesOf(grown)).not.toContain("h-20");
+  });
+});

@@ -1145,12 +1145,11 @@ item on the right under a `ContentHeader`.
 - **`ContentHeader`** goes over the open item in both: a 40px picture (`Avatar size="header"`, or
   an item's mark), the title as a level-2 heading over one muted line, and the item's actions.
 
-Both draw a sidebar's bigger rows (HAL-19735): at least 80px high with 10px above and below, on a
-phone too, a 60px picture, a 15px title (`text-reading`) and a 14px line (`text-body`). Their
-loading rows have the same shape: give a `plain` List `skeleton={{ leading: "avatar" }}` and its
-skeleton rows are 80px with a 60px round block.
-A `plain` List's row is exactly 80px, not at least, since its text fits in the 60px between
-(`kit.plain-row-fit`); a row with `wrap`, an `error`, `under` or `actions` may still grow, since its
+Both draw a sidebar's bigger rows (HAL-19735, `kit.plain-row-size`): exactly 80px high, not at
+least, with 10px above and below, on a phone too, a 60px picture, a 15px title (`text-reading`) and
+a 14px line (`text-body`). Their loading rows have the same shape: give a `plain` List
+`skeleton={{ leading: "avatar" }}` and its skeleton rows are 80px with a 60px round block.
+The text fits in the 60px between (`kit.plain-row-fit`). In a `plain` List, a row with `wrap`, an `error`, `under` or `actions` may still grow, since its
 text or parts aren't cut and would otherwise spill over the next row.
 A `PlainRow` without a picture (`picture={null}`), as the Assistant's Recent chats on a phone,
 keeps the kit's 56px row instead: at least 56px high with 12px above and below (HAL-19949).
