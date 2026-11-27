@@ -2,22 +2,27 @@
 // typed fields a row may hold (ids, enums, whole numbers, times) and checks them before a row
 // exists, so no text from a run can reach the outbox through them.
 import { checkId, checkScope, isUnit } from "./usage-input.ts";
-import type { UsageRefusal } from "./usage-types.ts";
+import type { UsageRefusal, UsageUnit } from "./usage-types.ts";
 
 /** What a stop row may name as its reason: a {@link UsageRefusal}'s code. */
 export type StopCode = UsageRefusal["code"];
 
-/** The codes with no unit in them; `plan.<unit>` and `plan.member.<unit>` are checked by unit. */
-const fixedStopCodes: ReadonlySet<string> = new Set([
-  "plan.none",
-  "plan.inactive",
-  "plan.member.inactive",
-  "plan.concurrency",
-  "plan.member.concurrency",
-  "usage.outbox-full",
-  "usage.rate",
-  "usage.member.rate",
-]);
+/**
+ * The codes with no unit in them; `plan.<unit>` and `plan.member.<unit>` are checked by unit. Keyed
+ * by the refusal's codes, so a code added there fails to compile until it is listed here.
+ */
+const fixedStopCodeKeys = {
+  "plan.none": true,
+  "plan.inactive": true,
+  "plan.member.inactive": true,
+  "plan.concurrency": true,
+  "plan.member.concurrency": true,
+  "usage.outbox-full": true,
+  "usage.rate": true,
+  "usage.member.rate": true,
+} satisfies Record<Exclude<StopCode, `plan.${UsageUnit}` | `plan.member.${UsageUnit}`>, true>;
+
+const fixedStopCodes: ReadonlySet<string> = new Set(Object.keys(fixedStopCodeKeys));
 
 /** A run stopped at a limit; `phase: "reserve"` when a step was refused before it started. */
 export interface StopRow {
@@ -64,7 +69,7 @@ export interface RunningCountRow {
 export type LimitEventRow = StopRow | WaitStartRow | WaitExpiredRow | RunningCountRow;
 
 /**
- * A stop row. Its id is the same for the same stop, so a repeat dedupes at Cloud.
+ * A stop row; one per run, stop and time, so a resend dedupes at Cloud and a later stop doesn't.
  *
  * @throws RangeError when an id, the code or the time isn't valid
  */
@@ -78,7 +83,7 @@ export function stopRow(input: {
   const { scope, runId, at } = checkCommon(input);
   const code = checkStopCode(input.code);
   const phase = input.phase === undefined ? undefined : checkPhase(input.phase);
-  const id = `stop:${runId}:${code}${phase === undefined ? "" : `:${phase}`}`;
+  const id = rowId("stop", scope, runId, at, code, phase ?? "");
   return phase === undefined
     ? { kind: "stop", id, scope, runId, code, at }
     : { kind: "stop", id, scope, runId, code, phase, at };
@@ -97,7 +102,7 @@ export function waitStartRow(input: {
 }): WaitStartRow {
   const { scope, runId, at } = checkCommon(input);
   const code = checkStopCode(input.code);
-  return { kind: "wait-start", id: `wait-start:${runId}:${at}`, scope, runId, code, at };
+  return { kind: "wait-start", id: rowId("wait-start", scope, runId, at), scope, runId, code, at };
 }
 
 /**
@@ -114,7 +119,7 @@ export function waitExpiredRow(input: {
   const { scope, runId, at } = checkCommon(input);
   const waitedSince = checkTime("waitedSince", input.waitedSince);
   if (at < waitedSince) throw new RangeError("A wait ends after it began.");
-  const id = `wait-expired:${runId}:${waitedSince}`;
+  const id = rowId("wait-expired", scope, runId, waitedSince);
   return { kind: "wait-expired", id, scope, runId, waitedSince, at };
 }
 
@@ -134,7 +139,13 @@ export function runningCountRow(input: {
   const running = checkCount("running", input.running);
   const change = checkCount("change", input.change);
   const at = checkTime("at", input.at);
-  return { kind: "running-count", id: `running:${scope}:${change}`, scope, running, at };
+  return { kind: "running-count", id: rowId("running", scope, change), scope, running, at };
+}
+
+// Scopes and run ids may hold ":", so the parts are joined with "|", which neither may hold; run ids
+// are only unique within a scope, so every id starts with the scope.
+function rowId(kind: string, ...parts: ReadonlyArray<string | number>): string {
+  return [kind, ...parts].join("|");
 }
 
 function checkCommon(input: { scope: string; runId: string; at: number }) {
@@ -153,7 +164,8 @@ function checkStopCode(code: StopCode): StopCode {
   if (typeof code === "string" && fixedStopCodes.has(code)) return code;
   const unit = typeof code === "string" ? code.replace(/^plan\.(member\.)?/, "") : "";
   if (unit !== code && isUnit(unit)) return code;
-  throw new RangeError(`"${String(code).slice(0, 32)}" isn't a stop code.`);
+  // The refused value may be run text, so the message leaves it out.
+  throw new RangeError("code isn't a stop code.");
 }
 
 function checkPhase(phase: string): "reserve" {
