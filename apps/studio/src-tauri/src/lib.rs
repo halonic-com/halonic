@@ -122,6 +122,8 @@ mod page_calls;
 mod page_ends;
 mod page_streams;
 mod pair_scan;
+#[cfg(desktop)]
+mod parts_download;
 mod phone_nearby;
 mod phone_screens;
 mod phone_tunnel;

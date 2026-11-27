@@ -43,7 +43,7 @@ use check::{
 mod managed;
 
 #[path = "updates_proxy.rs"]
-mod proxy;
+pub(crate) mod proxy;
 
 #[path = "updates_file.rs"]
 mod file;
