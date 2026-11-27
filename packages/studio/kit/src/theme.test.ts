@@ -130,8 +130,8 @@ describe("theme.css colours", () => {
     }
   });
 
-  it("draws a focused app's frame in slate-75 in light and slate-950 in dark (HAL-18691)", () => {
-    expect(themeTokens.get("--color-app-frame")).toBe("light-dark(#f4f7fa, #020617)");
+  it("draws a focused app's frame as WhatsApp's frame and sidebar, in our blue's hue (HAL-20674)", () => {
+    expect(themeTokens.get("--color-app-frame")).toBe("light-dark(#f3f5fa, #0a1630)");
   });
 
   for (const mode of ["light", "dark"] as const) {
@@ -372,6 +372,7 @@ describe("theme.css scales", () => {
       "--radius-lg",
       "--radius-prompt",
       "--radius-full",
+      "--radius-panel",
     ]);
     expect(namesStartingWith(themeTokens, "--spacing")).toEqual([
       "--spacing",
@@ -387,6 +388,8 @@ describe("theme.css scales", () => {
       "--spacing-touch",
       "--spacing-phone-bar",
       "--spacing-nav-pill",
+      "--spacing-rail",
+      "--spacing-row",
       "--spacing-qr-tile",
       "--spacing-input-short",
     ]);
