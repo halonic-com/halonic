@@ -131,7 +131,7 @@ describe("theme.css colours", () => {
     }
   });
 
-  it("draws a focused app's frame as WhatsApp's frame and sidebar, in our blue's hue (HAL-20674)", () => {
+  it("draws a focused app's frame as the new design's frame and icon sidebar, in our blue's hue (HAL-20674)", () => {
     expect(themeTokens.get("--color-app-frame")).toBe("light-dark(#f3f5fa, #0a1630)");
   });
 
