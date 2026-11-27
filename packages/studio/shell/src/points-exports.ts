@@ -91,3 +91,4 @@ export {
   firstSettingsSection,
   settingsSectionToOpen,
 } from "./points/settings-sections.ts";
+export { type PlaceOfKind, selectedRailEntry } from "./rail/rail-selection.ts";

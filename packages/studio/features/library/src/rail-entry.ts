@@ -8,5 +8,9 @@ export const libraryRailEntry: RailEntryContribution = {
   label: "Library",
   icon: "library",
   order: 20,
+  // Agents, Workflows and Routines are sections of Library's list (HAL-20673 rail flows, line 2a).
+  // An item's tab reaches its entry through its kind's `place`, so no kind is listed here.
+  holds: ["library", "agents", "workflows", "routines"],
+  opens: "library",
   shows: (facts) => facts.hasItems,
 };

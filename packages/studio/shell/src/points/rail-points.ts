@@ -40,8 +40,9 @@ export class RailStore {
         guard("rail.add");
         rejectUnknownEntry(entry, featureId);
         this.rejectTakenEntry(entry, featureId);
-        this.entries.add(featureId, entry);
         checkEntryLabel(entry, featureId);
+        this.rejectHeldKeys(entry, featureId);
+        this.entries.add(featureId, entry);
       },
     };
   }
@@ -67,6 +68,20 @@ export class RailStore {
       throw new ShellError(
         `rail.add: the entry "${entry.id}" is added by both "${existing.featureId}" and "${featureId}". Each rail entry belongs to one feature.`,
       );
+    }
+  }
+
+  /** A tab can be in one entry only, so two entries holding a key would make the selection a guess. */
+  private rejectHeldKeys(entry: RailEntryContribution, featureId: string): void {
+    const others = [homeRailEntry, ...this.entries.all()];
+    for (const key of entry.holds) {
+      const holder = others.find((other) => other.holds.includes(key));
+      if (holder !== undefined) {
+        const by = "featureId" in holder ? `"${holder.featureId}"` : "the shell";
+        throw new ShellError(
+          `rail.add: the feature "${featureId}" holds "${key}" in the entry "${entry.id}", which ${by} already holds in "${holder.id}". A tab is in one entry only.`,
+        );
+      }
     }
   }
 }
