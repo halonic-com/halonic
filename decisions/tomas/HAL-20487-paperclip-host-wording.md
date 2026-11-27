@@ -3,6 +3,7 @@
 - Task: HAL-20487
 - Approval: the wording was decided by the team on HAL-20487 (https://paperclip.halonic.com/HAL/issues/HAL-20487), with Sofia as designer, from her check of #6768 on HAL-20482. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:IPqlJBeXE0tEp2MEpJ3Ku91QwwZZzb2kjvXBtaN2CEDf0OdyCIQSpz9Z3BFgw3doIUKpU30xsA6wpYEIrCD7CA==
 
 ## What changes
 
