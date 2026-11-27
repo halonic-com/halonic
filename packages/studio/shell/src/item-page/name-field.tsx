@@ -33,6 +33,12 @@ export interface NameFieldProps {
    * isn't empty is kept.
    */
   readonly check?: ((name: string) => string | undefined) | undefined;
+  /**
+   * A quiet line under the field while a new name without a problem is typed, such as what else the
+   * rename changes: "Also updates 3 places: …". It is the field's description and isn't read out
+   * by itself, so it isn't said again for every letter.
+   */
+  readonly note?: string | undefined;
 }
 
 /**
@@ -43,9 +49,10 @@ export interface NameFieldProps {
  * with a problem shows why under the field once the typing pauses, and that line is read out once,
  * since a screen reader doesn't read a description again when it changes under focus. Enter doesn't
  * keep that name and reads the line again; leaving the field puts the old name back and says so.
- * The field takes its type from the heading it sits in.
+ * A `note` shows in that place instead while a new name has no problem. The field takes its type
+ * from the heading it sits in.
  */
-export function NameField({ name, label, onRename, check }: NameFieldProps) {
+export function NameField({ name, label, onRename, check, note }: NameFieldProps) {
   const [draft, setDraft] = useState(name);
   const problemId = useId();
   const next = draft.trim();
@@ -53,6 +60,8 @@ export function NameField({ name, label, onRename, check }: NameFieldProps) {
   // The line under the field waits for the typing to pause; Enter shows it at once.
   const [paused, setPaused] = useState(draft);
   const shownProblem = paused === draft ? problem : undefined;
+  const shownNote = next === "" || next === name || problem !== undefined ? undefined : note;
+  const line = shownProblem ?? shownNote;
   const input = useRef<HTMLInputElement | null>(null);
   const announce = useFieldAnnounce();
   useFieldErrorAnnouncement(input, label, shownProblem, true);
@@ -156,7 +165,7 @@ export function NameField({ name, label, onRename, check }: NameFieldProps) {
         size={1}
         aria-label={label}
         aria-invalid={shownProblem === undefined ? undefined : true}
-        aria-describedby={shownProblem === undefined ? undefined : problemId}
+        aria-describedby={line === undefined ? undefined : problemId}
         value={draft}
         spellCheck={false}
         data-text-entry=""
@@ -180,6 +189,12 @@ export function NameField({ name, label, onRename, check }: NameFieldProps) {
           {shownProblem}
         </span>
       )}
+      {shownNote !== undefined && (
+        // In the problem's place, quiet like a field's hint; hidden for the same reason.
+        <span id={problemId} aria-hidden="true" className={noteClasses}>
+          {shownNote}
+        </span>
+      )}
     </span>
   );
 }
@@ -198,6 +213,12 @@ const nameClasses = [
 const problemClasses = [
   "absolute top-full left-0 z-10 mt-1 flex w-max max-w-[min(36rem,calc(100vw-5rem))]",
   "items-start gap-1 rounded-xs bg-surface px-1 text-caption font-normal text-danger",
+].join(" ");
+
+// The kit Field's hint under the field, in the problem line's place.
+const noteClasses = [
+  "absolute top-full left-0 z-10 mt-1 w-max max-w-[min(36rem,calc(100vw-5rem))]",
+  "rounded-xs bg-surface px-1 text-caption font-normal text-fg-subtle",
 ].join(" ");
 
 // The same text, inset and type as the field, kept in the layout but never seen.

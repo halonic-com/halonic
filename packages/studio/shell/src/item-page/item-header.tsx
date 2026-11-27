@@ -21,6 +21,8 @@ export interface ItemHeaderProps<Id extends string> {
   readonly onRename?: ((name: string) => void) | undefined;
   /** Checks a new name as it is typed (`NameField`'s `check`); without it every name is kept. */
   readonly check?: ((name: string) => string | undefined) | undefined;
+  /** A quiet line under the field while a new name without a problem is typed (`NameField`'s `note`). */
+  readonly renameNote?: string | undefined;
   /** The `h1`, for a page that gives it the focus, such as once **Try again** has read the item. */
   readonly titleRef?: Ref<HTMLHeadingElement> | undefined;
   /** The item's ⋮ menu. Without entries there's no ⋮. */
@@ -51,6 +53,7 @@ export function ItemHeader<Id extends string>({
   name,
   onRename,
   check,
+  renameNote,
   titleRef,
   actions = [],
   views,
@@ -79,7 +82,13 @@ export function ItemHeader<Id extends string>({
             // Where the host can't rename, the name stays a title: no field the user can't use.
             <span className={plainNameClasses}>{name}</span>
           ) : (
-            <NameField name={name} label={`${kind} name`} onRename={onRename} check={check} />
+            <NameField
+              name={name}
+              label={`${kind} name`}
+              onRename={onRename}
+              check={check}
+              note={renameNote}
+            />
           )}
         </h1>
         {actions.length === 0 ? null : (
