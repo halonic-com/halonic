@@ -1,8 +1,10 @@
 /**
- * The stepper run's stop on a definition's `requires` rules (`action-steppers.shell-check-gate`):
- * before a step runs, the checks before it must have run and kept what the definition requires.
- * A broken rule stops the request the same way a changed `expect` does (`expect-stop.ts`), with
- * the definition's own reason. The record is the one place kept values live, so a request opened
+ * The stepper run's stop on a definition's `requires` rules (`action-steppers.shell-check-gate`)
+ * and on its `requiredExpect` names and parameter rules (`action-steppers.shell-gate-request`):
+ * before a step runs, the checks before it must have run and kept what the definition requires,
+ * a rule with `equalsParameter` must find the request's parameter, and the request's `expect` must
+ * name what each check requires. A broken rule stops the request the same way a changed `expect`
+ * does (`expect-stop.ts`), with the definition's own reason. The record is the one place kept values live, so a request opened
  * again stops in the same place.
  */
 import {
@@ -76,8 +78,9 @@ export interface CheckStopInput {
 
 /**
  * The view of a request its checks stopped, or `undefined` when nothing stopped it: a changed
- * `expect` first (`action-steppers.expect-stop`), then a `requires` rule. A `requires` stop shows
- * its own sentence on the next step, since what the requester saw may not have changed at all.
+ * `expect` first (`action-steppers.expect-stop`), then a missing `requiredExpect` name or a broken
+ * `requires` rule, with a parameter or a fixed value. Those show their own sentence on the next
+ * step, since what the requester saw may not have changed at all.
  */
 export function stoppedByChecks(
   shown: StepperView,

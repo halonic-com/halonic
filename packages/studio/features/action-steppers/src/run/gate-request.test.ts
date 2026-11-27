@@ -128,7 +128,11 @@ verifies("action-steppers.shell-gate-request", () => {
       expect(again.current().stage).toEqual(stopped);
       expect(outcomes(answers)).toEqual(["failed"]);
     });
+  });
+});
 
+verifies("action-steppers.shell-check-gate", () => {
+  describe("StepperRun with a deployment approval's fixed-value rule", () => {
     it("stops with the definition's reason when the run isn't waiting anymore", async () => {
       const { fake, open } = await runOf(deploymentRequest, { status: "approved" });
       const { first, again } = await runAllAndReopen(open);

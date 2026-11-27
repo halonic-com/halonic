@@ -2,7 +2,10 @@
  * Builds what the stepper sends for one step: the step's reference and its values, sorted into
  * the route's placeholders and body (plan on HAL-17535, question 1). The route only sorts: the
  * shell checks every value again against its own compiled list, so a wrong route here can only
- * get a step refused, never send something else (HAL-17491 2.4).
+ * get a step refused, never send something else (HAL-17491 2.4). The one exception is a list
+ * field: the shell only knows it holds integers, so which parameter fills it comes from the
+ * definition's step here, and the gate (`check-gate.ts`) compares that same parameter with what
+ * the check kept before the step is sent.
  */
 import type { Step } from "@halonicjs/action-steppers";
 import type {
@@ -11,14 +14,16 @@ import type {
   ActionRoute,
   ActionSendRequest,
   ActionStepRef,
-  ActionValue,
   InboxActionRequest,
 } from "@halonicjs/ports";
 
 type Parameters = InboxActionRequest["parameters"];
 
+/** One value of the body the page sends, as the port takes it. */
+type PageValue = NonNullable<ActionSendRequest["body"]>[string];
+
 /** The body the page sends for a call step. */
-export type PageBody = Record<string, ActionValue | readonly number[]>;
+export type PageBody = Record<string, PageValue>;
 
 /** The fields the page sends; the sender adds `constant` and `secret-input` fields itself. */
 function filledByPage(field: ActionBodyField): boolean {
@@ -46,7 +51,7 @@ function pageValue(
   field: ActionBodyField,
   parameters: Parameters,
   step: Step | undefined,
-): ActionValue | readonly number[] | undefined {
+): PageValue | undefined {
   if (field.kind !== "integer-list") return parameters[field.name];
   const source =
     step?.kind === "call" ? step.body.find((each) => each.name === field.name) : undefined;
