@@ -2,7 +2,6 @@
 
 - Approval: HAL-20728, built from the part recipes on HAL-20672 under the build plan on HAL-20617
 - Kind: user-visible
-- Signature:
 
 ## What changes
 
