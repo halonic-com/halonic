@@ -257,7 +257,7 @@ export function InboxView({
     if (open !== null) closeAgent();
   }, [open, closeAgent]);
   const listed = needsYouListed(state.items, state.decided, open, openAt.current);
-  const project = useProjectFilter(agent.waitingItems, listed.length > 0);
+  const project = useProjectFilter(agent.waitingItems, listed.filter(waits).length);
   const retry = () => void inbox.refresh();
   useSettleLeftOver(state.leftOver, proposals, retry);
   // A list that opens over a failed load checks again at once, so it doesn't say the last poll's

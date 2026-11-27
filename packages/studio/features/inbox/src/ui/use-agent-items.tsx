@@ -298,7 +298,9 @@ function bundleRow(
     : row;
 }
 
-/** An agent item's row: its title, then its project, source, who asks and how long it has waited. */
+/**
+ * An agent item's row: its title, then its project, source, who asks and how long it has waited.
+ */
 function agentRow(
   item: AgentItem,
   source: MessagingSource | undefined,

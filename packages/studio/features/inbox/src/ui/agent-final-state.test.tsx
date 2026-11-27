@@ -80,11 +80,17 @@ function rows(root: HTMLElement): HTMLTableRowElement[] {
 
 const texts = (root: HTMLElement) => rows(root).map((row) => row.textContent ?? "");
 
+/** Picks a project from the filter's line, or else from its "+N" menu. */
 async function pickProject(root: HTMLElement, label: string): Promise<void> {
-  const chips = [...root.querySelectorAll<HTMLElement>('[role="radiogroup"] label')];
-  const chip = chips.find((each) => each.textContent?.endsWith(label));
+  const chips = [
+    ...root.querySelectorAll<HTMLElement>('fieldset[aria-label="Project"] > button'),
+    ...root.querySelectorAll<HTMLElement>("[role=menuitemradio]"),
+  ];
+  const chip = chips.find((each) =>
+    (each.getAttribute("aria-label") ?? each.textContent ?? "").startsWith(label),
+  );
   if (chip === undefined) throw new Error(`no chip "${label}"`);
-  await act(async () => chip.querySelector("input")?.click());
+  await act(async () => chip.click());
   await settled();
 }
 

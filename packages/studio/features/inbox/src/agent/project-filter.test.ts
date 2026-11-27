@@ -17,7 +17,7 @@ const item = (project?: { id: string; name: string }) => ({
 verifies("inbox.project-filter", () => {
   describe("the project filter", () => {
     it("falls back to all once the picked project has nothing waiting", () => {
-      const chips = projectChips([item({ id: "p-web", name: "Website" })], false);
+      const chips = projectChips([item({ id: "p-web", name: "Website" })], 0);
       expect(chips.map((chip) => chip.label)).toEqual(["All projects", "Website"]);
       expect(shownFilter("project:p-web", chips)).toBe("project:p-web");
       expect(shownFilter("project:p-gone", chips)).toBe("all");

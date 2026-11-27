@@ -3,14 +3,23 @@
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import { waitingRun } from "../test-runs.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
 
-afterEach(unmountAll);
+beforeEach(() => {
+  HTMLElement.prototype.showPopover = () => undefined;
+  HTMLElement.prototype.hidePopover = () => undefined;
+});
+
+afterEach(() => {
+  unmountAll();
+  Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+  Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
+});
 
 // Local times, so the test reads the same in every time zone. Tue 24 Nov 2026.
 const asked = new Date(2026, 10, 24, 10, 0);
@@ -63,22 +72,32 @@ function shownText(cell: Element | null): string {
   return copy.textContent ?? "";
 }
 
-function chips(root: HTMLElement): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>('[role="radiogroup"] label')];
+/** The chips on the filter's line, by name. */
+function chips(root: HTMLElement): HTMLButtonElement[] {
+  return [...root.querySelectorAll<HTMLButtonElement>('fieldset[aria-label="Project"] > button')];
 }
 
+function chipName(chip: HTMLElement): string {
+  return chip.getAttribute("aria-label") ?? chip.textContent ?? "";
+}
+
+/** Picks a choice from the line, or else from its "+N" menu. */
 async function pick(root: HTMLElement, label: string) {
-  const chip = chips(root).find((each) => each.textContent?.endsWith(label));
-  if (chip === undefined) throw new Error(`no chip "${label}"`);
-  await act(async () => chip.querySelector("input")?.click());
+  const chip = chips(root).find((each) => chipName(each).startsWith(label));
+  const entry = [...root.querySelectorAll<HTMLElement>("[role=menuitemradio]")].find((each) =>
+    each.textContent?.startsWith(label),
+  );
+  const target = chip ?? entry;
+  if (target === undefined) throw new Error(`no choice "${label}"`);
+  await act(async () => target.click());
   await settled();
 }
 
 verifies("inbox.project-filter", () => {
   it("filters a mixed list by one project with one click, and shows only that project's items", async () => {
     const root = await mixedInbox();
-    expect(chips(root).map((chip) => chip.textContent)).toEqual([
-      "All projects",
+    expect(chips(root).map(chipName)).toEqual([
+      "All projects, 4",
       "Billing",
       "Website",
       "No project",
@@ -94,7 +113,7 @@ verifies("inbox.project-filter", () => {
 
   it("shows no project filter while no item that waits has a project", async () => {
     const root = await mixedInbox(false);
-    expect(root.querySelector('[role="radiogroup"]')).toBeNull();
+    expect(root.querySelector('fieldset[aria-label="Project"]')).toBeNull();
     expect(titles(root)).toHaveLength(4);
   });
 });
