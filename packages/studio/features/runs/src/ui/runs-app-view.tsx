@@ -1,4 +1,4 @@
-import { BackIcon, Button, EmptyState, useNarrow } from "@halonicjs/studio-kit";
+import { BackIcon, Button, EmptyState, PlaceIcon, useNarrow } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
@@ -69,10 +69,11 @@ export function RunsAppView({
         <div
           ref={listColumn}
           data-part="list-column"
+          // The px-2 keeps the run cards' borders off the frame and the 1px line (design check, HAL-20755).
           className={
             onePane
-              ? "flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto"
-              : "flex w-[34%] max-w-[380px] shrink-0 flex-col gap-2 overflow-y-auto border-e border-border"
+              ? "flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-2"
+              : "flex w-[34%] max-w-[380px] shrink-0 flex-col gap-2 overflow-y-auto border-e border-border px-2"
           }
         >
           {state.error === undefined ? null : (
@@ -116,7 +117,11 @@ export function RunsAppView({
             </div>
           ) : null}
           {open === undefined || runPane === undefined ? (
-            <EmptyState title={runPaneWords.noRunTitle} description={runPaneWords.noRunLine} />
+            <EmptyState
+              icon={<PlaceIcon name="runs" />}
+              title={runPaneWords.noRunTitle}
+              description={runPaneWords.noRunLine}
+            />
           ) : (
             runPane(open, { show, close })
           )}
