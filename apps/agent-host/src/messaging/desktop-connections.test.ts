@@ -77,6 +77,50 @@ verifies("agent-host.paperclip-connection", () => {
   });
 });
 
+verifies("agent-host.paperclip-connection-file-changed", () => {
+  describe("a connected row whose file no longer matches its key", () => {
+    const connectedRow = async () => {
+      desktop = await startDesktop();
+      const on = desktop;
+      await on.paperclipKey.handOver({
+        workspace: on.workspace,
+        connection: "halonic",
+        key: testKey,
+        ...acme,
+      });
+      await on.studio.listAgents();
+      const seenBefore = on.paperclip.seen.length;
+      const rows = new AgentHostPaperclipSignIn(on.transport, on.workspace);
+      return { on, rows, seenBefore };
+    };
+
+    it("lists it as signed out with the file's new address, and calls nobody", async () => {
+      const { on, rows, seenBefore } = await connectedRow();
+      await on.writeConnection("https://paperclip.other.example");
+      const [row] = await rows.connections();
+      expect(row).toMatchObject({
+        address: "https://paperclip.other.example",
+        state: { kind: "signed-out" },
+      });
+      expect(on.paperclip.seen).toHaveLength(seenBefore);
+    });
+
+    it("lists it as signed out when only the file's company changed, and calls nobody", async () => {
+      const { on, rows, seenBefore } = await connectedRow();
+      await on.writeConnection(acme.address, "other-company");
+      const [row] = await rows.connections();
+      expect(row).toMatchObject({ company: "other-company", state: { kind: "signed-out" } });
+      expect(on.paperclip.seen).toHaveLength(seenBefore);
+    });
+
+    it("keeps listing it online while the file is unchanged", async () => {
+      const { rows } = await connectedRow();
+      const [row] = await rows.connections();
+      expect(row?.state.kind).toBe("online");
+    });
+  });
+});
+
 verifies("agent-host.paperclip-signed-in-user", () => {
   describe("whom each connection is signed in as", () => {
     /** Hands the Halonic connection's key over, as Studio does on Connect. */

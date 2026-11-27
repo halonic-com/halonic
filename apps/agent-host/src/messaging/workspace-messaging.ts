@@ -11,17 +11,12 @@ import {
   StoredAgentMessaging,
   type SyncCounters,
 } from "@halonicjs/host-paperclip-sync";
-import type {
-  AgentMessaging,
-  MessagingId,
-  MessagingSource,
-  MessagingSourceState,
-  TeamStatus,
-} from "@halonicjs/ports";
+import type { AgentMessaging, MessagingId, TeamStatus } from "@halonicjs/ports";
 import { paperclipConnectionNamePattern } from "../paperclip/paperclip-key-routes.ts";
 import { ChangeLog, type ChangesSince, changesWaitMs } from "./change-log.ts";
 import { ConnectionEvents, liveCounters } from "./connection-events.ts";
 import { listConnectionFiles } from "./connection-file.ts";
+import { fileMatchesKey, rowState, stateOf } from "./connection-row-state.ts";
 import type { MessagingEngine } from "./messaging-engine-setting.ts";
 import {
   type PaperclipConnectionProvider,
@@ -86,7 +81,7 @@ export interface ConnectionRow {
   address: string;
   /** The Paperclip company's ID the file names, which Studio compares with its keychain entry. */
   company: string;
-  /** `no-key` while this computer holds no key for it; `signed-out` only once Paperclip refused the key. */
+  /** `no-key` while this computer holds no key for it; `signed-out` only once Paperclip refused the key or the file no longer matches it. */
   state: ConnectionRowState;
   /** The Paperclip user the connection is signed in as, once read. */
   userName?: string;
@@ -272,7 +267,9 @@ export class WorkspaceMessaging {
    * The workspace's connection files, each with its state: `no-key` until
    * the person connects it here, or Studio hands its key over again. It reads
    * Paperclip only for connections the person connected, as Inbox does; when
-   * that fails they show as offline.
+   * that fails they show as offline. A connected one whose file no longer
+   * matches its key is `signed-out` straight away, as the key guard answers
+   * at its next request (HAL-20467).
    */
   async connections(): Promise<ConnectionRow[]> {
     const { workspace, now } = this.#options;
@@ -297,7 +294,12 @@ export class WorkspaceMessaging {
         label: userName === undefined ? label : withUserName(label, userName),
         address: connection.address,
         company: connection.company,
-        state: rowState(joined, provider === undefined, () => stateOf(id, sources, asOf)),
+        state: fileMatchesKey(
+          this.#options.keys.madeFor({ workspace, connection: name }),
+          connection,
+        )
+          ? rowState(joined, provider === undefined, () => stateOf(id, sources, asOf))
+          : { kind: "signed-out" },
         ...(userName === undefined ? {} : { userName }),
       };
     });
@@ -444,28 +446,4 @@ function serverProviders(engine: Extract<JoinedEngine, { kind: "server" }>) {
   return engine.messaging === undefined
     ? []
     : [{ name: serverSourceName, messaging: engine.messaging }];
-}
-
-/**
- * A row's state. On this computer, a connection the host holds no key for is
- * `no-key`, so Studio doesn't call a key that is still valid "expired or
- * revoked" (HAL-19032); a server engine's rows stay `signed-out`, as before.
- */
-function rowState(
-  joined: boolean,
-  noKey: boolean,
-  connected: () => MessagingSourceState,
-): ConnectionRowState {
-  if (!joined) return { kind: "signed-out" };
-  return noKey ? { kind: "no-key" } : connected();
-}
-
-/** A connected source's state; offline when its sources couldn't be read. */
-function stateOf(
-  id: MessagingId,
-  sources: readonly MessagingSource[] | undefined,
-  asOf: string,
-): MessagingSourceState {
-  if (sources === undefined) return { kind: "offline", asOf };
-  return sources.find((source) => source.id === id)?.state ?? { kind: "signed-out" };
 }
