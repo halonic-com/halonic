@@ -76,7 +76,7 @@ export type FilterChipsProps<Value extends string = string> =
 
 /**
  * 32px, the new design's chip (HAL-20675), with a 48px hit area on a phone or a touch screen. The
- * label is 14px at 600 in both states, so a chip keeps its width when it turns on. The row's 16px
+ * label is 14px at 600 in both states, so its words don't widen when it turns on. The row's 16px
  * between wrapped lines keeps two lines' hit areas apart.
  */
 const chipSize =
@@ -95,8 +95,8 @@ const textOff = "px-3 text-fg-muted";
 
 /**
  * On: `accent-soft` with `accent-text` and a 12px check before the label, 8px in, so on and off
- * differ in shape too (23 A11; the new design has no check, but the kit keeps it for that). Its edge is transparent: in its own colour with more
- * contrast, and `CanvasText` in forced colours.
+ * differ in shape too (23 A11; the new design has no check, but the kit keeps it for that). Its
+ * edge is transparent: in its own colour with more contrast, and `CanvasText` in forced colours.
  */
 const boxOn = "border-transparent bg-accent-soft contrast-more:border-accent-text";
 const textOn = "pr-3 pl-2 text-accent-text";
