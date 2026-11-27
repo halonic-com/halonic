@@ -11,11 +11,9 @@ const text = (path: string) => readFileSync(join(shellFolder, path), "utf8");
 
 const focusedApps = ["inbox", "messenger"] as const;
 
-/** Where each app's icon is drawn: Halonic's own icon is Studio's. */
+/** Where an icon is drawn from the kit's glyphs: Halonic's own tile (macOS and Linux) is Studio's. */
 const iconSources: Record<string, AppLogoId> = {
   "icons/icon.svg": "studio",
-  "icons/apps/inbox.svg": "inbox",
-  "icons/apps/messenger.svg": "messenger",
 };
 
 /** The paths and discs a glyph is drawn from, as `icons/draw-app-icons.mjs` writes them. */
@@ -59,21 +57,32 @@ verifies("studio.app-icons", () => {
   });
 
   it.each(["icons/icon.ico", ...focusedApps.map((app) => `icons/apps/${app}.ico`)])(
-    "%s holds every size Windows asks for, from 16 to 256 px",
+    "%s holds every size the board's set is drawn at, from 16 to 256 px",
     (path) => {
       expect(icoImages(read(path))).toEqual(
-        [16, 20, 24, 30, 32, 36, 40, 48, 64, 256].map((pixels) => ({ pixels, png: true })),
+        [16, 20, 24, 32, 40, 48, 64, 256].map((pixels) => ({ pixels, png: true })),
       );
     },
   );
 
-  it("draws Windows' icons without a tile and keeps the tile for icon.png's source", () => {
-    for (const app of focusedApps) {
-      const svg = text(`icons/apps/${app}.svg`);
-      // The tile is a rounded rect; the flap's mask has a plain one.
-      expect(svg).not.toContain(" rx=");
+  it("draws Windows' icons as the board's dark, all-blue set and keeps the tile for icon.png's source", () => {
+    const drawings = focusedApps.map((app) => text(`icons/apps/${app}.svg`));
+    for (const svg of drawings) {
       expect(svg).toContain('viewBox="0 0 256 256"');
+      // Ink glass, and the line of light in Halonic blue.
+      expect(svg).toContain('stop-color="#17285a"');
+      expect(svg).toContain('stop-color="#2f6df3"');
+      expect(svg).toContain('stop-color="#22d3ee"');
+      // No tile, and none of the ring's cyan or the kit's glyphs from the set before.
+      expect(svg).not.toContain(" rx=");
+      expect(svg).not.toContain("#1bc6c8");
+      for (const app of Object.keys(appGlyphs) as AppLogoId[]) {
+        for (const mark of glyphMarks(app).filter((m) => m.startsWith("d="))) {
+          expect(svg).not.toContain(mark);
+        }
+      }
     }
+    expect(new Set(drawings).size).toBe(focusedApps.length);
     expect(text("icons/icon.svg")).toContain('<rect width="100" height="100" rx="22"');
   });
 
