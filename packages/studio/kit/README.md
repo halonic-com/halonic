@@ -992,7 +992,7 @@ List draws them.
 | `current` | The row whose item shows beside the list, as the Inbox's open item: the selected look and `aria-current`, but not selected, and it still opens |
 | `dense` | 32px rows, for menus and pickers |
 | `flush` | No outer border or radius, lines from 16px. On by default on a phone |
-| `plain` | Rows as `PlainList`'s: no box or lines, rounded rows 4px apart, a regular 15px title over a 14px meta line, rows 80px with a 60px avatar (a `wrapTitle` title takes at most two 20px lines and the meta line one, `kit.plain-row-fit`), the muted fill on hover, on keyboard focus and on `current`. A row's `unread` then makes its title semibold, its meta line full colour and ends it with the blue dot or count, under the trailing part when the row has one. A row's `hoverAction` shows over the end of its first line on hover or focus, in a cell of its own that → reaches (`kit.list-plain-action`); with an `icon` it is a 24px icon button in the time's place, its label in its tooltip (`kit.list-plain-action-icon`). Wins over `flush` |
+| `plain` | Rows as `PlainList`'s: no box or lines, rounded rows 4px apart, a regular 15px title over a 14px meta line, rows 72px with a 48px avatar (a `wrapTitle` title takes at most two 20px lines and the meta line one, `kit.plain-row-fit`), the muted fill on hover, on keyboard focus and on `current`. A row's `unread` then makes its title semibold, its meta line full colour and ends it with the blue dot or count, under the trailing part when the row has one. A row's `hoverAction` shows over the end of its first line on hover or focus, in a cell of its own that → reaches (`kit.list-plain-action`); with an `icon` it is a 24px icon button in the time's place, its label in its tooltip (`kit.list-plain-action-icon`). Wins over `flush` |
 | `chevrons` | Each row opens a page of its own, as History's versions: on a phone each row ends in a 20px `fg-subtle` chevron, hidden from screen readers, and its `trailing` chip starts its meta line. Desktop rows don't change. Not with `columns` |
 | `empty` | An [`EmptyState`](#emptystate)'s props, shown in place of the box when there are no rows |
 | `loading` | Skeleton rows in place of the rows; see **Loading** below |
@@ -1114,7 +1114,7 @@ the button stays clear of the row's lines; its ring overlaps them and isn't clip
 **Loading.** While `loading` is set, the List shows the shape of the rows that are coming, so the
 page doesn't jump when they arrive. For the first 300ms nothing shows, so a fast load doesn't
 flash. Then three still skeleton rows show in the real rows' height (56px, at least 64px on a
-phone; 80px in a `plain` List, whose `avatar` block is 60px), with a leading block and a right bar when `skeleton` asks for them, and a 48px bar in the
+phone; 72px in a `plain` List, whose `avatar` block is 48px), with a leading block and a right bar when `skeleton` asks for them, and a 48px bar in the
 heading's place; the heading itself stays for screen readers. The rows are hidden from screen
 readers: they're `aria-busy`, and a hidden status line next to them says `loadingLabel`, which a
 loading List needs. After 10 seconds "Still loading" and Try again show under the rows; the
@@ -1140,7 +1140,7 @@ The Messenger and the Inbox share one look (HAL-19192): a list of plain rows on 
 item on the right under a `ContentHeader`.
 
 - **`PlainList` and `PlainRow`** draw a list of buttons, one per row, each a Tab stop: the
-  Messenger's chats. A row has a 60px picture (`Avatar size="sidebar"`), a title over one line, a
+  Messenger's chats. A row has a 48px picture (`Avatar size="sidebar"`), a title over one line, a
   time, a violet `flag` dot, an `unread` count or dot, and an `action` shown in place of the time on
   hover or focus.
 - **A `plain` `List`** draws the same rows inside the List's grid: one Tab stop, the arrows between
@@ -1150,10 +1150,10 @@ item on the right under a `ContentHeader`.
 - **`ContentHeader`** goes over the open item in both: a 40px picture (`Avatar size="header"`, or
   an item's mark), the title as a level-2 heading over one muted line, and the item's actions.
 
-Both draw a sidebar's bigger rows (HAL-19735, `kit.plain-row-size`): exactly 80px high, not at
-least, with 10px above and below, on a phone too, a 60px picture, a 15px title (`text-reading`) and
+Both draw a sidebar's bigger rows (HAL-19735, `kit.plain-row-size`): exactly 72px high, not at
+least, with 6px above and below, on a phone too, a 48px picture, a 15px title (`text-reading`) and
 a 14px line (`text-body`). Their loading rows have the same shape: give a `plain` List
-`skeleton={{ leading: "avatar" }}` and its skeleton rows are 80px with a 60px round block.
+`skeleton={{ leading: "avatar" }}` and its skeleton rows are 72px with a 48px round block.
 The text fits in the 60px between (`kit.plain-row-fit`). In a `plain` List, a row with `wrap`, an `error`, `under` or `actions` may still grow, since its
 text or parts aren't cut and would otherwise spill over the next row.
 A `PlainRow` without a picture (`picture={null}`), as the Assistant's Recent chats on a phone,
@@ -1254,7 +1254,7 @@ the grey fill is dropped.
 | `heading` | 8px by 48px, in a List heading's place |
 | `icon` | 20px square |
 | `avatar` | 28px and round |
-| `sidebar` | 60px and round, a sidebar row's picture |
+| `sidebar` | 48px and round, a sidebar row's picture |
 
 `width` is one of a fixed set (`1/3`, `2/5`, `1/2`, `3/5`, `2/3`, `7/10`, `full`), never random,
 so tests and screenshots stay the same.

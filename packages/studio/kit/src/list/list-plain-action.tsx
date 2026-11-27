@@ -28,10 +28,11 @@ const shownClasses = [
  * of a More button: a table cell is a containing block in every webview, while a `relative` row
  * isn't in WebKit before April 2026 (WebKit bug 240961). In a zero-width cell the button would
  * shrink to its longest word, so `whitespace-nowrap` keeps it on one line. An invisible `after:`
- * area makes its target 24px (WCAG 2.5.8).
+ * area makes its target 24px (WCAG 2.5.8). Its place follows the 72px row's first line
+ * (HAL-20675).
  */
 const actionClasses = [
-  "absolute end-3 -me-1 top-5 inline-flex min-h-5 items-center whitespace-nowrap rounded-sm",
+  "absolute end-3 -me-1 top-4 inline-flex min-h-5 items-center whitespace-nowrap rounded-sm",
   "bg-surface-muted ps-2 pe-1",
   `text-small text-fg-muted ${shownClasses}`,
   "hover:text-fg focus-ring-inset",
@@ -39,7 +40,7 @@ const actionClasses = [
 ].join(" ");
 
 /** An icon action's place: the top right of the row, where the time is, on the row's fill. */
-const iconPlaceClasses = `absolute end-3 top-4 flex rounded-sm bg-surface-muted ${shownClasses}`;
+const iconPlaceClasses = `absolute end-3 top-3 flex rounded-sm bg-surface-muted ${shownClasses}`;
 
 /** A 24px square (WCAG 2.5.8) with its icon at 16px. */
 const iconButtonClasses = [

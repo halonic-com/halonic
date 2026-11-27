@@ -35,11 +35,11 @@ verifies("messenger.load-states", () => {
       expect(said).toContain("Loading your chats");
       expect(page.querySelector("nav [aria-busy='true']")).not.toBeNull();
       expect(page.querySelectorAll("nav [aria-busy='true'] li")).toHaveLength(3);
-      // In the shape of the 80px chat rows, with their 60px picture (`kit.plain-row-size`).
+      // In the shape of the 72px chat rows, with their 48px picture (`kit.plain-row-size`).
       const loadingRow = page.querySelector("nav [aria-busy='true'] li") as HTMLElement;
-      expect(loadingRow.className.split(" ")).toEqual(expect.arrayContaining(["h-20", "py-2.5"]));
-      expect(loadingRow.className.split(" ")).not.toContain("min-h-20");
-      expect(loadingRow.firstElementChild?.className.split(" ")).toContain("size-15");
+      expect(loadingRow.className.split(" ")).toEqual(expect.arrayContaining(["h-row", "py-1.5"]));
+      expect(loadingRow.className.split(" ")).not.toContain("min-h-row");
+      expect(loadingRow.firstElementChild?.className.split(" ")).toContain("size-12");
     });
 
     it("says it couldn't load the chats, with Try again, when the first read fails", async () => {

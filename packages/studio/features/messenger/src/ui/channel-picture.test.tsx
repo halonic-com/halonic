@@ -68,9 +68,13 @@ verifies("messenger.channel-picture", () => {
       expect(first?.getAttribute("data-member")).toBe("behind");
       expect(second?.getAttribute("data-member")).toBe("front");
       expect(second?.className).toContain("right-0 bottom-0");
+      // The header's 40px pair, centred in the row's 48px place, so the tiles still overlap.
+      expect(picture?.className).toContain("size-10");
+      expect(picture?.parentElement?.className).toContain("place-items-center size-12");
+      expect(front?.className).toContain("size-7");
     });
 
-    it("draws the same pair, smaller, in the open channel's header", async () => {
+    it("draws the same pair in the open channel's header, its own 40px picture", async () => {
       const { messaging } = engineering();
       const page = await openMessenger(messaging);
       await openChat(page, "Engineering");

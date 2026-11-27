@@ -34,8 +34,8 @@ export interface PlainRowProps {
   /** Stable, never the index: tests and code find the row by its `data-row-id`. */
   readonly id: string;
   /**
-   * The 60px picture before the text: an `Avatar` with `size="sidebar"`. Decoration. `null` for a
-   * row without one, which is 56px high instead of 80px.
+   * The 48px picture before the text: an `Avatar` with `size="sidebar"`. Decoration. `null` for a
+   * row without one, which is 56px high instead of 72px.
    */
   readonly picture: ReactNode;
   /** The row's name. A node, so a search can mark the part it found. Cut with an ellipsis. */
@@ -60,8 +60,8 @@ export interface PlainRowProps {
 /**
  * A list of plain rows for a two-pane app's list, the Messenger's chats and the Inbox's items
  * (HAL-19192, `kit.plain-list`): no borders or box, 4px apart. Its rows are a sidebar's bigger
- * ones (HAL-19735, `kit.plain-row-size`): exactly 80px high, a 60px picture, a 15px title over a
- * 14px line. Rows without a picture keep the 56px list row.
+ * ones (HAL-19735, `kit.plain-row-size`): exactly 72px high, a 48px picture, a 15px title over a
+ * 14px line, as the new design (HAL-20675). Rows without a picture keep the 56px list row.
  */
 export function PlainList({ label, children, listRef }: PlainListProps) {
   return (
@@ -75,13 +75,13 @@ const rowClasses =
   "flex w-full items-center gap-3 rounded-md px-3 text-start transition-colors duration-(--duration-fast) ease-standard hover:bg-surface-muted focus-ring aria-[current=true]:bg-surface-muted";
 
 /**
- * A row with a picture is a sidebar's bigger one, exactly 80px (HAL-19735): its title and line are
- * each cut to one line, so a fixed height never cuts them, and a minimum let rows grow past 80px
- * in Preview .440 (HAL-20558). A row without one, such as the Assistant's Recent chats on a
- * phone, keeps the kit's 56px list row (HAL-19949).
+ * A row with a picture is a sidebar's bigger one, exactly 72px with 6px above and below
+ * (HAL-20675): its title and line are each cut to one line, so a fixed height never cuts them, and
+ * a minimum let rows grow past their height in Preview .440 (HAL-20558). A row without one, such
+ * as the Assistant's Recent chats on a phone, keeps the kit's 56px list row (HAL-19949).
  */
 const sizeClasses = (picture: ReactNode) =>
-  picture === null || picture === undefined ? "min-h-14 py-3" : "h-20 py-2.5";
+  picture === null || picture === undefined ? "min-h-14 py-3" : "h-row py-1.5";
 
 /**
  * A row with an action keeps the hover fill while the pointer is on the action or the row has
@@ -92,13 +92,14 @@ const withActionClasses = "group-hover:bg-surface-muted group-focus-within:bg-su
 /**
  * The action sits over the title's end, so it carries the row's fill and covers what's under it.
  * While hidden it takes no clicks, so a tap where hover doesn't apply opens the row instead; it
- * stays in the tab order. Its visible box is 20px high, centred on the time's line in the 80px row
- * (`top-5`, HAL-19735), so its fill and its inset focus ring end clear of the unread count below;
- * an invisible `after:` area 2px above and below makes the target 24px (WCAG 2.5.8, Sofia, HAL-19706). `pe-1` gives the ring air and
- * `-me-1` keeps the label's end lined up with the time (HAL-19656).
+ * stays in the tab order. Its visible box is 20px high, centred on the time's line in the 72px row
+ * (`top-4`, HAL-19735, HAL-20675), so its fill and its inset focus ring end clear of the unread
+ * count below; an invisible `after:` area 2px above and below makes the target 24px (WCAG 2.5.8,
+ * Sofia, HAL-19706). `pe-1` gives the ring air and `-me-1` keeps the label's end lined up with the
+ * time (HAL-19656).
  */
 const actionClasses =
-  "absolute end-3 -me-1 top-5 inline-flex min-h-5 items-center rounded-sm bg-surface-muted ps-2 pe-1 text-small text-fg-muted opacity-0 pointer-events-none transition-opacity duration-(--duration-fast) hover:text-fg focus-ring-inset after:absolute after:-inset-y-0.5 after:inset-x-0 after:content-[''] group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100";
+  "absolute end-3 -me-1 top-4 inline-flex min-h-5 items-center rounded-sm bg-surface-muted ps-2 pe-1 text-small text-fg-muted opacity-0 pointer-events-none transition-opacity duration-(--duration-fast) hover:text-fg focus-ring-inset after:absolute after:-inset-y-0.5 after:inset-x-0 after:content-[''] group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100";
 
 /**
  * One row of a `PlainList`: its picture, its title over one line, its time on the right and its

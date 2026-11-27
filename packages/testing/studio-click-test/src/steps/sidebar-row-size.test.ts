@@ -7,7 +7,7 @@ import { sidebarRowSize } from "./plain-row-size.ts";
 const parts = { row: "//li[1]", picture: "//li[1]//img" } as const;
 
 verifies("studio-click-test.sidebar-row-size", () => {
-  it("passes an 80px row with a 60px picture", async () => {
+  it("passes a 72px row with a 48px picture", async () => {
     const studio = fakeStudio("Acme");
     drawRow(studio, parts);
     studio.elements.set(parts.picture, 1);
@@ -23,7 +23,7 @@ verifies("studio-click-test.sidebar-row-size", () => {
     await expect(sidebarRowSize(studio.context, "Acme's row", parts)).resolves.toEqual({
       passed: false,
       code: "SIDEBAR_ROW_SIZE",
-      note: "Acme's row: the row is 96px high and its picture 60px, not 80px and 60px.",
+      note: "Acme's row: the row is 96px high and its picture 48px, not 72px and 48px.",
     });
   });
 
@@ -37,7 +37,7 @@ verifies("studio-click-test.sidebar-row-size", () => {
 
   it("reads only the row when it shows initials, without reading the missing picture", async () => {
     const studio = fakeStudio("Acme");
-    drawRow(studio, parts, "80px", "999px");
+    drawRow(studio, parts, "72px", "999px");
     await expect(sidebarRowSize(studio.context, "Acme's row", parts)).resolves.toEqual({
       passed: true,
     });

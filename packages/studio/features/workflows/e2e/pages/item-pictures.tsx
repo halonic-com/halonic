@@ -9,7 +9,7 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 /*
- * Who asks and what kind of item, as the Inbox's rows (60px), the open item's header (40px) and the
+ * Who asks and what kind of item, as the Inbox's rows (48px), the open item's header (40px) and the
  * Messenger's Needs you (28px) draw them (HAL-19666, Sofia's proposal on HAL-19491): made-up agents
  * on their own tints, one with a picture, a person's initials, a sender nobody named, each with its
  * kind's badge, then the Inbox's own items with no badge.
@@ -47,7 +47,7 @@ const senders: readonly Sender[] = [
 ];
 
 const sizes: readonly [AvatarSize, string][] = [
-  ["sidebar", "Inbox row, 60px"],
+  ["sidebar", "Inbox row, 48px"],
   ["header", "Item header, 40px"],
   ["row", "Needs you, 28px"],
 ];

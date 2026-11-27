@@ -23,7 +23,7 @@ export function itemTitle(item: InboxItem): string {
  * the two read the same and two runs of one workflow read apart in both (a11y check H2). The title
  * wraps rather than being cut: in the 360 px list its end, such as the item a proposal changes, is
  * what tells two rows apart (HAL-15092, Noah's decision on HAL-15073). The meta line wraps onto
- * a second line, then is cut (HAL-15126). In the Inbox's own 80px rows, a `plain` List, the title
+ * a second line, then is cut (HAL-15126). In the Inbox's own 72px rows, a `plain` List, the title
  * takes two lines at most and the meta line one (Noah's decision on HAL-20018); the wait stays
  * whole at the top right.
  */

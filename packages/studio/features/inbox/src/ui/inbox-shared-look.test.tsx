@@ -270,11 +270,11 @@ verifies("inbox.header-avatar", () => {
     expect(place(root)).toBeUndefined();
   });
 
-  it("keeps the list's rows at the sidebar's 60px", async () => {
+  it("keeps the list's rows at the sidebar's 48px", async () => {
     const { messaging } = acme("Ship 0.2 today?");
     const { root } = await openInbox(fakeRuns([]).runs, messaging);
     const mark = rowTitled(root, "Ship 0.2 today?").querySelector('[aria-hidden="true"]');
-    expect(mark?.className.split(" ")).toContain("size-15");
+    expect(mark?.className.split(" ")).toContain("size-12");
   });
 });
 

@@ -13,7 +13,7 @@ export interface AvatarProps {
   readonly picture?: ImageBitmap | undefined;
   /**
    * The tile's size: 28px in a row (the default), or 40px in an open item's header, where 28px is
-   * hard to see beside a two-line title (HAL-19192, `kit.avatar-size`), or 60px in a two-pane
+   * hard to see beside a two-line title (HAL-19192, `kit.avatar-size`), or 48px in a two-pane
    * app's sidebar row, the Inbox's and the Messenger's (HAL-19735, `kit.plain-row-size`).
    */
   readonly size?: AvatarSize;
@@ -24,7 +24,7 @@ export interface AvatarProps {
   readonly tint?: AgentTint | undefined;
   /**
    * What kind of item the member asks about, as a small glyph such as `KindIcon`'s, on a round
-   * badge at the tile's bottom right: 16px on a 28px tile, 20px on a 40px or 60px one
+   * badge at the tile's bottom right: 16px on a 28px tile, 20px on a 40px or 48px one
    * (`kit.avatar-badge`). The picture says who asks, the badge what it is. On a 28px tile the
    * initials keep one letter, so the badge covers none of the second.
    */
@@ -36,13 +36,13 @@ export interface AvatarProps {
   readonly glyph?: ReactNode;
 }
 
-/** The Avatar's three sizes: 28px in a row, 40px in a header, 60px in a sidebar row. */
+/** The Avatar's three sizes: 28px in a row, 40px in a header, 48px in a sidebar row. */
 export type AvatarSize = "row" | "header" | "sidebar";
 
 /**
  * Each size's tile classes, its initials' text style, its side in CSS pixels, and the padding
  * around a picture inside the tile, so a face doesn't touch the circle's edge (HAL-19539,
- * `kit.avatar-inset`): 2px at 28px, 3px at 40px, 4px at 60px.
+ * `kit.avatar-inset`): 2px at 28px, 3px at 40px and 48px.
  */
 const sizes = {
   row: {
@@ -58,10 +58,10 @@ const sizes = {
     inset: "p-[3px]",
   },
   sidebar: {
-    tile: "size-15 shrink-0 rounded-full",
+    tile: "size-12 shrink-0 rounded-full",
     text: "text-heading",
-    pixels: 60,
-    inset: "p-1",
+    pixels: 48,
+    inset: "p-[3px]",
   },
 } as const satisfies Record<
   AvatarSize,
@@ -75,7 +75,7 @@ const sizes = {
 const neutral = "bg-surface-muted on-muted:bg-surface";
 
 /**
- * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`, 60px with
+ * A member's initials, or their picture, on a 28px round tile (40px with `size="header"`, 48px with
  * `size="sidebar"` in a two-pane app's sidebar row): who is signed in, in Cloud's top
  * bar (HAL-16050), or an agent in the Messenger. `surface-muted` with a `border-strong` edge and `fg-muted`, not the accent,
  * so it doesn't read as a product. An agent's initials sit on its own tint instead, in `fg` so
@@ -107,7 +107,7 @@ export function Avatar({ badge, ...tile }: AvatarProps) {
 const badgeHolders: Record<AvatarSize, string> = {
   row: "size-7",
   header: "size-10",
-  sidebar: "size-15",
+  sidebar: "size-12",
 };
 
 /** The badge's side and its glyph's: 16px on a 28px tile, 20px on the larger ones. */
@@ -121,7 +121,7 @@ const badgeSizes: Record<AvatarSize, string> = {
 const glyphSizes: Record<AvatarSize, string> = {
   row: "[&>svg]:size-4",
   header: "[&>svg]:size-5",
-  sidebar: "[&>svg]:size-8",
+  sidebar: "[&>svg]:size-6",
 };
 
 /** The round tile alone: the picture, or up to `letters` initials. */
