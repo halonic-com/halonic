@@ -65,6 +65,8 @@ export type InstructionsSource =
 export type StepAction =
   | { readonly kind: "call"; readonly call: StepCall }
   | { readonly kind: "script"; readonly script: string }
+  /** A part of the service's own sign-in, run in the desktop app (HAL-17491 row 15). */
+  | { readonly kind: "sign-in"; readonly phase: "start" | "approve" | "keep" | "test" }
   | {
       readonly kind: "input";
       readonly label: string;

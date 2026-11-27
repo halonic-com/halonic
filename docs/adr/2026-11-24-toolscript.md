@@ -207,6 +207,8 @@ A **capability** is one reviewed operation with a typed input schema, a typed an
 - **Agent capabilities are the phase 3 runtime's reviewed actions**, such as `paperclip.comment`, `paperclip.task-get`, `github.pr-checks` and `stepper.request`, with credentials held in the plugin's settings or the engine's secret port.
 - **Shared plain helpers** (`ctx.input`, `ctx.log`, `ctx.now`, `ctx.fail`) have no effect outside the isolate and exist for both audiences.
 
+A service's sign-in, account check and test revoke are not capabilities: they run through `ActionSender` or `ServiceSignIn`, never through `ctx` (Liam, HAL-17545).
+
 ### 3.2 Separation rules
 
 | # | Rule | Enforced by |

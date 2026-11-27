@@ -608,6 +608,17 @@ export {
   workspaceSecretWriter,
 } from "./secrets.ts";
 export {
+  type ServiceSignIn,
+  type SignInConnection,
+  type SignInConnectionRef,
+  type SignInEnd,
+  type SignInRefusal,
+  type SignInRevoke,
+  type SignInService,
+  type SignInStart,
+  serviceSignInVersion,
+} from "./service-sign-in.ts";
+export {
   type SyncConnection,
   type SyncDiagnostics,
   type SyncRouteTiming,

@@ -36,6 +36,7 @@ import { sandboxVersion } from "./sandbox.ts";
 import { sandboxSettingStoreVersion } from "./sandbox-setting-store.ts";
 import { schedulerVersion } from "./scheduler.ts";
 import { secretsVersion } from "./secrets.ts";
+import { serviceSignInVersion } from "./service-sign-in.ts";
 import { teamRunControlVersion } from "./team-run-control.ts";
 import { teamStatusVersion } from "./team-status.ts";
 import { tokenStoreVersion } from "./token-store.ts";
@@ -95,6 +96,7 @@ export const portVersions = {
   SandboxSettingStore: sandboxSettingStoreVersion,
   Scheduler: schedulerVersion,
   Secrets: secretsVersion,
+  ServiceSignIn: serviceSignInVersion,
   TeamRunControl: teamRunControlVersion,
   TeamStatus: teamStatusVersion,
   TokenStore: tokenStoreVersion,

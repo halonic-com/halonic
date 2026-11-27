@@ -109,6 +109,7 @@ function stepLines(step: Step, values: Values): string[] {
     case "call":
     case "check":
     case "script":
+    case "sign-in":
       return [
         `Open ${fillAddress(step.manual.url, values)}`,
         ...step.manual.instructions.map((line) => fillText(line, values)),
@@ -129,7 +130,19 @@ function referencedLines(
     throw new Error(`\`${block.ref}\` doesn't match the catalog the request was validated against`);
   }
   const values = parsed.value as Values;
-  return definition.steps.flatMap((step) => stepLines(step, values));
+  return definition.steps.flatMap((step, index) => {
+    const lines = stepLines(step, values);
+    return isSameSignInPage(step, definition.steps[index - 1]) ? lines.slice(1) : lines;
+  });
+}
+
+/** Whether a sign-in part is on the page its previous part already opened: the guide says "Open" once. */
+function isSameSignInPage(step: Step, previous: Step | undefined): boolean {
+  return (
+    step.kind === "sign-in" &&
+    previous?.kind === "sign-in" &&
+    step.manual.url === previous.manual.url
+  );
 }
 
 function browserLines(
@@ -204,8 +217,8 @@ export function renderManualGuide(
 
 /**
  * Why a definition can't be done by hand: every API step (`call`, `check` or
- * `script`) needs a manual form with an `https` page and at least one
- * instruction, and every `guided`
+ * `script`) and every `sign-in` step needs a manual form with an `https` page
+ * and at least one instruction, and every `guided`
  * step at least one instruction. The catalog's tests call it for each
  * definition, so one without a manual form fails before it ships.
  *

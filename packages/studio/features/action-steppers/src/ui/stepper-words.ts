@@ -78,12 +78,22 @@ export function actionLine(action: Exclude<StepAction, { readonly kind: "call" }
       return touchText({ kind: "page", address: action.address });
     case "script":
       return `Runs the reviewed script ${action.script}`;
+    case "sign-in":
+      return signInLines[action.phase];
     case "input":
       return action.secret
         ? `You type “${action.label}” into the desktop app's secure field`
         : `You type “${action.label}”`;
   }
 }
+
+/** What each part of a sign-in does, in "Show the request". */
+const signInLines = {
+  start: "Starts a Paperclip sign-in in the desktop app and shows its code",
+  approve: "Opens the approval page the sign-in gives, on the connection's own Paperclip",
+  keep: "Waits for your approval, then keeps the key in this computer's keychain",
+  test: "Says who is signed in, and revokes the key of a test sign-in",
+} as const;
 
 /** The fold with the exact calls: its row while closed and while open. */
 export const showRequest = "Show the request";

@@ -18,6 +18,7 @@ describe("shippedKeys", () => {
       "npm/renew-trusted-publisher",
       "npm/set-trusted-publisher",
       "openrouter/add-credit",
+      "paperclip/connect-and-test",
       "play/fill-data-safety",
       "play/set-up-closed-test",
       "registrar/set-nameservers",
