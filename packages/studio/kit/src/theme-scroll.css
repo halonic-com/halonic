@@ -3,65 +3,79 @@
  * theme.css by concept. theme.css imports this file.
  *
  * Slim and rounded, in the mode's ink at a low alpha, and shown only while the pointer is over the
- * region or focus is inside it, so a sidebar, a list and a thread don't each draw a bar at rest.
- * More contrast keeps it shown at rest. Hover and focus go through Tailwind's variants, so the
- * states page can force them as it does the parts' own. In `@layer base`, so a part that hides its
- * bar on purpose (`[scrollbar-width:none]`, the tab strip) still wins.
+ * region or keyboard focus is inside it, so a sidebar, a list and a thread don't each draw a bar at
+ * rest. Keyboard focus only: after a click on a row focus stays in the list, and its bar would stay
+ * shown with the pointer gone. More contrast keeps the bar shown at rest, and stronger. Hover and
+ * focus go through Tailwind's variants, so the states page can force them as it does the parts'
+ * own. In `@layer base`, so a part that hides its bar on purpose (`[scrollbar-width:none]`, the
+ * tab strip) still wins.
  *
- * Two ways in, because the desktop windows are two engines: WebView2 (Chromium) and Firefox read
- * the standard `scrollbar-width` and `scrollbar-color`; WebKit (macOS, Linux) doesn't read
- * `scrollbar-color` yet and takes the `::-webkit-scrollbar` parts, where the bar can be 6px. Chromium
- * ignores those parts once the standard ones are set, so the WebKit ones sit behind `@supports`.
- * Forced colours need no rule: the browser draws the system's own bar there (`scrollbar-color` is
- * one of the properties forced colours reset).
+ * Two ways in. Every engine with the `::-webkit-scrollbar` parts (WebView2's Chromium, and WebKit
+ * on macOS and Linux) gets a 6px thumb in a 10px bar from them: Chromium's own `scrollbar-width:
+ * thin` bar has an arrow button at each end, and Chromium ignores the parts once `scrollbar-width`
+ * or `scrollbar-color` is set, so those standard properties are only for engines without the parts
+ * (Firefox). Forced colours get the system's own bar: the parts stay out there, and forced colours
+ * reset `scrollbar-color` themselves.
  */
 :root {
-  --scrollbar-thumb: light-dark(rgb(16 16 46 / 0.32), rgb(242 242 255 / 0.32));
+  /* About 3:1 against the surface in each mode (the design check on HAL-20568). */
+  --scrollbar-thumb: light-dark(rgb(16 16 46 / 0.45), rgb(242 242 255 / 0.38));
+  --scrollbar-thumb-strong: light-dark(rgb(16 16 46 / 0.7), rgb(242 242 255 / 0.7));
 }
 
+/* Keyboard focus inside the region only; the states page replaces it to force the state. */
+@custom-variant scroll-focus (&:has(:focus-visible));
+
 @layer base {
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-    @variant hover {
-      scrollbar-color: var(--scrollbar-thumb) transparent;
-    }
-    @variant focus-within {
-      scrollbar-color: var(--scrollbar-thumb) transparent;
-    }
-    @media (prefers-contrast: more) {
-      scrollbar-color: var(--scrollbar-thumb) transparent;
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: transparent transparent;
+      @variant hover {
+        scrollbar-color: var(--scrollbar-thumb) transparent;
+      }
+      @variant scroll-focus {
+        scrollbar-color: var(--scrollbar-thumb) transparent;
+      }
+      @media (prefers-contrast: more) {
+        scrollbar-color: var(--scrollbar-thumb-strong) transparent;
+      }
     }
   }
 
-  @supports not (scrollbar-color: auto) {
-    ::-webkit-scrollbar {
-      width: 10px;
-      height: 10px;
-      background: transparent;
-    }
-    ::-webkit-scrollbar-corner {
-      background: transparent;
-    }
-    /* 2px of see-through border on each side leaves a 6px rounded thumb. */
-    ::-webkit-scrollbar-thumb {
-      border: 2px solid transparent;
-      border-radius: var(--radius-full);
-      background-clip: padding-box;
-      background-color: transparent;
-      @media (prefers-contrast: more) {
-        background-color: var(--scrollbar-thumb);
+  @supports selector(::-webkit-scrollbar) {
+    @media not (forced-colors: active) {
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+        background: transparent;
       }
-    }
-    * {
-      @variant hover {
-        &::-webkit-scrollbar-thumb {
-          background-color: var(--scrollbar-thumb);
+      ::-webkit-scrollbar-button {
+        display: none;
+      }
+      ::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+      /* 2px of see-through border on each side leaves a 6px rounded thumb. */
+      ::-webkit-scrollbar-thumb {
+        border: 2px solid transparent;
+        border-radius: var(--radius-full);
+        background-clip: padding-box;
+        background-color: transparent;
+        @media (prefers-contrast: more) {
+          background-color: var(--scrollbar-thumb-strong);
         }
       }
-      @variant focus-within {
-        &::-webkit-scrollbar-thumb {
-          background-color: var(--scrollbar-thumb);
+      * {
+        @variant hover {
+          &::-webkit-scrollbar-thumb {
+            background-color: var(--scrollbar-thumb);
+          }
+        }
+        @variant scroll-focus {
+          &::-webkit-scrollbar-thumb {
+            background-color: var(--scrollbar-thumb);
+          }
         }
       }
     }
