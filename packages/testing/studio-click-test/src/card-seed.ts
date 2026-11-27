@@ -81,8 +81,10 @@ async function cardBody(
   fixture: CardFixture,
   surface: Surface,
 ): Promise<Readonly<Record<string, unknown>>> {
-  const payload = fixture.payload(promptOn(fixture, surface));
-  const body = { kind: fixture.kind, idempotencyKey: keyOf(fixture, surface) };
+  const prompt = promptOn(fixture, surface);
+  const payload = fixture.payload(prompt);
+  const title = fixture.promptAsTitle === true ? { title: prompt } : {};
+  const body = { kind: fixture.kind, idempotencyKey: keyOf(fixture, surface), ...title };
   if (fixture.document === undefined) return { ...body, payload };
   const { key, body: text } = fixture.document;
   const document = await call("PUT", `/api/issues/${issueId}/documents/${key}`, {

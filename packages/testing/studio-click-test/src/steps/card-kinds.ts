@@ -1,7 +1,14 @@
-import { oneQuestionCard, planCard, yesNoCard } from "../card-fixtures.ts";
+import {
+  checkboxCard,
+  oneQuestionCard,
+  planCard,
+  suggestedTasksCard,
+  verdictsCard,
+  yesNoCard,
+} from "../card-fixtures.ts";
 import { type AnswerClicks, answeredAs, cardStep } from "../card-step.ts";
 import type { StepContext, StepOutcome } from "../runner.ts";
-import { buttonNamed, clickXPathWhenShown, lastWords } from "../screen.ts";
+import { buttonNamed, clickXPathWhenShown, lastWords, radioNamed, xpathString } from "../screen.ts";
 import { buttonLabels, screenText, words } from "../words.ts";
 
 /** The reason the plan card's Reject is sent with, which Paperclip must keep. */
@@ -15,6 +22,32 @@ function press(label: string): AnswerClicks {
     }
     const text = await context.driver.pageText().catch(() => "");
     return { passed: false, code: "NO_BUTTON", note: `No ${label}. ${lastWords(text)}` };
+  };
+}
+
+/** An XPath, inside a card, for the checkbox with `label` as its words. */
+export function checkboxNamed(label: string): string {
+  return `//label[normalize-space()=${xpathString(label)}]//input[@type='checkbox']`;
+}
+
+/** An XPath, inside a card, for the radio `label` of the question (or verdict item) `question`. */
+export function answerRadio(question: string, label: string): string {
+  return `//fieldset[@data-question=${xpathString(question)}]${radioNamed(label)}`;
+}
+
+/**
+ * Clicks each control `controls` finds inside the card, then Submit, which sends them all in
+ * one answer. A control that never shows fails as `NO_OPTION`.
+ */
+function pickThenSubmit(controls: readonly string[]): AnswerClicks {
+  return async (context, card) => {
+    for (const control of controls) {
+      if (!(await clickXPathWhenShown(context, `${card}${control}`, 10_000))) {
+        const text = await context.driver.pageText().catch(() => "");
+        return { passed: false, code: "NO_OPTION", note: `No ${control}. ${lastWords(text)}` };
+      }
+    }
+    return press(buttonLabels.submit.text)(context, card);
   };
 }
 
@@ -88,5 +121,75 @@ export const cardOneQuestion = cardStep({
   answered: {
     Inbox: answeredAs("answered", { answers: [{ questionId: "colour", optionIds: ["green"] }] }),
     Messenger: answeredAs("answered", { answers: [{ questionId: "colour", optionIds: ["blue"] }] }),
+  },
+});
+
+const listCardRequirements = [
+  "inbox.agent-inbox-items",
+  "messenger.question-cards",
+  "paperclip-client.card-kinds",
+];
+
+/** A checkbox confirmation: two picks in the Inbox, one in the Messenger, each sent with Submit. */
+export const cardCheckbox = cardStep({
+  id: "card-checkbox",
+  title: "Cards: a checkbox confirmation is answered with its picks in the Inbox and the Messenger",
+  requirements: listCardRequirements,
+  fixture: checkboxCard,
+  clicks: {
+    Inbox: pickThenSubmit([checkboxNamed("Email"), checkboxNamed("Blog")]),
+    Messenger: pickThenSubmit([checkboxNamed("Social")]),
+  },
+  answered: {
+    Inbox: answeredAs("accepted", { selectedOptionIds: ["email", "blog"] }),
+    Messenger: answeredAs("accepted", { selectedOptionIds: ["social"] }),
+  },
+});
+
+/** Item verdicts: a verdict per item, the other way round on each surface, sent with Submit. */
+export const cardVerdicts = cardStep({
+  id: "card-verdicts",
+  title: "Cards: item verdicts are given per item in the Inbox and the Messenger",
+  requirements: listCardRequirements,
+  fixture: verdictsCard,
+  clicks: {
+    Inbox: pickThenSubmit([answerRadio("teaser", "Approve"), answerRadio("recap", "Defer")]),
+    Messenger: pickThenSubmit([answerRadio("teaser", "Defer"), answerRadio("recap", "Approve")]),
+  },
+  answered: {
+    Inbox: answeredAs("answered", {
+      items: [
+        { id: "teaser", verdict: "approve" },
+        { id: "recap", verdict: "defer" },
+      ],
+    }),
+    Messenger: answeredAs("answered", {
+      items: [
+        { id: "teaser", verdict: "defer" },
+        { id: "recap", verdict: "approve" },
+      ],
+    }),
+  },
+});
+
+/** Suggested tasks: one draft accepted on each surface, so Paperclip makes it and skips the other. */
+export const cardSuggestedTasks = cardStep({
+  id: "card-suggested-tasks",
+  title: "Cards: suggested tasks are picked and made in the Inbox and the Messenger",
+  requirements: listCardRequirements,
+  fixture: suggestedTasksCard,
+  clicks: {
+    Inbox: pickThenSubmit([checkboxNamed("Acme: write the press note")]),
+    Messenger: pickThenSubmit([checkboxNamed("Acme: send the launch survey")]),
+  },
+  answered: {
+    Inbox: answeredAs("accepted", {
+      createdTasks: [{ clientKey: "press" }],
+      skippedClientKeys: ["survey"],
+    }),
+    Messenger: answeredAs("accepted", {
+      createdTasks: [{ clientKey: "survey" }],
+      skippedClientKeys: ["press"],
+    }),
   },
 });

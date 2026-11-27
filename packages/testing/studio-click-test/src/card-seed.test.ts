@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
-import { planCard, yesNoCard } from "./card-fixtures.ts";
+import { planCard, suggestedTasksCard, yesNoCard } from "./card-fixtures.ts";
 import { readCard, seedCard } from "./card-seed.ts";
 import type { Call } from "./paperclip-api.ts";
 
@@ -112,6 +112,22 @@ verifies("studio-click-test.card-steps", () => {
       await expect(readCard(call, { issueId: "t1", id: "gone" })).rejects.toThrow(
         "Paperclip has no card gone",
       );
+    });
+  });
+});
+
+verifies("studio-click-test.list-card-steps", () => {
+  it("puts a suggested-task card's prompt in its title, since its payload has none", async () => {
+    const { call, calls } = fakeCall(undefined);
+    const setup = { companyId: "co1", chatId: "chat-1", cardsFile: await emptyCardsFile() };
+    await expect(seedCard(call, setup, suggestedTasksCard, async () => undefined)).rejects.toThrow(
+      "never posted",
+    );
+    const inbox = calls.find((each) => each.path === "/api/issues/t1/interactions");
+    expect(inbox?.body).toMatchObject({
+      kind: "suggest_tasks",
+      title: "Follow-ups for the Acme launch (Inbox)",
+      payload: { version: 1, tasks: [{ clientKey: "press" }, { clientKey: "survey" }] },
     });
   });
 });

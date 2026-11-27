@@ -1,6 +1,13 @@
 import type { Step } from "./runner.ts";
 import { addAccount } from "./steps/add-account.ts";
-import { cardOneQuestion, cardPlan, cardYesNo } from "./steps/card-kinds.ts";
+import {
+  cardCheckbox,
+  cardOneQuestion,
+  cardPlan,
+  cardSuggestedTasks,
+  cardVerdicts,
+  cardYesNo,
+} from "./steps/card-kinds.ts";
 import { closeWorkspace } from "./steps/close-workspace.ts";
 import { connectPaperclip } from "./steps/connect-paperclip.ts";
 import { accountSwitcher, connectionRow, httpsOnly } from "./steps/connections.ts";
@@ -50,6 +57,9 @@ export const clickTestSteps: readonly Step[] = [
   cardYesNo,
   cardPlan,
   cardOneQuestion,
+  cardCheckbox,
+  cardVerdicts,
+  cardSuggestedTasks,
   disconnect,
   demoWorkspace,
   windowTabs,
