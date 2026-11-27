@@ -2,6 +2,7 @@
 
 - Approval: Julian asked for this change in review on HAL-20457 and approves this note there
 - Kind: internal
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:R4WGKmnH0/v0Tje4w3EVyMU3EmT7ysIhj02mwYodQtjX5a3WY4z53cXI8azw+rUETsDtG6ExfoU0Sivns7dCBw==
 
 ## What changes
 
