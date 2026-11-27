@@ -36,7 +36,8 @@ failed with the next step `state-changed`, and shows "This changed since the req
 values apart from it. A check's `requires` rule stops the request the same way, with the
 definition's own reason (`action-steppers.shell-check-gate`), and so does a rule comparing what
 the check kept with one of the request's parameters, or a request whose `expect` lacks a name the
-check lists in `requiredExpect` ("This request doesn't say what the requester saw: …",
+check lists in `requiredExpect` ("This request leaves out what the agent saw before asking, so
+Halonic can't check this step. Decline it and ask again.",
 `action-steppers.shell-gate-request`). A `parameter-list` body field sends its definition step's
 parameter as a one-item list, such as `environment_ids: [161]`, and **Show the request** shows the
 same body. A `check` that names `changedAfterStart`, such as the Actions secret's
