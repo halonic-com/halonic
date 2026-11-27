@@ -2,7 +2,6 @@
 
 - Approval: /HAL/issues/HAL-20278 (plan approved by Liam; 6.8 decided on HAL-20274, signed by Julian on HAL-20277)
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:xo7s51PAMvXriMrsA6Uqflw2GIgiwGuO4wNRPt8uPEND4Njq+BL6YhWArODePogEUQCu68RLzeZ30ETWGR+KCg==
 
 Condition 1 of section 6.8 of the HAL-17491 note: the everyday Paperclip key
 leaves Studio's page. This first part moves the sign-in's keychain write, its
@@ -13,7 +12,8 @@ into the shell (`studio.src-tauri.paperclip-key-keep`, Rust tests in
 - The agent host's approved poll now also names the workspace's real path,
   for the shell's entry, and the shell sends the confirm itself. The page's
   route table no longer has `POST /v1/paperclip/sign-in/confirm`, so the
-  client's `confirm` and its test go.
+  client's `confirm` and its test go. `agent-host-client.shell-routes`
+  checks each route in that table, so its test makes one fewer check.
 - `services.host-agent-connections` no longer writes, puts back or confirms
   a key. Its tests for those cases move to the Rust tests, which cover each
   of them: keychain unreadable, write refused, confirm refused, confirm lost
@@ -46,6 +46,7 @@ behave as before.
 - agent-host.paperclip-key
 - agent-host.paperclip-sign-in
 - agent-host-client.paperclip-sign-in
+- agent-host-client.shell-routes
 - packages/studio/services/src/paperclip-disconnect.test.ts
 - packages/studio/services/src/host-agent-connections.test.ts
 - packages/studio/services/src/host-agent-connections-restore.test.ts
