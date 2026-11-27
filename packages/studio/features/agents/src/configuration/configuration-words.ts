@@ -93,6 +93,17 @@ export const configurationWords = {
   /** Microcopy 1.6: the field error for a model the file names that is no alias (HAL-12390 S8). */
   unknownAlias: (name: string) =>
     `${name} isn't a model alias in this workspace. Choose one, or add it in Models.`,
+  /**
+   * Flow 5.6, UX 2.5: the field error for a model the agent's harness can't call (HAL-18930).
+   * OpenCode's copies Claude Code's, decided by the team under the HAL-2282 rule.
+   */
+  harnessRefused: {
+    "claude-code": "Claude Code can use Anthropic models only.",
+    codex: "This model can't be used with Codex. Choose another.",
+    opencode: "OpenCode can use Anthropic models only.",
+  },
+  /** Flow 5.6, F25: under the alias line of a Codex agent on an OpenAI-compatible provider. */
+  responsesApiWarning: "Make sure this endpoint supports the Responses API.",
   harness: "Harness",
   /** Flow-agents 5.3, the group's hint. */
   harnessHint: "What drives this agent",

@@ -2,7 +2,14 @@ import { readFile } from "node:fs/promises";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { buttonNamed } from "./screen.ts";
-import { basicsText, buttonLabels, errorCodeIn, screenText, words } from "./words.ts";
+import {
+  basicsText,
+  buttonLabels,
+  configurationText,
+  errorCodeIn,
+  screenText,
+  words,
+} from "./words.ts";
 
 const repo = new URL("../../../../", import.meta.url);
 
@@ -23,6 +30,13 @@ verifies("studio-click-test.steps", () => {
 
   describe("basicsText", () => {
     it.each(Object.values(basicsText))("$text is still in $file", async ({ text, file }) => {
+      const source = await readFile(new URL(file, repo), "utf8");
+      expect(source).toContain(text);
+    });
+  });
+
+  describe("configurationText", () => {
+    it.each(Object.values(configurationText))("$text is still in $file", async ({ text, file }) => {
       const source = await readFile(new URL(file, repo), "utf8");
       expect(source).toContain(text);
     });

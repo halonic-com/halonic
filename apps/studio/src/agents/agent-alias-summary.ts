@@ -1,12 +1,14 @@
+import { harnessModelFit } from "@halonicjs/adapter-workspace-models";
 import { defaultCurrency, moneyAmount } from "@halonicjs/app";
 import type { ModelAlias, Provider } from "@halonicjs/format";
-import type { AliasCost, AliasSummary } from "@halonicjs/studio-feature-agents/api";
+import type { AgentHarnessId, AliasCost, AliasSummary } from "@halonicjs/studio-feature-agents/api";
 import { filesOf, type LoadedWorkspace, modelAliases } from "@halonicjs/workspace";
 
 /**
  * The alias's provider, model and cost, for the line under the Model page's picker (UX 2.5,
  * microcopy 8.5), with the price in the budget's currency; `undefined` for an alias the hub
- * doesn't have. The provider shows by its name, and by its id only when it has no file.
+ * doesn't have. The provider shows by its name, and by its id only when it has no file. It
+ * says which harnesses can't call the provider, by the check `halonic run` uses (HAL-18930).
  */
 export function aliasSummaryOf(
   workspace: LoadedWorkspace,
@@ -23,7 +25,29 @@ export function aliasSummaryOf(
     provider: provider?.name ?? provider?.id ?? found.provider,
     model: found.model,
     cost: costOf(found.price, provider, currency),
+    ...(provider === undefined ? {} : { harnessFit: harnessFitOf(provider) }),
   };
+}
+
+/**
+ * Every harness, keyed by the type, so a harness the agents feature gains is a type error here
+ * until it's listed. Halonic's own loop always fits; the programs each call one API only.
+ */
+const everyHarness: Readonly<Record<AgentHarnessId, true>> = {
+  halonic: true,
+  "claude-code": true,
+  codex: true,
+  opencode: true,
+};
+
+/** Each harness that doesn't simply fit the provider, with why. */
+function harnessFitOf(provider: Provider): NonNullable<AliasSummary["harnessFit"]> {
+  const fits: Partial<Record<AgentHarnessId, "refused" | "check-endpoint">> = {};
+  for (const harness of Object.keys(everyHarness) as AgentHarnessId[]) {
+    const fit = harnessModelFit(harness, provider.type);
+    if (fit !== "fits") fits[harness] = fit;
+  }
+  return fits;
 }
 
 /**

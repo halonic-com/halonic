@@ -4,6 +4,7 @@ import { loadWorkspace, type WorkspaceIssue } from "@halonicjs/workspace";
 import type { CliCommand, CommandInput } from "../../command.ts";
 import { addedPlugin } from "../../connector-plugin.ts";
 import { exitCode } from "../../exit-code.ts";
+import { harnessModelProblems } from "../../harness-model-problems.ts";
 import { validateMessages } from "../../messages/validate.ts";
 import {
   type ValidateReport,
@@ -60,6 +61,8 @@ export const validateCommand: CliCommand = {
         ...(added === undefined ? [] : pluginConnectorProblems(loaded, added)),
         // `halonic trust` refuses these files; say so before it does (HAL-16276).
         ...trustRefusalProblems(loaded),
+        // `run` refuses a model the agent's harness can't call; say so first (HAL-18930).
+        ...harnessModelProblems(loaded),
       ],
     });
     const dir = givenDir(input, workspace);

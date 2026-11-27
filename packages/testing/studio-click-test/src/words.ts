@@ -154,6 +154,28 @@ export const screenText = {
   },
 } as const;
 
+const configurationFile =
+  "packages/studio/features/agents/src/configuration/configuration-words.ts";
+
+/**
+ * Text the harness model step reads (HAL-18930): an agent's Configuration, its Harness and Model
+ * pages, and the Model page's sentence for a Codex agent on a model Codex can't call. The agents
+ * feature exports no words entry point; `words.test.ts` checks each is still in its file.
+ */
+export const configurationText = {
+  configuration: { text: "Configuration", file: configurationFile },
+  harness: { text: "Harness", file: configurationFile },
+  model: { text: "Model", file: configurationFile },
+  halonic: { text: "Halonic", file: configurationFile },
+  codex: { text: "Codex", file: configurationFile },
+  codexRefused: {
+    text: "This model can't be used with Codex. Choose another.",
+    file: configurationFile,
+  },
+  // The demo's only model alias, the test model, which no harness program can call.
+  testModel: { text: "default", file: "examples/acme/models.yaml" },
+} as const;
+
 const settingsFolder = "packages/studio/features/settings";
 const appearanceFile = `${settingsFolder}/src/appearance/appearance-text.ts`;
 const sandboxStateFile = `${settingsFolder}/src/agent-sandbox/sandbox-state.ts`;

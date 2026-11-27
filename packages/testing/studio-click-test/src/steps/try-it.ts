@@ -58,10 +58,7 @@ export const keyHeld: Step = {
   run: async (context) => {
     const workspace = await onWorkspaceWithoutSettings(context);
     if (!workspace.passed) return workspace;
-    const onWriter =
-      (await boxShown(context, 2_000)) ||
-      ((await openAgents(context)) && (await openWriter(context)));
-    if (!onWriter) return await failure(context, "NO_CHAT", "No Writer.");
+    if (!(await onWriterPage(context))) return await failure(context, "NO_CHAT", "No Writer.");
     await context.driver.type(writerBox, keyMessage);
     await context.driver.pressKeys([keys.enter]);
     const { keyLine, sendAnyway } = screenText;
@@ -86,6 +83,16 @@ export const keyHeld: Step = {
     return { passed: false, code, note: `Screen: ${lastWords(sent.text)}` };
   },
 };
+
+/**
+ * Puts the window on Writer's page, with its Try it chat: as it is when the chat's message box
+ * shows, else from the Agents list. Returns whether Writer's page shows.
+ */
+export async function onWriterPage(context: StepContext): Promise<boolean> {
+  return (
+    (await boxShown(context, 2_000)) || ((await openAgents(context)) && (await openWriter(context)))
+  );
+}
 
 /**
  * Opens the Agents list: the agent page's back link is named Agents, as is the row in the Places
