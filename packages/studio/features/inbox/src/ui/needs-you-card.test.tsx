@@ -292,7 +292,7 @@ verifies("inbox.home", () => {
 
 verifies("inbox.home-next-step", () => {
   const nextStep = "Runs that need your yes show up here.";
-  const demoStep = "Start one on your computer: Run the Support reply workflow in Studio.";
+  const demoStep = "Start one on your computer: run the Support reply workflow in Studio.";
 
   it("says in a served Studio where runs that need you come from, with no demo line", async () => {
     const inbox = new Inbox(fakeRuns([]).runs);

@@ -60,6 +60,11 @@ async function writeConnector(script: string): Promise<void> {
   });
 }
 
+/** Gives Acme an id of its own, so it is a person's workspace and not a copy of the sample. */
+async function writeOwnAcme(): Promise<void> {
+  await writeFiles(acmeRuns.acme, { "workspace.yaml": "id: acme-shop\nname: Acme\n" });
+}
+
 /** Trusts Acme as `halonic trust` does. */
 async function trustAcme(): Promise<void> {
   const setup = acmeRunsSetup(acmeRuns);
@@ -150,6 +155,7 @@ verifies("cli.commands.serve.serve", () => {
   });
 
   it("tells a workspace under the home folder by its path from home, with a ~", async () => {
+    await writeOwnAcme();
     await trustAcme();
     const { io } = startServeHomedAt(acmeRuns.folder, "--port", "0");
     await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
@@ -160,6 +166,7 @@ verifies("cli.commands.serve.serve", () => {
   });
 
   it("tells a workspace outside the home folder by its own name only, never its absolute path", async () => {
+    await writeOwnAcme();
     await trustAcme();
     const { io } = startServeHomedAt(join(acmeRuns.folder, "profile"), "--port", "0");
     await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
@@ -167,6 +174,16 @@ verifies("cli.commands.serve.serve", () => {
 
     const workspace = await (await fetch(`${address}/api/workspace`)).json();
     expect(workspace).toEqual({ name: "Acme", sample: false, folder: "acme" });
+  });
+
+  it("marks a copy of the sample, which carries the sample's id acme, as the sample", async () => {
+    await trustAcme();
+    const { io } = startServeHomedAt(join(acmeRuns.folder, "profile"), "--port", "0");
+    await waitUntil("the server to print its address", () => io.stdout.length >= 1, slowStart);
+    const address = addressOf(io.stdout[0]);
+
+    const workspace = await (await fetch(`${address}/api/workspace`)).json();
+    expect(workspace).toEqual({ name: "Acme", sample: true, folder: "acme" });
   });
 
   it("serves the built Studio page at / with the page's own content security policy", async () => {

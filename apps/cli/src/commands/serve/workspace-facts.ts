@@ -1,7 +1,14 @@
 import type { WorkspaceFacts } from "@halonicjs/host-server";
-import type { LoadedWorkspace } from "@halonicjs/workspace";
+import { filesOf, type LoadedWorkspace } from "@halonicjs/workspace";
 import type { WorkspaceDir } from "../../workspace-dir.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
+
+/**
+ * The id the sample's `workspace.yaml` carries (`examples/acme`). Studio's Open demo and
+ * `halonic init --example acme` copy that file unchanged and write no other marker, so
+ * the id is what tells a copy of the sample, wherever its folder is (HAL-19432).
+ */
+export const sampleWorkspaceId = "acme";
 
 /** What the served workspace's facts are read from. */
 export interface ServedWorkspaceFactsOptions {
@@ -17,19 +24,23 @@ export interface ServedWorkspaceFactsOptions {
 
 /**
  * Which workspace `halonic serve` shows, for `GET /api/workspace` (requirement
- * `cli.commands.serve.serve`). The name is read again at every request from the live
- * version, so a rename in `workspace.yaml` shows once it is committed, before
+ * `cli.commands.serve.serve`). The name and the id are read again at every request from
+ * the live version, so a rename in `workspace.yaml` shows once it is committed, before
  * any run starts from that commit.
  */
 export function servedWorkspaceFacts(
   options: ServedWorkspaceFactsOptions,
 ): () => Promise<WorkspaceFacts> {
   const { workspace, dir, folder, home } = options;
-  return async () => ({
-    name: workspaceNameOf(await workspace(), dir),
-    // No workspace is marked as the sample yet: Welcome has none until HAL-9089 is decided.
-    sample: false,
-    folder,
-    home,
-  });
+  return async () => {
+    const live = await workspace();
+    return {
+      name: workspaceNameOf(live, dir),
+      // A workspace of a person's own with this id also gets the Demo tag; that only
+      // changes what Studio shows, so the id is enough (HAL-19432).
+      sample: filesOf(live, "workspace")[0]?.value.id === sampleWorkspaceId,
+      folder,
+      home,
+    };
+  };
 }
