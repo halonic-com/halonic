@@ -1,5 +1,4 @@
 import type { InboxItem as AgentItem } from "@halonicjs/ports";
-import { FilterChips } from "@halonicjs/studio-kit";
 import { type ReactNode, useState } from "react";
 import {
   ownItemsShow,
@@ -7,10 +6,11 @@ import {
   projectChips,
   shownFilter,
 } from "../agent/project-filter.ts";
+import { ProjectLine } from "./project-line.tsx";
 
 /** The Inbox's project filter, as the page uses it. */
 export interface ProjectFilterRow {
-  /** The chips over Needs you, or nothing while no item that waits has a project. */
+  /** The one line of chips over Needs you, or nothing while no item that waits has a project. */
   readonly chips: ReactNode;
   /** The filter as shown, for the agents' rows. */
   readonly filter: ProjectFilter;
@@ -19,12 +19,13 @@ export interface ProjectFilterRow {
 }
 
 /**
- * The one-click project filter over Needs you (`inbox.project-filter`): "All projects", each
- * project of an agent's item that waits, and "No project", under which the Inbox's own items are.
+ * The project filter over Needs you (`inbox.project-filter`, `inbox.project-line`): "All
+ * projects", each project of an agent's item that waits, and "No project", under which the Inbox's
+ * own items are (`ownWaiting` of them wait).
  */
 export function useProjectFilter(
   waiting: readonly AgentItem[],
-  ownWaiting: boolean,
+  ownWaiting: number,
 ): ProjectFilterRow {
   const [picked, setPicked] = useState<ProjectFilter>("all");
   const options = projectChips(waiting, ownWaiting);
@@ -32,7 +33,7 @@ export function useProjectFilter(
   return {
     chips:
       options.length === 0 ? null : (
-        <FilterChips label="Project" options={options} value={filter} onChange={setPicked} />
+        <ProjectLine options={options} value={filter} onChange={setPicked} />
       ),
     filter,
     own: (items) => (ownItemsShow(filter) ? items : []),

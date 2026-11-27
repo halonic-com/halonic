@@ -60,10 +60,10 @@ verifies("inbox.project-filter", () => {
       expect.stringContaining("Send the invoices?"),
     ]);
 
-    const chip = [...root.querySelectorAll('[role="radiogroup"] label')].find((label) =>
-      label.textContent?.includes("Website"),
-    );
-    await click(chip?.querySelector("input"));
+    const chip = [
+      ...root.querySelectorAll<HTMLElement>('fieldset[aria-label="Project"] > button'),
+    ].find((button) => button.textContent?.includes("Website"));
+    await click(chip);
     expect(rows(root).map((row) => row.textContent)).toEqual([
       expect.stringContaining("2 cards from Chief"),
     ]);

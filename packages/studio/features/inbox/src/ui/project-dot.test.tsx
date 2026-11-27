@@ -1,17 +1,23 @@
 // @vitest-environment jsdom
 
 import type { MessagingProject } from "@halonicjs/ports";
+import { TOOLTIP_DELAY_MS } from "@halonicjs/studio-kit";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { projectColour } from "../agent/project-colour.ts";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
 
-afterEach(unmountAll);
+afterEach(() => {
+  unmountAll();
+  vi.useRealTimers();
+  Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+  Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
+});
 
 async function settled(): Promise<void> {
   await act(async () => {
@@ -110,6 +116,40 @@ verifies("inbox.project-dot", () => {
     expect(line?.textContent).toMatch(/^Studio app · /);
     expect(line?.querySelector(`.${projectColour("p-studio")}`)).not.toBeNull();
     expect(line?.querySelector(".truncate")).toBeNull();
+  });
+
+  it("shows a cut name whole in a tooltip on hover, and an uncut one none", async () => {
+    const shown = vi.fn();
+    HTMLElement.prototype.showPopover = shown;
+    HTMLElement.prototype.hidePopover = () => undefined;
+    const root = await inboxWith([
+      { question: "Send preview.98?", project: { id: "p-web", name: "Halonic marketing website" } },
+    ]);
+    const name = [...(rows(root)[0]?.querySelectorAll<HTMLElement>(".truncate") ?? [])].find(
+      (each) => each.textContent === "Halonic marketing website",
+    );
+    const tag = name?.parentElement;
+    if (name === undefined || tag === null || tag === undefined) {
+      throw new Error("no project name in the row");
+    }
+    const tip = rows(root)[0]?.querySelector('[role="tooltip"]');
+    expect(tip?.textContent).toBe("Halonic marketing website");
+    expect(tip?.getAttribute("aria-hidden")).toBe("true");
+    const hover = () => {
+      vi.useFakeTimers();
+      act(() => {
+        tag.dispatchEvent(new MouseEvent("pointerover", { bubbles: true }));
+        vi.advanceTimersByTime(TOOLTIP_DELAY_MS);
+      });
+      act(() => tag.dispatchEvent(new MouseEvent("pointerout", { bubbles: true })));
+      vi.useRealTimers();
+    };
+    hover();
+    expect(shown).not.toHaveBeenCalled();
+    Object.defineProperty(name, "scrollWidth", { configurable: true, value: 240 });
+    Object.defineProperty(name, "clientWidth", { configurable: true, value: 144 });
+    hover();
+    expect(shown).toHaveBeenCalledTimes(1);
   });
 
   it("gives two items in one project one colour, and an item with no project no dot", async () => {

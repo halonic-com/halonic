@@ -28,7 +28,7 @@ export function ProjectTag({ project, cut }: ProjectTagProps) {
     visualOnly: true,
     showIf: () => shown.current !== null && shown.current.scrollWidth > shown.current.clientWidth,
   });
-  const dot = `size-2 shrink-0 rounded-full ${projectColour(project.id)} forced-color-adjust-none forced-colors:bg-[CanvasText]`;
+  const dot = projectDotClass(project.id);
   if (!cut) {
     return (
       <span className="inline-flex items-center gap-1.5 align-bottom">
@@ -48,4 +48,12 @@ export function ProjectTag({ project, cut }: ProjectTagProps) {
       {popover}
     </>
   );
+}
+
+/**
+ * A project's 8px dot, in its colour (`inbox.project-dot`); in forced colours it keeps its circle
+ * in the system's text colour. The project filter's chips and menu use it too.
+ */
+export function projectDotClass(id: string): string {
+  return `size-2 shrink-0 rounded-full ${projectColour(id)} forced-color-adjust-none forced-colors:bg-[CanvasText]`;
 }
