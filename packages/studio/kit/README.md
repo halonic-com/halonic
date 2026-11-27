@@ -2016,11 +2016,11 @@ scrolling row.
 />;
 ```
 
-- Off is a `surface` pill with a `border-control` edge and `fg-muted` text. On is `accent-soft`
-  with `accent-text` at 500 and a **12px check** before the label, so on and off differ in shape
-  too (23 A11).
-- 28px on desktop; 32px with a 48px hit area on a phone or a touch screen. 16px between wrapped
-  lines keeps two lines' hit areas apart.
+- Off is an unfilled pill with a `border` edge and `fg-muted` text. On is `accent-soft` with
+  `accent-text` and a **12px check** before the label, so on and off differ in shape too (23 A11).
+  Both are 14px at 600, so the words don't widen when a chip turns on.
+- 32px, with a 48px hit area on a phone or a touch screen. 16px between wrapped lines keeps two
+  lines' hit areas apart.
 - One-of chips are native radios that share a name: one Tab stop, the arrow keys move the choice.
   The row shows the `value` it's given, so a screen that puts the old filter back shows it.
 - An `unavailable` toggle stays focusable, keeps its state in `fg-disabled`, ignores presses and

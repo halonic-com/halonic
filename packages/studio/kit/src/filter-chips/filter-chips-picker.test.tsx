@@ -61,7 +61,7 @@ verifies("kit.filter-chips", () => {
     const { container } = render(row(hub()));
     const chip = buttonNamed(container, "Hub: All hubs");
     expect(chip.textContent).toBe("All hubs");
-    expect(chip.className).toContain("border-border-control bg-surface");
+    expect(chip.className).toContain("border-border not-aria-disabled:hover:bg-surface-subtle");
     expect(chip.className).toContain("pr-2 pl-3 text-fg-muted");
     const chevron = chip.querySelector("svg")?.parentElement as HTMLElement;
     expect(chevron.getAttribute("aria-hidden")).toBe("true");
@@ -76,7 +76,7 @@ verifies("kit.filter-chips", () => {
     const { container } = render(row(hub({ value: "acme" })));
     const chip = buttonNamed(container, "Hub: acme");
     expect(chip.className).toContain("bg-accent-soft");
-    expect(chip.className).toContain("pr-2 pl-3 font-medium text-accent-text");
+    expect(chip.className).toContain("pr-2 pl-3 text-accent-text");
     expect(chip.querySelectorAll("svg")).toHaveLength(1);
     expect(chip.querySelector("span")?.className).toContain("max-w-40 truncate");
   });

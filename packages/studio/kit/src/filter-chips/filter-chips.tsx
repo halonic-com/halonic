@@ -75,34 +75,38 @@ export type FilterChipsProps<Value extends string = string> =
   | FilterChipsToggles;
 
 /**
- * 28px on desktop; 32px on a phone or a touch screen, with a 48px hit area. The row's 16px
+ * 32px, the new design's chip (HAL-20675), with a 48px hit area on a phone or a touch screen. The
+ * label is 14px at 600 in both states, so its words don't widen when it turns on. The row's 16px
  * between wrapped lines keeps two lines' hit areas apart.
  */
 const chipSize =
-  "relative inline-flex min-h-control-sm items-center gap-1 text-small phone:min-h-8 phone:hit-touch touch:min-h-8 touch:hit-touch";
+  "relative inline-flex min-h-control-md items-center gap-1 text-body font-semibold phone:hit-touch touch:hit-touch";
 
 /** The pill. A press shows the hover fill at once; neither applies while unavailable. */
 const box = "rounded-full border transition-colors focus-ring";
 
-/** Off: a `surface` pill with a `border-control` edge and `fg-muted` text. */
+/**
+ * Off: no fill, the divider's `border` edge and `fg-muted` text. With more contrast the theme
+ * raises `border` to 3:1, so the edge holds there too.
+ */
 const boxOff =
-  "border-border-control bg-surface not-aria-disabled:hover:bg-surface-subtle not-aria-disabled:active:bg-surface-subtle";
+  "border-border not-aria-disabled:hover:bg-surface-subtle not-aria-disabled:active:bg-surface-subtle";
 const textOff = "px-3 text-fg-muted";
 
 /**
- * On: `accent-soft` with `accent-text` at 500 and a 12px check before the label, 8px in, so on
- * and off differ in shape too (23 A11). Its edge is transparent: in its own colour with more
- * contrast, and `CanvasText` in forced colours.
+ * On: `accent-soft` with `accent-text` and a 12px check before the label, 8px in, so on and off
+ * differ in shape too (23 A11; the new design has no check, but the kit keeps it for that). Its
+ * edge is transparent: in its own colour with more contrast, and `CanvasText` in forced colours.
  */
 const boxOn = "border-transparent bg-accent-soft contrast-more:border-accent-text";
-const textOn = "pr-3 pl-2 font-medium text-accent-text";
+const textOn = "pr-3 pl-2 text-accent-text";
 
 /**
  * A picker chip ends in a 12px chevron, 4px after its words and 8px in. Picked, it's the on chip
  * without the check: the changed words show the state without colour (23 A11).
  */
 const pickerOff = "pr-2 pl-3 text-fg-muted";
-const pickerOn = "pr-2 pl-3 font-medium text-accent-text";
+const pickerOn = "pr-2 pl-3 text-accent-text";
 
 /**
  * An unavailable toggle keeps its state but draws it in `fg-disabled`; its hint says why. In

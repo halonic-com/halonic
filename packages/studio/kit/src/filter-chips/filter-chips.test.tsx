@@ -58,21 +58,21 @@ verifies("kit.filter-chips", () => {
     expect((acme.closest("label") as HTMLElement).textContent).toBe("acme");
   });
 
-  it("draws an off chip as a surface pill with a border-control edge in fg-muted", () => {
+  it("draws an off chip as an unfilled pill with a border edge in fg-muted", () => {
     const { container } = render(
       <FilterChips label="Hub" options={hubs} value="acme" onChange={() => undefined} />,
     );
     const all = radios(container)[0] as HTMLInputElement;
     expect(all.className).toContain("rounded-full border");
-    expect(all.className).toContain("border-border-control bg-surface");
-    expect(all.className).toContain("hover:bg-surface-subtle");
+    expect(all.className).toContain("border-border not-aria-disabled:hover:bg-surface-subtle");
+    expect(all.className).not.toMatch(/(^| )bg-surface( |$)/);
     expect(all.className).toContain("focus-ring");
     const label = all.closest("label") as HTMLElement;
     expect(label.className).toContain("px-3 text-fg-muted");
     expect(label.querySelector("svg")).toBeNull();
   });
 
-  it("draws an on chip in accent-soft and accent-text at 500 with a 12px check, 8px in", () => {
+  it("draws an on chip in accent-soft and accent-text with a 12px check, 8px in", () => {
     const { container } = render(
       <FilterChips label="Hub" options={hubs} value="acme" onChange={() => undefined} />,
     );
@@ -80,22 +80,20 @@ verifies("kit.filter-chips", () => {
     expect(acme.className).toContain("border-transparent bg-accent-soft");
     expect(acme.className).toContain("contrast-more:border-accent-text");
     const label = acme.closest("label") as HTMLElement;
-    expect(label.className).toContain("pr-3 pl-2 font-medium text-accent-text");
+    expect(label.className).toContain("pr-3 pl-2 text-accent-text");
     const check = label.querySelector('[aria-hidden="true"]') as HTMLElement;
     expect(check.className).toContain("size-3");
     expect(check.querySelector("svg")).not.toBeNull();
   });
 
-  it("is 28px on desktop and 32px with a 48px hit area on a phone or a touch screen", () => {
+  it("is 32px, with a 48px hit area on a phone or a touch screen, in 14px at 600", () => {
     const { container } = render(
       <FilterChips label="Hub" options={hubs} value="all" onChange={() => undefined} />,
     );
     const label = radios(container)[0]?.closest("label") as HTMLElement;
-    expect(label.className).toContain("min-h-control-sm");
-    expect(label.className).toContain(
-      "phone:min-h-8 phone:hit-touch touch:min-h-8 touch:hit-touch",
-    );
-    expect(label.className).toContain("text-small");
+    expect(label.className).toContain("min-h-control-md");
+    expect(label.className).toContain("phone:hit-touch touch:hit-touch");
+    expect(label.className).toContain("text-body font-semibold");
   });
 
   it("calls onChange with the chip the user picks, and shows the value it's given", async () => {
@@ -117,7 +115,7 @@ verifies("kit.filter-chips", () => {
     const chip = container.querySelector("button") as HTMLButtonElement;
     expect(chip.getAttribute("type")).toBe("button");
     expect(chip.getAttribute("aria-pressed")).toBe("false");
-    expect(chip.className).toContain("border-border-control bg-surface");
+    expect(chip.className).toContain("border-border not-aria-disabled:hover:bg-surface-subtle");
     await click(chip);
     expect(onChange).toHaveBeenCalledExactlyOnceWith(true);
 
