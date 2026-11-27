@@ -3,7 +3,7 @@ import { frontBotConfigProperties } from "../front-bot/settings.ts";
 import { workerAgentsRouteKey } from "../worker-agents/keys.ts";
 import { workerReadTables } from "../worker-agents/tables.ts";
 import { chiefLine } from "./chief-line-settings.ts";
-import { chatNotesRouteKey } from "./front-bot-notes.ts";
+import { frontBotRoutes } from "./front-bot-routes.ts";
 import { capabilities } from "./manifest-capabilities.ts";
 import { mergeControlJob } from "./merge-control-declaration.ts";
 import { mergerWakeConfigProperties, mergerWakeJob } from "./merger-wake-declaration.ts";
@@ -300,15 +300,7 @@ export const manifest: PaperclipPluginManifestV1 = {
       capability: "api.routes.register",
       companyResolution: { from: "query", key: "companyId" },
     },
-    {
-      // The front bot's own comment ids on one chat task, board only, read by Messenger (src/plugin/front-bot-notes.ts).
-      routeKey: chatNotesRouteKey,
-      method: "GET",
-      path: "/chat-notes/:taskId",
-      auth: "board",
-      capability: "api.routes.register",
-      companyResolution: { from: "query", key: "companyId" },
-    },
+    ...frontBotRoutes,
     {
       // Comments that mention the calling person, for Halonic's Inbox, board only (src/plugin/board-mentions.ts).
       routeKey: "board-mentions",

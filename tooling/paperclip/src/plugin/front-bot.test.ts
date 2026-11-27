@@ -22,6 +22,7 @@ async function runExample(example: FrontBotExample) {
     earlier: example.earlier,
     message: example.message,
     answers: [{ reply: example.reply }],
+    ...(example.memory === undefined ? {} : { memory: example.memory }),
   });
   await harness.bot.onCommentCreated(commentCreated(harness.message.id));
   return harness;

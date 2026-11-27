@@ -3,7 +3,7 @@ import {
   clockTime,
   commentLimit,
   type FrontBotInput,
-  frontBotUserText,
+  groundedUserText,
   maxReplyLines,
   shownEarlier,
 } from "./prompt.ts";
@@ -290,7 +290,8 @@ function resultWordsAllowed(line: string, input: FrontBotInput): boolean {
  * "it depends" come last: they are about what the line says, not what it names.
  */
 export function checkGrounding(line: string, given: FrontBotInput): Grounding {
-  const input = frontBotUserText(given);
+  // Never the memory (HAL-19597): what appears only there may not be named.
+  const input = groundedUserText(given);
   const reject = (reason: GroundingReason): Grounding => ({ ok: false, reason });
   if (findCredentialShape(line) !== undefined) return reject("secret_shape");
   if (asksForCredential(line)) return reject("credential_request");

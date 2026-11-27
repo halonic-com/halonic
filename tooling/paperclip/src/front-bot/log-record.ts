@@ -12,6 +12,7 @@ import type { ProgressReason } from "./progress-check.ts";
 /** What happened to one message. */
 export type FrontBotOutcome =
   | "posted"
+  | "saved"
   | "skip"
   | "rejected"
   | "capped"
@@ -42,10 +43,15 @@ export type FrontBotReason =
 
 /**
  * What a record is about: the first reply (HAL-19136), a progress note
- * (HAL-19218) or a lookup (HAL-19222): `lookup` for a message that asked for
+ * (HAL-19218), a memory update (HAL-19597) or a lookup (HAL-19222): `lookup` for a message that asked for
  * an action, so no lookup ran, else the lookup's kind.
  */
-export type FrontBotCallType = "first_reply" | "progress_note" | "lookup" | `lookup_${LookupKind}`;
+export type FrontBotCallType =
+  | "first_reply"
+  | "progress_note"
+  | "memory"
+  | "lookup"
+  | `lookup_${LookupKind}`;
 
 /** The one record per decision. Every field is a number, a fixed code or an id. */
 export interface FrontBotLogRecord {
