@@ -107,6 +107,24 @@ verifies("messenger.reactions", () => {
       expect(page.textContent).toContain("Couldn't save the reaction. Try again.");
     });
 
+    it("takes back only the failed emoji, keeping a later one that saved", async () => {
+      const chat = chiefsChat();
+      chat.reactions.holdSaves = true;
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const page = await openChiefsChat(chat);
+      await press(addButton(page, "Morning"));
+      await press(item(page, "Heart"));
+      await press(addButton(page, "Morning"));
+      await press(item(page, "Eyes"));
+      await act(async () => chat.reactions.release("👀"));
+      await settle();
+      chat.reactions.failSaves = true;
+      await act(async () => chat.reactions.release("❤️"));
+      await settle();
+      expect(chipsUnder(page, "Morning")).toEqual(["👍 2 (mine)", "😂 1", "👀 1 (mine)"]);
+      expect(page.textContent).toContain("Couldn't save the reaction. Try again.");
+    });
+
     it("moves through the six with the arrows, Home and End, and Escape closes it", async () => {
       const page = await openChiefsChat(chiefsChat());
       await press(addButton(page, "Morning"));
@@ -139,6 +157,32 @@ verifies("messenger.reactions", () => {
       ];
       expect(items).toHaveLength(6);
       expect(items.every((each) => each.classList.contains("focus-ring"))).toBe(true);
+    });
+
+    it("opens the row over the message on either side, by logical sides only (A1.12)", async () => {
+      const page = await openChiefsChat(chiefsChat());
+      const row = () => page.querySelector('main [data-add-reaction] [role="menu"]');
+      await press(addButton(page, "Thanks"));
+      const mine = row()?.className.split(" ") ?? [];
+      expect(mine).toContain("start-0");
+      await press(addButton(page, "Morning"));
+      const chiefs = row()?.className.split(" ") ?? [];
+      expect(chiefs).toContain("end-0");
+      // Right-to-left mirrors it, high contrast draws its edge, and nothing scales in.
+      for (const classes of [mine, chiefs]) {
+        expect(classes.filter((name) => /^(left|right)-|^-?m[lr]-/.test(name))).toEqual([]);
+        expect(classes).toEqual(expect.arrayContaining(["border", "border-transparent"]));
+        expect(classes.filter((name) => /animate|scale|transition/.test(name))).toEqual([]);
+      }
+    });
+
+    it("draws the kit's add-a-reaction mark, and the chips' emoji at 16 px", async () => {
+      const page = await openChiefsChat(chiefsChat());
+      const paths = [...(addButton(page, "Morning")?.querySelectorAll("svg path") ?? [])];
+      expect(paths.map((path) => path.getAttribute("d"))).toContain("M19 13a8 8 0 1 1-8-8");
+      const emoji = byText(page, "main [data-chip]", "😂")?.querySelector("[aria-hidden] span");
+      expect(emoji?.textContent).toBe("😂");
+      expect(emoji?.className).toContain("text-[16px]");
     });
 
     it("names the row after whose message it is", async () => {

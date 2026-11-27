@@ -12,13 +12,22 @@ import type {
  * A source's reactions for a test (`messenger.reactions`), for one chat at a time: `add` puts a
  * reaction on a message, `saved` records what the Messenger asked to change. `keeps: false` is a
  * source with no reactions, `failSaves` one whose saves throw, and `failReads` one whose reads do.
+ * With `holdSaves`, each save waits until `release` lets its emoji go, so a test picks the order.
  */
 export class FakeReactions implements MessageReactions {
   readonly saved: { message: MessagingId; emoji: ReactionEmoji; on: boolean }[] = [];
   keeps = true;
   failSaves = false;
   failReads = false;
+  holdSaves = false;
   readonly #byMessage = new Map<MessagingId, MessageReaction[]>();
+  readonly #held = new Map<ReactionEmoji, () => void>();
+
+  /** Lets the held save of `emoji` go on; `failSaves` is read after that. */
+  release(emoji: ReactionEmoji): void {
+    this.#held.get(emoji)?.();
+    this.#held.delete(emoji);
+  }
 
   /** Puts `by`'s `emoji` on `message`. */
   add(message: MessagingId, emoji: ReactionEmoji, by: MessagingAuthor): void {
@@ -34,6 +43,7 @@ export class FakeReactions implements MessageReactions {
 
   async react(message: MessagingId, emoji: ReactionEmoji, on: boolean): Promise<ReactResult> {
     this.saved.push({ message, emoji, on });
+    if (this.holdSaves) await new Promise<void>((resolve) => this.#held.set(emoji, resolve));
     if (this.failSaves) throw new Error("The reaction didn't reach the source.");
     const others = (this.#byMessage.get(message) ?? []).filter(
       (reaction) => !(reaction.emoji === emoji && reaction.by.kind === "me"),
