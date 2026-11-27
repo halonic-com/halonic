@@ -54,9 +54,17 @@ the title the asking agent wrote.
 **Risky approvals.** Every inbox item carries a `risk`. An approval is `risky` when approving it spends
 money or changes who may do what (`hire_agent`, `budget_override_required`, `approve_ceo_strategy`), and
 also when its type is missing or one the provider doesn't know, so a new kind of approval fails closed.
-Only `request_board_approval`, which just records the board's answer, is `normal`, and so is every card.
+Only `request_board_approval`, which just records the board's answer, is `normal`. A card is `normal`
+unless it asks to run a tool or Paperclip set its `payload.secretProposal`, so its Accept binds a secret.
 The risk comes from Paperclip's type, never from the asking agent's title. A phone can't answer a risky
 item unless the desktop allows it (requirement `paperclip-client.approval-risk`).
+
+**What a risky approve reaches.** A hire approval, an agent's join request, a secret proposal and a card
+that approves one carry a `reach`: the agent, the adapter, the secret and its setting path, and the
+environment variables by name with whether each binds a secret. It holds names only, never a value
+(requirement `paperclip-client.risky-reach`). The provider marks its own Reject and Request changes
+options `declines`, never a decision's options, whatever the agent named them
+(requirement `paperclip-client.declining-options`).
 
 **Route timing.** Pass `timing` (for example `logRouteTimings(log)`) and every request reports its
 method, route template, status, milliseconds and body bytes (counted after `fetch` decompressed
