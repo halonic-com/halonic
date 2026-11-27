@@ -358,6 +358,7 @@ export {
   type RadioGroupProps,
   type RadioOption,
 } from "./radio/radio-group.tsx";
+export { RailButton, type RailButtonProps } from "./rail-button/rail-button.tsx";
 export { SecretText } from "./secret-text/secret-text.ts";
 export { Select, type SelectOption, type SelectProps } from "./select/select.tsx";
 export { MAX_SERIES, OTHER_NAME, type Series } from "./series-chart/series.ts";

@@ -71,6 +71,43 @@ function horizontal(trigger: Box, width: number, windowWidth: number, align: Pop
 }
 
 /**
+ * Where a popover of `size` goes beside `trigger`: `gap` after its end edge (before its left edge
+ * right to left) and centred on it top to bottom, as a rail button's name sits. When it doesn't
+ * fit there it goes on the other side, and it always stays 8px from the window's edges.
+ */
+export function placeBeside(
+  trigger: Box,
+  size: Size,
+  view: Size,
+  options: { readonly gap: number; readonly rightToLeft: boolean },
+): { readonly top: number; readonly left: number } {
+  const after = trigger.right + options.gap;
+  const before = trigger.left - options.gap - size.width;
+  const fits = (left: number) => left >= EDGE_GAP && left + size.width <= view.width - EDGE_GAP;
+  const [first, second] = options.rightToLeft ? [before, after] : [after, before];
+  const left = fits(first) || !fits(second) ? first : second;
+  // Whole pixels, so the text doesn't blur.
+  const centred = Math.round((trigger.top + trigger.bottom - size.height) / 2);
+  return {
+    top: Math.max(EDGE_GAP, Math.min(centred, view.height - EDGE_GAP - size.height)),
+    left: Math.max(EDGE_GAP, Math.min(left, view.width - EDGE_GAP - size.width)),
+  };
+}
+
+/** Places an open `popover` beside `trigger`, by `placeBeside`. */
+export function placePopoverBeside(popover: HTMLElement, trigger: Element, gap: number): void {
+  const { width, height } = popover.getBoundingClientRect();
+  const { clientWidth, clientHeight } = document.documentElement;
+  const view = { width: clientWidth, height: clientHeight };
+  const rightToLeft = getComputedStyle(trigger).direction === "rtl";
+  const box = trigger.getBoundingClientRect();
+  const placement = placeBeside(box, { width, height }, view, { gap, rightToLeft });
+  popover.style.top = `${placement.top}px`;
+  popover.style.left = `${placement.left}px`;
+  popover.dataset["side"] = "beside";
+}
+
+/**
  * Places an open `popover` next to `trigger`. Its classes set `m-0` and `inset-auto`, so only
  * `top` and `left` place it.
  */
