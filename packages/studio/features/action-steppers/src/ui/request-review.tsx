@@ -94,6 +94,8 @@ export function IrreversibleWarnings({ view }: { readonly view: StepperView }) {
  * service, so they show as code, apart from Halonic's own sentence above them.
  */
 export function ChangedValues({ changes }: { readonly changes: readonly StepperChange[] }) {
+  // A `requires` stop has no changed values; an empty list would only add a gap.
+  if (changes.length === 0) return null;
   const code = "font-mono text-small text-fg wrap-anywhere";
   return (
     <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-body">

@@ -2,6 +2,7 @@
 
 export { checkBrowserAddress } from "./browser-address.ts";
 export { type ChangedAfterStartResult, checkChangedAfterStart } from "./changed-after-start.ts";
+export { checkStepGate, type GateResult, type KeptByStep } from "./check-gate.ts";
 export { checkExpect, type ExpectChange, type ExpectResult } from "./expect-check.ts";
 export { capKeptValues } from "./kept-values.ts";
 export { findKeyShapedText, type KeyShape } from "./key-shaped-text.ts";
@@ -68,6 +69,7 @@ export type {
   BrowserOrigin,
   CallBodyField,
   CallStep,
+  CheckRequirement,
   CheckStep,
   GuidedStep,
   InputStep,

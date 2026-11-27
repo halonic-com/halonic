@@ -14,6 +14,7 @@ import {
   acmeRunCatalog,
   acmeRunRoutes,
   allowsAcme,
+  runnerRequest,
   secretRequest,
   variableRequest,
 } from "../test-support/acme-run.test-helper.ts";
@@ -333,6 +334,78 @@ verifies("action-steppers.pasted-result", () => {
       expect(await records.read(request)).toEqual(before);
       expect(answers).toEqual([]);
       expect(String(run.failure)).not.toContain(keyShaped);
+    });
+  });
+});
+
+verifies("action-steppers.shell-check-gate", () => {
+  describe("StepperRun after a check with requires rules", () => {
+    const runner = (status: string) => () => ({
+      status: 200,
+      fields: { status, name: "acme-build-1", labels: ["self-hosted"] },
+    });
+    const methods = (sent: readonly { method: string }[]) => sent.map((call) => call.method);
+    const stillOnline = "The runner is still online. Stop it first.";
+
+    it("runs the change once the check kept what the definition requires", async () => {
+      const { fake, open } = await runOf(runnerRequest, { service: runner("offline") });
+      const run = await open();
+      run.actions.runAll();
+      await run.idle();
+
+      expect(methods(fake.sent)).toEqual(["GET", "DELETE"]);
+    });
+
+    it("stops before the change with the definition's reason, never the service's value", async () => {
+      const { fake, answers, open } = await runOf(runnerRequest, { service: runner("online") });
+      const run = await open();
+      run.actions.runAll();
+      await run.idle();
+
+      expect(methods(fake.sent)).toEqual(["GET"]);
+      expect(run.current().stage).toEqual({ kind: "changed", message: stillOnline, changes: [] });
+      // The requester's view didn't change: the line says what the rule says, not "state-changed".
+      expect(run.current().steps[1]?.outcome).toEqual({ kind: "failed", message: stillOnline });
+      expect(answers.map((answer) => answer.kind === "action-result" && answer.outcome)).toEqual([
+        "failed",
+      ]);
+    });
+
+    it("names a required field a check marked done by hand didn't read, not the rule's reason", async () => {
+      // No `expect`, so only the rule can stop it.
+      const { definition, version, parameters, expires } = runnerRequest;
+      const unexpected = { definition, version, parameters, expires };
+      const { fake, answers, open } = await runOf(unexpected, { service: runner("online") });
+      const run = await open();
+      run.actions.markDoneByHand(1);
+      await run.idle();
+      run.actions.runStep(2);
+      await run.idle();
+
+      expect(fake.sent).toEqual([]);
+      const notRead = 'The check didn\'t read "status".';
+      expect(run.current().stage).toEqual({ kind: "changed", message: notRead, changes: [] });
+      expect(answers.map((answer) => answer.kind === "action-result" && answer.outcome)).toEqual([
+        "failed",
+      ]);
+    });
+
+    it("won't send the change before its check, and stops the same way when opened again", async () => {
+      const { fake, open } = await runOf(runnerRequest, { service: runner("online") });
+      const first = await open();
+      first.actions.runStep(2);
+      await first.idle();
+      expect(fake.sent).toEqual([]);
+      expect(String(first.failure)).toContain("Run the check before this step first.");
+
+      first.actions.runStep(1);
+      await first.idle();
+      const again = await open();
+      again.actions.runStep(2);
+      await again.idle();
+
+      expect(methods(fake.sent)).toEqual(["GET"]);
+      expect(again.current().stage).toEqual({ kind: "changed", message: stillOnline, changes: [] });
     });
   });
 });

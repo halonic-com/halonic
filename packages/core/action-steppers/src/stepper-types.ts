@@ -86,6 +86,19 @@ export interface CallStep {
 }
 
 /**
+ * A value a `check` step must have kept for the stepper to go on, such as a
+ * runner's `status` being `offline` before it is removed. `reason` is the
+ * definition's own sentence the stepper stops with; the kept value stays out
+ * of it.
+ */
+export interface CheckRequirement {
+  /** A field the step keeps. */
+  name: string;
+  equals: ActionValue;
+  reason: string;
+}
+
+/**
  * A read-only `GET` (architecture note, 1.2 and 6.2): it reads the state a
  * later step changes, so the preview can show it and the request's `expect`
  * can be compared with it before anything changes.
@@ -102,6 +115,8 @@ export interface CheckStep {
    * user set it (see `checkChangedAfterStart`). It must be one of `keep`.
    */
   changedAfterStart?: string;
+  /** What the kept values must be before the next step runs; see `checkStepGate`. */
+  requires?: readonly CheckRequirement[];
   manual: ManualForm;
 }
 

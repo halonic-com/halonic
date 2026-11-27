@@ -62,10 +62,37 @@ const setSecret: StepperDefinition<Values> = {
   preview: (parameters) => [`Sets the secret ${parameters["name"]}.`],
 };
 
+const runnerPath = "/repos/{owner}/{repo}/actions/runners/{runner}";
+
+/** Removes a self-hosted runner, only once a check shows it is offline. */
+const removeRunner: StepperDefinition<Values> = {
+  id: "acme.remove-runner",
+  version: 1,
+  service: "github",
+  title: "Remove a runner",
+  summary: "Removes one self-hosted runner.",
+  risk: "admin",
+  parameters: strictParameters({ owner, repo, runner: { kind: "integer", min: 1, max: 99999 } }),
+  steps: [
+    {
+      kind: "check",
+      path: runnerPath,
+      keep: ["status", "name"],
+      requires: [
+        { name: "status", equals: "offline", reason: "The runner is still online. Stop it first." },
+      ],
+      manual,
+    },
+    { kind: "call", method: "DELETE", path: runnerPath, body: [], keep: [], manual },
+  ],
+  targets: repository,
+  preview: () => ["Reads the runner.", "Removes the runner."],
+};
+
 const repoPatterns = { owner: "^[A-Za-z0-9-]{1,39}$", repo: "^[A-Za-z0-9._-]{1,100}$" };
 const base = { service: "github", version: 1 } as const;
 
-/** The routes the shell would compile for the two definitions. */
+/** The routes the shell would compile for the definitions. */
 export const acmeRunRoutes: readonly ActionRoute[] = [
   {
     ...base,
@@ -103,9 +130,33 @@ export const acmeRunRoutes: readonly ActionRoute[] = [
     body: [{ name: "value", kind: "secret-input" }],
     keep: [],
   },
+  {
+    ...base,
+    kind: "call",
+    definition: "acme.remove-runner",
+    step: 1,
+    risk: "routine",
+    method: "GET",
+    path: runnerPath,
+    placeholders: { ...repoPatterns, runner: "^[0-9]{1,16}$" },
+    body: [],
+    keep: ["status", "name"],
+  },
+  {
+    ...base,
+    kind: "call",
+    definition: "acme.remove-runner",
+    step: 2,
+    risk: "admin",
+    method: "DELETE",
+    path: runnerPath,
+    placeholders: { ...repoPatterns, runner: "^[0-9]{1,16}$" },
+    body: [],
+    keep: [],
+  },
 ];
 
-const definitions = [setVariable, setSecret];
+const definitions = [setVariable, setSecret, removeRunner];
 
 /** The invented catalog, with its routes. */
 export const acmeRunCatalog: StepperCatalog = {
@@ -137,5 +188,14 @@ export const secretRequest: InboxActionRequest = {
   definition: "acme.set-secret",
   version: 1,
   parameters: { owner: "acme", repo: "app", name: "ACME_TOKEN" },
+  expires: "2026-11-25T12:00:00.000Z",
+};
+
+/** Remove runner 7 of `acme/app`, as the requester saw it named `acme-build-1`. */
+export const runnerRequest: InboxActionRequest = {
+  definition: "acme.remove-runner",
+  version: 1,
+  parameters: { owner: "acme", repo: "app", runner: 7 },
+  expect: { name: "acme-build-1" },
   expires: "2026-11-25T12:00:00.000Z",
 };
