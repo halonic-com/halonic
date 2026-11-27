@@ -56,7 +56,7 @@ money or changes who may do what (`hire_agent`, `budget_override_required`, `app
 also when its type is missing or one the provider doesn't know, so a new kind of approval fails closed.
 Only `request_board_approval`, which just records the board's answer, is `normal`. A card is `normal`
 unless it asks to run a tool or Paperclip set its `payload.secretProposal`, so its Accept binds a secret.
-Secret proposals, agents' join requests and a decision's destructive option are `risky` too. The risk
+Secret proposals, join requests and a decision with a destructive option are `risky` too. The risk
 comes from Paperclip's type, never from the asking agent's title. A phone can't answer a risky item
 unless the person turned on "Let phones answer risky approvals" on their computer (requirement
 `paperclip-client.approval-risk`).
