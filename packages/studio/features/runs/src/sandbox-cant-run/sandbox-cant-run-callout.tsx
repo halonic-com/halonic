@@ -9,7 +9,10 @@ import type { SandboxStart } from "./use-sandbox-start.ts";
 export interface SandboxCantRunCalloutProps {
   /** What can't run: the workflow, the routine or the agent, as its page names it. */
   readonly name: string;
-  /** The page's {@link SandboxStart}; the Callout draws only while `refused` names a reason. */
+  /**
+   * The page's {@link SandboxStart}; the Callout draws while `refused` names a reason, and only
+   * its first line, "Agent host is still starting", while `starting`.
+   */
   readonly start: SandboxStart;
   /**
    * The `id` of the first line. The page points every control the Callout disables at it
@@ -50,7 +53,9 @@ export function SandboxCantRunCallout({
 }: SandboxCantRunCalloutProps) {
   const phone = usePresentation() === "phone";
   const copyDetails = useCopyDetails();
-  if (start.refused === undefined) return null;
+  if (start.refused === undefined) {
+    return start.starting ? <StartingLine firstLineId={firstLineId} band={band} /> : null;
+  }
   const words = sandboxStartWords(start.refused);
   // Only `other` says what is wrong, because its fix doesn't (microcopy 23.3, revision 51).
   const unknown = words.key === sandboxStartWords("other").key;
@@ -105,6 +110,26 @@ export function SandboxCantRunCallout({
   );
   if (!band) return callout;
   return <div className="border-b border-border px-6 py-3 phone:px-4">{callout}</div>;
+}
+
+/**
+ * The one line while the first check hasn't answered: muted, not a warning, because nothing is
+ * wrong yet, and not read out, because on most opens it goes within a moment (HAL-19614).
+ */
+function StartingLine({
+  firstLineId,
+  band,
+}: {
+  readonly firstLineId: string;
+  readonly band: boolean;
+}) {
+  const line = (
+    <p id={firstLineId} className="text-small text-fg-muted">
+      {cantRunWords.hostStarting}
+    </p>
+  );
+  if (!band) return line;
+  return <div className="border-b border-border px-6 py-3 phone:px-4">{line}</div>;
 }
 
 /**

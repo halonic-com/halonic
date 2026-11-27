@@ -21,12 +21,16 @@ async function open(
   options: {
     readonly routine?: RoutineView;
     readonly answers?: SandboxStartResult[];
+    /** Answers the check with this promise instead, so a test can look before it answers. */
+    readonly pending?: Promise<SandboxStartResult>;
     readonly phone?: boolean;
   } = {},
 ) {
   const answers = [...(options.answers ?? [refused])];
   const check = vi.fn(
-    async () => (answers.length > 1 ? answers.shift() : answers[0]) as SandboxStartResult,
+    async () =>
+      options.pending ??
+      ((answers.length > 1 ? answers.shift() : answers[0]) as SandboxStartResult),
   );
   const runNow = vi.fn(async () => ({ started: true, runId: "run_1", shortId: "abc123" }) as const);
   const { host } = hostReading(() => options.routine ?? dailySummary);
@@ -82,6 +86,24 @@ verifies("routines.page.cant-run", () => {
       expect.stringContaining("Check again"),
       expect.stringContaining("How to install bubblewrap"),
     ]);
+  });
+
+  it("keeps Run now unavailable, saying the agent host is still starting, until the check answers", async () => {
+    let answer: (result: SandboxStartResult) => void = () => {};
+    const pending = new Promise<SandboxStartResult>((resolve) => {
+      answer = resolve;
+    });
+    const { page, runNow } = await open({ pending });
+    const button = runNowButton(page) as HTMLButtonElement;
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    expect(
+      document.getElementById(button.getAttribute("aria-describedby") ?? "")?.textContent,
+    ).toBe("Agent host is still starting");
+    await act(async () => button.click());
+    expect(runNow).not.toHaveBeenCalled();
+    await act(async () => answer({ ok: true }));
+    expect(runNowButton(page)?.hasAttribute("aria-disabled")).toBe(false);
+    expect(page.textContent).not.toContain("Agent host is still starting");
   });
 
   it("keeps Run now unavailable and focusable on a phone", async () => {

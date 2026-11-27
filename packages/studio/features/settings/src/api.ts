@@ -136,6 +136,11 @@ export interface AgentSandboxHost {
    * (HAL-13194).
    */
   readonly studioStartsUnfenced?: boolean;
+  /**
+   * Calls `listener` when `studioStartsUnfenced` changes, as the host's answer comes in after the
+   * section has drawn (HAL-19614); returns the way to stop. Without it the value is read as drawn.
+   */
+  subscribeStudioStartsUnfenced?(listener: () => void): () => void;
 }
 
 /** The agent sandbox the host runs, when the app has one. */

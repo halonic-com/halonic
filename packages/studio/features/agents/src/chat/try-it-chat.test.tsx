@@ -370,6 +370,20 @@ verifies("agents.chat.sandbox", () => {
     expect(requests).toHaveLength(1);
   });
 
+  it("makes Send wait, saying the agent host is still starting, until the check answers", async () => {
+    let answer: (result: SandboxStartResult) => void = () => {};
+    const check = vi.fn(() => new Promise<SandboxStartResult>((resolve) => (answer = resolve)));
+    const { page, announce } = await chatWith({ check });
+    const send = buttonNamed(page, "Send") as HTMLButtonElement;
+    expect(send.getAttribute("aria-disabled")).toBe("true");
+    const reason = page.querySelector(`[id="${send.getAttribute("aria-describedby")}"]`);
+    expect(reason?.textContent).toBe("Agent host is still starting");
+    expect(announce).not.toHaveBeenCalled();
+    await act(async () => answer({ ok: true }));
+    expect(page.textContent).not.toContain("Agent host is still starting");
+    expect(buttonNamed(page, "Send")?.hasAttribute("aria-disabled")).toBe(false);
+  });
+
   it("doesn't check the sandbox for an agent on Halonic's own loop", async () => {
     const check = checkSaying(refused);
     const { page } = await chatWith(check, { harness: "halonic" });

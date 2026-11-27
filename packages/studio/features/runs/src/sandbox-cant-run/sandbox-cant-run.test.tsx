@@ -30,7 +30,7 @@ function Page({
       <Button
         ref={runButton}
         variant="primary"
-        unavailable={start.refused === undefined ? undefined : { reason: firstLineId }}
+        unavailable={start.blocksRun ? { reason: firstLineId } : undefined}
         onClick={run}
       >
         Run
@@ -231,6 +231,30 @@ verifies("runs.sandbox-cant-run", () => {
     expect(failing.textContent).not.toContain("can't run");
     const none = await open(<Page check={undefined} />);
     expect(runOf(none).hasAttribute("aria-disabled")).toBe(false);
+  });
+
+  it("keeps Run off, saying the agent host is still starting, until the first check answers", async () => {
+    let answer: (result: SandboxStartResult) => void = () => {};
+    const check = vi.fn(() => new Promise<SandboxStartResult>((resolve) => (answer = resolve)));
+    const root = await open(<Page check={{ check }} />);
+    const run = runOf(root);
+    expect(run.getAttribute("aria-disabled")).toBe("true");
+    const why = document.getElementById(run.getAttribute("aria-describedby") ?? "");
+    expect(why?.textContent).toBe("Agent host is still starting");
+    expect(root.textContent).not.toContain("can't run");
+    await act(async () => answer({ ok: true }));
+    expect(runOf(root).hasAttribute("aria-disabled")).toBe(false);
+    expect(root.textContent).not.toContain("Agent host is still starting");
+  });
+
+  it("goes from the starting line to the Callout when the first check refuses", async () => {
+    let answer: (result: SandboxStartResult) => void = () => {};
+    const check = vi.fn(() => new Promise<SandboxStartResult>((resolve) => (answer = resolve)));
+    const root = await open(<Page check={{ check }} />);
+    await act(async () => answer(refused("bubblewrap-missing")));
+    expect(root.textContent).not.toContain("Agent host is still starting");
+    expect(root.textContent).toContain("Support reply can't run");
+    expect(runOf(root).getAttribute("aria-disabled")).toBe("true");
   });
 
   it("doesn't check where no control would start a program", async () => {
