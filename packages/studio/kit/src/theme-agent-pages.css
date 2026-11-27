@@ -33,7 +33,7 @@
   --stack-shade-1: var(--color-surface-subtle); /* one card behind */
   /* Two or more behind: surface-muted in light, surface in dark, because dark surface-muted is
      lighter than surface-subtle and would read as nearer. */
-  --stack-shade-2: light-dark(#ececf7, #171723);
+  --stack-shade-2: light-dark(#e9edf5, #060d1d);
   --stack-scrim: light-dark(rgb(16 16 46 / 0.12), rgb(0 0 0 / 0.36)); /* lighter than overlay */
 
   /* The workflow canvas's dots, only through bg-canvas-grid. Faint on purpose: no text sits on it. */

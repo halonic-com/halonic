@@ -67,26 +67,24 @@
   --*: initial;
 
   /* ---------------------------------------------------------------- Colour: surfaces (bg-*) */
-  /* Neutrals carry a faint blue-violet cast (hue 240), so the greys belong to the halo. */
-  --color-canvas: light-dark(
-    #ebecf6,
-    #020617
-  ); /* the window frame behind the panels; dark is slate-950 */
-  --color-surface: light-dark(#ffffff, #171723); /* pages, panels, cards, inputs */
-  --color-surface-subtle: light-dark(#f6f6fc, #1c1c2a); /* sidebar, table header, row hover */
-  --color-surface-muted: light-dark(#ececf7, #272738); /* button and menu hover, neutral badge */
-  --color-surface-raised: light-dark(#ffffff, #20202f); /* menus, dialogs, toasts */
-  /* The focused Halonic Inbox and Messenger windows (HAL-17358): slate-75 and white, slate-950 and
-     slate-900. Slate-75 is halfway between slate-50 and slate-100, so the frame and the list on it
-     stand apart from the white panel (HAL-18691). */
-  --color-app-frame: light-dark(#f4f7fa, #020617); /* a focused app's window frame */
-  --color-app-panel: light-dark(#ffffff, #0f172a); /* a focused app's one content panel */
+  /* WhatsApp's surfaces in the hue of the icons' deep blue glass (#0a1630, hue 221), HAL-20674.
+     In dark the frame and sidebar are lighter than the panels, as in WhatsApp. */
+  --color-canvas: light-dark(#f3f5fa, #0a1630); /* the window frame behind the panels */
+  --color-surface: light-dark(#ffffff, #060d1d); /* pages, panels, cards, inputs */
+  --color-surface-subtle: light-dark(#f3f5fa, #081124); /* sidebar, table header, row hover */
+  --color-surface-muted: light-dark(#e9edf5, #0d1c3e); /* button and menu hover, neutral badge */
+  --color-surface-raised: light-dark(#ffffff, #0a1630); /* menus, dialogs, toasts */
+  /* The focused Halonic Inbox and Messenger windows (HAL-17358): WhatsApp's frame and panel, as
+     canvas and surface (HAL-20674). In light the grey-blue frame and the list on it stand apart
+     from the white panel; in dark the frame is the lighter one. */
+  --color-app-frame: light-dark(#f3f5fa, #0a1630); /* a focused app's window frame */
+  --color-app-panel: light-dark(#ffffff, #060d1d); /* a focused app's one content panel */
   --color-overlay: light-dark(rgb(16 16 46 / 0.32), rgb(0 0 0 / 0.56)); /* behind a dialog */
 
   /* ---------------------------------------------------------------- Colour: lines (border-*) */
-  --color-border: light-dark(#e3e3f0, #2d2d41); /* dividers, card edges */
-  --color-border-strong: light-dark(#c6c7dc, #3f3f58); /* secondary button, table header edge */
-  --color-border-control: light-dark(#8284a3, #6e7092); /* inputs, checkboxes: 3:1 on surfaces */
+  --color-border: light-dark(#e3e8f1, #1b2638); /* dividers, card edges */
+  --color-border-strong: light-dark(#cdd3e0, #343e51); /* secondary button, table header edge */
+  --color-border-control: light-dark(#63749b, #65779d); /* inputs, checkboxes: 3:1 on surfaces */
   /* The four "type to an agent" boxes only (HAL-19142): the board's search-box edge. Its 1.34:1 is
      accepted there, because the placeholder, the shadow and Send mark the box; fields keep 3:1. */
   --color-border-prompt: light-dark(#dcdfe5, #353c4c);
@@ -98,21 +96,21 @@
   --color-surface-soft-hover: light-dark(var(--color-border), rgb(255 255 255 / 0.14));
 
   /* ---------------------------------------------------------------- Colour: text (text-fg*) */
-  /* Ink with a deep indigo cast, toned down with alpha so it sits on any surface. */
-  --color-fg: light-dark(rgb(16 16 46 / 0.88), rgb(242 242 255 / 0.9));
-  --color-fg-muted: light-dark(rgb(16 16 46 / 0.66), rgb(242 242 255 / 0.68));
-  --color-fg-subtle: light-dark(rgb(16 16 46 / 0.6), rgb(242 242 255 / 0.54));
-  --color-fg-disabled: light-dark(rgb(16 16 46 / 0.32), rgb(242 242 255 / 0.3)); /* no AA needed */
+  /* WhatsApp's ink: near-black and near-white, the quieter text at 60% (HAL-20674). */
+  --color-fg: light-dark(#090a0d, #f9fafd);
+  --color-fg-muted: light-dark(rgb(0 0 0 / 0.66), rgb(255 255 255 / 0.68));
+  --color-fg-subtle: light-dark(rgb(0 0 0 / 0.6), rgb(255 255 255 / 0.6));
+  --color-fg-disabled: light-dark(#b5bdd0, #39445a); /* no AA needed */
 
   /* ---------------------------------------------------------------- Colour: accent (blue) */
   /* The spectrum's blue, the site's one colour for actions, at the site's own values. Text in it
      is a step darker in light and a step lighter in dark, so it passes 4.5:1 on the soft fill. */
   --color-accent: light-dark(#2668ed, #477ff0); /* focus ring, selected marks, checks, icons */
   --color-accent-text: light-dark(#0f52d6, #7da9fd); /* links and accent text */
-  --color-accent-soft: light-dark(rgb(38 104 237 / 0.1), rgb(71 127 240 / 0.18)); /* selected */
+  --color-accent-soft: light-dark(#dbe7fe, #0f2453); /* selected: WhatsApp's green tint, in blue */
   --color-primary: light-dark(#2668ed, #477ff0); /* filled primary button */
   --color-primary-hover: light-dark(#1658dc, #588ffe);
-  --color-on-primary: light-dark(#ffffff, #0d0d1f);
+  --color-on-primary: light-dark(#ffffff, #090a0d);
 
   /* ---------------------------------------------------------------- Colour: status */
   /* The spectrum's azure, teal, violet and rose. The Studio's muted surface is darker than the
@@ -237,6 +235,8 @@
   --spacing-touch: 48px; /* touch targets on a phone: buttons, menu items, inputs (h-touch) */
   --spacing-phone-bar: 56px; /* the phone's top bar and bottom navigation (h-phone-bar) */
   --spacing-nav-pill: 56px; /* width of the "where you are" pill in the bottom navigation */
+  --spacing-rail: 64px; /* the icon rail on the window's left edge (HAL-20674) */
+  --spacing-row: 72px; /* a list row with an avatar, as WhatsApp's chat list */
   --spacing-qr-tile: 232px; /* the QR tile's smallest side, so a phone scans it from arm's length */
   --spacing-input-short: 6ch; /* the text of a short Input, in its own font: a small number */
   --container-page: 1120px;
@@ -261,6 +261,7 @@
   --radius-lg: 16px; /* dialogs */
   --radius-prompt: 24px; /* the chat composer, Quick ask, the palette and the chat search */
   --radius-full: 9999px; /* avatars, toggles, counters */
+  --radius-panel: 8px; /* the panels on the window frame (HAL-20674) */
 
   /* ---------------------------------------------------------------- Elevation (shadow-1/2/3) */
   /* 1: a card lifted from its surface (approval cards at rest, others on hover). 2: menus, popovers,
@@ -284,6 +285,8 @@
   --ease-standard: cubic-bezier(0.2, 0, 0, 1); /* things that move on screen */
   --ease-enter: cubic-bezier(0.22, 1, 0.36, 1); /* things that appear */
   --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* things that leave */
+  --ease-press: var(--ease-standard); /* a pressed button shrinking, 120ms: WhatsApp's curve */
+  --ease-menu: cubic-bezier(0.17, 0.17, 0, 1); /* a menu opening, 300ms */
   --default-transition-duration: 120ms; /* --duration-fast, so `transition-colors` is enough */
   --default-transition-timing-function: var(--ease-standard);
 
