@@ -37,17 +37,18 @@ export const settle = () => act(async () => await new Promise((resolve) => setTi
 /** The host answers the newest `msg-read` of `what` with `items`. */
 export function answer(
   scene: GatewayScene,
-  what: MessagingList | "messages",
+  what: MessagingList | "messages" | "reactions",
   items: readonly unknown[],
 ) {
   const read = scene.tunnel.sentOf("msg-read").findLast((each) => each.what === what);
   scene.host({ type: "msg-data", replyTo: read?.id ?? "", what, items });
 }
 
-/** A Messenger tab over a connected version 4 host, before any read is answered. */
-export function renderMessenger() {
+/** A Messenger tab over a connected host of `version` (the newest), before any read is answered. */
+export function renderMessenger(version?: number) {
   const scene = new GatewayScene();
-  scene.connect();
+  if (version === undefined) scene.connect();
+  else scene.connectAt(version);
   // The links the tab asked to open, in order.
   const opened: string[] = [];
   const onOpenLink = (link: string) => {
@@ -64,9 +65,12 @@ export function renderMessenger() {
   return { scene, opened };
 }
 
-/** A Messenger tab with `channel` and `direct` listed and `title`'s chat open on `messages`. */
-export async function openChat(title: string, messages: readonly Message[] = []) {
-  const { scene, opened } = renderMessenger();
+/**
+ * A Messenger tab with `channel` and `direct` listed and `title`'s chat open on `messages`, over a
+ * host of `version` (the newest).
+ */
+export async function openChat(title: string, messages: readonly Message[] = [], version?: number) {
+  const { scene, opened } = renderMessenger(version);
   answer(scene, "conversations", [channel, direct]);
   answer(scene, "agents", agents);
   await settle();

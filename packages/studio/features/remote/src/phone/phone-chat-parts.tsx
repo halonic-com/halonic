@@ -11,6 +11,8 @@ import { Fragment } from "react";
 import { messageParts, openChecked } from "./message-links.ts";
 import type { ChatAgents, SourceLabels } from "./phone-messenger.tsx";
 import { dayLabel, phoneMessengerWords as words } from "./phone-messenger-words.ts";
+import { Reactable } from "./phone-reactions.tsx";
+import type { PhoneReactions } from "./use-phone-reactions.ts";
 
 /** A channel has members; a direct chat has none. */
 export function isChannel(conversation: Conversation): boolean {
@@ -93,17 +95,22 @@ export function ChatHeader({
  * A chat's messages, oldest first, with a day line ("Today") before each day's first (p04a). The
  * person's own sit on the right in the kit's `surface-muted` box; a reply takes the full width
  * under its author's picture and name, which is also its heading for a screen reader, so in a
- * channel each says who wrote it.
+ * channel each says who wrote it. While the computer keeps reactions, each message shows its chips
+ * and a long-press on it calls `onLongPress`.
  */
 export function ChatLines({
   messages,
   agents,
   now,
+  reactions,
+  onLongPress,
   onOpenLink,
 }: {
   readonly messages: readonly Message[];
   readonly agents: ChatAgents;
   readonly now: Date;
+  readonly reactions: PhoneReactions | undefined;
+  readonly onLongPress: (message: Message) => void;
   readonly onOpenLink: (link: string) => void;
 }) {
   let day = "";
@@ -121,7 +128,18 @@ export function ChatLines({
               </li>
             ) : null}
             <li data-message-id={message.id}>
-              <Line message={message} agents={agents} onOpenLink={onOpenLink} />
+              {reactions === undefined ? (
+                <Line message={message} agents={agents} onOpenLink={onOpenLink} />
+              ) : (
+                <Reactable
+                  reactions={reactions.byMessage.get(message.id) ?? []}
+                  end={message.author.kind === "me"}
+                  onToggle={(emoji) => reactions.toggle(message.id, emoji)}
+                  onLongPress={() => onLongPress(message)}
+                >
+                  <Line message={message} agents={agents} onOpenLink={onOpenLink} />
+                </Reactable>
+              )}
             </li>
           </Fragment>
         );
@@ -147,7 +165,7 @@ function Line({
       </ChatMessage>
     );
   }
-  const name = author.kind === "agent" ? nameOf(agents, author.agent) : author.name;
+  const name = authorName(message, agents) ?? "";
   return (
     <ChatMessage from="reply" heading={name}>
       {/* The heading says the name to a screen reader, so this line is for the eye only. */}
@@ -160,6 +178,13 @@ function Line({
       </p>
     </ChatMessage>
   );
+}
+
+/** Who wrote a message, by name; undefined for the person's own. */
+export function authorName(message: Message, agents: ChatAgents): string | undefined {
+  const { author } = message;
+  if (author.kind === "me") return undefined;
+  return author.kind === "agent" ? nameOf(agents, author.agent) : author.name;
 }
 
 /** A message's text, its links showing their full address (`messageParts`). */
