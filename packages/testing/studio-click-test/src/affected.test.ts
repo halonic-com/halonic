@@ -18,7 +18,14 @@ function idsRun(changed: readonly string[] | undefined): string[] {
 }
 
 const shortCheck = ["engine-answers"];
-const cardSteps = ["card-yes-no", "card-plan", "card-one-question"];
+const cardSteps = [
+  "card-yes-no",
+  "card-plan",
+  "card-one-question",
+  "card-checkbox",
+  "card-verdicts",
+  "card-suggested-tasks",
+];
 const everyStep = clickTestSteps.map((step) => step.id);
 
 verifies("studio-click-test.affected-steps", () => {

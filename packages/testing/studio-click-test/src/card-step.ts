@@ -9,13 +9,15 @@ import { seedNames } from "./test-paperclip.ts";
 import { screenText } from "./words.ts";
 
 /**
- * How long a surface gets to show a newly seeded card, and Paperclip to have its answer. The
- * runner's stock Paperclip turns board keys away on its events socket, so the host only polls:
- * every 2 minutes while the main window is in the background (`pollRates.down` in
- * `@halonicjs/host-paperclip-sync`), as it is after step 13 opens the focused apps' windows.
- * The wait covers one such poll and a margin.
+ * How long a surface gets to show a newly seeded card. In the click test the host gets no live
+ * events: the board proxy (`paperclip-board.ts`) forwards with `fetch`, which can't pass the
+ * events socket's upgrade, and the stock Paperclip turns board keys away there too. So the host
+ * only polls, every 2 minutes while no Studio window reports focus (`pollRates.down` in
+ * `@halonicjs/host-paperclip-sync`; all windows share one focus flag), as after step 13 opens
+ * the focused apps' windows. The wait covers one such poll and a margin.
  */
 const cardWaitMs = 150_000;
+/** How many times, 2 s apart, Paperclip is read for an answer the surface sent. */
 const answerPolls = 15;
 /** How long an open card's Back to Inbox gets to show; without an open card there's none. */
 const backWaitMs = 2_000;
@@ -159,18 +161,41 @@ async function answerOnPaperclip(
   return { passed: false, code: "WRONG_ANSWER", note: differs };
 }
 
-/** A check that Paperclip has the copy in `status`, with any `result` fields in `fields`. */
+/**
+ * A check that Paperclip has the copy in `status`, with `result` holding `fields`. Only what
+ * `fields` names counts: Paperclip adds its own, such as when each item verdict was given.
+ */
 export function answeredAs(
   status: string,
   fields: Readonly<Record<string, unknown>> = {},
 ): AnswerCheck {
   return (record) => {
-    const wanted = JSON.stringify({ status, ...fields });
-    const result = typeof record.result === "object" && record.result !== null ? record.result : {};
-    const picked = Object.fromEntries(
-      Object.keys(fields).map((key) => [key, Reflect.get(result, key)]),
-    );
-    const found = JSON.stringify({ status: record.status, ...picked });
-    return found === wanted ? undefined : `Paperclip has ${found}, not ${wanted}.`;
+    const found = { status: record.status, ...asObject(record.result) };
+    if (holds(found, { status, ...fields })) return undefined;
+    return `Paperclip has ${JSON.stringify(found)}, not ${JSON.stringify({ status, ...fields })}.`;
   };
+}
+
+function asObject(value: unknown): Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null ? { ...value } : {};
+}
+
+/**
+ * Whether `found` holds `wanted`: an object every field `wanted` names, a list one element for
+ * each of `wanted`'s in any order (Paperclip doesn't promise one), anything else the same value.
+ */
+export function holds(found: unknown, wanted: unknown): boolean {
+  if (Array.isArray(wanted)) {
+    if (!Array.isArray(found) || found.length !== wanted.length) return false;
+    const left = [...found];
+    return wanted.every((each) => {
+      const at = left.findIndex((candidate) => holds(candidate, each));
+      return at >= 0 && left.splice(at, 1).length === 1;
+    });
+  }
+  if (typeof wanted === "object" && wanted !== null) {
+    if (typeof found !== "object" || found === null) return false;
+    return Object.entries(wanted).every(([key, value]) => holds(Reflect.get(found, key), value));
+  }
+  return Object.is(found, wanted);
 }

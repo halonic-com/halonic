@@ -62,6 +62,8 @@ export const buttonLabels = {
   // A yes/no card's buttons, Paperclip's own words when the card names none (HAL-19002).
   accept: { text: "Accept", file: "packages/adapters/paperclip-client/src/cards.ts" },
   reject: { text: "Reject", file: "packages/adapters/paperclip-client/src/approval-words.ts" },
+  // A card of questions, checkboxes, item verdicts or suggested tasks sends with this.
+  submit: { text: "Submit", file: "packages/studio/kit/src/question-form/question-form.tsx" },
 } as const;
 
 const welcomeFile = "packages/studio/shell/src/welcome/welcome.tsx";

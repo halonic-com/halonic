@@ -12,11 +12,18 @@ export const surfaces: readonly Surface[] = ["Inbox", "Messenger"];
 export interface CardFixture {
   /** A short name, used in the cards' idempotency keys and the Inbox copy's task. */
   readonly key: string;
-  readonly kind: "request_confirmation" | "ask_user_questions";
+  readonly kind:
+    | "request_confirmation"
+    | "ask_user_questions"
+    | "request_checkbox_confirmation"
+    | "request_item_verdicts"
+    | "suggest_tasks";
   /** The card's prompt without its surface; the Inbox titles the card's row with it. */
   readonly prompt: string;
   /** The card's payload for one copy's prompt. */
   readonly payload: (prompt: string) => Readonly<Record<string, unknown>>;
+  /** The prompt goes in the card's `title`: a suggested-task card's payload has no prompt. */
+  readonly promptAsTitle?: true;
   /** A document the card is bound to, written on the card's task first (a plan approval). */
   readonly document?: { readonly key: string; readonly body: string };
 }
@@ -61,6 +68,63 @@ export const oneQuestionCard: CardFixture = {
           { id: "green", label: "Green" },
         ],
       },
+    ],
+  }),
+};
+
+/**
+ * A checkbox confirmation that takes one or two of three picks. Paperclip refuses one whose
+ * default picks are fewer than `minSelected`; Halonic doesn't tick the defaults, so the
+ * steps' own picks are the whole answer.
+ */
+export const checkboxCard: CardFixture = {
+  key: "checkbox",
+  kind: "request_checkbox_confirmation",
+  prompt: "Where should the Acme launch go out?",
+  payload: (prompt) => ({
+    version: 1,
+    prompt,
+    options: [
+      { id: "email", label: "Email" },
+      { id: "blog", label: "Blog" },
+      { id: "social", label: "Social" },
+    ],
+    defaultSelectedOptionIds: ["email"],
+    minSelected: 1,
+    maxSelected: 2,
+  }),
+};
+
+/**
+ * An item verdict card with Approve, Reject and Defer per item. Reject needs a reason by
+ * Paperclip's default, so the step answers with Approve and Defer.
+ */
+export const verdictsCard: CardFixture = {
+  key: "verdicts",
+  kind: "request_item_verdicts",
+  prompt: "Review the Acme launch posts",
+  payload: (prompt) => ({
+    version: 1,
+    prompt,
+    items: [
+      { id: "teaser", label: "Teaser post" },
+      { id: "recap", label: "Recap post" },
+    ],
+    verdicts: ["approve", "reject", "defer"],
+  }),
+};
+
+/** Suggested tasks: two drafts, and the card's title is its prompt. */
+export const suggestedTasksCard: CardFixture = {
+  key: "suggested-tasks",
+  kind: "suggest_tasks",
+  prompt: "Follow-ups for the Acme launch",
+  promptAsTitle: true,
+  payload: () => ({
+    version: 1,
+    tasks: [
+      { clientKey: "press", title: "Acme: write the press note" },
+      { clientKey: "survey", title: "Acme: send the launch survey" },
     ],
   }),
 };
