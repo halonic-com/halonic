@@ -3,6 +3,7 @@
 - Task: HAL-20718
 - Approval: Liam signs this note for HAL-20718 (board rule: no reference app names in the code base), as agreed on HAL-20716. Fast-track.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:3xRYZdAY9JH2VhxlYYGMye6t4Wfttzg2GAhg7aI3qRgBV5lRqBpizwRevsBYnGLtoRrGVexrxbOaj2TfjeKPBg==
 
 ## What changes
 
