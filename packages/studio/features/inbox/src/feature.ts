@@ -5,7 +5,11 @@ import {
   RequesterPolicyService,
 } from "@halonicjs/studio-feature-action-steppers/api";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
-import { AgentMessagingService, actionStepsKey } from "@halonicjs/studio-services";
+import {
+  AgentConnectionsService,
+  AgentMessagingService,
+  actionStepsKey,
+} from "@halonicjs/studio-services";
 import { defineFeature } from "@halonicjs/studio-shell";
 import {
   AgentNotifierService,
@@ -56,6 +60,8 @@ export const inboxFeature = defineFeature({
     // What an agent's action request is checked against when it opens (inbox.agent-action-items).
     ActionCatalogService,
     RequesterPolicyService,
+    // The connected Paperclips, the only hosts a Paperclip request runs on (action-steppers.paperclip-host).
+    AgentConnectionsService,
     // What runs its steps with the user's sign-in, in the desktop app (inbox.agent-action-run).
     actionStepsKey,
     // The customer's account page, for **See usage** on a run at a plan limit (inbox.plan-limit-card).

@@ -14,7 +14,7 @@ const parameters = { host: "paperclip.acme.example", company: "ACME", name: "ANT
 
 verifies("action-catalog.paperclip-set-secret", () => {
   describe("paperclip.set-secret@1", () => {
-    it("is one admin guided step on the connection's own Secrets page, with no paste-back and no input", () => {
+    it("is one admin guided step on the Secrets page of the host it names, with no paste-back and no input", () => {
       expect(definition.risk).toBe("admin");
       expect(definition.steps.map((step) => step.kind)).toEqual(["guided"]);
       expect(guidedAddresses(definition, parameters)).toEqual([

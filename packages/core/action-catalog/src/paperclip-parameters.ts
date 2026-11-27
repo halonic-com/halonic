@@ -3,7 +3,11 @@ import type { TextParameter } from "@halonicjs/action-steppers";
 // Shared by the Paperclip Secrets definitions. It sits next to src/paperclip/,
 // not in it, because every file in a service folder is a definition.
 
-/** A Paperclip's host name, as the user connected it. Pages open only there, over `https`. */
+/**
+ * A Paperclip's host name; pages open there, over `https`. The pattern alone accepts any host:
+ * Studio's review runs the request only when it is a Paperclip the user connected
+ * (`action-steppers.paperclip-host`).
+ */
 export const paperclipHost: TextParameter = {
   kind: "text",
   pattern: /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?){1,8}$/,

@@ -131,7 +131,7 @@ export const catalogEntries = {
   },
   "paperclip/bind-secret": {
     definition: paperclipBindSecret,
-    sourceHash: "e1fa38cf89c95dea2125d7104121abdf1e4f1fdd92c47aba070e08ba7e874eca",
+    sourceHash: "45adeb5c5c1af80672b423019edf09ee6abae8476722c658afe1d5c290169ce5",
   },
   "paperclip/connect-and-test": {
     definition: paperclipConnectAndTest,
@@ -139,7 +139,7 @@ export const catalogEntries = {
   },
   "paperclip/set-secret": {
     definition: paperclipSetSecret,
-    sourceHash: "2a864de1ee87ffb653fbfe27a95ab942e84b506ff1e863e3ebffa61398ce6999",
+    sourceHash: "f851db9f1e9020118366c65b39f1bbdcd80777b5ac5889b9a054e34e68fc315c",
   },
   "play/fill-data-safety": {
     definition: playFillDataSafety,

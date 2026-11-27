@@ -7,8 +7,13 @@
  * keeps a sign-in's first three parts only once its key is kept.
  */
 import type { SignInPhase } from "@halonicjs/action-steppers";
-import type { ServiceSignIn, SignInConnectionRef, SignInRevoke } from "@halonicjs/ports";
-import type { ServiceSignInView, StepOutcome } from "../stepper-view.ts";
+import type {
+  InboxActionRequest,
+  ServiceSignIn,
+  SignInConnectionRef,
+  SignInRevoke,
+} from "@halonicjs/ports";
+import type { ServiceSignInView, StepOutcome, StepperView } from "../stepper-view.ts";
 
 /** What a stepper needs to run a sign-in: Studio's `ServiceSignIn` and the shell's way to open a page. */
 export interface StepperSignIn {
@@ -237,4 +242,30 @@ export class SignInRun {
     this.#failed = { phase, message };
     return [];
   }
+}
+
+/** Whether the request's definition has `sign-in` steps. */
+export function hasSignIn(view: StepperView): boolean {
+  return view.steps.some((step) => step.action.kind === "sign-in");
+}
+
+/**
+ * The run of a request's sign-in steps, from its checked parameters: the connection file's name,
+ * the host the request names, and whether it is a test sign-in. `undefined` when the request has
+ * no sign-in steps or this Studio can't run them.
+ */
+export function signInRunOf(
+  view: StepperView,
+  action: InboxActionRequest,
+  serviceSignIn: StepperSignIn | undefined,
+  now: () => Date,
+): SignInRun | undefined {
+  if (serviceSignIn === undefined || !hasSignIn(view)) return undefined;
+  const { parameters } = action;
+  const ref = {
+    service: "paperclip",
+    connection: String(parameters["connection"]),
+    host: String(parameters["host"]),
+  } as const;
+  return new SignInRun(serviceSignIn, ref, parameters["mode"] === "test", now);
 }

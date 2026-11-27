@@ -145,3 +145,19 @@ export function openRow(
 export function currentRow(key: string | undefined): { current?: string } {
   return key === undefined ? {} : { current: key };
 }
+
+/** The Library's command that opens New connector; the Inbox can't import the Library, so it runs it by id. */
+const newConnectorCommand = "library.new-connector";
+const openBudgetCommand = "workspace.open-budget";
+
+/**
+ * **New connector** and **Change budget**, which run other features' commands by id, or neither
+ * where the window can't run commands.
+ */
+export function commandButtons(runCommand: ((commandId: string) => boolean) | undefined) {
+  if (runCommand === undefined) return {};
+  return {
+    openNewConnector: () => runCommand(newConnectorCommand),
+    openBudget: () => runCommand(openBudgetCommand),
+  };
+}

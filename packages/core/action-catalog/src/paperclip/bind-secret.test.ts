@@ -15,7 +15,7 @@ const parameters = {
 
 verifies("action-catalog.paperclip-bind-secret", () => {
   describe("paperclip.bind-secret@1", () => {
-    it("is one irreversible guided step on the connection's own Secrets page, with no paste-back and no input", () => {
+    it("is one irreversible guided step on the Secrets page of the host it names, with no paste-back and no input", () => {
       // Binding hands the agent the value, which removing access can't take back.
       expect(definition.risk).toBe("irreversible");
       expect(definition.steps.map((step) => step.kind)).toEqual(["guided"]);
