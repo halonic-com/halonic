@@ -19,7 +19,7 @@ verifies("kit.chat-message", () => {
     expect(row.className).toContain("justify-end");
     const box = row.querySelector("p") as HTMLElement;
     expect(box.textContent).toBe("Sort this mail\nPlease");
-    expect(box.className).toContain("bg-accent-soft");
+    expect(box.className).toContain("bg-surface-own-message");
     expect(box.className).toContain("whitespace-pre-wrap");
     expect(box.className).toContain("wrap-break-word");
   });

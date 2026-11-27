@@ -12,12 +12,16 @@ keyboard handling stay the same.
   15px from the picture to the title and its actions 16px apart.
 - `kit.chat-message-corner`: the person's message is the new design's bubble: 7.5px corners
   instead of `rounded-lg`, padding 6 / 7 / 8 / 9px, a one-pixel shadow, at most 65% wide.
-- `kit.chat-message`: that bubble is `accent-soft` instead of `surface-muted`.
+- `kit.chat-message`: that bubble takes the new own-message colour, `surface-own-message`
+  (`#dbe7fe` / `#143170`), instead of `surface-muted`.
 - `kit.prompt-look`: the `ChatComposer` leaves the prompt look's 24px corners and grey edge for
   the new design's message box: 26px corners, at least 52px tall, the raised surface, an edge
-  that shows only on focus or an error, and the composer shadow. A prompt `Input` and the
+  that shows only on focus or an error (and the 3:1 edge under More contrast), and the composer
+  shadow, deepening to the prompt's focus shadow on focus. A prompt `Input` and the
   `PaletteBox` keep the prompt look.
 
+The values are new theme tokens (`rounded-bubble`, `rounded-composer`, `min-h-composer`,
+`shadow-header`, `shadow-bubble`, `shadow-composer`, `text-chat-title`, `surface-own-message`).
 The tests that named the old classes now name the new ones; none is skipped or removed.
 
 ## Why

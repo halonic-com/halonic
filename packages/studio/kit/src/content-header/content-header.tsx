@@ -31,11 +31,11 @@ export interface ContentHeaderProps {
 export function ContentHeader({ picture, title, line, actions }: ContentHeaderProps) {
   return (
     // 64px tall with a soft shadow instead of a line, the new design's chat header (HAL-20728).
-    <header className="relative z-10 flex h-16 shrink-0 items-center gap-4 bg-surface px-4 shadow-[0_1px_4px_0_rgb(10_10_10/0.12)]">
+    <header className="relative z-(--layer-sticky) flex h-16 shrink-0 items-center gap-4 bg-surface px-4 shadow-header">
       {picture}
       {/* 16px apart like the actions, less 1px: the recipe's 15px from picture to name. */}
       <div className="-ml-px flex min-w-0 flex-1 flex-col">
-        <h2 className="truncate text-input-touch leading-[21px]">
+        <h2 className="truncate text-chat-title">
           <bdi>{title}</bdi>
         </h2>
         {line === undefined ? null : <p className="truncate text-small text-fg-muted">{line}</p>}

@@ -43,7 +43,7 @@ export interface ChatComposerProps {
 const MAX_ROWS = 8;
 
 /**
- * A chat's message box, in the prompt look (HAL-19142), with its round Send inside it at the
+ * A chat's message box, the new design's floating pill (HAL-20728, `kit.prompt-look`), with its round Send inside it at the
  * right, and the line under it. Send is grey while there's nothing to send and blue once there is. Enter sends and Shift Enter
  * adds a line; neither does anything while an input method is composing (the TextArea's rule).
  * Enter sends nothing while a reply is being written, while Send waits, or when the message is

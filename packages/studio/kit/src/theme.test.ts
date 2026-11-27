@@ -370,6 +370,8 @@ describe("theme.css scales", () => {
       "--radius-prompt",
       "--radius-full",
       "--radius-panel",
+      "--radius-bubble",
+      "--radius-composer",
     ]);
     expect(namesStartingWith(themeTokens, "--spacing")).toEqual([
       "--spacing",
@@ -386,6 +388,7 @@ describe("theme.css scales", () => {
       "--spacing-phone-bar",
       "--spacing-nav-pill",
       "--spacing-rail",
+      "--spacing-composer",
       "--spacing-row",
       "--spacing-qr-tile",
       "--spacing-input-short",
@@ -398,6 +401,9 @@ describe("theme.css scales", () => {
       "--shadow-3",
       "--shadow-prompt",
       "--shadow-prompt-focus",
+      "--shadow-header",
+      "--shadow-bubble",
+      "--shadow-composer",
     ]);
     expect(namesStartingWith(themeTokens, "--animate-")).toEqual([
       "--animate-spin",

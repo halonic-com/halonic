@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-The chat header, your messages and the message box take the new design's look: a taller header with a soft shadow, your messages in light blue bubbles, and a rounder floating message box.
+The chat header has a soft shadow instead of a line, your messages sit in blue bubbles, and the message box is a rounder floating pill.

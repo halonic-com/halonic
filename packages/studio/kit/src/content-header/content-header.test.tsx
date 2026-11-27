@@ -21,7 +21,7 @@ verifies("kit.content-header", () => {
     const heading = header.querySelector("h2") as HTMLElement;
 
     expect(header.className.split(" ")).toEqual(
-      expect.arrayContaining(["h-16", "shadow-[0_1px_4px_0_rgb(10_10_10/0.12)]"]),
+      expect.arrayContaining(["h-16", "gap-4", "shadow-header"]),
     );
     expect(header.className.split(" ")).not.toContain("border-b");
     expect(header.firstElementChild?.className.split(" ")).toContain("size-10");

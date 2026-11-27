@@ -118,12 +118,13 @@ export function fieldBoxClasses(
 
 /**
  * `field`, the default, is a form field's clear edge. `prompt` is only for the boxes where you type
- * to an agent (the chat composer, the chat search): the board's rounder search-box look, with a
+ * to an agent (Quick ask, the palette, the chat search): the board's rounder search-box look, with a
  * soft edge and shadow, so it reads as "start here" (HAL-19142).
  */
 export type FieldLook = "field" | "prompt";
 
-const composerShadow = "shadow-[0_1px_6px_0_rgb(0_0_0/0.12)]";
+// Its edge is see-through, so under More contrast it takes the 3:1 edge every other edge has.
+const composerEdge = "border-transparent contrast-more:border-border-control";
 
 const promptStateClasses: Record<FieldBoxState, string> = {
   default: "border-border-prompt bg-surface-prompt shadow-prompt focus-prompt",
@@ -144,9 +145,9 @@ export function promptBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "c
 // The chat's message box in the new design (HAL-20728): the floating pill of Noah's recipe, with
 // an edge that shows only on focus or an error and the composer's lighter shadow.
 const composerStateClasses: Record<FieldBoxState, string> = {
-  default: `border-transparent bg-surface-raised ${composerShadow} focus-prompt`,
-  invalid: `border-danger bg-surface-raised ${composerShadow} focus-field-danger`,
-  "read-only": `border-transparent bg-surface-subtle ${composerShadow} focus-prompt`,
+  default: `${composerEdge} bg-surface-raised shadow-composer focus-prompt`,
+  invalid: "border-danger bg-surface-raised shadow-composer focus-field-danger",
+  "read-only": `${composerEdge} bg-surface-subtle shadow-composer focus-prompt`,
   disabled: "cursor-not-allowed border-transparent bg-surface-subtle text-fg-disabled",
 };
 
@@ -155,7 +156,7 @@ const composerStateClasses: Record<FieldBoxState, string> = {
  * raised surface, its 1px edge see-through until focus or an error (`kit.prompt-look`).
  */
 export function composerBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "center"): string {
-  const box = "flex w-full gap-2 min-h-[52px] rounded-[26px] border transition";
+  const box = "flex w-full gap-2 min-h-composer rounded-composer border transition";
   return `${box} ${alignClasses[align]} ${composerStateClasses[state]}`;
 }
 

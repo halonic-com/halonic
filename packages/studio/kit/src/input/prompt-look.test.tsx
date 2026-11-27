@@ -36,14 +36,15 @@ function frameOf(container: HTMLElement): string[] {
 }
 
 verifies("kit.prompt-look", () => {
-  it("draws the composer as the new design's pill, its edge see-through until focus", () => {
+  it("draws the composer as the new design's pill, its edge see-through but 3:1 under More contrast", () => {
     const frame = frameOf(render(composer()).container);
     for (const name of [
-      "rounded-[26px]",
-      "min-h-[52px]",
+      "rounded-composer",
+      "min-h-composer",
       "border-transparent",
+      "contrast-more:border-border-control",
       "bg-surface-raised",
-      "shadow-[0_1px_6px_0_rgb(0_0_0/0.12)]",
+      "shadow-composer",
       "focus-prompt",
     ]) {
       expect(frame).toContain(name);
