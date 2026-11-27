@@ -3,7 +3,6 @@
 - Task: HAL-20604
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20604
 - Kind: internal
-- Signature:
 
 ## What changes
 
