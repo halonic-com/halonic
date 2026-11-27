@@ -47,8 +47,12 @@ export {
 export type { FrameContributions, FramePoints } from "./points/frame-points.ts";
 export {
   type HomeCardContribution,
+  type HomeContentPaneProps,
+  type HomeListColumnProps,
   type HomePoint,
   type HomeSection,
+  type HomeSlotProps,
+  type HomeViewContribution,
   homeSections,
   homeSectionTitles,
 } from "./points/home.ts";

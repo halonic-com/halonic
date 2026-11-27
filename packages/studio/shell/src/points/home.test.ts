@@ -81,3 +81,40 @@ verifies("shell.home-sections", () => {
     );
   });
 });
+
+verifies("shell.home-view", () => {
+  const load = async () => ({ Column: () => "column", Pane: () => "pane" });
+  const view = {
+    listColumn: { view: "Column", load },
+    contentPane: { view: "Pane", load },
+  };
+
+  it("has no view until a feature sets one", () => {
+    expect(createShell({ features: [] }).contributions.home.view()).toBeUndefined();
+  });
+
+  it("keeps the two slots one feature set, with that feature's id", () => {
+    const shell = createShell({
+      features: [feature("home", (studio) => studio.home.setView(view))],
+    });
+    expect(shell.contributions.home.view()).toMatchObject({
+      listColumn: { view: "Column" },
+      contentPane: { view: "Pane" },
+      featureId: "home",
+    });
+  });
+
+  it("refuses a second view and names both features", () => {
+    const create = () =>
+      createShell({
+        features: [
+          feature("home", (studio) => studio.home.setView(view)),
+          feature("dashboard", (studio) => studio.home.setView(view)),
+        ],
+      });
+    expect(create).toThrow(ShellError);
+    expect(create).toThrow(
+      `home.setView: Home's view is set by both "home" and "dashboard". Home has one view; add a card with home.addCard instead.`,
+    );
+  });
+});

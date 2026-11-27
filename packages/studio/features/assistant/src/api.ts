@@ -24,6 +24,7 @@ import {
   serviceKey,
   type WorkspaceContext,
 } from "@halonicjs/studio-shell";
+import type { ReactNode } from "react";
 
 /**
  * Who a chat talks to (flow 5.3): `build`, the Build assistant with its authoring tools, or
@@ -329,3 +330,23 @@ export interface ItemChat {
 
 /** The chat on an item's page, provided by the Assistant feature while the app gives it a host. */
 export const ItemChatService: ServiceKey<ItemChat> = serviceKey<ItemChat>("assistant.item-chat");
+
+/**
+ * The AI chats for the Home feature's list column (`assistant.home.chats`): Build chats only, since
+ * an agent's chat shows only in Messenger. Home uses the Assistant only through this service.
+ */
+export interface AiChats {
+  /** The Build chats with a message, the newest message first. A draft isn't listed. */
+  list(context: WorkspaceContext): Promise<readonly ChatSummary[]>;
+  /** Calls `listener` after each change to the chats. Returns the function that stops it. */
+  subscribe(context: WorkspaceContext, listener: () => void): () => void;
+  /** Starts a new Build chat, or takes the empty draft there is, and resolves to its id. */
+  newChat(context: WorkspaceContext): Promise<string>;
+  /** Takes the chat out of the side panel, so one chat shows in one place at a time. */
+  open(chatId: string, context: WorkspaceContext): void;
+  /** Draws the chat `chatId` as its tab does, for Home's content pane. */
+  render(chatId: string, context: WorkspaceContext): ReactNode;
+}
+
+/** Home's AI chats, provided by the Assistant feature while the app gives it a host. */
+export const AiChatsService: ServiceKey<AiChats> = serviceKey<AiChats>("assistant.ai-chats");

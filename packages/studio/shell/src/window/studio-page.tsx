@@ -1,5 +1,6 @@
 import type { Announcer } from "../announcer/announcer.ts";
 import { HomePage } from "../home/home-page.tsx";
+import { HomeView } from "../home/home-view.tsx";
 import { BackLinkSlotProvider } from "../page/back-link-slot.tsx";
 import { PageBackLink } from "../page/page-back-link.tsx";
 import type { PhonePageMemory } from "../phone/page-memory.tsx";
@@ -69,7 +70,19 @@ export function StudioPage({
 }: StudioPageProps) {
   const { contributions } = shell;
   if (location.key === homeLocation.key) {
-    return <HomePage cards={contributions.home.cards()} contextFor={contextFor} />;
+    const sections = <HomePage cards={contributions.home.cards()} contextFor={contextFor} />;
+    const view = contributions.home.view();
+    if (view === undefined) {
+      return sections;
+    }
+    return (
+      <HomeView
+        view={view}
+        context={contextFor(view.featureId)}
+        sections={sections}
+        name={location.title}
+      />
+    );
   }
   const words = searchPageWords(location);
   if (words !== undefined) {
