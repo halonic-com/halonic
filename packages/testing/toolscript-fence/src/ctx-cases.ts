@@ -101,9 +101,13 @@ export function ctxCases(make: MakeToolScriptIsolate): void {
   });
 }
 
-/** `ctx.fail` ends the run at once, awaited or not. */
+/** `ctx.fail` is frozen and ends the run at once, awaited or not. */
 function failCases(make: MakeToolScriptIsolate): void {
   const it = fenceIt(make);
+  it("gives a frozen ctx.fail", async () => {
+    const result = await runScript(make, script("return Object.isFrozen(ctx.fail);"));
+    expect(result.ok && result.output).toBe(true);
+  });
   it("ends the run at ctx.fail without waiting for the script to return", async () => {
     const code = script(`
       try { ctx.fail("nothing to copy"); } catch {}
