@@ -55,15 +55,15 @@ function WorkingFolder({ folder, save }: WorkingFolderProps) {
     queueMicrotask(() => changeButton.current?.focus());
   };
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h2 id={headingId} className="text-body-strong text-fg">
+    <section aria-labelledby={headingId} className="flex flex-col gap-1">
+      <h2 id={headingId} className="text-caption text-fg-muted">
         {words.workingFolder}
       </h2>
       {editing ? (
         <FolderBox folder={folder} save={save} close={close} />
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <code className="text-body text-fg">{folder}</code>
+          <code className="font-mono text-code text-fg">{folder}</code>
           <Button
             ref={changeButton}
             variant="secondary"
@@ -132,6 +132,7 @@ function FolderBox({ folder, save, close }: FolderBoxProps) {
       <Input
         ref={box}
         size="sm"
+        mono
         aria-label={words.workingFolder}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
@@ -164,8 +165,8 @@ function AllowedSites({ sites, save }: AllowedSitesProps) {
     if (!saved && mine === newestChange.current) setShown(sites);
   };
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2">
-      <h2 id={headingId} className="text-body-strong text-fg">
+    <section aria-labelledby={headingId} className="flex flex-col gap-1">
+      <h2 id={headingId} className="text-caption text-fg-muted">
         {words.allowedSites}
       </h2>
       <OptionChips

@@ -83,6 +83,25 @@ verifies("agents.configuration.sandbox-fields", () => {
     expect(chipsOf(page)).toEqual([]);
   });
 
+  it("labels both fields like the page's other labels and shows the folder as code", async () => {
+    const page = await openHarness(hostWith({ workingFolder: "files/work/sorter" }));
+    const headings = [...page.querySelectorAll("h2")].filter((heading) =>
+      ["Working folder", "Allowed sites"].includes(heading.textContent ?? ""),
+    );
+    expect(headings).toHaveLength(2);
+    for (const heading of headings) {
+      expect(heading.classList).toContain("text-caption");
+      expect(heading.classList).toContain("text-fg-muted");
+    }
+    const folder = [...page.querySelectorAll("code")].find(
+      (code) => code.textContent === "files/work/sorter",
+    );
+    expect(folder?.classList).toContain("font-mono");
+    expect(folder?.classList).toContain("text-code");
+    await act(async () => buttonNamed(page, "Change…")?.click());
+    expect(named(page, "Working folder")?.classList).toContain("font-mono");
+  });
+
   it("saves a changed working folder through the save model and puts Change… back", async () => {
     const host = hostWith({ workingFolder: "files/work/sorter" });
     const page = await openHarness(host);
