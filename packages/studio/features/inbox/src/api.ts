@@ -5,7 +5,8 @@
  */
 import type { Notifier } from "@halonicjs/studio-services";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
-import type { Inbox, InboxRuns } from "./inbox.ts";
+import type { Inbox } from "./inbox.ts";
+import type { InboxRuns } from "./inbox-runs.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
 import type { ProposalDecisions } from "./proposal-decisions.ts";
 import type { InboxRequests } from "./request/inbox-requests.ts";
@@ -16,7 +17,7 @@ export { clockTime } from "@halonicjs/studio-kit";
 export { AnswerElsewhere } from "./answer-elsewhere.ts";
 export type { AnsweredViewProps, InboxAnsweredView } from "./answered-view.ts";
 export { type AfterAnswer, type InboxDecisions, inboxDecisions } from "./decide.ts";
-export type { Inbox, InboxRuns, InboxState } from "./inbox.ts";
+export type { Inbox, InboxState } from "./inbox.ts";
 export { inboxSignal } from "./inbox-count.ts";
 export {
   type ApprovalItem,
@@ -28,6 +29,7 @@ export {
   setupKey,
   type WaitItem,
 } from "./inbox-items.ts";
+export type { InboxRuns } from "./inbox-runs.ts";
 export { ShownRuns } from "./needs-you-news.ts";
 export {
   type BudgetNoticeFacts,

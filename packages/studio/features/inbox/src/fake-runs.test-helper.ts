@@ -1,6 +1,6 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { ServiceKey, ServiceTarget } from "@halonicjs/studio-shell";
-import type { InboxRuns } from "./inbox.ts";
+import type { InboxRuns } from "./inbox-runs.ts";
 import { waitingRun } from "./test-runs.test-helper.ts";
 
 /** Runs whose waiting list and failures a test sets. */
