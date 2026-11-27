@@ -3,7 +3,6 @@
 - Task: HAL-20499
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20499 (the board chose option B on its card, 27 Nov 2026, 09:41 CET)
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TAxarsooFN0n/63Sb9vjjNa2Iwl7GpiRWHCPE+8mcUhK9ZRkPh6YqY9X7Y6vXd2K1fDiJKO7+08zkay9I3xfDA==
 
 ## What changes
 
@@ -20,7 +19,9 @@
   start screen's glow) keep the kit's blue and purple, whatever an earlier
   version stored. One example is added.
 
-Deleted with the setting: `frame-colours-field.test.tsx` (its field is gone),
+Deleted with the setting: `frame-colours-field.test.tsx` (its field is gone,
+and with it the field's failed-save test, so `settings.failed-save` has one test
+and three `expect` calls fewer),
 the frame-colours tests in `apply-appearance.test.ts`, and the halo-start and
 `mixOver` tests in `frame-colour.test.ts` (that code is gone). New tests: the
 desktop frame draws `bg-app-frame` and not `bg-halo-frame`, and stored frame
@@ -41,6 +42,7 @@ the card).
 - settings.appearance-frame-colours
 - settings.appearance-own-colours
 - settings.appearance-section
+- settings.failed-save
 - packages/studio/features/settings/src/appearance/frame-colours-field.test.tsx
 - packages/studio/features/settings/src/appearance/apply-appearance.test.ts
 - apps/studio/src/studio/frame-colour.test.ts
