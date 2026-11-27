@@ -1,8 +1,16 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { drawRow, type FakeStudio, fakeStudio } from "../fake-studio.test-helper.ts";
+import { drawRow, drawStyles, type FakeStudio, fakeStudio } from "../fake-studio.test-helper.ts";
 import { seedNames } from "../test-paperclip.ts";
-import { agentChatRow, agentPictureIn, messengerSend, openRowFillOf } from "./messenger-send.ts";
+import { composerBoxOf, conversationLook } from "./conversation-look.ts";
+import {
+  agentChatHeader,
+  agentChatRow,
+  agentComposer,
+  agentPictureIn,
+  messengerSend,
+  openRowFillOf,
+} from "./messenger-send.ts";
 
 /** The open row's muted fill, as the app draws it in light. */
 const rowFill = "rgb(236, 236, 240)";
@@ -25,6 +33,8 @@ function studioWithOpenRow(tileFill: string, shown = true): FakeStudio {
   });
   for (const xpath of Object.values(agentPictureIn)) studio.elements.set(xpath, 1);
   drawRow(studio, { row: openRowFillOf.row, picture: openRowFillOf.tile });
+  drawStyles(studio, agentChatHeader, conversationLook.header);
+  drawStyles(studio, composerBoxOf(agentComposer), conversationLook.composer);
   if (shown) studio.elements.set(agentChatRow, 1);
   studio.backgrounds.set(openRowFillOf.row, rowFill);
   studio.backgrounds.set(openRowFillOf.tile, tileFill);

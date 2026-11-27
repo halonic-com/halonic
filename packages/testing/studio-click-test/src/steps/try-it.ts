@@ -2,6 +2,7 @@ import type { Step, StepContext, StepOutcome } from "../runner.ts";
 import { clickWhenShown, lastWords, pollEveryMs, waitForText } from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { buttonLabels, errorCodeIn, screenText } from "../words.ts";
+import { ownBubbleLook } from "./conversation-look.ts";
 import { probeMessage } from "./engine-answers.ts";
 import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 
@@ -20,12 +21,18 @@ export const writerBox = `//textarea[@aria-label='${screenText.messageTo.text}${
  * Step 20 (HAL-18869): Writer's Try it chat comes back. Runs after Close workspace and the
  * Settings steps, which open the demo again, then goes to the Agents list (an 800 px window folds
  * the tabs into a menu, so there's no tab to close; run 45705871308), opens Writer, and passes
- * once the chat shows step 1's message again, read from the saved chats.
+ * once the chat shows step 1's message again, read from the saved chats, in the person's bubble
+ * (HAL-20763).
  */
 export const chatComesBack: Step = {
   id: "try-it-saved",
   title: "Writer's Try it chat comes back after leaving Writer's page",
-  requirements: ["agents.chat.saved", "agents.chat.first-load"],
+  requirements: [
+    "agents.chat.saved",
+    "agents.chat.first-load",
+    "kit.chat-message",
+    "kit.chat-message-corner",
+  ],
   needs: ["engine-answers"],
   run: async (context) => {
     const workspace = await onWorkspaceWithoutSettings(context);
@@ -39,7 +46,7 @@ export const chatComesBack: Step = {
     const back = await waitForText(context, 30_000, (text) =>
       text.includes(probeMessage) ? true : undefined,
     );
-    if (back.value === true) return { passed: true };
+    if (back.value === true) return await ownBubbleLook(context, probeMessage);
     const code = errorCodeIn(back.text) ?? "NOT_SAVED";
     return { passed: false, code, note: `No "${probeMessage}". Screen: ${lastWords(back.text)}` };
   },

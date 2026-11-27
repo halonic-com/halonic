@@ -213,3 +213,13 @@ export function drawRowFit(
   studio.styles.set(`${parts.meta} text-overflow`, styles.metaOverflow ?? "ellipsis");
   studio.heights.set(parts.badge, styles.badgeHeight ?? "20px");
 }
+
+/** Draws an element at `xpath` with the computed values given, such as a part of a conversation. */
+export function drawStyles(
+  studio: FakeStudio,
+  xpath: string,
+  values: readonly { readonly property: string; readonly value: string }[],
+): void {
+  studio.elements.set(xpath, 1);
+  for (const { property, value } of values) studio.styles.set(`${xpath} ${property}`, value);
+}

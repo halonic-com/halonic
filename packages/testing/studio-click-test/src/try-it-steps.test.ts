@@ -1,6 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
+import { button, drawStyles, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
+import { conversationLook, ownBubbleWith } from "./steps/conversation-look.ts";
 import { probeMessage } from "./steps/engine-answers.ts";
 import { chatComesBack, keyHeld, keyMessage, writerBox } from "./steps/try-it.ts";
 import { clickTestSteps } from "./steps.ts";
@@ -34,6 +35,7 @@ function showAgents(studio: FakeStudio, saved: string) {
 function studioOnWriter(saved: string): FakeStudio {
   const studio = fakeStudio("");
   showWriter(studio, probeMessage, () => showAgents(studio, saved));
+  drawStyles(studio, ownBubbleWith(probeMessage), conversationLook.bubble);
   return studio;
 }
 
