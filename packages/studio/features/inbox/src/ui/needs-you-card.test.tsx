@@ -160,8 +160,8 @@ verifies("inbox.home", () => {
     );
     await settled();
     expect(rows(home)).toEqual([
-      "Approve this reply?Support reply · run r2 · a person step · Waiting 1\u00a0h",
-      "Approve this reply?Support reply · run r3 · a person step · Waiting 1\u00a0h",
+      "Approve this reply?Support reply · run r2 · a person stepWaiting 1\u00a0h",
+      "Approve this reply?Support reply · run r3 · a person stepWaiting 1\u00a0h",
     ]);
     // One line for both, so the run's short id that tells them apart (HAL-12528) shows here too.
     // The page also says each is new (`inbox.read-marks`); Home's Needs you doesn't.

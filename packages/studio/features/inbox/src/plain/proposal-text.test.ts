@@ -50,7 +50,7 @@ verifies("inbox.proposal-items", () => {
       title: proposalTitle(old),
       meta: "Finished 11 days ago",
     });
-    expect(lateCount([old], now)).toBe(0);
+    expect(lateCount([old], [], now)).toBe(0);
   });
 });
 

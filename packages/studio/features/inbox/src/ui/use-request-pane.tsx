@@ -1,5 +1,5 @@
 import { type RunsList, useRunEnd } from "@halonicjs/studio-feature-runs/api";
-import { Button, PlusIcon, type ToastMessage, useToastStore } from "@halonicjs/studio-kit";
+import { Button, PlusIcon, type ToastMessage, Tooltip, useToastStore } from "@halonicjs/studio-kit";
 import { detailsOf, type EngineWords, useCopyDetails } from "@halonicjs/studio-shell";
 import {
   type MutableRefObject,
@@ -272,9 +272,18 @@ export function useRequestPane(options: {
         New request
       </button>
     ) : (
-      <Button variant="secondary" size="sm" icon={<PlusIcon />} onClick={showForm}>
-        New request
-      </Button>
+      <Tooltip text="New request" isName>
+        {(linked) => (
+          <Button
+            {...linked}
+            variant="ghost"
+            size="sm"
+            icon={<PlusIcon />}
+            label="New request"
+            onClick={showForm}
+          />
+        )}
+      </Tooltip>
     ),
     form: phone ? null : (
       <RequestForm

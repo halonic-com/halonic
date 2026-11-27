@@ -9,7 +9,7 @@ import type {
   RequesterPolicy,
   StepperCatalog,
 } from "@halonicjs/studio-feature-action-steppers/api";
-import { Button, type ListRow, StatusChip, waitingFor } from "@halonicjs/studio-kit";
+import { Button, type ListRow, waitingFor } from "@halonicjs/studio-kit";
 import type { ActionSteps } from "@halonicjs/studio-services";
 import {
   type ReactNode,
@@ -31,13 +31,12 @@ import {
   agentItemAsker,
   agentItemKey,
   agentItemTitle,
-  isAgentItemLate,
   sourceDownLine,
 } from "../agent/agent-item-text.ts";
 import { agentItemShows, type ProjectFilter } from "../agent/project-filter.ts";
 import { ActionItemCard } from "./action-item-card.tsx";
 import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
-import { lineEndingInWait, wholeLine } from "./inbox-row.tsx";
+import { lineEndingInWait, WaitTime, wholeLine } from "./inbox-row.tsx";
 import type { ItemHeading } from "./item-header.tsx";
 import { ProjectTag } from "./project-tag.tsx";
 import { agentMark } from "./row-marks.tsx";
@@ -214,13 +213,11 @@ export function useAgentItems(
         const picture = agentMark(first, "header", pictureOf(first)).avatar;
         return { picture, title: agentItemTitle(first), line: line.meta };
       }
-      // The header names the project whole (sketch E on HAL-19192).
-      const row = bundleRow(bundle, state, now, pictureOf, false);
       const [oldest] = bundle.items;
       return {
         picture: agentMark(oldest, "header", pictureOf(oldest)).avatar,
-        title: row.title,
-        line: wholeLine(row),
+        title: bundleRow(bundle, state, now, pictureOf).title,
+        line: bundleLine(bundle, state, now),
       };
     },
     open: (key) => {
@@ -264,81 +261,82 @@ interface Opened {
 }
 
 /**
- * A row of the agents' items: one item's title, or a bundle's count, then its project, the
- * source, who asks and how long the oldest has waited (`inbox.agent-item-bundles`,
- * `inbox.project-dot`). A bundle holds one project's items. `cut` cuts a long project name, as a
- * row does; the header shows it whole.
+ * A row of the agents' items: one item's title, or a bundle's count, then its project and who
+ * asks, and how long the oldest has waited at the top right (`inbox.agent-item-bundles`,
+ * `inbox.project-dot`). The source stays out of the row, so who asks isn't cut away; the open
+ * item's header names it (`bundleLine`). A bundle holds one project's items.
  */
 function bundleRow(
   bundle: AgentBundle,
   state: AgentInboxState,
   now: Date,
   pictureOf: AskerPicture,
-  cut = true,
 ): ListRow {
   const [oldest] = bundle.items;
   if (oldest === undefined) return { id: bundle.key, title: "" };
-  const source = state.sources.find((each) => each.id === oldest.source);
-  if (bundle.items.length === 1) return agentRow(oldest, source, now, pictureOf(oldest), cut);
+  const single = bundle.items.length === 1;
   const work = state.work.find((each) => each.id === bundle.work);
-  const row = {
+  const asker = single ? agentItemAsker(oldest, undefined) : bundleAsker(bundle, undefined);
+  return {
     ...agentMark(oldest, "sidebar", pictureOf(oldest)),
-    id: bundle.key,
-    title: bundleTitle(bundle, work),
-    ...withProject(
-      oldest.project,
-      lineEndingInWait(bundleAsker(bundle, source), waitingFor(new Date(oldest.createdAt), now)),
-      cut,
-    ),
+    id: single ? agentItemKey(oldest) : bundle.key,
+    title: single ? agentItemTitle(oldest) : bundleTitle(bundle, work),
+    ...withProject(oldest.project, { meta: asker }, true),
+    trailing: <WaitTime since={new Date(oldest.createdAt)} now={now} />,
     wrapTitle: true,
     wrapMeta: true,
   };
-  return isAgentItemLate(oldest, now)
-    ? { ...row, trailing: <StatusChip tone="attention">Late</StatusChip> }
-    : row;
 }
 
 /**
- * An agent item's row: its title, then its project, source, who asks and how long it has waited.
+ * The open bundle's line in its header: its whole project, the source, who asks and how long the
+ * oldest has waited, "Studio app · Paperclip · Acme · Chief · Waiting 2 min" (sketch E on HAL-19192).
  */
-function agentRow(
-  item: AgentItem,
-  source: MessagingSource | undefined,
-  now: Date,
-  picture: ImageBitmap | undefined,
-  cut: boolean,
-): ListRow {
-  const row = {
-    ...agentMark(item, "sidebar", picture),
-    id: agentItemKey(item),
-    title: agentItemTitle(item),
-    ...withProject(
-      item.project,
-      lineEndingInWait(agentItemAsker(item, source), waitingFor(new Date(item.createdAt), now)),
-      cut,
-    ),
-    wrapTitle: true,
-    wrapMeta: true,
-  };
-  return isAgentItemLate(item, now)
-    ? { ...row, trailing: <StatusChip tone="attention">Late</StatusChip> }
-    : row;
+function bundleLine(bundle: AgentBundle, state: AgentInboxState, now: Date): ReactNode {
+  const [oldest] = bundle.items;
+  if (oldest === undefined) return undefined;
+  const source = state.sources.find((each) => each.id === oldest.source);
+  const asker =
+    bundle.items.length === 1 ? agentItemAsker(oldest, source) : bundleAsker(bundle, source);
+  const wait = waitingFor(new Date(oldest.createdAt), now);
+  return wholeLine(withProject(oldest.project, lineEndingInWait(asker, wait), false));
 }
 
-/** A row's line, led by its item's project when it has one (`inbox.project-dot`). */
+/**
+ * A row's line, led by its item's project when it has one (`inbox.project-dot`). In a row the
+ * project and the rest shrink side by side, so each is cut with its own "…" and the line never
+ * clips the project's (Sofia, HAL-20395); the header's line is one run of text, its wait after it.
+ */
 function withProject(
   project: MessagingProject | undefined,
   line: Pick<ListRow, "meta" | "metaEnd">,
   cut: boolean,
 ): Pick<ListRow, "meta" | "metaEnd"> {
   if (project === undefined) return line;
+  const rest = line.meta === "" || line.meta === undefined ? null : line.meta;
+  if (!cut) {
+    return {
+      ...line,
+      meta: (
+        <>
+          <ProjectTag project={project} cut={false} />
+          {rest === null ? null : <> · {rest}</>}
+        </>
+      ),
+    };
+  }
   return {
     ...line,
     meta: (
-      <>
-        <ProjectTag project={project} cut={cut} />
-        {line.meta === "" || line.meta === undefined ? null : <> · {line.meta}</>}
-      </>
+      <span className="flex min-w-0 items-center">
+        <ProjectTag project={project} cut />
+        {rest === null ? null : (
+          <span className="min-w-0 truncate">
+            {"\u00a0· "}
+            {rest}
+          </span>
+        )}
+      </span>
     ),
   };
 }

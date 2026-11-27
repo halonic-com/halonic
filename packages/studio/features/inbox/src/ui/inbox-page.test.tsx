@@ -123,7 +123,7 @@ verifies("inbox.page", () => {
       );
       await settled();
       expect(rowCell(root, 0).textContent).toBe(
-        "Approve this reply?Support reply · run r2 · a person step · Waiting 1\u00a0h · moves on Sun 14:00new",
+        "Approve this reply?Support reply · run r2 · a person step · moves on Sun 14:00Waiting 1\u00a0hnew",
       );
       await click(rowCell(root, 0));
       expect(root.querySelector("section header")?.textContent).toContain("Started by a message");
@@ -145,18 +145,20 @@ verifies("inbox.page", () => {
     it("names Needs you with its count, lists newest first and opens nothing", async () => {
       const { root } = await openPage(fakeRuns([review, notes]).runs);
       expect(root.querySelector("h1")?.textContent).toBe("Inbox");
+      // The sidebar's heading, as the Messenger's "Chats" (HAL-20395).
+      expect(root.querySelector("h1")?.className).toContain("text-body-strong");
       const grid = root.querySelector('[role="grid"]');
       expect(nameOf(root, grid)).toBe("Needs you, 2 waiting, 2 new");
       // The agent by its id until the Studio knows agents' names.
       expect(rows(root).map((row) => row.querySelector("[role=gridcell]")?.textContent)).toEqual([
         "sorter wants to use create_note (notes-mcp)Waiting 1\u00a0minnew",
-        "Approve this reply?Waiting 1\u00a0h · moves on Sun 14:00new",
+        "Approve this reply?moves on Sun 14:00Waiting 1\u00a0hnew",
       ]);
       expect(root.querySelector("[aria-current]")).toBeNull();
       expect(root.textContent).toContain("Pick something on the left to see it here.");
     });
 
-    it("marks an item that has waited a day with an amber Late chip and counts it in the header", async () => {
+    it("marks an item that has waited a day with its wait in amber with a dot, and counts it in the header", async () => {
       const stale = waitingRun("r3", {
         lastWaitingAt: new Date(2026, 10, 6, 9, 0).toISOString(),
         waitingFor: { title: "Approve the invoice?", body: "" },
@@ -165,10 +167,15 @@ verifies("inbox.page", () => {
       expect(nameOf(root, root.querySelector('[role="grid"]'))).toBe(
         "Needs you, 2 waiting, 2 new, 1 late",
       );
-      const chips = root.querySelectorAll('[role="grid"] .bg-attention-soft');
-      expect([...chips].map((chip) => chip.textContent)).toEqual(["Late"]);
-      expect(rows(root)[1]?.textContent).toContain("Late");
-      expect(rows(root)[0]?.textContent).not.toContain("Late");
+      const times = [...root.querySelectorAll('[role="grid"] [data-part="wait-time"]')];
+      expect(times.map((time) => time.textContent)).toEqual([
+        "Waiting 1\u00a0min",
+        "Waiting 2\u00a0days, late",
+      ]);
+      expect(times[1]?.className).toContain("text-attention");
+      expect(times[1]?.querySelector(".bg-attention-fill")).not.toBeNull();
+      expect(times[0]?.className).not.toContain("text-attention");
+      expect(times[0]?.querySelector(".bg-attention-fill")).toBeNull();
       // The late dot stays in high contrast, in the text colour (HAL-12946).
       expect(root.querySelector(".bg-attention-fill")?.className).toContain(
         "forced-colors:bg-[CanvasText]",

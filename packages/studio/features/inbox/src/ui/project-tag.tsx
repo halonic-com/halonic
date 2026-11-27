@@ -39,7 +39,7 @@ export function ProjectTag({ project, cut }: ProjectTagProps) {
   }
   return (
     <>
-      <span className="inline-flex max-w-36 items-center gap-1.5 align-bottom" {...anchor}>
+      <span className="inline-flex min-w-0 max-w-36 items-center gap-1.5 align-bottom" {...anchor}>
         <span aria-hidden="true" className={dot} />
         <span ref={shown} className="truncate">
           {name}

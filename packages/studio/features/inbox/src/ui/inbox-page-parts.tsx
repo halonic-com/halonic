@@ -19,14 +19,15 @@ interface ListHeaderProps {
 }
 
 /**
- * The list's title with **New request**: beside it on a desktop, a full-width row under it with
- * one pane at a time.
+ * The list's title with **New request**, as the Messenger's "Chats" over its list (note 1 of the
+ * HAL-19192 sketches): "Inbox" in the sidebar's 15px heading with **New request** at its end on a
+ * desktop, a full-width row under it with one pane at a time.
  */
 export function ListHeader({ phone, onePane, newRequest }: ListHeaderProps) {
   return (
     <>
-      <header className={phone ? "sr-only" : "flex items-center justify-between px-4 py-3"}>
-        <h1 className="text-title">Inbox</h1>
+      <header className={phone ? "sr-only" : "flex items-center gap-2 px-3 pt-2"}>
+        <h1 className="min-w-0 flex-1 text-body-strong">Inbox</h1>
         {onePane ? null : newRequest}
       </header>
       {onePane ? newRequest : null}
