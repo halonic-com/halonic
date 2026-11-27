@@ -115,6 +115,8 @@ verifies("shell.item-page-name-note", () => {
     const { input, announced, change } = field(twoPlaces);
     typeInto(input, "Mail sorte");
     change({ note: threePlaces });
+    // A file change, not a key press, changes the words, so they're read right away.
+    expect(announced).toEqual([twoPlaces, threePlaces]);
     typeInto(input, "Mail sorter");
     expect(announced).toEqual([twoPlaces, threePlaces]);
   });
