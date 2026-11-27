@@ -1,3 +1,4 @@
+import type { TauriIpc } from "@halonicjs/studio-services";
 import { focusedFrameClass } from "@halonicjs/studio-shell";
 
 /**
