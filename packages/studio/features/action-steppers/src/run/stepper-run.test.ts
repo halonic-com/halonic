@@ -18,7 +18,8 @@ import {
   secretRequest,
   variableRequest,
 } from "../test-support/acme-run.test-helper.ts";
-import { StepperRun, type StepperRunOptions } from "./stepper-run.ts";
+import { StepperRun } from "./stepper-run.ts";
+import type { StepperRunOptions } from "./stepper-run-options.ts";
 
 const request = "paperclip:acme/item-1";
 

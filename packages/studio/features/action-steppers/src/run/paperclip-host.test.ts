@@ -10,7 +10,11 @@ import {
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { reviewActionItem } from "../review/action-item-review.ts";
-import { type ConnectedPaperclip, connectedPaperclips } from "../review/paperclip-host.ts";
+import {
+  type ConnectionsRead,
+  connectedPaperclips,
+  noConnections,
+} from "../review/paperclip-host.ts";
 import { acmeSource, actionItem } from "../test-support/acme-catalog.test-helper.ts";
 import { allowsAcme } from "../test-support/acme-run.test-helper.ts";
 import { StepperRun } from "./stepper-run.ts";
@@ -19,9 +23,10 @@ const at = new Date("2026-11-27T09:00:00.000Z");
 const acmeAddress = "https://paperclip.acme.example";
 
 /** The `acme` Paperclip as Settings lists it, in the given state, read the way the Inbox reads it. */
-function acmeIn(kind: "online" | "no-key"): readonly ConnectedPaperclip[] {
+function acmeIn(kind: "online" | "no-key"): ConnectionsRead {
   const state = kind === "online" ? { kind, asOf: at.toISOString() } : { kind };
-  return connectedPaperclips([{ provider: "paperclip", address: acmeAddress, state }]);
+  const paperclips = connectedPaperclips([{ provider: "paperclip", address: acmeAddress, state }]);
+  return { kind: "read", paperclips };
 }
 
 /** Store `ANTHROPIC_API_KEY` in the `ACME` company's Secrets on `host`. */
@@ -46,7 +51,7 @@ const connectRequest: InboxActionRequest = {
  * A stepper for `request` from "Paperclip · Acme", which the policy allows, signed in to
  * Paperclip, with a stand-in sign-in for the `acme` connection file that holds no key yet.
  */
-async function runOf(request: InboxActionRequest, paperclips: () => readonly ConnectedPaperclip[]) {
+async function runOf(request: InboxActionRequest, paperclips: () => ConnectionsRead) {
   const definition = catalog.definition(request.definition, request.version);
   if (definition === undefined) throw new Error(`${request.definition} isn't shipped`);
   const fake = new FakeActionSender({
@@ -122,7 +127,10 @@ verifies("action-steppers.paperclip-host", () => {
     });
 
     it("is refused when Studio has no connections to compare it with", async () => {
-      const { review } = await runOf(setSecretRequest("paperclip.acme.example"), () => []);
+      const { review } = await runOf(
+        setSecretRequest("paperclip.acme.example"),
+        () => noConnections,
+      );
       expect(review.kind).toBe("unreadable");
     });
 
@@ -132,7 +140,7 @@ verifies("action-steppers.paperclip-host", () => {
       expect(review).toEqual({
         kind: "unreadable",
         reasons: [
-          "`paperclip.acme.example` isn't signed in on this computer: sign in to it in Settings › Connections",
+          "this computer isn't signed in to `paperclip.acme.example`: sign in to it in Settings › Connections",
         ],
       });
     });
@@ -148,6 +156,38 @@ verifies("action-steppers.paperclip-host", () => {
       await run.idle();
       expect(run.current().stage).toEqual({ kind: "not-available" });
       expect(await records.read("paperclip:acme/item-1")).toEqual([]);
+    });
+
+    it("waits in review mode while the connections are read, then is ready once they are", async () => {
+      let paperclips: ConnectionsRead = { kind: "loading" };
+      const request = setSecretRequest("paperclip.acme.example");
+      const { review, open } = await runOf(request, () => paperclips);
+      expect(review.kind).toBe("stepper");
+      const run = await open();
+      expect(run.current().stage).toEqual({ kind: "desktop-only" });
+      paperclips = acmeIn("online");
+      run.recheck();
+      await run.idle();
+      expect(run.current().stage).toEqual({ kind: "ready" });
+    });
+
+    it("runs no step while the connections are still being read", async () => {
+      const request = setSecretRequest("paperclip.acme.example");
+      const { records, open } = await runOf(request, () => ({ kind: "loading" }));
+      const run = await open();
+      run.actions.runStep(1);
+      await run.idle();
+      expect(run.current().stage).toEqual({ kind: "desktop-only" });
+      expect(await records.read("paperclip:acme/item-1")).toEqual([]);
+    });
+
+    it("is refused, with its reason, when the connections couldn't be read", async () => {
+      const request = setSecretRequest("paperclip.acme.example");
+      const { review } = await runOf(request, () => ({ kind: "failed" }));
+      expect(review).toEqual({
+        kind: "unreadable",
+        reasons: ["Halonic couldn't read your connections in Settings › Connections"],
+      });
     });
 
     it("lets a first sign-in run on a connection that holds no key yet", async () => {

@@ -12,15 +12,9 @@
  */
 import type { SignInPhase } from "@halonicjs/action-steppers";
 import type { ActionKeptValue, ActionOutcome } from "@halonicjs/events";
-import type { AnswerResult, InboxAnswer, MessagingSource } from "@halonicjs/ports";
-import type { ActionSteps } from "@halonicjs/studio-services";
 import { checkPastedResult } from "../pasted-result.ts";
-import {
-  type ActionItem,
-  type ActionReviewContext,
-  reviewActionItem,
-} from "../review/action-item-review.ts";
-import type { ConnectedPaperclip } from "../review/paperclip-host.ts";
+import { reviewActionItem } from "../review/action-item-review.ts";
+import { bindPaperclipHost, noConnections } from "../review/paperclip-host.ts";
 import {
   isDone,
   nextStep,
@@ -44,30 +38,10 @@ import {
   stepOutcome,
   stoppedOutcome,
 } from "./record-fold.ts";
-import { hasSignIn, type SignInRun, type StepperSignIn, signInRunOf } from "./sign-in-run.ts";
+import { hasSignIn, type SignInRun, signInRunOf } from "./sign-in-run.ts";
 import { endedStage, signInStage } from "./stages.ts";
 import { setsSecret, stepRequest } from "./step-request.ts";
-
-/** What a {@link StepperRun} checks against, runs with and answers through. */
-export interface StepperRunOptions {
-  readonly item: ActionItem;
-  /** The item's source as `AgentMessaging` lists it, which the requester policy keys on. */
-  readonly source: MessagingSource | undefined;
-  readonly catalog: ActionReviewContext["catalog"];
-  readonly policy: ActionReviewContext["policy"];
-  readonly steps: ActionSteps;
-  /** Answers the item through `AgentMessaging`, once. */
-  readonly answer: (answer: InboxAnswer) => Promise<AnswerResult>;
-  /** The clock for expiry and for the day a secret was set. */
-  readonly now: () => Date;
-  /** Runs a definition's `sign-in` steps; without it, such a request can't run here. */
-  readonly serviceSignIn?: StepperSignIn | undefined;
-  /**
-   * The Paperclips the user connected, as this window last read them, read again at every check,
-   * so a Paperclip disconnected since stops its requests. Without it, no Paperclip request runs.
-   */
-  readonly paperclips?: (() => readonly ConnectedPaperclip[]) | undefined;
-}
+import type { StepperRunOptions } from "./stepper-run-options.ts";
 
 /**
  * One open action request, from review to answer. The screen draws {@link current} and calls
@@ -132,6 +106,9 @@ export class StepperRun {
     await this.refresh();
     if (this.view.stage.kind === "changed") await this.end("failed");
   };
+
+  /** Checks the request again, such as once the connections have been read. */
+  recheck = (): void => void this.guard(() => this.refresh());
 
   /** Stops a sign-in this run started, when the screen closes. */
   async close(): Promise<void> {
@@ -198,6 +175,8 @@ export class StepperRun {
     if (review.kind === "unreadable")
       return this.set({ ...this.view, stage: { kind: "not-available" } });
     const reviewed = review.view;
+    // Until the connections are read, a request bound to a Paperclip host stays in review mode.
+    if (this.waitsForConnections()) return this.set(reviewed);
     if (this.endedWith !== undefined && !steps.canRun) {
       return this.set({ ...reviewed, stage: endedStage(this.endedWith) });
     }
@@ -226,6 +205,13 @@ export class StepperRun {
     const view = { ...shown, account: account?.name ?? null, stage };
     // Only a request that can still run offers a page again; a stopped or ended one doesn't.
     this.set(stage.kind === "ready" ? withPagesToReopen(view, unchanged) : view);
+  }
+
+  /** Whether the request names a Paperclip host and the connections haven't been read yet. */
+  private waitsForConnections(): boolean {
+    const { item, paperclips } = this.options;
+    const connections = paperclips?.() ?? noConnections;
+    return bindPaperclipHost(this.definition(), item.action, connections).kind === "waits";
   }
 
   /** The request's definition; the review found it, or the run would have stopped there. */

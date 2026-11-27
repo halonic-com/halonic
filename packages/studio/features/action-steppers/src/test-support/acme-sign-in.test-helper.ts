@@ -11,7 +11,7 @@ import {
   strictParameters,
 } from "@halonicjs/action-steppers";
 import { type ActionItem, reviewActionItem } from "../review/action-item-review.ts";
-import type { ConnectedPaperclip } from "../review/paperclip-host.ts";
+import type { ConnectionsRead } from "../review/paperclip-host.ts";
 import type { ServiceSignInView, StepperView } from "../stepper-view.ts";
 import { acmeSource, actionItem } from "./acme-catalog.test-helper.ts";
 import { allowsAcme } from "./acme-run.test-helper.ts";
@@ -53,9 +53,10 @@ export const signInCatalog: StepperCatalog = {
 };
 
 /** The Paperclips the user connected: only the `acme` one, with its key on this computer. */
-export const acmePaperclips: readonly ConnectedPaperclip[] = [
-  { host: "paperclip.acme.example", hasKey: true },
-];
+export const acmePaperclips: ConnectionsRead = {
+  kind: "read",
+  paperclips: [{ host: "paperclip.acme.example", hasKey: true }],
+};
 
 /** The request's id in its record. */
 export const signInRequest = "paperclip:acme/item-1";

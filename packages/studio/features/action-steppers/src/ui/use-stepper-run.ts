@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { StepperRun, type StepperRunOptions } from "../run/stepper-run.ts";
+import { StepperRun } from "../run/stepper-run.ts";
+import type { StepperRunOptions } from "../run/stepper-run-options.ts";
 import type { StepperActions, StepperView } from "../stepper-view.ts";
 
 /** What {@link useStepperRun} gives the card: the view to draw, its callbacks and the last failure. */
@@ -10,6 +11,8 @@ export interface StepperRunState {
   readonly failure: unknown;
   /** Does what failed again, for **Try again**. */
   readonly retry: () => void;
+  /** Checks the request again, such as once the connections have been read. */
+  readonly recheck: () => void;
 }
 
 /**
@@ -27,5 +30,11 @@ export function useStepperRun(reviewed: StepperView, options: StepperRunOptions)
     void run.open().catch((error: unknown) => run.fail(error));
     return () => void run.close().catch((error: unknown) => run.fail(error));
   }, [run]);
-  return { view: run.current(), actions: run.actions, failure: run.failure, retry: run.retry };
+  return {
+    view: run.current(),
+    actions: run.actions,
+    failure: run.failure,
+    retry: run.retry,
+    recheck: run.recheck,
+  };
 }

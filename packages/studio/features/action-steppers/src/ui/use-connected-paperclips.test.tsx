@@ -2,7 +2,7 @@
 import type { AgentConnection, AgentConnections } from "@halonicjs/studio-services";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { useConnectedPaperclips } from "./use-connected-paperclips.ts";
 
@@ -16,10 +16,10 @@ const acme: AgentConnection = {
 };
 
 /** Connections whose list the test changes, telling whoever listens. */
-function connectionsOf(listed: AgentConnection[]) {
+function connectionsOf(listed: AgentConnection[], list = () => Promise.resolve(listed)) {
   const listeners = new Set<() => void>();
   const connections: AgentConnections = {
-    list: () => Promise.resolve(listed),
+    list,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -37,12 +37,16 @@ function connectionsOf(listed: AgentConnection[]) {
 }
 
 function Hosts({ connections }: { readonly connections: AgentConnections | undefined }) {
-  const paperclips = useConnectedPaperclips(connections);
-  const shown = paperclips.map(({ host, hasKey }) => `${host}${hasKey ? " (key)" : ""}`);
+  const read = useConnectedPaperclips(connections);
+  if (read.kind !== "read") return <p>{read.kind}</p>;
+  const shown = read.paperclips.map(({ host, hasKey }) => `${host}${hasKey ? " (key)" : ""}`);
   return <p>{shown.join(" ") || "none"}</p>;
 }
 
-afterEach(unmountAll);
+afterEach(() => {
+  unmountAll();
+  vi.restoreAllMocks();
+});
 
 verifies("action-steppers.paperclip-host", () => {
   describe("useConnectedPaperclips", () => {
@@ -55,6 +59,24 @@ verifies("action-steppers.paperclip-host", () => {
       expect(container.textContent).toBe("paperclip.acme.example (key)");
       await change([]);
       expect(container.textContent).toBe("none");
+    });
+
+    it("is loading until the first read finishes, never none", async () => {
+      const listed = Promise.withResolvers<AgentConnection[]>();
+      const { connections } = connectionsOf([], () => listed.promise);
+      const container = render(<Hosts connections={connections} />);
+      await act(async () => {});
+      expect(container.textContent).toBe("loading");
+      await act(async () => listed.resolve([acme]));
+      expect(container.textContent).toBe("paperclip.acme.example");
+    });
+
+    it("says the read failed when the connections can't be read", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const { connections } = connectionsOf([], () => Promise.reject(new Error("no answer")));
+      const container = render(<Hosts connections={connections} />);
+      await act(async () => {});
+      expect(container.textContent).toBe("failed");
     });
 
     it("has none without connections, as in a browser", () => {

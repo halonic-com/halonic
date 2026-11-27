@@ -15,8 +15,9 @@ export {
   type ActionReviewContext,
   reviewActionItem,
 } from "./review/action-item-review.ts";
-export type { ConnectedPaperclip } from "./review/paperclip-host.ts";
-export { StepperRun, type StepperRunOptions } from "./run/stepper-run.ts";
+export type { ConnectedPaperclip, ConnectionsRead } from "./review/paperclip-host.ts";
+export { StepperRun } from "./run/stepper-run.ts";
+export type { StepperRunOptions } from "./run/stepper-run-options.ts";
 export {
   offerServerSession,
   type ServerSessionContext,
