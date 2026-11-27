@@ -2,6 +2,7 @@
 
 - Approval: Liam approves this note in review on HAL-20521 and signs it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vZIdwkCUYL+hNuitAAfleh3YScEotZ5WYIoOBEXvpvBk4ut0vUSDYZy6gLRoNtdCRJHOekjZmc5iBkGO8OWDDw==
 
 ## What changes
 
