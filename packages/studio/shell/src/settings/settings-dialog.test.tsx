@@ -107,6 +107,16 @@ function row(container: HTMLElement, name: string): HTMLElement {
   return found;
 }
 
+/** An element's whole classes, so `bg-surface-muted` doesn't match `hover:bg-surface-muted`. */
+function classesOf(element: Element | null): string[] {
+  return element?.className.split(" ") ?? [];
+}
+
+/** The fills a row has at rest: its classes that start with `bg-`. */
+function fillsOf(element: Element): string[] {
+  return classesOf(element).filter((name) => name.startsWith("bg-"));
+}
+
 function press(key: string) {
   act(() => {
     document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
@@ -152,26 +162,26 @@ verifies("shell.settings-container", () => {
 });
 
 verifies("shell.settings-two-columns", () => {
-  it("shows the list column on the frame colour and the section in the content pane", async () => {
+  it("shows the list column and the section in the content pane, both on the panel colour", async () => {
     const { container } = await open();
-    const list = container.querySelector('nav[data-part="list-column"]');
-    expect(list?.className).toContain("w-[34%]");
-    expect(list?.className).toContain("min-w-52");
-    expect(list?.className).toContain("max-w-[380px]");
-    expect(list?.className).toContain("bg-app-frame");
-    expect(list?.className).toContain("border-e");
+    const list = classesOf(container.querySelector('nav[data-part="list-column"]'));
+    expect(list).toEqual(
+      expect.arrayContaining(["w-[34%]", "min-w-52", "max-w-95", "bg-app-panel", "border-e"]),
+    );
     const pane = container.querySelector('[data-part="content-pane"]');
-    expect(pane?.className).toContain("bg-app-panel");
+    expect(classesOf(pane)).toContain("bg-app-panel");
     expect(pane?.textContent).toContain("Appearance view for appearance");
   });
 
-  it("fills only the current section's row with the selected colour", async () => {
+  it("fills only the current section's row, with the muted fill", async () => {
     const { container } = await open();
-    expect(row(container, "Appearance").className).toContain("bg-accent-soft");
+    expect(fillsOf(row(container, "Appearance"))).toEqual(["bg-surface-muted"]);
     act(() => row(container, "Formats").click());
     await settle();
-    expect(row(container, "Formats").className).toContain("bg-accent-soft");
-    expect(row(container, "Appearance").className).not.toContain("bg-accent-soft");
+    expect(fillsOf(row(container, "Formats"))).toEqual(["bg-surface-muted"]);
+    for (const name of ["Appearance", "Models", "Assistant"]) {
+      expect(fillsOf(row(container, name))).toEqual([]);
+    }
   });
 });
 

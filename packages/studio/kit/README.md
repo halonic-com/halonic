@@ -927,7 +927,7 @@ alone for a list the kit doesn't draw, such as the shell's Settings nav.
 flush List, 12px in a plain one, so its text starts where the rows' content does. The "·" is hidden from screen readers, which hear a comma instead:
 "Acme, Workspace settings". When the detail doesn't fit after the name (at 320px and 200% text),
 it moves onto its own line, and a detail too long even for that wraps. Use `stacked` in a narrow
-column, such as the 208px Settings nav.
+column, such as the Settings list column.
 
 ## Disclosure
 
