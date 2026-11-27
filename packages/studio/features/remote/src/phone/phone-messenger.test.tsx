@@ -348,6 +348,27 @@ verifies("remote.phone-messenger-tab", () => {
   });
 });
 
+/** How long one split of `body` takes, in milliseconds. */
+function timeSplit(body: string): number {
+  const started = performance.now();
+  messageParts(body);
+  return performance.now() - started;
+}
+
+/**
+ * The fastest of three splits of each body, in milliseconds and at least one, so a split too quick
+ * to time still gives a ratio. The two take turns, so a runner that slows down part-way slows both.
+ */
+function fastestSplits(small: string, large: string): { small: number; large: number } {
+  let fastestSmall = Number.POSITIVE_INFINITY;
+  let fastestLarge = Number.POSITIVE_INFINITY;
+  for (let round = 0; round < 3; round++) {
+    fastestSmall = Math.min(fastestSmall, timeSplit(small));
+    fastestLarge = Math.min(fastestLarge, timeSplit(large));
+  }
+  return { small: Math.max(fastestSmall, 1), large: Math.max(fastestLarge, 1) };
+}
+
 verifies("remote.phone-messenger-links", () => {
   describe("a link and the way back in a phone chat", () => {
     it("is a link that says it opens in the browser, showing only the address", async () => {
@@ -380,14 +401,16 @@ verifies("remote.phone-messenger-links", () => {
     });
 
     // HAL-20070: unbounded, each `[` and each dot rescanned to the end; 100,000 took seconds.
+    // The split must grow in step with the text: ten times the text takes about ten times as
+    // long, where the rescan took a hundred. A ratio on the same runner, not a fixed time, so a
+    // busy runner can't fail it (HAL-20604).
     it.each([
-      ["brackets that never close", "[".repeat(100_000)],
-      ["links that never close", "[](".repeat(33_334)],
-      ["a run of dots after an address", `${pullRequest}${".".repeat(100_000)}a`],
-    ])("splits 100,000 characters of %s in well under a second", (_name, body) => {
-      const started = performance.now();
-      messageParts(body);
-      expect(performance.now() - started).toBeLessThan(500);
+      ["brackets that never close", (size: number) => "[".repeat(size)],
+      ["links that never close", (size: number) => "[](".repeat(Math.ceil(size / 3))],
+      ["a run of dots after an address", (size: number) => `${pullRequest}${".".repeat(size)}a`],
+    ])("splits 100,000 characters of %s in step with the text", (_name, body) => {
+      const { small, large } = fastestSplits(body(10_000), body(100_000));
+      expect(large).toBeLessThan(30 * small);
     });
   });
 });
