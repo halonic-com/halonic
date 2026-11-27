@@ -5,7 +5,9 @@
  * where each step stands, and answers the Inbox item through `AgentMessaging` once the stepper
  * ends. Every step is checked again first (HAL-17491 7.3). Once a `check` step has read today's
  * state, the request's `expect` is compared with it, and a difference stops the stepper before any
- * later step is sent (`action-steppers.expect-stop`). In a browser the service runs nothing, so the
+ * later step is sent (`action-steppers.expect-stop`). A check that names `changedAfterStart` is
+ * done only once its time is later than the guided page's start
+ * (`action-steppers.changed-after-start-run`). In a browser the service runs nothing, so the
  * screen stays in review mode and only **Decline** answers.
  */
 import type { SignInPhase } from "@halonicjs/action-steppers";
@@ -25,6 +27,12 @@ import {
   type StepperStage,
   type StepperView,
 } from "../stepper-view.ts";
+import {
+  answeredAsChanged,
+  unchangedChecks,
+  withJudgement,
+  withPagesToReopen,
+} from "./changed-after-start.ts";
 import { gateRefusal, stoppedByChecks } from "./check-gate.ts";
 import { checkedValues } from "./expect-stop.ts";
 import {
@@ -189,10 +197,15 @@ export class StepperRun {
     }
     // Expired and blocked requests can't run, and outside the desktop app nothing can.
     if (reviewed.stage.kind !== "desktop-only" || !steps.canRun) return this.set(reviewed);
-    const record = foldRecord(await steps.history(this.request));
+    const history = await steps.history(this.request);
+    const record = foldRecord(history);
     this.record = record;
     const current = checkedValues(this.definition(), record);
-    const shown = this.withRecord(current === undefined ? reviewed : this.review(current), record);
+    const unchanged = unchangedChecks(this.definition(), history);
+    const shown = withJudgement(
+      this.withRecord(current === undefined ? reviewed : this.review(current), record),
+      unchanged,
+    );
     const stopped = stoppedByChecks(shown, { catalog, action: item.action, current, record });
     if (stopped !== undefined) return this.set(stopped);
     if (record.finished !== undefined) {
@@ -204,7 +217,9 @@ export class StepperRun {
     const account = await steps.account(reviewed.service);
     const stage =
       account === undefined ? signInStage(reviewed.service, null) : { kind: "ready" as const };
-    this.set({ ...shown, account: account?.name ?? null, stage });
+    const view = { ...shown, account: account?.name ?? null, stage };
+    // Only a request that can still run offers a page again; a stopped or ended one doesn't.
+    this.set(stage.kind === "ready" ? withPagesToReopen(view, unchanged) : view);
   }
 
   /** The request's definition; the review found it, or the run would have stopped there. */
@@ -386,7 +401,8 @@ export class StepperRun {
     const { item, catalog, steps, answer, now } = this.options;
     const { definition, version } = item.action;
     await this.alone(async () => {
-      const record = foldRecord(await steps.history(this.request));
+      const history = await steps.history(this.request);
+      const record = foldRecord(history);
       // Ended already, here or in another window: it has had its answer, so it gets no second one.
       if (record.finished !== undefined) return;
       const ended = outcome === "stopped" ? stoppedOutcome(record) : outcome;
@@ -397,8 +413,12 @@ export class StepperRun {
       );
       const changedAt =
         this.view.stage.kind === "changed" ? nextStep(this.view)?.number : undefined;
+      const stateChanged = answeredAsChanged(
+        unchangedChecks(this.definition(), history),
+        changedAt,
+      );
       const day = answerDay(now());
-      const result = await answer(resultAnswer(record, ended, secretSteps, day, changedAt));
+      const result = await answer(resultAnswer(record, ended, secretSteps, day, stateChanged));
       if (result.outcome === "refused") throw new Error(`The answer was refused: ${result.reason}`);
       // Answered here or, first, elsewhere: either way this request has had its answer.
       await steps.finish(this.request, ended);

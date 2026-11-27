@@ -33,7 +33,11 @@ step's line shows the definition's preview with today's values next to the chang
 request's `expect` is compared with what the check kept (`checkExpect`, requirement
 `action-steppers.expect-stop`): a difference sends none of the later steps, ends the request as
 failed with the next step `state-changed`, and shows "This changed since the request: …" with the
-values apart from it. Both come from the record, so a request opened again stops the same way.
+values apart from it. A `check` that names `changedAfterStart`, such as the Actions secret's
+`updated_at`, is done only when that time is later than when the stepper first opened the guided
+step's page (requirement `action-steppers.changed-after-start-run`); otherwise it shows as failed
+with its message and the run bar offers it again. All of these come from the record, so a request
+opened again stops the same way.
 Outside the desktop app it runs nothing and **Decline** still answers. Without the services, the
 catalog is empty and the default policy holds.
 
