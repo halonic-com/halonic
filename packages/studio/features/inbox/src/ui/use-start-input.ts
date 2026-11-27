@@ -7,12 +7,14 @@ import { startInput } from "../plain/wait-parts.ts";
  * The text a wait step's run started with in its workflow's start field, read from its log when
  * the run or the field changes (`inbox.wait-context`); `undefined` until it is read, for any other
  * item, without a source or field, and when the log can't be read (logged to the console). A
- * damaged log still gives its start.
+ * damaged log still gives its start. A `given` input, which the served Studio's host reads since
+ * its page can't read the log, is used as it is.
  */
 export function useStartInput(
   source: RunsSource | undefined,
   item: InboxItem,
   field: string | undefined,
+  given?: string,
 ): string | undefined {
   // Only a wait card quotes the input, so no other item reads the run's log.
   const runId = item.kind === "wait" ? item.runId : undefined;
@@ -37,6 +39,7 @@ export function useStartInput(
       current = false;
     };
   }, [source, runId, field, key]);
+  if (given !== undefined) return given;
   return read !== undefined && read.key === key ? read.text : undefined;
 }
 

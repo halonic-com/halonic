@@ -1,5 +1,4 @@
 import type { RunSummary } from "@halonicjs/events";
-import type { RunExecutor } from "@halonicjs/ports";
 import type { PlaceSignal, ViewRef } from "@halonicjs/studio-shell";
 import { AnswerTimedOut, withTimeout } from "./answer-timeout.ts";
 import type { InboxAnsweredView } from "./answered-view.ts";
@@ -19,6 +18,7 @@ import {
   setupKey,
   type WaitItem,
 } from "./inbox-items.ts";
+import type { InboxRuns } from "./inbox-runs.ts";
 import { ShownRuns } from "./needs-you-news.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
 import {
@@ -31,41 +31,7 @@ import {
 import { type ReadMarks, StoredReadMarks } from "./read-marks.ts";
 import type { InboxSetupSource, SetupEntry, SetupFocus } from "./setup-source.ts";
 import { ShownItem } from "./shown-item.ts";
-
-/**
- * The runs the Inbox reads and answers. The app provides them for the open
- * workspace, from the run history (`RunHistory.listRuns`) and the run
- * executor.
- */
-export interface InboxRuns {
-  /** Every real run that waits now; test runs (Try it) may be left in, the Inbox skips them. */
-  waiting(): Promise<readonly RunSummary[]>;
-  /**
-   * Calls `listener` whenever a run may have started or stopped waiting,
-   * here or on another device. Returns a function that stops the calls.
-   */
-  subscribe(listener: () => void): () => void;
-  /**
-   * An agent's name as its file says; `undefined` when the workspace has no such agent or can't
-   * be read, and the Inbox then shows the id.
-   */
-  agentName?(agentId: string): string | undefined;
-  /** Sends an answer to a run; see `RunExecutor.send`. */
-  send: RunExecutor["send"];
-  /**
-   * The workspace's run proposals that aren't settled, each with its run's record, which says how
-   * the run ended (HAL-10916). Without it the Inbox lists no proposals. `subscribe` also calls
-   * when a proposal is made or decided.
-   */
-  proposals?(): Promise<readonly RunProposalEntry[]>;
-  /**
-   * The proposals settled in the last 30 days, each with its run's record, for the Done heading
-   * (HAL-11945 Q10). Without it Done stays empty.
-   */
-  doneProposals?(): Promise<readonly RunProposalEntry[]>;
-  /** An item's name as its file says; `undefined` when it can't be read, and the Inbox shows the id. */
-  itemName?(itemId: string): string | undefined;
-}
+import type { InboxWaitContext } from "./wait-context.ts";
 
 /** What the Inbox holds now. */
 export interface InboxState {
@@ -356,6 +322,11 @@ export class Inbox {
    */
   setAside(key: string, note: string): void {
     this.#setAside.set(key, note);
+  }
+
+  /** What the runs' host said about a waiting run; `undefined` when it says nothing. */
+  waitContext(runId: string): InboxWaitContext | undefined {
+    return this.#runs.waitContext?.(runId);
   }
 
   /** The note set aside for an item, left in place: for a render that reads it before {@link takeAside}. */

@@ -53,12 +53,13 @@ export function proposalMeta(item: ProposalItem, now: Date): string {
 export function proposalFacts(
   item: ProposalItem,
   now: Date,
-  facts: { readonly workflow: string; readonly startedBy: string } | undefined,
+  facts: { readonly workflow: string; readonly startedBy?: string | undefined } | undefined,
 ): string {
   const verb = item.ending === null ? "Ended" : endingVerbs[item.ending];
   const ended = `${verb} at ${clockTime(new Date(item.since), now)}`;
   if (facts === undefined) return ended;
-  return [markHiddenName(facts.workflow), ended, `Started by ${facts.startedBy}`].join(" · ");
+  const started = facts.startedBy === undefined ? [] : [`Started by ${facts.startedBy}`];
+  return [markHiddenName(facts.workflow), ended, ...started].join(" · ");
 }
 
 /**

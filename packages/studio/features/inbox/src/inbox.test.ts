@@ -6,8 +6,9 @@ import { describe, expect, it, vi } from "vitest";
 import { answerTimeoutMs } from "./answer-timeout.ts";
 import { InboxRunsService, InboxService } from "./api.ts";
 import { inboxFeature } from "./feature.ts";
-import { Inbox, type InboxRuns } from "./inbox.ts";
+import { Inbox } from "./inbox.ts";
 import { isRunItem } from "./inbox-items.ts";
+import type { InboxRuns } from "./inbox-runs.ts";
 import { pendingApproval, waitingRun } from "./test-runs.test-helper.ts";
 
 /** Runs whose waiting list a test sets, with each load answered when the test says. */

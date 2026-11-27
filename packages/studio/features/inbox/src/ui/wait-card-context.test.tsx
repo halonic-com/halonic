@@ -155,7 +155,7 @@ verifies("inbox.wait-context", () => {
     });
 
     it("leaves the draft out of a box when the step's description isn't known", () => {
-      // As in the served Studio for now: the closing words may be in the draft, so no box holds them.
+      // As when a served Studio's host says nothing about the run: the closing words may be in the draft, so no box holds them.
       const { root } = openCard({
         item: reviewItem({
           waitingFor: { title: "Approve this reply?", body: `${reply}\n\n${note}` },
@@ -163,6 +163,23 @@ verifies("inbox.wait-context", () => {
       });
       expect(draftBox(root)?.className).toBe("text-body");
       expect(root.querySelector("h2")?.hasAttribute("aria-describedby")).toBe(false);
+      const lines = [...root.querySelectorAll("p")].map((line) => line.textContent);
+      expect(lines).not.toContain(note);
+    });
+
+    it("marks a hidden character in the caption and gives it its own direction", () => {
+      const hiddenNote = "Approving finishes the run.\u202E Nothing is sent.";
+      const { root } = openCard({
+        item: reviewItem({
+          waitingFor: { title: "Approve this reply?", body: `${reply}\n\n${hiddenNote}` },
+        }),
+        description: `Approve this reply?\n{{context.reply}}\n\n${hiddenNote}`,
+      });
+      const caption = [...root.querySelectorAll("p")].find((line) =>
+        line.textContent?.startsWith("Approving finishes the run."),
+      );
+      expect(caption?.textContent).toBe("Approving finishes the run.⟦U+202E⟧ Nothing is sent.");
+      expect(caption?.getAttribute("dir")).toBe("auto");
     });
   });
 

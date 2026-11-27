@@ -1,8 +1,9 @@
 import type { RunSummary } from "@halonicjs/events";
 import type { SendOptions } from "@halonicjs/ports";
 import { type ErrorKind, KindedError } from "@halonicjs/std";
-import type { InboxRuns } from "@halonicjs/studio-feature-inbox/api";
+import type { InboxRuns, InboxWaitContext } from "@halonicjs/studio-feature-inbox/api";
 import { unreachableWords, WorkspaceUntrusted } from "@halonicjs/studio-shell";
+import { keepNewest, waitContextsOf } from "./served-wait-context.ts";
 import { type PollTimer, runsPollInterval, systemTimer } from "./workspace-runs.ts";
 
 /** The page's own `fetch`: same address, same session. */
@@ -151,7 +152,8 @@ async function ask(
  * `GET /api/waiting-runs` and sends approve, reject and wait answers with
  * `POST /api/runs/<id>/events`, naming the call or wait step it answers,
  * both on the page's own address and session.
- * It names each agent as the list last named it, and by its id when it didn't.
+ * It names each agent as the list last named it, and by its id when it didn't, and gives each
+ * waiting run's context as the list last gave it (`studio.served-wait-context`).
  *
  * While anyone listens, the list is read again every 10 s and when the window
  * comes to the front, and listeners hear only when the waiting runs changed, or
@@ -168,6 +170,8 @@ export class ServedInboxRuns implements InboxRuns {
   #seen: string | undefined;
   /** By id, the agents' names the last readable list gave. */
   #agentNames: ReadonlyMap<string, string> = new Map();
+  /** By run id, what the lists said about each waiting run, kept after it goes so its answered card still has it. */
+  readonly #contexts = new Map<string, InboxWaitContext>();
   /** Whether the last poll failed, so the next good one must tell the listeners. */
   #missed = false;
   #polling = false;
@@ -179,7 +183,7 @@ export class ServedInboxRuns implements InboxRuns {
 
   async waiting(): Promise<RunSummary[]> {
     const answer = await ask(this.#options, "/api/waiting-runs", "list what waits for you", true);
-    const { runs, agents } = (answer ?? {}) as { runs?: unknown; agents?: unknown };
+    const { runs, agents, context } = (answer ?? {}) as Record<string, unknown>;
     // One unreadable run rejects the whole list: the Inbox then shows "unavailable"
     // rather than a list with an item missing that someone is waiting on.
     if (!Array.isArray(runs) || !runs.every(isWaitingSummary)) {
@@ -190,11 +194,17 @@ export class ServedInboxRuns implements InboxRuns {
     }
     // Names that can't be read never fail the list: the last good ones stay, and an agent without one shows by its id.
     this.#agentNames = agentNamesOf(agents) ?? this.#agentNames;
+    // A host without `context` (an older one) says nothing, so the cards read as before.
+    keepNewest(this.#contexts, waitContextsOf(context) ?? new Map(), runs);
     return runs;
   }
 
   agentName(agentId: string): string | undefined {
     return this.#agentNames.get(agentId);
+  }
+
+  waitContext(runId: string): InboxWaitContext | undefined {
+    return this.#contexts.get(runId);
   }
 
   async send(

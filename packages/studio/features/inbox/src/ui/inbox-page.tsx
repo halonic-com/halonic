@@ -93,7 +93,7 @@ export function InboxPage({ context, framed }: PlaceViewProps & { readonly frame
     [appNotices, inbox.extraNotices],
   );
   const runs = context.services.find(RunsListService);
-  const runFacts = useRunFacts(runs);
+  const runFacts = useRunFacts(runs, inbox);
   const trust = useTrustReview(context);
   const seeUsage = useSeeUsage(context.services.find(AccountMenuHostService));
   // Effects run children first, so the view below already listens for the item this opens.
