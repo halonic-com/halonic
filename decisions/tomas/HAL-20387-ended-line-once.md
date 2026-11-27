@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-20387
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/Bd8F4AQuUCpLrodupez/aPi+NIOXoxVrMxXtZpsM4j+S5XShVhKsNjYNkor06iAeglaV9ieGrebpQl5fLggAg==
 
 Sofia's words and accessibility check (HAL-20379) found that a screen reader heard an open Inbox
 card's end twice. Row L3.7 / L4.5 of HAL-20218's UX acceptance says once. When the card ended
