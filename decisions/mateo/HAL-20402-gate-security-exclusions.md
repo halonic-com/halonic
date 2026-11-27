@@ -2,6 +2,7 @@
 
 - Approval: the fix asked for on HAL-20402 (#6651 and #6737 held as security PRs); Liam approves this note in review on HAL-20402 and signs it as the CTO
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:9Xj5D2f+DuJzDxUqXO+U5rT2gzZFjATlQZJCYTWNXtXoWM5FMlXjH/RYl8s75OhRcAgZHSh31aEnbWCWRgMWDw==
 
 The merge gate's security sign-off rule (`paperclip.merge-control-security-signoff`)
 counted any changed path under `apps/studio/src-tauri/` or `packages/core/action-catalog/`,
