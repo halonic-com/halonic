@@ -3,6 +3,7 @@
 - Task: HAL-17568 (T3 of the ToolScript track, HAL-17560)
 - Approval: Liam chose option 1 on HAL-17568 (26 Nov). The change reaches a trust root (`tooling/check/src/lib/config-files.ts`), so both guardians sign this note: Liam and Julian
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:YewvTaR5ArjxaXhik9b0qW96khQPK/fvU6foe80EjzVWBtmb8KSOgDBrLiTANyNRBuEX6K1WjCdR1e8oRtg0Cg==
 
 ## What changes
 
