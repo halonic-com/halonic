@@ -39,10 +39,11 @@ import {
   listingOf,
   newAgentText,
   outputValue,
+  settingsOf,
   trashAgentFile,
 } from "./agent-file.ts";
 import { missingModelKeyOf } from "./agent-model-key.ts";
-import { paramsEdits, paramsOf } from "./agent-params.ts";
+import { paramsEdits } from "./agent-params.ts";
 import { choicesHere } from "./agent-placement-choices.ts";
 import { agentRoutinesOf, agentUsersOf, defaultModelOf, toolOptionsOf } from "./agent-reads.ts";
 import { agentFolder, unsavedWorkspaceSource } from "./agent-source.ts";
@@ -141,28 +142,7 @@ export class WorkspaceAgents implements AgentsHost {
   /** One agent's settings, from its file with unsaved changes applied; throws `not_found` when it isn't there. */
   async settings(ref: AgentRef): Promise<AgentSettings> {
     const { agent } = await this.#find(ref);
-    return {
-      ...listingOf(ref.hubId, agent),
-      instructions: agent.instructions,
-      output: agent.output,
-      maxSteps: agent.maxSteps,
-      params: paramsOf(agent.params),
-      harness: agent.harness ?? "halonic",
-      skills: agent.skills,
-      knowledge: agent.knowledge,
-      connectors: agent.connectors,
-      subagents: agent.subagents,
-      ...(agent.chatUi !== undefined && { chatUi: agent.chatUi.components }),
-      agentSteps: Object.entries(agent.methods).map(([stepId, method]) => ({
-        id: stepId,
-        description: method.description,
-        instructions: method.instructions,
-        model: method.model,
-        maxSteps: method.maxSteps,
-        outputFields: method.output === "text" ? undefined : Object.keys(method.output),
-        tools: method.tools,
-      })),
-    };
+    return settingsOf(ref.hubId, agent);
   }
 
   /**
@@ -341,6 +321,8 @@ export class WorkspaceAgents implements AgentsHost {
       "model",
       "maxSteps",
       "harness",
+      "workingFolder",
+      "allowedSites",
       "skills",
       "knowledge",
       "connectors",

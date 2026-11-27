@@ -47,6 +47,8 @@ const placedFields: ReadonlySet<string> = new Set([
   "maxSteps",
   "params",
   "harness",
+  "workingFolder",
+  "allowedSites",
 ]);
 
 const fieldOf = (change: AgentChangeToReview): string | undefined => change.parts[0]?.[0];

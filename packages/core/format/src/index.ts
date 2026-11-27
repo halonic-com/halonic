@@ -10,6 +10,7 @@ export { jsonSchemaOf } from "./json-schema.ts";
 export type { FileKind, FilePlace, KindCheckProblem, KindSyntax } from "./kind.ts";
 export {
   AGENT_HARNESSES,
+  allowedSiteProblem,
   asciiAllowedSites,
   defaultWorkingFolder,
   isInWorkingFolder,

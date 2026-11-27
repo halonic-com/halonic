@@ -38,6 +38,8 @@ export interface MemoryAgentsHostOptions {
         readonly maxSteps?: number;
         readonly params?: AgentModelParams;
         readonly harness?: AgentHarnessId;
+        readonly workingFolder?: string;
+        readonly allowedSites?: readonly string[];
         readonly skills?: readonly string[];
         readonly knowledge?: readonly string[];
         readonly connectors?: readonly string[];
@@ -120,6 +122,8 @@ function listingOf({
   maxSteps: _maxSteps,
   params: _params,
   harness: _harness,
+  workingFolder: _workingFolder,
+  allowedSites: _allowedSites,
   skills: _skills,
   knowledge: _knowledge,
   connectors: _connectors,
@@ -147,6 +151,7 @@ const fresh = {
   maxSteps: 6,
   params: {},
   harness: "halonic",
+  allowedSites: [],
   skills: [],
   knowledge: [],
   connectors: [],
@@ -154,13 +159,19 @@ const fresh = {
   agentSteps: [],
 } as const;
 
+/** The settings a new agent with this id has, with the working folder its file would default to. */
+function freshFor(id: string) {
+  return { ...fresh, workingFolder: `files/agents/${id}` };
+}
+
 /**
  * An {@link AgentsHost} that keeps its agents in memory and tells its listeners about each change,
  * as the app's does. Tests of the Agents feature and of the features that read `referencesTo` use it.
  */
 export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
   const agents = new Map<string, AgentSettings>();
-  for (const agent of options.agents ?? []) agents.set(keyOf(agent), { ...fresh, ...agent });
+  for (const agent of options.agents ?? [])
+    agents.set(keyOf(agent), { ...freshFor(agent.id), ...agent });
   const listeners = new Set<() => void>();
   // Each agent's file version, so a change gives it a new fingerprint as a saved edit does.
   const versions = new Map<string, number>();
@@ -364,7 +375,7 @@ export function memoryAgentsHost(options: MemoryAgentsHostOptions): AgentsHost {
         .map((each) => each.id);
       const id = uniqueName(slugify(name), taken);
       agents.set(keyOf({ hubId, id }), {
-        ...fresh,
+        ...freshFor(id),
         hubId,
         id,
         name,

@@ -144,6 +144,16 @@ export const configurationWords = {
   couldntOpenTerminal: "Couldn't open a terminal. Run this, then choose Check again:",
   /** When the host couldn't be asked to open it at all (team decision on HAL-6351). */
   couldntOpenSignIn: (reason: string) => `Couldn't open the sign-in: ${reason}`,
+  /** Harness › the sandbox fields in the agent's file (flow-agents 5.3; checklist 2.6 and 2.9). */
+  sandboxFields: {
+    workingFolder: "Working folder",
+    change: "Change…",
+    allowedSites: "Allowed sites",
+    addSite: "Add site",
+    /** The Add chip's box, named like the options' "New option". */
+    newSite: "New site",
+    removeSite: (site: string) => `Remove ${site}`,
+  },
   /**
    * Harness › Where it runs (microcopy 8.5 and 23.4; checklist 3.8). The board approved these
    * words on HAL-1784 (11 Nov); `inSandboxNote` is the team's (revision 59).
