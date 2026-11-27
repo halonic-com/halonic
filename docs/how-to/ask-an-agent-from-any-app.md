@@ -45,7 +45,7 @@ didn't send and the agent you picked.
    Ctrl, Alt or ⌘.
 
 If another app holds those keys, Settings says "{keys} is taken by another app.
-Pick another key." and keeps the old ones.
+Choose another." and keeps the old ones.
 
 On Linux with Wayland, the desktop doesn't let apps add a shortcut. Add one in
 your desktop's settings that runs `halonic-studio --app ask`, or use Help, Ctrl K
