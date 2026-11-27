@@ -36,6 +36,11 @@ table.
 - `agent-host.paperclip-key-hand-over` gains the 403 `may_not_start`
   refusal (Julian's condition 2); the new `agent-host.paperclip-may-start`
   holds the rule and the connections list's `mayStart` flag.
+- `agent-host.messaging-engine`'s test hands the key over through the
+  shared `handOver` helper, which throws on a refusal, so the 409
+  `server_engine` check is one `rejects.toMatchObject` on the status and the
+  kind where it was two `expect` calls. It checks the same two fields, and
+  that no key is kept, as before.
 - The click test's Connect step named `services.paperclip-connect`; it now
   names `studio.src-tauri.paperclip-key-keep`, and the affected-steps test's
   comment says why a `studio/services` change still selects it.
@@ -51,6 +56,7 @@ workspace that may start a run.
 - agent-host-client.paperclip-key
 - agent-host-client.shell-routes
 - agent-host.paperclip-key-hand-over
+- agent-host.messaging-engine
 - packages/studio/services/src/paperclip-key.test.ts
 - packages/studio/services/src/paperclip-restore.test.ts
 - packages/studio/services/src/host-agent-connections-restore.test.ts

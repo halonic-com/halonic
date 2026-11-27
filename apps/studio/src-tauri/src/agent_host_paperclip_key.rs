@@ -151,6 +151,17 @@ pub async fn agent_host_paperclip_restore<R: Runtime>(
             format!("the picked folders can't be read: {refusal:?}"),
         )
     })?;
+    restore_for(&app, keychain, picked, workspace).await
+}
+
+/// The restore of `agent_host_paperclip_restore`, against `keychain` and
+/// the folders `picked` remembers.
+pub(super) async fn restore_for<R: Runtime>(
+    app: &AppHandle<R>,
+    keychain: Arc<dyn SecretBackend>,
+    picked: PickedFolders,
+    workspace: String,
+) -> Result<usize, HostRefusal> {
     let host = ShellRestore { app: app.clone() };
     on_worker(move || {
         let checks = ShellChecks { picked };

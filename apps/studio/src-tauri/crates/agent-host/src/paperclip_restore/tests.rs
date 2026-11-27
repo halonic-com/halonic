@@ -183,12 +183,16 @@ fn a_signed_out_connection_gets_its_key_back_too_and_a_connected_one_doesnt() {
         Ok(1)
     );
 
+    // A fresh keychain, so its reads count only this restore's: the row's
+    // state is checked before any entry is read.
+    let keychain = keychain_with(&[REAL_PATH]);
     let connected = FakeHost::listing(list(json!(true), "connected", ADDRESS, COMPANY));
     assert_eq!(
         restore_paperclip_keys(&keychain, &connected, &PICKED, "./acme"),
         Ok(0)
     );
     assert!(connected.hand_overs().is_empty());
+    assert_eq!(keychain.reads(), 0);
 }
 
 #[test]

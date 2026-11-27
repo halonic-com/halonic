@@ -126,6 +126,10 @@ fn answer(connection: TcpStream, seen: &Sender<Seen>, released: &Mutex<Receiver<
         "/v1/paperclip/sign-in/cancel" => {
             respond(&mut connection, 200, r#"{"status":"cancelled"}"#)
         }
+        "/v1/paperclip/connections" => {
+            respond(&mut connection, 200, &connections_list(&body).to_string());
+        }
+        "/v1/paperclip/key" => respond(&mut connection, 200, r#"{"kept":true}"#),
         "/v1/sandbox/sessions/blocked" => respond(
             &mut connection,
             404,
@@ -139,6 +143,23 @@ fn answer(connection: TcpStream, seen: &Sender<Seen>, released: &Mutex<Receiver<
         }
         _ => respond(&mut connection, 404, r#"{"error":{"kind":"not_found"}}"#),
     }
+}
+
+/// The host's list for the workspace the request `body` names, taken as its
+/// real path: it may start a run, and its connection `acme` holds no key.
+fn connections_list(body: &[u8]) -> Value {
+    let request: Value = serde_json::from_slice(body).unwrap_or_default();
+    json!({
+        "workspace": request.get("workspace"),
+        "mayStart": true,
+        "connections": [{
+            "name": "acme",
+            "label": "Acme",
+            "address": "https://paperclip.acme.test",
+            "company": "company-acme",
+            "state": { "kind": "no-key" },
+        }],
+    })
 }
 
 fn respond(connection: &mut TcpStream, status: u16, body: &str) {
@@ -416,3 +437,6 @@ mod window_routes;
 
 #[path = "agent_host_paperclip_key_tests.rs"]
 mod paperclip_key;
+
+#[path = "agent_host_paperclip_restore_tests.rs"]
+mod paperclip_restore;

@@ -19,10 +19,13 @@ import { type WorkspaceMayStart, workspaceMayStartWith } from "./workspace-may-s
 
 const acmeExample = fileURLToPath(new URL("../../../../examples/acme", import.meta.url));
 
-/** A trust store whose records can't be read, as a damaged trust folder's. */
-class UnreadableTrustStore extends MemoryTrustStore {
-  override async get(_location: string): Promise<TrustRecord | null> {
-    throw new Error("The trust record can't be read.");
+/** A trust store whose records can't be read once it is damaged, as a damaged trust folder's. */
+class DamageableTrustStore extends MemoryTrustStore {
+  damaged = false;
+
+  override async get(location: string): Promise<TrustRecord | null> {
+    if (this.damaged) throw new Error("The trust record can't be read.");
+    return super.get(location);
   }
 }
 
@@ -126,9 +129,17 @@ verifies("agent-host.paperclip-may-start", () => {
   });
 
   it("refuses a workspace whose trust record can't be read", async () => {
+    // The grant is in the store that gets damaged, so only the read error refuses.
+    const damageable = new DamageableTrustStore();
+    store = damageable;
     await needingTrust();
     await trust();
-    expect(await mayStartWith(new UnreadableTrustStore())(acme)).toBe(false);
+    const mayStart = mayStartWith();
+    expect(await mayStart(acme)).toBe(true);
+
+    damageable.damaged = true;
+
+    expect(await mayStart(acme)).toBe(false);
   });
 
   it("refuses a folder that isn't a workspace, and reports why", async () => {
