@@ -91,6 +91,9 @@ const riskyKinds: readonly (readonly [string, InboxItem, InboxAnswer])[] = [
   ],
 ];
 
+/** The page's answer route, or the shell's confirmed one. */
+type AnswerRoute = "POST /v1/messaging/answer" | "POST /v1/messaging/answer-confirmed";
+
 /** The desktop with its workspace listing `items`, its `answer` a spy. */
 async function listing(items: readonly InboxItem[]) {
   const started = await startDesktop();
@@ -99,13 +102,18 @@ async function listing(items: readonly InboxItem[]) {
   if (workspace === undefined) throw new Error("The helper's workspace isn't served.");
   const list = vi.spyOn(workspace.messaging, "listInboxItems").mockResolvedValue(items);
   const answer = vi.spyOn(workspace.messaging, "answer").mockResolvedValue(answered);
-  const send = (route: string, item: string, sent: InboxAnswer, digest?: string) =>
-    started.transport.request(route, {
+  // The page names only its own answer route; the confirmed one is the shell's.
+  const send = (route: AnswerRoute, item: string, sent: InboxAnswer, digest?: string) => {
+    const body = {
       workspace: started.workspace,
       item,
       answer: sent,
       ...(digest === undefined ? {} : { digest }),
-    });
+    };
+    return route === "POST /v1/messaging/answer"
+      ? started.transport.request(route, body)
+      : started.shell(route, body);
+  };
   return { list, answer, send };
 }
 
