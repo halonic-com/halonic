@@ -2,6 +2,7 @@
 
 import type { AgentMessaging, MessagingId } from "@halonicjs/ports";
 import { OpenExternalProvider } from "@halonicjs/studio-kit";
+import { settleHoldMs } from "@halonicjs/studio-kit/settle";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -14,6 +15,7 @@ import { InboxView } from "./inbox-page.tsx";
 afterEach(() => {
   unmountAll();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 // Local times, so the test reads the same in every time zone. Tue 24 Nov 2026.
@@ -24,6 +26,19 @@ async function settled(): Promise<void> {
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
+}
+
+/** Fake timers that still run on their own, so a test can skip an ended row's hold. */
+function holdSkippable(): void {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"], shouldAdvanceTime: true });
+}
+
+/** Skips the hold of a row that ended (`inbox.final-state`), so it has gone. */
+async function afterTheHold(): Promise<void> {
+  await act(async () => {
+    vi.advanceTimersByTime(settleHoldMs);
+  });
+  await settled();
 }
 
 /** A fake with the source "Paperclip · Acme" and one open question from Chief, asked at 10:00. */
@@ -124,6 +139,7 @@ verifies("inbox.agent-inbox-items", () => {
 
   describe("answering", () => {
     it("answers through AgentMessaging.answer and says so on the card", async () => {
+      holdSkippable();
       const { messaging, item } = acme();
       const answer = vi.spyOn(messaging, "answer");
       const root = await openInbox(messaging);
@@ -133,6 +149,7 @@ verifies("inbox.agent-inbox-items", () => {
       await click(button(root, "Yes"));
       expect(answer).toHaveBeenCalledWith(item.id, { kind: "option", option: "yes" });
       expect(root.textContent).toContain("Answered at 10:00: Yes.");
+      await afterTheHold();
       expect(rows(root)).toHaveLength(0);
     });
 
@@ -261,6 +278,7 @@ verifies("inbox.agent-inbox-items", () => {
 
 verifies("inbox.every-waiting-item", () => {
   it("lists a card from a task that isn't a chat after one change, names its task, and answers it", async () => {
+    holdSkippable();
     const messaging = new FakeAgentMessaging({ now: () => asked });
     const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
     const task = messaging.addWork(source.id, { label: "ACME-12", title: "Fix the login" });
@@ -282,6 +300,7 @@ verifies("inbox.every-waiting-item", () => {
     const [answered] = await messaging.listInboxItems();
     expect(answered?.id).toBe(card?.id);
     expect(answered?.state).toMatchObject({ kind: "answered", answer: { option: "yes" } });
+    await afterTheHold();
     expect(rows(root)).toHaveLength(0);
   });
 });

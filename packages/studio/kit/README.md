@@ -146,6 +146,8 @@ list while it shows its final state, one line from `finalState` ("Approved by Ad
 `kit.final-state`); `useSettleAway` holds it 4 seconds, paused while the pointer or the focus is
 on it, then it fades out and its height and the space above it close. Under reduced motion it only
 fades. A test puts in its own motion with `SettleMotionProvider` instead of stubbing the browser's.
+Cards that ended in the same read hold and go as one with `useSettleAwayTogether`
+(`kit.settle-together`), as the Inbox's rows do.
 
 ## More contrast
 

@@ -110,26 +110,48 @@ export function useSettleAway(
   onGone: () => void,
   hold: number = settleHoldMs,
 ): void {
+  const elements = useCallback(
+    () => (element.current === null ? [] : [element.current]),
+    [element],
+  );
+  useSettleAwayTogether(elements, onGone, hold);
+}
+
+/**
+ * Holds several settling elements as one (`kit.settle-together`), as {@link useSettleAway} holds
+ * one: cards that ended in the same read wait together, pausing while the pointer is over any of
+ * them or the focus is in one, then all go at once and `onGone` is called once. `elements` is read
+ * once, after the first render. With none, such as rows a filter hides, there is nothing to hold or
+ * see go, so `onGone` is called at once: otherwise they would wait for good, and show again later.
+ */
+export function useSettleAwayTogether(
+  elements: () => readonly HTMLElement[],
+  onGone: () => void,
+  hold: number = settleHoldMs,
+): void {
   const goneRef = useRef(onGone);
   goneRef.current = onGone;
   const out = useSettleOut();
 
   useEffect(() => {
-    const target = element.current;
-    if (target === null) return;
+    const targets = elements();
+    if (targets.length === 0) {
+      goneRef.current();
+      return;
+    }
     let left = hold;
     let startedAt = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    // Set once it starts going, so leaving the element afterwards starts nothing again.
+    // Set once they start going, so leaving one afterwards starts nothing again.
     let done = false;
-    let held = heldAtStart(target);
+    let held = targets.reduce((sum, target) => sum + heldAtStart(target), 0);
 
     const go = () => {
       timer = undefined;
       done = true;
-      // Nothing in it takes the focus while it goes, so it is never removed with the focus inside.
-      target.setAttribute("inert", "");
-      out(target).then(
+      // Nothing in them takes the focus while they go, so none is removed with the focus inside.
+      for (const target of targets) target.setAttribute("inert", "");
+      Promise.all(targets.map((target) => out(target))).then(
         () => goneRef.current(),
         (error: unknown) => {
           console.error("A settling card couldn't animate away:", error);
@@ -154,15 +176,19 @@ export function useSettleAway(
     };
     const pausers = ["pointerenter", "focusin"] as const;
     const resumers = ["pointerleave", "focusout"] as const;
-    for (const name of pausers) target.addEventListener(name, pause);
-    for (const name of resumers) target.addEventListener(name, resume);
+    for (const target of targets) {
+      for (const name of pausers) target.addEventListener(name, pause);
+      for (const name of resumers) target.addEventListener(name, resume);
+    }
     if (held === 0) run();
     return () => {
       if (timer !== undefined) clearTimeout(timer);
-      for (const name of pausers) target.removeEventListener(name, pause);
-      for (const name of resumers) target.removeEventListener(name, resume);
+      for (const target of targets) {
+        for (const name of pausers) target.removeEventListener(name, pause);
+        for (const name of resumers) target.removeEventListener(name, resume);
+      }
     };
-  }, [element, hold, out]);
+  }, [elements, hold, out]);
 }
 
 /**

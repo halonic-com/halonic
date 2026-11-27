@@ -1,4 +1,4 @@
-import { enter, flip, swap } from "@halonicjs/studio-kit";
+import { enter, flip, leave, swap } from "@halonicjs/studio-kit";
 import { type RefObject, useEffect, useState } from "react";
 import { flushSync } from "react-dom";
 
@@ -10,10 +10,12 @@ export interface InboxMotion {
   readonly flip: typeof flip;
   readonly enter: typeof enter;
   readonly swap: typeof swap;
+  /** Fades a row that ended out before it leaves the list (`inbox.final-state`). */
+  readonly leave: typeof leave;
 }
 
 /** The kit's own motions, which play nothing where `element.animate` is missing. */
-export const kitMotion: InboxMotion = { flip, enter, swap };
+export const kitMotion: InboxMotion = { flip, enter, swap, leave };
 
 /**
  * What ends a press. A press let go outside the window sends no `pointerup` here, so the click

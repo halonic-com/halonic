@@ -246,11 +246,11 @@ export function InboxView({
   const list = useRef<HTMLDivElement>(null);
   const state = useGlidingState(subscribe, read, list, motion);
   const { open, focus, openItem, openAt } = useOpenItem(inbox, state.items);
-  const agent = useAgentItems(agentMessaging, {
-    catalog: actionCatalog,
-    policy: requesterPolicy,
-    steps: actionSteps,
-  });
+  const agent = useAgentItems(
+    agentMessaging,
+    { catalog: actionCatalog, policy: requesterPolicy, steps: actionSteps },
+    { list, motion, announce },
+  );
   // An item of the Inbox's own that opens, by hand or on request, takes the pane from an agent's.
   const closeAgent = agent.close;
   useEffect(() => {
@@ -396,6 +396,7 @@ export function InboxView({
               onRetry={retry}
             />
           )}
+          {agent.settlers}
           {state.loaded && !failedFirst && proposals === undefined ? <ProposalsElsewhere /> : null}
           {failedFirst ? null : (
             <>
