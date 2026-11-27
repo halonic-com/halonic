@@ -225,6 +225,9 @@ pub async fn owner_logout<R: Runtime>(app: AppHandle<R>, origin: String) -> Owne
         Ok(canonical) => canonical,
         Err(code) => return code.into(),
     };
+    // A stream that stayed open would go on reading the server's runs after
+    // the session is forgotten.
+    crate::deployment_calls::end_origin(&app, &canonical);
     let keychain = app.state::<SecretsState>().owner_keychain();
     let server = async {
         let address = checked(&origin).await.ok()?;

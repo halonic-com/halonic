@@ -16,7 +16,7 @@ use crate::engine_sse::{SseFault, SseReader};
 /// How long an open stream may send nothing. The server sends no keep-alive,
 /// so a quiet run ends its stream here, and the page resumes it from the
 /// last event it has.
-const IDLE_TIMEOUT: Duration = Duration::from_secs(120);
+pub(crate) const IDLE_TIMEOUT: Duration = Duration::from_secs(120);
 
 /// The largest JSON answer the shell reads: a run summary or the waiting
 /// list of at most 100 runs.
@@ -53,14 +53,16 @@ pub(crate) async fn read_answer(
     Ok(DeploymentAnswer { status, body })
 }
 
-/// Sends each event until the stream ends, and answers how it ended.
+/// Sends each event until the stream ends, or sends nothing for `idle`
+/// ([`IDLE_TIMEOUT`] outside tests), and answers how it ended.
 pub(crate) async fn read_events(
     response: &mut reqwest::Response,
     channel: &Channel<EngineStreamMessage>,
+    idle: Duration,
 ) -> EngineStreamMessage {
     let mut reader = SseReader::new(FRAME_LIMIT);
     loop {
-        let chunk = match tokio::time::timeout(IDLE_TIMEOUT, response.chunk()).await {
+        let chunk = match tokio::time::timeout(idle, response.chunk()).await {
             Ok(Ok(Some(chunk))) => chunk,
             Ok(Ok(None)) => return EngineStreamMessage::End,
             Ok(Err(_)) => return stream_failed("the server's stream broke off"),
@@ -93,3 +95,7 @@ fn stream_failed(message: &str) -> EngineStreamMessage {
         message: message.to_owned(),
     }
 }
+
+#[cfg(test)]
+#[path = "deployment_reads_tests.rs"]
+mod tests;

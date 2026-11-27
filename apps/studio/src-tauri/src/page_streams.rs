@@ -18,9 +18,12 @@ pub struct StreamKey {
 }
 
 /// A stream the page has opened. `task` is `None` until the other end has
-/// answered; then it is the task passing on what comes.
+/// answered; then it is the task passing on what comes. `tag` names what
+/// the stream is to, such as an owner server's origin, so that all of them
+/// can end at once; it is empty when that isn't needed.
 pub(crate) struct OpenStream {
     serial: u64,
+    tag: String,
     task: Option<JoinHandle<()>>,
 }
 
@@ -54,6 +57,12 @@ impl PageStreams {
 
     /// Notes a stream the page is opening. Answers the stream's serial.
     pub fn open(&self, key: &StreamKey) -> Result<u64, OpenRefusal> {
+        self.open_tagged(key, "")
+    }
+
+    /// Notes a stream the page is opening to `tag`, which
+    /// [`end_tagged`](Self::end_tagged) ends. Answers the stream's serial.
+    pub fn open_tagged(&self, key: &StreamKey, tag: &str) -> Result<u64, OpenRefusal> {
         let mut streams = self.streams.lock().map_err(|_| OpenRefusal::Poisoned)?;
         if streams.contains_key(key) {
             return Err(OpenRefusal::InUse);
@@ -62,7 +71,12 @@ impl PageStreams {
             return Err(OpenRefusal::TooMany);
         }
         let serial = self.next_serial.fetch_add(1, Ordering::Relaxed);
-        streams.insert(key.clone(), OpenStream { serial, task: None });
+        let open = OpenStream {
+            serial,
+            tag: tag.to_owned(),
+            task: None,
+        };
+        streams.insert(key.clone(), open);
         Ok(serial)
     }
 
@@ -86,6 +100,14 @@ impl PageStreams {
         true
     }
 
+    /// Whether the stream `serial` is still open: the page hasn't ended it,
+    /// and hasn't reloaded or closed.
+    pub fn holds(&self, key: &StreamKey, serial: u64) -> bool {
+        self.streams
+            .lock()
+            .is_ok_and(|streams| streams.get(key).is_some_and(|open| open.serial == serial))
+    }
+
     /// Forgets a stream that has ended on its own, unless the page has
     /// since opened another under the same id.
     pub fn forget(&self, key: &StreamKey, serial: u64) {
@@ -100,11 +122,20 @@ impl PageStreams {
     /// response, which hangs up; a stream not yet answered is hung up on
     /// when the answer comes.
     pub fn end(&self, ends: impl Fn(&StreamKey) -> bool) {
+        self.end_where(|key, _| ends(key));
+    }
+
+    /// Ends every stream opened to `tag`, of every page.
+    pub fn end_tagged(&self, tag: &str) {
+        self.end_where(|_, open| open.tag == tag);
+    }
+
+    fn end_where(&self, ends: impl Fn(&StreamKey, &OpenStream) -> bool) {
         let Ok(mut streams) = self.streams.lock() else {
             return;
         };
         streams.retain(|key, open| {
-            if !ends(key) {
+            if !ends(key, open) {
                 return true;
             }
             if let Some(task) = open.task.take() {

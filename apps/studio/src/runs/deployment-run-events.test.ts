@@ -185,6 +185,25 @@ verifies("studio.deployment-calls", () => {
         { kind: "failed", error: new DeploymentCallRefused("notSignedIn") },
       ]);
     });
+
+    it("logs an onEnd that throws rather than leave it unhandled", async () => {
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      const deployment = fakeDeployment([{ open: "refused", status: 404 }]);
+      followDeploymentRun({
+        calls: deployment.calls,
+        runId: "run_1",
+        onEvent: () => {},
+        onEnd: () => {
+          throw new Error("the run view has gone");
+        },
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(logged).toHaveBeenCalledWith(
+        "Following a run's events failed.",
+        new Error("the run view has gone"),
+      );
+      logged.mockRestore();
+    });
   });
 });
 

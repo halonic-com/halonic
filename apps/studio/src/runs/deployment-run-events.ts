@@ -62,7 +62,10 @@ type StreamOutcome = FollowEnd | { readonly kind: "broken"; readonly error: unkn
  */
 export function followDeploymentRun(options: FollowRunOptions): { stop(): void } {
   const follower = new RunFollower(options);
-  void follower.run();
+  // `onEnd` is the caller's; if it throws, say so rather than leave the rejection unhandled.
+  follower.run().catch((failure: unknown) => {
+    console.error("Following a run's events failed.", failure);
+  });
   return { stop: () => follower.stop() };
 }
 
