@@ -60,9 +60,10 @@ export interface RailEntry extends Ordered {
    */
   readonly order: number;
   /**
-   * The tabs the sub-app holds, by the first part of a tab's key: a place such as `library`, or
-   * an item kind such as `agent` for `agent/acme/sorter`. The entry is selected while the active
-   * tab shows one of them (`shell.rail`).
+   * The places the sub-app holds, such as `library` and `agents`. An item's tab belongs to the
+   * place its kind registers (`ItemKindContribution.place`), so `agent/acme/sorter` is in Agents;
+   * list a kind here only when no place lists it, as `file` for Code. The entry is selected while
+   * the active tab is in one of them (`shell.rail`).
    */
   readonly holds: readonly string[];
   /**

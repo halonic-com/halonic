@@ -8,7 +8,7 @@ export const runsRailEntry: RailEntryContribution = {
   label: "Runs",
   icon: "runs",
   order: 50,
-  holds: ["runs", "run", "run-file"],
+  holds: ["runs"],
   opens: "runs",
   shows: (facts) => facts.hasItems || facts.runsRecorded,
 };
