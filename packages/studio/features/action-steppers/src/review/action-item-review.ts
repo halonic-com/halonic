@@ -27,6 +27,7 @@ import type {
 } from "@halonicjs/ports";
 import { parse } from "@halonicjs/schema-kit";
 import { markHiddenName } from "@halonicjs/std";
+import { pageBody } from "../run/step-request.ts";
 import type {
   StepAction,
   StepperStage,
@@ -121,20 +122,15 @@ function localDay(day: string): Date {
 
 /**
  * A call step as "Show the request" shows it: the route's method, its path with the parameters
- * filled in, and the body fields the page sends. The shell adds constants and the values typed in
- * its own dialog, so those never show here.
+ * filled in, and the body fields the page sends (`step` names a list field's parameter). The shell
+ * adds constants and the values typed in its own dialog, so those never show here.
  */
 function callAction(
   route: ActionCallRoute,
   parameters: InboxActionRequest["parameters"],
+  step: Step,
 ): StepAction {
-  const body: Record<string, unknown> = {};
-  for (const field of route.body) {
-    const value = parameters[field.name];
-    if (field.kind !== "constant" && field.kind !== "secret-input" && value !== undefined) {
-      body[field.name] = value;
-    }
-  }
+  const body = pageBody(route, parameters, step);
   return {
     kind: "call",
     call: {
@@ -164,7 +160,7 @@ function stepAction(
       return { kind: "input", label: step.label, secret: step.secret };
     case "call":
     case "check": {
-      if (route?.kind === "call") return callAction(route, parameters);
+      if (route?.kind === "call") return callAction(route, parameters, step);
       // A catalog without routes still shows where the step goes; the shell sends nothing off its own list.
       const method = step.kind === "check" ? "GET" : step.method;
       return { kind: "call", call: { method, address: fill(step.path, parameters, true) } };
@@ -174,7 +170,7 @@ function stepAction(
     case "script":
       // A script step runs once the catalog has its call route; until then the review names it.
       return route?.kind === "call"
-        ? callAction(route, parameters)
+        ? callAction(route, parameters, step)
         : { kind: "script", script: step.ref };
   }
 }

@@ -37,13 +37,21 @@ export function gateRefusal(
   const definition = catalog.definition(id, version) ?? catalog.stepType(id, version);
   // The review already refused a request whose definition isn't in the catalog.
   if (definition === undefined) return { ok: true };
-  return checkStepGate(definition, step, action.expect ?? {}, keptByStep(record));
+  // A rule comparing a kept value with a parameter fails closed without them.
+  return checkStepGate(
+    definition,
+    step,
+    action.expect ?? {},
+    keptByStep(record),
+    action.parameters,
+  );
 }
 
 /**
  * The stop for the next step when a check before it broke one of the definition's `requires`
- * rules or didn't read a field one names; `undefined` otherwise. A check that hasn't run yet
- * doesn't stop the request: it only keeps the step after it from being sent.
+ * rules, didn't read a field one names, or the request's `expect` lacks a field the check
+ * requires; `undefined` otherwise. A check that hasn't run yet doesn't stop the request: it only
+ * keeps the step after it from being sent.
  */
 function requiresStop(
   catalog: StepperCatalog,
@@ -52,7 +60,8 @@ function requiresStop(
   record: RecordState,
 ): ExpectStop | undefined {
   const gate = gateRefusal(catalog, action, next, record);
-  if (gate.ok || (gate.cause !== "requires" && gate.cause !== "not-read")) return undefined;
+  // A changed `expect` value stops through `expectStop` already.
+  if (gate.ok || gate.cause === "not-checked" || gate.cause === "expect") return undefined;
   return { message: gate.message, changes: [] };
 }
 

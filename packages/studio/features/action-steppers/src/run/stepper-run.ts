@@ -279,7 +279,7 @@ export class StepperRun {
       const refusal = this.refusal(number, this.record);
       if (refusal !== undefined) throw new Error(refusal);
       this.markRunning(number);
-      const request = stepRequest(item.action, route);
+      const request = stepRequest(item.action, route, this.definition().steps[number - 1]);
       if (route.kind === "call") await steps.runStep(this.request, request);
       else await steps.openGuidedStep(this.request, request);
     });
