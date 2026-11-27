@@ -48,7 +48,10 @@
 # keeps running is then published as a pre-release of
 # halonic-com/halonic-preview, "Preview, not for general use", signed for the
 # updater with the Preview key (HAL-18477, board decision on HAL-18474,
-# standing yes). Until the click test is proven on main, publishing doesn't
+# standing yes). The WSL runtime and image are assets of that pre-release
+# too, halonic-runtime-<version>.tar.gz and halonic-wsl-<image
+# version>.tar.gz, each checked against the pin the installer carries
+# (part-pins.mjs, HAL-20591). Until the click test is proven on main, publishing doesn't
 # wait for it (board, HAL-18477). A run on any other branch, or one that names
 # a build-ref, publishes nothing. Stable builds go to this repo's releases
 # only through release.yml, after the board's release card.
@@ -233,11 +236,14 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.sha }}
           persist-credentials: false
-      # The preview version's script is the workflow's, since an older build ref predates it.
+      # The preview version's and the pins' scripts are the workflow's, since an older build ref predates them.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: workflow-ref
-          sparse-checkout: apps/studio/src-tauri/windows/preview-version.mjs
+          sparse-checkout: |
+            apps/studio/src-tauri/windows/preview-version.mjs
+            apps/studio/src-tauri/windows/part-pins.mjs
+            apps/studio/src-tauri/windows/min-runtime.json
           sparse-checkout-cone-mode: false
           persist-credentials: false
       - uses: $/.github/actions/setup
@@ -281,6 +287,23 @@ jobs:
           @{ version = $version } | ConvertTo-Json | Set-Content "$env:RUNNER_TEMP/preview.conf.json" -Encoding utf8NoBOM
           "PREVIEW_VERSION=$version" >> $env:GITHUB_ENV
           "version=$version" >> $env:GITHUB_OUTPUT
+      # Each part's address on the pre-release the publish job makes, checked
+      # against the app's allow-list, into the pins the installer carries
+      # (HAL-20591). Then the parts are staged as publish adds them, so a run
+      # on any branch shows the assets and their SHA256SUMS lines.
+      - name: Pin the WSL runtime and image
+        run: |
+          $pins = 'workflow-ref/apps/studio/src-tauri/windows/part-pins.mjs'
+          $tag = "v$env:PREVIEW_VERSION"
+          node $pins pin runtime "$env:RUNNER_TEMP/wsl-runtime" halonic-com/halonic-preview $tag
+          if ($LASTEXITCODE -ne 0) { throw 'pinning the runtime failed' }
+          node $pins pin image "$env:RUNNER_TEMP/wsl-image" halonic-com/halonic-preview $tag (Get-Content infra/wsl-image/image-version -Raw).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'pinning the image failed' }
+          $staged = Join-Path $env:RUNNER_TEMP 'parts-staged'
+          New-Item -ItemType Directory $staged | Out-Null
+          node $pins publish $staged halonic-com/halonic-preview $tag "$env:RUNNER_TEMP/wsl-runtime" "$env:RUNNER_TEMP/wsl-image"
+          if ($LASTEXITCODE -ne 0) { throw 'staging the parts failed' }
+          "### WSL parts`n`n``````n$(Get-Content (Join-Path $staged 'SHA256SUMS') -Raw)``````" >> $env:GITHUB_STEP_SUMMARY
       - name: Build the installer
         working-directory: apps/studio/src-tauri
         run: pwsh windows/build-installer.ps1 -Config "$env:RUNNER_TEMP/preview.conf.json" -Runtime "$env:RUNNER_TEMP/wsl-runtime" -Image "$env:RUNNER_TEMP/wsl-image"
@@ -323,6 +346,15 @@ jobs:
           Stop-Process -Id $app.Id -Force
           $mb = [math]::Round((Get-Item $setup).Length / 1MB)
           "### Studio preview`n`n$(Split-Path -Leaf $setup), $mb MB, unsigned. Updated the release version to $installed, and still running after 20 s." >> $env:GITHUB_STEP_SUMMARY
+      # The pins that went into the installer, for the publish job's check.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: halonic-part-pins
+          path: |
+            ${{ runner.temp }}/wsl-runtime/halonic-runtime.json
+            ${{ runner.temp }}/wsl-image/halonic-wsl.json
+          if-no-files-found: error
+          retention-days: 1
       # Both setups for the click test's upgrade install, by build commit, so
       # a later build-ref run of the same commit reuses them. No installer for
       # anyone to try comes from here: click-test keeps it once it passed.
@@ -602,6 +634,19 @@ jobs:
         with:
           name: halonic-installers-${{ needs.resolve.outputs.sha }}
           path: ${{ runner.temp }}/setups
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: halonic-wsl-runtime
+          path: ${{ runner.temp }}/wsl-runtime
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: halonic-wsl-image
+          path: ${{ runner.temp }}/wsl-image
+      # Last, so the pins the installer carries replace the unpinned manifest.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: halonic-part-pins
+          path: ${{ runner.temp }}
       - name: Name the installer
         run: |
           installer="Halonic-$VERSION-windows-x64-setup.exe"
@@ -629,6 +674,12 @@ jobs:
         run: |
           jq -r '.platforms["windows-x86_64"].signature' dist/latest.json > "dist/$INSTALLER.sig"
           (cd dist && sha256sum "$INSTALLER.sig" >> SHA256SUMS)
+      # Each part under its versioned name, checked against the pin that went
+      # into the installer, and its line in SHA256SUMS (HAL-20591).
+      - name: Add the WSL runtime and image, checked against their pins
+        run: |
+          node apps/studio/src-tauri/windows/part-pins.mjs publish dist "$PREVIEW_REPO" "v$VERSION" "$RUNNER_TEMP/wsl-runtime" "$RUNNER_TEMP/wsl-image" > "$RUNNER_TEMP/parts.txt"
+          cat "$RUNNER_TEMP/parts.txt"
       - name: Publish the pre-release
         env:
           GH_TOKEN: ${{ secrets.PREVIEW_PUBLISH_TOKEN }}
@@ -638,7 +689,15 @@ jobs:
           notes="Preview, not for general use. Unsigned Windows build of $SOURCE, built, installed and started in $RUN. Halonic installs set to the Preview update track update to it; stable releases are on $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases."
           # The same notes as latest.json's, in a file: they can be 20,000 characters.
           printf '%s\n\n## What changed\n\n%s\n' "$notes" "$(jq -r .notes dist/latest.json)" > "$RUNNER_TEMP/release-body.md"
+          mapfile -t parts < <(cut -d' ' -f1 "$RUNNER_TEMP/parts.txt" | sed 's|^|dist/|')
           gh release create "v$VERSION" --repo "$PREVIEW_REPO" --target main --prerelease --latest=false \
             --title "Halonic $VERSION (Preview, not for general use)" --notes-file "$RUNNER_TEMP/release-body.md" \
-            "dist/$INSTALLER" "dist/$INSTALLER.sig" dist/latest.json dist/SHA256SUMS
+            "dist/$INSTALLER" "dist/$INSTALLER.sig" dist/latest.json dist/SHA256SUMS "${parts[@]}"
+          # GitHub renames an asset it doesn't like, which would leave a pin's
+          # url pointing at nothing: each part must be there under its pinned
+          # name and size.
+          assets="$(gh release view "v$VERSION" --repo "$PREVIEW_REPO" --json assets --jq '.assets[] | "\(.name) \(.size)"')"
+          while read -r part; do
+            grep -qxF -- "$part" <<< "$assets" || { echo "::error::The pre-release has no asset $part, as its pin says"; exit 1; }
+          done < "$RUNNER_TEMP/parts.txt"
           echo "Published [v$VERSION]($GITHUB_SERVER_URL/$PREVIEW_REPO/releases/tag/v$VERSION) to $PREVIEW_REPO as a pre-release." >> "$GITHUB_STEP_SUMMARY"
