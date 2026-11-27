@@ -2,6 +2,7 @@
 
 - Approval: HAL-20093 (follows halonic's `codeLines` from HAL-19283)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kV0QSbKBDWVNB7KX4/WDiAVUWJN3D0vvAbRNNMpxX7/5aYTKXDio0/pgyUZYD58vRT9TMqvMVt5s2He/G9JGAg==
 
 The reviewer-by-paths answer of `github.pull-request` changes in two ways:
 
