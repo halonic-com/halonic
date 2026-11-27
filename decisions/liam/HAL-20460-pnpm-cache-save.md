@@ -8,7 +8,8 @@
 
 `.github/actions/setup` saves the pnpm store only on a `push` run on `main`. A run on `main` started
 by hand or by the schedule still restores it, but no longer saves it. `studio-preview.yml` refuses a
-`build-ref`, and `network-capture.yml` a `windows_ref`, that isn't on the ref the workflow runs on.
+`build-ref`, and `network-capture.yml` a `windows_ref`, that isn't on the ref the workflow runs on,
+and `studio-preview.yml` reuses installers only from a push build of `main`.
 To build an unmerged commit, start the workflow on its own branch (`--ref <branch>`). The nightly
 click test names main's newest commit and runs on `main`, so it is unchanged. No requirement, test
 or guard rule changes.

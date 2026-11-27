@@ -120,16 +120,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.commit.outputs.sha }}
-        # Only a run of this workflow, in this repo, counts: any other
-        # workflow, a fork pull request's included, could upload an artifact
-        # with that name (Liam, HAL-18353 review).
+        # Only a push build of this commit on main, in this repo, counts: any
+        # other workflow, a fork pull request's included, could upload an
+        # artifact with that name (Liam, HAL-18353 review), and so could a run
+        # on another branch, from that branch's copy of this workflow. A tag
+        # named main reports the same head_branch, but a tag push builds the
+        # tagged commit, so head_sha must also be this commit, which resolve
+        # checked is on the workflow's ref. Main's copy of this workflow runs
+        # on pushes to main only.
         run: |
           run=""
           for candidate in $(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=halonic-installers-$SHA&per_page=10" \
             --jq '.artifacts[] | select(.expired | not) | .workflow_run.id'); do
-            source="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$candidate" --jq '"\(.path) \(.head_repository.full_name) \(.event)"')"
+            source="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$candidate" --jq '"\(.path) \(.head_repository.full_name) \(.event) \(.head_branch) \(.head_sha)"')"
             case "$source" in
-              ".github/workflows/studio-preview.yml $GITHUB_REPOSITORY push" | ".github/workflows/studio-preview.yml $GITHUB_REPOSITORY workflow_dispatch")
+              ".github/workflows/studio-preview.yml $GITHUB_REPOSITORY push main $SHA")
                 run="$candidate"
                 break
                 ;;

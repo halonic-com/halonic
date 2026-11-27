@@ -15,8 +15,8 @@ runs:
     # nothing else could read it, and every queue entry is a new ref: saving
     # there filled the repo's cache with copies nobody read again and evicted
     # main's. A run on main started by hand or by the schedule may install
-    # another commit (studio-preview.yml's build-ref), whose install scripts
-    # nobody reviewed, so it only reads.
+    # another commit than the one it runs on (studio-preview.yml's
+    # build-ref), so it only reads.
     # On our own CI server pnpm uses the store the runner image points it at,
     # on the server's cache disk, so GitHub's cache is skipped (HAL-14831).
     - id: store

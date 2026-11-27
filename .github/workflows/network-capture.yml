@@ -65,26 +65,31 @@ jobs:
     steps:
       # The job runs with the cache scope of the workflow's ref, so it builds
       # only a commit already on that ref. To capture an unmerged commit,
-      # start the workflow on its own branch (--ref <branch>).
-      - name: Check the commit is on the workflow's ref
+      # start the workflow on its own branch (--ref <branch>). The ref is
+      # resolved to one sha, which is checked and checked out, so a name that
+      # moves or that the API reads differently from git can't slip past.
+      - id: commit
+        name: Check the commit is on the workflow's ref
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           WINDOWS_REF: ${{ inputs.windows_ref }}
         run: |
-          status="$(gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...$WINDOWS_REF" --jq .status)"
+          sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$WINDOWS_REF" --jq .sha)"
+          status="$(gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...$sha" --jq .status)"
           case "$status" in
             identical | behind) ;;
             *)
-              echo "::error::windows_ref $WINDOWS_REF must be on $GITHUB_REF_NAME, the ref this workflow runs on. To capture a commit that isn't, start the workflow on its own branch: gh workflow run network-capture.yml --ref <branch>."
+              echo "::error::windows_ref $WINDOWS_REF ($sha) must be on $GITHUB_REF_NAME, the ref this workflow runs on. To capture a commit that isn't, start the workflow on its own branch: gh workflow run network-capture.yml --ref <branch>."
               exit 1
               ;;
           esac
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
       # The app at the commit under test, then this branch's probe scripts
       # beside it (in that order: checkout cleans what it doesn't track).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.windows_ref }}
+          ref: ${{ steps.commit.outputs.sha }}
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
