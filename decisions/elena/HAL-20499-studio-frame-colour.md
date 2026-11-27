@@ -3,6 +3,7 @@
 - Task: HAL-20499
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20499 (the board chose option B on its card, 27 Nov 2026, 09:41 CET)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5bCcPNsuLrhxeD4IJjmpWZYDDejtgLGYPTZe8s/fwXQRXiglP8U1OLepyyVBBUGnLFgAF9gHi4verGotUG5KAg==
 
 ## What changes
 
