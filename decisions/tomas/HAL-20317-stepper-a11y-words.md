@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.ing/HAL/issues/HAL-20317
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8VC4MC6/byFLr/oRYRR32Etgc/Scosj03MzNMfivxtv2rcezzdwzPwgyGCIcZftH312I/7OYF3eq6MmWqCWlCg==
 
 When a request stops because what its `check` step kept differs from the request's `expect`, the
 stepper shows each changed value as "When asked: …" and "Today: …". For a value the check didn't
