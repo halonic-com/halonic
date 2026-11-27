@@ -151,6 +151,8 @@ export const screenText = {
   messageTo: { text: "Message ", file: tryItFile },
   replied: { text: " replied.", file: tryItFile },
   said: { text: " said", file: tryItFile },
+  stoppedByYou: { text: "Stopped by you.", file: tryItFile },
+  turnLimit: { text: " without finishing.", file: tryItFile },
   engineStopped: { text: "Stopped when Halonic's engine stopped.", file: tryItFile },
   replyFailed: { text: "'s reply failed: ", file: tryItFile },
   sendAnyway: { text: "Send anyway", file: tryItFile },

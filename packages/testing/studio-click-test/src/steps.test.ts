@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
 import { connectPaperclip } from "./steps/connect-paperclip.ts";
-import { engineAnswers, probeMessage } from "./steps/engine-answers.ts";
+import { busyReply, engineAnswers, probeMessage } from "./steps/engine-answers.ts";
 import { messengerEmpty } from "./steps/messenger-empty.ts";
 import { keys } from "./webdriver.ts";
 import { buttonLabels, screenText, words } from "./words.ts";
@@ -31,6 +31,33 @@ function studioWithChat(reply: string): FakeStudio {
     });
   });
   return studio;
+}
+
+/**
+ * Runs step 1 on a chat whose reply to the probe shows busy. On the first wait after the step
+ * asked whether it's busy, `then` adds its text to the reply and sets whether it's still busy;
+ * with no `then` the reply stays busy.
+ */
+async function replyThatEnds(then: { text: string; busy: boolean } | undefined) {
+  const studio = studioWithChat(`${screenText.writer.text}${screenText.said.text} Sam wants a`);
+  studio.elements.set(busyReply, 1);
+  let askedBusy = false;
+  const { driver } = studio.context;
+  return engineAnswers.run({
+    ...studio.context,
+    driver: {
+      ...driver,
+      count: async (xpath) => {
+        askedBusy ||= xpath === busyReply;
+        return driver.count(xpath);
+      },
+    },
+    sleep: async () => {
+      if (!askedBusy || then === undefined) return;
+      main(studio).text = `${main(studio).text} ${then.text}`;
+      studio.elements.set(busyReply, then.busy ? 1 : 0);
+    },
+  });
 }
 
 verifies("studio-click-test.steps", () => {
@@ -62,22 +89,30 @@ verifies("studio-click-test.steps", () => {
       await expect(engineAnswers.run(studio.context)).resolves.toEqual({ passed: true });
     });
 
-    it("fails as NO_REPLY while Writer's reply is still being written", async () => {
-      const { writer, said } = screenText;
-      const studio = studioWithChat(`${writer.text}${said.text} Sam wants`);
-      studio.elements.set(`//*[@aria-busy='true'][contains(., '${writer.text}${said.text}')]`, 1);
-      const outcome = await engineAnswers.run(studio.context);
+    it("fails as NO_REPLY, with the screen, while Writer's reply is still being written", async () => {
+      const outcome = await replyThatEnds(undefined);
       expect(outcome).toMatchObject({ passed: false, code: "NO_REPLY" });
       expect(outcome.passed ? "" : outcome.note).toContain("Writer's reply never ended.");
+      expect(outcome.passed ? "" : outcome.note).toContain("Screen: ");
     });
 
-    it("fails as REPLY_FAILED when Writer's shown reply ended in a failure", async () => {
-      const { writer, said, replyFailed } = screenText;
-      const studio = studioWithChat(
-        `${writer.text}${said.text} ${writer.text}${replyFailed.text}no model.`,
-      );
-      const outcome = await engineAnswers.run(studio.context);
-      expect(outcome).toMatchObject({ passed: false, code: "REPLY_FAILED" });
+    // "Writer replied." is announced only when Writer answered, so its reply passes only then.
+    it.each([
+      ["REPLY_FAILED", `${screenText.writer.text}${screenText.replyFailed.text}no model.`],
+      [
+        "TURN_LIMIT",
+        `${screenText.writer.text} used all 8 model calls${screenText.turnLimit.text}`,
+      ],
+      ["REPLY_STOPPED", screenText.stoppedByYou.text],
+    ])("fails as %s when Writer's busy reply ends on that line", async (code, endLine) => {
+      const outcome = await replyThatEnds({ text: `refund. ${endLine}`, busy: false });
+      expect(outcome).toMatchObject({ passed: false, code });
+    });
+
+    it("fails as ENGINE_NOT_ANSWERING as soon as that line shows while Writer's reply is busy", async () => {
+      const outcome = await replyThatEnds({ text: words.engineNotAnswering, busy: true });
+      expect(outcome).toMatchObject({ passed: false, code: "ENGINE_NOT_ANSWERING" });
+      expect(outcome.passed ? "" : outcome.note).toContain(`Screen: `);
     });
 
     it("fails with the engine line's code, the page and the shell log's lines", async () => {
