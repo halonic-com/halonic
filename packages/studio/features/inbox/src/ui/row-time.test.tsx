@@ -59,17 +59,24 @@ verifies("inbox.read-marks", () => {
     expect(heading?.textContent?.replace(/\s/g, " ")).toContain("1 late");
   });
 
-  it("keeps room for the hover action at the row's top right, so the title wraps before it", async () => {
+  it("keeps room for the hover action at the row's top right, only as wide as its icon", async () => {
     const root = await inboxWithLateQuestion();
     const end = rows(root)[0]?.querySelector('[data-part="end-column"]');
-    const room = end?.querySelector("[data-room]");
-    expect(room?.getAttribute("data-room")).toBe("Mark as read");
-    expect(room?.getAttribute("aria-hidden")).toBe("true");
-    expect(room?.className).toContain("invisible");
-    // The room is drawn, not written: the row's text and name stay without it.
+    const room = end?.querySelector('[data-part="action-room"]');
+    expect(room?.className.split(" ")).toContain("min-w-6");
+    // The room holds the time alone: the action's words are in its name, not the row's text.
+    expect(room?.textContent).toBe("Waiting 1\u00a0min");
     expect(rows(root)[0]?.querySelector('[role="gridcell"]')?.textContent).not.toContain(
       "Mark as read",
     );
+  });
+
+  it("draws Mark as read as an icon button named with the row's title", async () => {
+    const root = await inboxWithLateQuestion();
+    const action = rows(root)[0]?.querySelector("button");
+    expect(action?.textContent).toBe("");
+    expect(action?.getAttribute("aria-label")).toBe("Mark as read: Approve this reply?");
+    expect(action?.querySelector("svg")).not.toBeNull();
   });
 });
 

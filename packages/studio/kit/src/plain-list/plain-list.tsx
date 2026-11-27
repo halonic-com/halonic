@@ -20,6 +20,12 @@ export interface PlainRowAction {
    * row: "Mark as unread: Chief". It starts with the label, so it holds the words seen (WCAG 2.5.3).
    */
   readonly spokenLabel?: string | undefined;
+  /**
+   * An icon in place of the words, in a `plain` List: the button is then only as wide as the time
+   * it covers, so the row's text keeps its width, and its label is its tooltip (sketch D on
+   * HAL-19192, `kit.list-plain-action-icon`). `PlainRow` keeps the words.
+   */
+  readonly icon?: ReactNode;
   readonly onClick: () => void;
 }
 

@@ -246,6 +246,7 @@ export { SettingsIcon } from "./icons/settings-icon.tsx";
 export { ShieldIcon } from "./icons/shield-icon.tsx";
 export { SparkIcon } from "./icons/spark-icon.tsx";
 export { TickIcon } from "./icons/tick-icon.tsx";
+export { UnreadIcon } from "./icons/unread-icon.tsx";
 export { UpdateReadyIcon } from "./icons/update-ready-icon.tsx";
 export { WarningIcon } from "./icons/warning-icon.tsx";
 export type { FieldSize, FieldWidth } from "./input/field-box.ts";

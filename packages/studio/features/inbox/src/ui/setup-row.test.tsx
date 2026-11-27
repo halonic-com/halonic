@@ -54,7 +54,10 @@ verifies("inbox.setup-items", () => {
     ]);
     // Only each row's Mark as read, shown on hover (`inbox.read-marks`): no other button.
     const buttons = [...root.querySelectorAll('[role="grid"] button')];
-    expect(buttons.map((button) => button.textContent)).toEqual(["Mark as read", "Mark as read"]);
+    expect(buttons.map((button) => button.getAttribute("aria-label")?.split(":")[0])).toEqual([
+      "Mark as read",
+      "Mark as read",
+    ]);
     expect(root.textContent).not.toMatch(/Approve|Reject|Delete/);
   });
 

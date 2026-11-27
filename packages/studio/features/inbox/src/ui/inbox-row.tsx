@@ -105,23 +105,18 @@ export function lineEndingInWait(before: string, wait: string): Pick<ListRow, "m
 }
 
 /**
- * A row with room kept at its top right for its hover action, so the title wraps before **Mark as
- * read** as it does before the time, and the action never covers the title (sketch D on
- * HAL-19192). The room is the action's words, drawn unseen under the time and never heard or
- * read as the row's text.
+ * A row with room kept at its top right for its hover action, a 24px icon button in the time's
+ * place, so the title wraps before **Mark as read** as it does before the time and the action never
+ * covers it (sketch D on HAL-19192). The room is only as wide as the button, so a short time such
+ * as "3 h" doesn't take the row's text from it.
  */
 export function withActionRoom(row: ListRow): ListRow {
   if (row.hoverAction === undefined) return row;
   return {
     ...row,
     trailing: (
-      <span className="grid justify-items-end">
-        <span className="col-start-1 row-start-1">{row.trailing}</span>
-        <span
-          aria-hidden="true"
-          data-room={row.hoverAction.label}
-          className="invisible col-start-1 row-start-1 whitespace-nowrap ps-2 text-small after:content-[attr(data-room)]"
-        />
+      <span data-part="action-room" className="inline-flex min-w-6 justify-end">
+        {row.trailing}
       </span>
     ),
   };

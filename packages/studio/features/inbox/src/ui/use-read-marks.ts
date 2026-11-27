@@ -1,5 +1,5 @@
-import type { ListRow, PlainRowAction } from "@halonicjs/studio-kit";
-import { useEffect, useReducer } from "react";
+import { type ListRow, type PlainRowAction, TickIcon, UnreadIcon } from "@halonicjs/studio-kit";
+import { createElement, useEffect, useReducer } from "react";
 import type { InboxItem } from "../inbox-items.ts";
 import { type ReadMarks, readKey } from "../read-marks.ts";
 
@@ -63,7 +63,11 @@ export function useReadMarks(
     redraw();
   }, [marks, opened]);
   const isNew = (key: string) => !marks.isRead(key);
-  /** **Mark as read** marks all a new row holds; **Mark as unread**, a read row's newest. */
+  /**
+   * **Mark as read** marks all a new row holds; **Mark as unread**, a read row's newest. Each is a
+   * small icon button in the time's place, its words in its name and tooltip (sketch D on
+   * HAL-19192), so the row's text keeps its width.
+   */
   const rowAction = (title: string, keys: readonly string[], fresh: boolean): PlainRowAction => {
     const label = fresh ? "Mark as read" : "Mark as unread";
     const onClick = () => {
@@ -72,7 +76,8 @@ export function useReadMarks(
       else if (newest !== undefined) marks.markUnread(newest);
       redraw();
     };
-    return { label, spokenLabel: `${label}: ${title}`, onClick };
+    const icon = createElement(fresh ? TickIcon : UnreadIcon);
+    return { label, spokenLabel: `${label}: ${title}`, icon, onClick };
   };
   return {
     mark: (rows, order, open) =>

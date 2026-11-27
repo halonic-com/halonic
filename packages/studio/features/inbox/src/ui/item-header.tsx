@@ -61,9 +61,11 @@ interface ItemHeaderProps {
 /**
  * The header over the open item, the Messenger's chat header (HAL-19192, `inbox.header-avatar`):
  * its 40px picture, its title over its row's line and, at the end, where it is among what waits
- * ("2 of 6", design review HAL-18481, 7) with up and down to the items beside it (K and J). With one pane at a time the item is pushed like a page
- * (HAL-11945 Q12), so the back arrow named **Back to Inbox** comes first (sketch E on HAL-19192):
- * an arrow, not the words, leaves a phone's title room (Sofia, HAL-19913). The card under it
+ * ("2 of 6", design review HAL-18481, 7) with up and down to the items beside it (K and J). With one
+ * pane at a time the item is pushed like a page (HAL-11945 Q12), so the back arrow named **Back to
+ * Inbox** comes first (sketch E on HAL-19192): an arrow, not the words, leaves a phone's title room
+ * (Sofia, HAL-19913). There the up and down buttons are left out, as Back covers them, so the title
+ * keeps its room (Sofia, HAL-20395); K and J still step. The card under it
  * fills the rest of the pane, so its body scrolls with its answers in sight; in a short window the
  * whole pane scrolls, header included, as a Dialog's does.
  */
@@ -82,7 +84,7 @@ export function ItemHeader({ heading, back, place, close, markUnread, steps }: I
         place === null ? null : (
           <>
             <p className="shrink-0 text-small text-fg-muted">{place}</p>
-            {steps === undefined ? null : <StepButtons steps={steps} />}
+            {steps === undefined || back ? null : <StepButtons steps={steps} />}
             {markUnread === undefined ? null : (
               <ItemMenu title={heading.title} markUnread={markUnread} />
             )}

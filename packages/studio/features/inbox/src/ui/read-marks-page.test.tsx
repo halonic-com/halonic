@@ -202,7 +202,7 @@ verifies("inbox.read-marks", () => {
     const root = await openInbox(inboxOf(fakeRuns([notes, invoice]).runs));
     const action = (title: string) =>
       cell(root, title).closest("tr")?.querySelector<HTMLButtonElement>("button") ?? null;
-    expect(action("send_invoice")?.textContent).toBe("Mark as read");
+    expect(action("send_invoice")?.getAttribute("aria-label")).toMatch(/^Mark as read: /);
     expect(action("send_invoice")?.getAttribute("aria-label")).toMatch(
       /^Mark as read: .*send_invoice/,
     );
@@ -210,7 +210,7 @@ verifies("inbox.read-marks", () => {
     await press(action("send_invoice"));
     expect(isUnread(root, "send_invoice")).toBe(false);
     expect(heading(root)).toBe("Needs you, 2 waiting, 1 new");
-    expect(action("send_invoice")?.textContent).toBe("Mark as unread");
+    expect(action("send_invoice")?.getAttribute("aria-label")).toMatch(/^Mark as unread: /);
 
     await press(action("send_invoice"));
     expect(isUnread(root, "send_invoice")).toBe(true);

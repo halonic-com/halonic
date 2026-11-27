@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { NarrowProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it } from "vitest";
@@ -21,12 +22,14 @@ async function settled(): Promise<void> {
 }
 
 /** Three runs that wait, listed newest first: "Third?", "Second?", "First?". */
-async function threeWaiting(): Promise<HTMLElement> {
+async function threeWaiting(narrow = false): Promise<HTMLElement> {
   const runs = ["First?", "Second?", "Third?"].map((title, index) =>
     waitingRun(`r${index + 1}`, { lastWaitingAt: at(index * 10), waitingFor: { title, body: "" } }),
   );
   const root = render(
-    <InboxView inbox={new Inbox(fakeRuns(runs).runs)} now={() => new Date(2026, 10, 8, 10, 0)} />,
+    <NarrowProvider narrow={narrow}>
+      <InboxView inbox={new Inbox(fakeRuns(runs).runs)} now={() => new Date(2026, 10, 8, 10, 0)} />
+    </NarrowProvider>,
   );
   await settled();
   return root;
@@ -101,5 +104,16 @@ verifies("inbox.item-steps", () => {
       );
     });
     expect(header(root)).toEqual(["Third?", "1 of 3"]);
+  });
+
+  it("leaves the up and down buttons out at one pane, so the title keeps its room", async () => {
+    const root = await threeWaiting(true);
+    await openRow(root, 1);
+    expect(header(root)).toEqual(["Second?", "2 of 3"]);
+    expect(stepButton(root, "Back to Inbox")).toBeDefined();
+    expect(stepButton(root, "Next item")).toBeUndefined();
+    expect(stepButton(root, "Previous item")).toBeUndefined();
+    await press("j");
+    expect(header(root)).toEqual(["First?", "3 of 3"]);
   });
 });
