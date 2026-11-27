@@ -112,8 +112,9 @@ async function answerOnce(
 /**
  * The workspace's item `item`. The sources' local copy can lag behind them: an agent can resubmit
  * an approval with new variables after a revision request. So for a confirmed send, or an item the
- * copy holds as anything but `normal`, the host reads every source again first, and the person
- * confirms, and the source gets, what the source holds now.
+ * copy holds as anything but `normal`, the host first reads the item's source again with a read
+ * that starts now, and the person confirms, and the source gets, what the source holds now. When
+ * that read fails it throws, so the route answers 502 and sends nothing rather than trust the copy.
  */
 async function freshItem(
   messaging: WorkspaceMessaging,
@@ -125,7 +126,7 @@ async function freshItem(
   const stored = await find();
   const normal = stored !== undefined && (stored.risk === undefined || stored.risk === "normal");
   if (!confirmed && (stored === undefined || normal)) return stored;
-  await messaging.refresh();
+  await messaging.refreshSourceOf(item);
   return find();
 }
 

@@ -186,5 +186,40 @@ verifies("agent-host.risky-answer-confirm", () => {
         body: { confirmation: { reach: { secret: { name: "Acme root token" } } } },
       });
     });
+
+    it("sends nothing, with 502, when that read fails after the agent resubmitted", async () => {
+      desktop = await startDesktop();
+      const on = desktop;
+      on.paperclip.servesInbox = true;
+      on.paperclip.secretProposals = [proposal("Acme deploy token", "2026-11-27T09:40:00.000Z")];
+      await on.paperclipKey.handOver({
+        workspace: on.workspace,
+        connection: "halonic",
+        key: testKey,
+        ...acme,
+      });
+      await on.wait(30_000);
+      const item = (await on.studio.listInboxItems()).find((each) => each.risk === "risky");
+      const check = await on.transport.request("POST /v1/messaging/answer", {
+        workspace: on.workspace,
+        item: item?.id,
+        answer: approve,
+      });
+      const { digest } = (check.body as { confirmation: { digest: string } }).confirmation;
+      // The agent resubmits while the dialog is open, then Paperclip stops answering reads.
+      on.paperclip.secretProposals = [proposal("Acme root token", "2026-11-27T09:45:00.000Z")];
+      on.paperclip.offline = true;
+
+      const reply = await on.shell("POST /v1/messaging/answer-confirmed", {
+        workspace: on.workspace,
+        item: item?.id,
+        answer: approve,
+        digest,
+      });
+
+      expect(reply).toMatchObject({ status: 502, body: { error: { kind: "messaging_failed" } } });
+      on.paperclip.offline = false;
+      expect(on.paperclip.seen.filter((seen) => seen.method === "POST")).toEqual([]);
+    });
   });
 });

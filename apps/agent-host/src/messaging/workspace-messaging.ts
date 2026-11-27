@@ -316,6 +316,14 @@ export class WorkspaceMessaging {
       this.#changes.note(paperclipSourceId(connection));
   }
 
+  /**
+   * Reads the source that listed `item` again, with a read that starts now, and throws when it
+   * fails, so a risky answer is never checked against an old copy (`agent-host.risky-answer-confirm`).
+   */
+  refreshSourceOf(item: MessagingId): Promise<void> {
+    return this.#hub.refreshSourceOf(item);
+  }
+
   /** The sources that changed after `after`, for Studio's next look. */
   changesSince(after: number): ChangesSince {
     return this.#changes.since(after);

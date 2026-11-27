@@ -22,7 +22,11 @@ with the port's `declines` flag skip the window, never an option an agent
 named `reject`; the window shows the note sent with an approve, such as a
 budget override's new limit; the host reads the sources again before a
 risky item's ask and every confirmed send; and an option the item doesn't
-offer is refused with `bad-answer` before anything is asked.
+offer is refused with `bad-answer` before anything is asked. After the
+second round, that read is the item's own source read again with a read
+that starts after the request (`SyncStore.syncAfter`,
+`MessagingHub.refreshSourceOf`); when it fails, the host answers 502 and
+sends nothing rather than trust its copy.
 `risky-answer-confirm.test.ts` now takes its fixtures from
 `risky-answer.test-helper.ts`; every `expect` in it stays as it was.
 
