@@ -380,14 +380,31 @@ verifies("remote.phone-messenger-links", () => {
     });
 
     // HAL-20070: unbounded, each `[` and each dot rescanned to the end; 100,000 took seconds.
+    // The split must grow in step with the text: four times the text takes about four times as
+    // long, where the rescan took sixteen. A ratio on the same runner, not a fixed time, so a busy
+    // runner can't fail it (HAL-20604).
     it.each([
-      ["brackets that never close", "[".repeat(100_000)],
-      ["links that never close", "[](".repeat(33_334)],
-      ["a run of dots after an address", `${pullRequest}${".".repeat(100_000)}a`],
-    ])("splits 100,000 characters of %s in well under a second", (_name, body) => {
-      const started = performance.now();
-      messageParts(body);
-      expect(performance.now() - started).toBeLessThan(500);
+      ["brackets that never close", (size: number) => "[".repeat(size)],
+      ["links that never close", (size: number) => "[](".repeat(Math.ceil(size / 3))],
+      ["a run of dots after an address", (size: number) => `${pullRequest}${".".repeat(size)}a`],
+    ])("splits 100,000 characters of %s in time that grows with the text", (_name, body) => {
+      const small = fastestSplit(body(25_000));
+      const large = fastestSplit(body(100_000));
+      expect(large).toBeLessThan(10 * small);
     });
   });
 });
+
+/**
+ * The fastest of three splits of `body`, in milliseconds and at least one, so a split too quick to
+ * time still gives a ratio.
+ */
+function fastestSplit(body: string): number {
+  let fastest = Number.POSITIVE_INFINITY;
+  for (let round = 0; round < 3; round++) {
+    const started = performance.now();
+    messageParts(body);
+    fastest = Math.min(fastest, performance.now() - started);
+  }
+  return Math.max(fastest, 1);
+}
