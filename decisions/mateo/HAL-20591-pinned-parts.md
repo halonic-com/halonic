@@ -2,6 +2,7 @@
 
 - Approval: the task asks for this change (HAL-20591, PR 2 of the plan on HAL-20583, which Liam approved and Julian approved for security); Liam approves and signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+750zobJfFyhXo4+r23FBWP4B+hNg/cdjh0xDeCOPJgJ18AHcCe0fuvIcUvvk+PRwgthPasiwJuh8DCjKSrMAQ==
 
 ## What changes
 
