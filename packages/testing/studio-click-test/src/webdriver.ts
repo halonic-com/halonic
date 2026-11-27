@@ -34,6 +34,8 @@ export interface Driver {
   pageText(): Promise<string>;
   /** The current window's title, as the task bar shows it. */
   title(): Promise<string>;
+  /** The current window's Tauri label, such as `main` or `inbox`, or "" when the page has none. */
+  windowLabel(): Promise<string>;
   /** How many elements the XPath finds, shown or not. */
   count(xpath: string): Promise<number>;
   /** A one-line summary of the page for a failing step: its size, focus, buttons and alerts. */
@@ -123,6 +125,15 @@ export async function openSession(serverUrl: string, debuggerAddress: string): P
     title: async () => {
       const title = await call("GET", "/title");
       return typeof title === "string" ? title : "";
+    },
+    windowLabel: async () => {
+      // Tauri sets this before the page's own scripts run, so it names the window while the page
+      // still has studio.html's "Halonic" title, which every window starts with.
+      const label = await call("POST", "/execute/sync", {
+        script: "return window.__TAURI_INTERNALS__?.metadata?.currentWindow?.label ?? '';",
+        args: [],
+      });
+      return typeof label === "string" ? label : "";
     },
     count: async (xpath) => {
       const found = await call("POST", "/elements", { using: "xpath", value: xpath });

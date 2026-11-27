@@ -1,16 +1,18 @@
 import type { Driver } from "./webdriver.ts";
-import { basicsText } from "./words.ts";
+
+/** The Tauri label of Studio's main window; the focused apps' windows are `inbox`, `messenger`, … */
+export const mainWindowLabel = "main";
 
 const findWaitMs = 30_000;
 const pollMs = 1_000;
 
 /**
- * Finds Studio's main window among the app's windows: the one whose title ends in the plain app
- * name, "… · Halonic" or "Halonic". The focused apps' titles end in their own name, such as
- * "Halonic Inbox". After a restart, Inbox or Messenger can open next to Studio and come first in
- * the handle list (studio-preview run 45921260296), so the first handle isn't always Studio's.
- * Waits up to 30 seconds for the page titles, then falls back to the first handle, which leaves
- * the steps to fail on the window they see and says so in the log.
+ * Finds Studio's main window among the app's windows: the one Tauri labels `main`. After a
+ * restart, Inbox or Messenger can open next to Studio and come first in the handle list
+ * (studio-preview run 45921260296), so the first handle isn't always Studio's. Titles don't tell
+ * them apart either: every window starts with studio.html's "Halonic" until its page sets its own
+ * (run 45928570241). Waits up to 30 seconds for the window, then falls back to the first handle,
+ * which leaves the steps to fail on the window they see and says so in the log.
  */
 export async function findMainWindow(
   driver: Driver,
@@ -22,17 +24,11 @@ export async function findMainWindow(
     handles = await driver.windowHandles();
     for (const handle of handles) {
       await driver.switchToWindow(handle);
-      if (isMainTitle(await driver.title())) return handle;
+      if ((await driver.windowLabel()) === mainWindowLabel) return handle;
     }
   }
   const [first = ""] = handles;
-  console.error(`No window is titled as Studio's main window; using the first, ${first}.`);
+  console.error(`No window is labelled "${mainWindowLabel}"; using the first, ${first}.`);
   if (first !== "") await driver.switchToWindow(first);
   return first;
-}
-
-/** Whether a window title is Studio's main window's: its last part is the plain app name. */
-export function isMainTitle(title: string): boolean {
-  const parts = title.split(basicsText.titleSeparator.text);
-  return parts[parts.length - 1] === basicsText.appName.text;
 }

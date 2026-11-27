@@ -88,6 +88,8 @@ export function fakeStudio(text = ""): FakeStudio {
     cssValue: async (xpath) => studio.backgrounds.get(xpath) ?? "",
     pageText: async () => window().text,
     title: async () => studio.title,
+    // The fake names each window by its label, as Tauri does.
+    windowLabel: async () => studio.current,
     count: async (xpath) => studio.elements.get(xpath) ?? 0,
     describePage: async () => `buttons [${[...window().buttons.keys()].join(" | ")}]`,
     screenshot: async () => new Uint8Array([137, 80, 78, 71]),
