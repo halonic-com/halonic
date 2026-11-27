@@ -65,7 +65,12 @@ export type UpdateState =
       readonly version: string;
       readonly notesUrl: string;
     } & OfferedChanges)
-  | { readonly kind: "did-not-install"; readonly version: string; readonly attempts: number };
+  | {
+      readonly kind: "did-not-install";
+      readonly version: string;
+      readonly attempts: number;
+      readonly notesUrl: string;
+    };
 
 /** Another tool keeps this install up to date (Scoop): Studio downloads and installs nothing. */
 export interface ManagedUpdates {
@@ -78,6 +83,8 @@ export interface ManagedUpdates {
 export interface JustUpdated {
   readonly from: string;
   readonly to: string;
+  /** The release page of `to`; the shell picks the repository a Preview build is published in. */
+  readonly notesUrl: string;
   /** The settings a migration couldn't carry over (shown by HAL-1845, not here). */
   readonly notCarriedOver: readonly string[];
   /** What changed in `to`, kept from its manifest for the "Updated to" dialog; absent when it had none. */

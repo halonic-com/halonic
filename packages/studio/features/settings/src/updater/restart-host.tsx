@@ -9,7 +9,6 @@ import { copyDetails, copyDetailsWords, type DialogHostProps } from "@halonicjs/
 import { useEffect, useRef, useState } from "react";
 import { RestartRunsService, UpdaterService } from "../api.ts";
 import { TRY_AGAIN, UPDATER_DIDNT_ANSWER } from "./about-text.ts";
-import { releasePage } from "./links.ts";
 import { type RestartFlow, RestartFlowService } from "./restart-flow.ts";
 import type { RestartRuns } from "./restart-runs.ts";
 import * as text from "./restart-text.ts";
@@ -228,7 +227,7 @@ function showStartToasts(
       action: again,
       secondAction: {
         label: text.OPEN_RELEASE_PAGE,
-        onClick: () => void openExternal(releasePage(state.version)),
+        onClick: () => void openExternal(state.notesUrl),
         keepOpen: true,
       },
     });

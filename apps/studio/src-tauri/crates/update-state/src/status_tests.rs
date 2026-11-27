@@ -16,6 +16,7 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             from: "0.1.0".to_owned(),
             to: "0.1.1".to_owned(),
             not_carried_over: Vec::new(),
+            notes_url: notes_url("0.1.1"),
             notes: None,
         }),
         managed: None,
@@ -35,7 +36,12 @@ fn update_state_sends_the_status_in_the_agreed_shape() {
             "automatic": true,
             "checking": false,
             "lastChecked": 1_762_160_000_000_u64,
-            "justUpdated": { "from": "0.1.0", "to": "0.1.1", "notCarriedOver": [] },
+            "justUpdated": {
+                "from": "0.1.0",
+                "to": "0.1.1",
+                "notCarriedOver": [],
+                "notesUrl": "https://github.com/halonic-com/halonic/releases/tag/v0.1.1"
+            },
             "managed": null,
             "sandboxSetupAgain": true,
             "track": "preview",
@@ -71,10 +77,16 @@ fn update_state_names_each_state_as_the_plan_does() {
         ),
         (
             UpdateState::DidNotInstall {
-                version: "0.1.1".to_owned(),
+                version: "0.1.1-preview.425".to_owned(),
                 attempts: 2,
+                notes_url: notes_url("0.1.1-preview.425"),
             },
-            json!({ "kind": "did-not-install", "version": "0.1.1", "attempts": 2 }),
+            json!({
+                "kind": "did-not-install",
+                "version": "0.1.1-preview.425",
+                "attempts": 2,
+                "notesUrl": "https://github.com/halonic-com/halonic-preview/releases/tag/v0.1.1-preview.425"
+            }),
         ),
     ];
     for (state, expected) in cases {

@@ -1,5 +1,5 @@
 use super::{CheckResult, RecordRead, StartOutcome, UpdaterRecord, read_record, record_text};
-use crate::status::{CheckFailure, JustUpdated, UpdateState};
+use crate::status::{CheckFailure, JustUpdated, UpdateState, notes_url};
 use crate::version::Version;
 
 fn version(text: &str) -> Version {
@@ -48,6 +48,7 @@ fn update_state_install_that_worked_says_so_once() {
         from: "0.1.0".to_owned(),
         to: "0.1.1".to_owned(),
         not_carried_over: Vec::new(),
+        notes_url: notes_url("0.1.1"),
         notes: None,
     });
     assert_eq!(record.after_start(&version("0.1.1")), updated);
@@ -108,7 +109,8 @@ fn update_state_install_that_did_not_happen_counts_once_per_try() {
         record.starting_state(&old),
         UpdateState::DidNotInstall {
             version: "0.1.1".to_owned(),
-            attempts: 1
+            attempts: 1,
+            notes_url: notes_url("0.1.1")
         }
     );
     record.before_install("0.1.1", "0.1.0", None);
