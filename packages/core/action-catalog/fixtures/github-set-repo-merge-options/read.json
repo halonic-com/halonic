@@ -1,0 +1,50 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "id": 4242,
+            "name": "app",
+            "full_name": "acme/app",
+            "private": true,
+            "visibility": "private",
+            "default_branch": "main",
+            "allow_merge_commit": true,
+            "allow_squash_merge": true,
+            "allow_rebase_merge": false,
+            "allow_auto_merge": false
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1",
+  "integration": "github-set-repo-merge-options",
+  "scenario": "read",
+  "scrubReport": [
+    {
+      "count": 1,
+      "path": "exchanges[0].request.headers.authorization",
+      "rule": "secret-header"
+    }
+  ]
+}
