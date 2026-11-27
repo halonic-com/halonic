@@ -35,8 +35,9 @@ export interface NameFieldProps {
   readonly check?: ((name: string) => string | undefined) | undefined;
   /**
    * A quiet line under the field while a new name without a problem is typed, such as what else the
-   * rename changes: "Also updates 3 places: …". It is the field's description and isn't read out
-   * by itself, so it isn't said again for every letter.
+   * rename changes: "Also updates 3 places: …". It is the field's description, and it is read out
+   * once when it first shows during an edit and again only when its words change, not for every
+   * letter.
    */
   readonly note?: string | undefined;
 }
@@ -49,7 +50,9 @@ export interface NameFieldProps {
  * with a problem shows why under the field once the typing pauses, and that line is read out once,
  * since a screen reader doesn't read a description again when it changes under focus. Enter doesn't
  * keep that name and reads the line again; leaving the field puts the old name back and says so.
- * A `note` shows in that place instead while a new name has no problem. The field takes its type
+ * A `note` shows in that place instead while a new name has no problem, and is read out the same
+ * way: once when it first shows in an edit, and again only when its words change (WCAG 4.1.3,
+ * HAL-20316). The field takes its type
  * from the heading it sits in.
  */
 export function NameField({ name, label, onRename, check, note }: NameFieldProps) {
@@ -65,6 +68,9 @@ export function NameField({ name, label, onRename, check, note }: NameFieldProps
   const input = useRef<HTMLInputElement | null>(null);
   const announce = useFieldAnnounce();
   useFieldErrorAnnouncement(input, label, shownProblem, true);
+  // The note this edit last read out. It appears under a field that already has focus, where a
+  // screen reader doesn't read the new description, so it's said once, and again only with new words.
+  const readNote = useRef<string | undefined>(undefined);
   // The name this edit last asked for. Enter and then leaving the field is one edit, and `name`
   // may not have changed in between (the rename is async, or was rejected), so it's asked for
   // once. Typing starts a new edit, which may ask for the same name again.
@@ -83,7 +89,16 @@ export function NameField({ name, label, onRename, check, note }: NameFieldProps
   // A rename from somewhere else (the file, another tab) shows here.
   useEffect(() => {
     setDraft(name);
+    readNote.current = undefined;
   }, [name]);
+
+  useEffect(() => {
+    if (shownNote === undefined || shownNote === readNote.current) {
+      return;
+    }
+    readNote.current = shownNote;
+    announce?.(shownNote);
+  }, [announce, shownNote]);
 
   useEffect(() => {
     const timer = setTimeout(() => setPaused(draft), nameCheckPauseMs);
@@ -93,6 +108,7 @@ export function NameField({ name, label, onRename, check, note }: NameFieldProps
   const putBack = () => {
     setDraft(name);
     setPaused(name);
+    readNote.current = undefined;
   };
 
   const keep = () => {

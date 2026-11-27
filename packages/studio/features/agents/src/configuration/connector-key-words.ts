@@ -7,6 +7,11 @@ export const connectorKeyWords = {
   /** Shows the secret by its name, never its value (flow-agents 5.2). Team decision, HAL-18932. */
   usesKey: (connector: string, secret: string) => `${connector} uses the key ${secret}.`,
   changeKey: "Change key",
+  /**
+   * A line's Change key for a screen reader or a voice user, so each connector's button has its own
+   * name, starting with the words it shows (WCAG 2.5.3). Team decision, HAL-20316.
+   */
+  changeKeyFor: (secret: string) => `Change key: ${secret}`,
   /** The question's title (microcopy "Changing a key that's set"). */
   changeTitle: (secret: string) => `Change ${secret}?`,
   changeBody: "Every agent that uses it switches to the new key right away.",

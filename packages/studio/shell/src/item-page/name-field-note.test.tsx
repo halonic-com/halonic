@@ -28,7 +28,7 @@ const note =
 const taken = (name: string) =>
   name.toLowerCase() === "mail triage" ? `A workflow called ${name} already exists.` : undefined;
 
-function field() {
+function field(shownNote = note) {
   const announced: string[] = [];
   const container = render(
     <FieldAnnounceProvider announce={(text) => announced.push(text)}>
@@ -37,7 +37,7 @@ function field() {
         label="Workflow name"
         onRename={() => {}}
         check={taken}
-        note={note}
+        note={shownNote}
       />
     </FieldAnnounceProvider>,
   );
@@ -60,7 +60,7 @@ function typeInto(input: HTMLInputElement, text: string): void {
 }
 
 verifies("shell.item-page-name-note", () => {
-  it("shows the note under the field while a new name is typed, as its description, unannounced", () => {
+  it("shows the note under the field while a new name is typed, as its description, read once", () => {
     const { input, line, description, announced } = field();
     expect(line()).toBeNull();
     typeInto(input, "Mail sorter");
@@ -69,7 +69,17 @@ verifies("shell.item-page-name-note", () => {
     expect(description()).toBe(note);
     expect(input.hasAttribute("aria-invalid")).toBe(false);
     act(() => vi.advanceTimersByTime(nameCheckPauseMs + 20));
-    expect(announced).toEqual([]);
+    expect(announced).toEqual([note]);
+  });
+
+  it("reads the note once when it first shows, and not again for the next letter", () => {
+    const shortNote = "Also updates 2 places: Inbox flow (Sort mail), Daily (routine)";
+    const { input, announced } = field(shortNote);
+    typeInto(input, "Mail sorte");
+    expect(announced).toEqual(["Also updates 2 places: Inbox flow (Sort mail), Daily (routine)"]);
+    typeInto(input, "Mail sorter");
+    act(() => vi.advanceTimersByTime(nameCheckPauseMs + 20));
+    expect(announced).toEqual(["Also updates 2 places: Inbox flow (Sort mail), Daily (routine)"]);
   });
 
   it("gives the note's place to a problem, and shows none for the name it has or an empty one", () => {
