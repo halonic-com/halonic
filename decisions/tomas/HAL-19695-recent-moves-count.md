@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-19695 (the follow-up agreed in Julian's review of #6539 on HAL-19354). Liam approves the change in review on HAL-19695.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:bNoxlMIsETX63L9oURued0K0H4cOfkA0LA7A8Od4vwhOneeKNUQ5e/h7NsFIBl24vkCEyNwucYmHxuyysLRMBA==
 
 ## What changes
 
