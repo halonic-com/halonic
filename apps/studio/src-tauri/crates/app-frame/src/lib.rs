@@ -29,7 +29,8 @@ mod platform;
 pub use frame::run;
 #[cfg(windows)]
 pub use platform::{
-    bring_forward, client_size, close, colour_caption, process_image, root, set_text, start_frame,
+    bring_forward, client_size, close, colour_caption, process_image, root, same_file, set_text,
+    start_frame,
 };
 
 /// The argument with which a frame hands Halonic its window, as a decimal
@@ -172,19 +173,23 @@ fn first_file(folder: &Path, names: &[&str]) -> Option<PathBuf> {
 /// Whether `image`, the exe of the process that owns a window handed over
 /// with `--host-window`, is `app`'s frame in `folder`, Halonic's own
 /// folder. Halonic puts a page only into its own frames: never into
-/// another program's window, nor into the other app's frame. Windows
-/// paths don't tell case apart, so neither does this. The paths are read
-/// as Windows paths on every platform, so the tests run anywhere.
-pub fn is_frame_exe(image: &Path, folder: &Path, app: FrameApp) -> bool {
-    let image = windows_path(image);
-    let Some((image_folder, name)) = image.rsplit_once('\\') else {
-        return false;
-    };
-    image_folder == windows_path(folder).trim_end_matches('\\')
+/// another program's window, nor into the other app's frame. It needs
+/// both the frame's name and, by `same_file`, the very file of `app`'s
+/// frame in `folder`. The file is compared by its identity rather than by
+/// its path, since one file has many paths (an 8.3 short name, a `subst`
+/// drive, a junction), and a hard link to Halonic's exe or a copy of it
+/// each have their own.
+pub fn is_frame_exe(
+    image: &Path,
+    folder: &Path,
+    app: FrameApp,
+    same_file: impl Fn(&Path, &Path) -> bool,
+) -> bool {
+    started_as(image) == Some(app)
         && app
             .exe_names()
             .iter()
-            .any(|expected| expected.to_lowercase() == name)
+            .any(|name| same_file(image, &folder.join(name)))
 }
 
 /// `path` with `\` between its parts, in lower case.

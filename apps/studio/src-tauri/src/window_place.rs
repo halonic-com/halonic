@@ -46,13 +46,31 @@ pub fn is_kept(label: &str) -> bool {
     window_labels().contains(&label)
 }
 
+/// The key no window's place is kept under (see `place_key`).
+pub const IN_FRAME: &str = "in-frame";
+
+/// The key the window labelled `label` has its place kept under: its label,
+/// or `IN_FRAME` for an Inbox or Messenger window inside its frame
+/// (HAL-20468). Such a window sits at (0,0) in its frame, which keeps its
+/// own place, so saving it would put the app at the screen's corner the
+/// next time it opens without a frame.
+pub fn place_key(label: &str) -> &str {
+    #[cfg(windows)]
+    if crate::app_frames::is_framed(label) {
+        return IN_FRAME;
+    }
+    label
+}
+
 /// The window state plugin, keeping `kept()` of the windows `is_kept`
-/// names, and restoring none by itself.
+/// names, and restoring none by itself. Windows are matched by `place_key`,
+/// on saving too, so a window in a frame is neither tracked nor saved.
 pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
     window_labels()
         .into_iter()
         .fold(Builder::new(), Builder::skip_initial_state)
         .with_state_flags(kept())
+        .map_label(place_key)
         .with_filter(is_kept)
         .build()
 }

@@ -68,22 +68,46 @@ fn windows_path(parts: &[&str]) -> PathBuf {
 fn is_frame_exe_takes_only_the_apps_own_frame_in_halonics_folder() {
     let folder = windows_path(&["D:", "Apps", "Halonic"]);
     let inbox = windows_path(&["D:", "Apps", "Halonic", "Halonic Inbox.exe"]);
-    assert!(is_frame_exe(&inbox, &folder, FrameApp::Inbox));
-    // Windows paths don't tell case apart.
-    let shouted = windows_path(&["d:", "apps", "HALONIC", "halonic inbox.EXE"]);
-    assert!(is_frame_exe(&shouted, &folder, FrameApp::Inbox));
-    let built = windows_path(&["D:", "Apps", "Halonic", "halonic-inbox.exe"]);
-    assert!(is_frame_exe(&built, &folder, FrameApp::Inbox));
-    // The other app's frame, another folder or another program: refused.
-    assert!(!is_frame_exe(&inbox, &folder, FrameApp::Messenger));
-    let elsewhere = windows_path(&["D:", "Temp", "Halonic Inbox.exe"]);
-    assert!(!is_frame_exe(&elsewhere, &folder, FrameApp::Inbox));
+    // Made-up file identities: the 8.3 short name and the `subst` drive
+    // are other paths to the Inbox frame's one file.
+    let short = windows_path(&["D:", "Apps", "HALONI~1", "HALONI~1.EXE"]);
+    let substituted = windows_path(&["S:", "Halonic Inbox.exe"]);
+    let copied = windows_path(&["D:", "Temp", "Halonic Inbox.exe"]);
+    let identity = |path: &Path| -> Option<u32> {
+        // `join` puts a `/` between the parts off Windows.
+        let path = PathBuf::from(path.to_string_lossy().replace('/', "\\"));
+        if path == inbox || path == substituted || path == short {
+            Some(1)
+        } else if path == copied {
+            Some(2)
+        } else {
+            None
+        }
+    };
+    let same_file = |first: &Path, second: &Path| {
+        identity(first).is_some_and(|first| Some(first) == identity(second))
+    };
+    assert!(is_frame_exe(&inbox, &folder, FrameApp::Inbox, same_file));
+    assert!(is_frame_exe(
+        &substituted,
+        &folder,
+        FrameApp::Inbox,
+        same_file
+    ));
+    // The name must still be the frame's: a short name doesn't say which.
+    assert!(!is_frame_exe(&short, &folder, FrameApp::Inbox, same_file));
+    // The other app's frame, a copy elsewhere or another program: refused.
+    assert!(!is_frame_exe(
+        &inbox,
+        &folder,
+        FrameApp::Messenger,
+        same_file
+    ));
+    assert!(!is_frame_exe(&copied, &folder, FrameApp::Inbox, same_file));
     let other = windows_path(&["D:", "Apps", "Halonic", "notepad.exe"]);
-    assert!(!is_frame_exe(&other, &folder, FrameApp::Inbox));
-    let nested = windows_path(&["D:", "Apps", "Halonic", "x", "Halonic Inbox.exe"]);
-    assert!(!is_frame_exe(&nested, &folder, FrameApp::Inbox));
+    assert!(!is_frame_exe(&other, &folder, FrameApp::Inbox, same_file));
     let bare = Path::new("Halonic Inbox.exe");
-    assert!(!is_frame_exe(bare, &folder, FrameApp::Inbox));
+    assert!(!is_frame_exe(bare, &folder, FrameApp::Inbox, same_file));
 }
 
 #[test]

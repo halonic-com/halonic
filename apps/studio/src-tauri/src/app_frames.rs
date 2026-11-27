@@ -7,7 +7,8 @@
 //! - A frame starts Halonic with `--app <name> --host-window <handle>`.
 //!   `hand_over` keeps that handle, and `show` then opens the app's window
 //!   as a child of the frame, once the frame proves to be that app's own
-//!   exe in Halonic's folder. Anything else is refused and its frame closed.
+//!   exe in Halonic's folder, by file identity. Anything else is refused
+//!   and left alone, and the window opens here instead.
 //! - Any other start of the app, such as `--app inbox` from an old shortcut,
 //!   the tray, quick ask's chat or the windows reopened at start, starts the
 //!   app's frame instead of opening a window here, when this install has
@@ -20,12 +21,15 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use halonic_app_frame::FrameApp;
-use tauri::{AppHandle, Manager, Runtime, WebviewWindow};
+use tauri::{AppHandle, Manager, Runtime, WebviewWindow, WindowEvent};
 
 use crate::focused_apps::FocusedApp;
 
 /// The frames handed over by starts, by app, until their windows open.
 static HANDED: Mutex<Vec<(FrameApp, isize)>> = Mutex::new(Vec::new());
+
+/// The labels of the windows that sit in a frame now.
+static FRAMED: Mutex<Vec<&'static str>> = Mutex::new(Vec::new());
 
 /// The frame app for `app`, or `None` for quick ask, which has none.
 pub fn frame_app(app: FocusedApp) -> Option<FrameApp> {
@@ -42,8 +46,9 @@ pub fn hand_over<S: AsRef<str>>(arguments: &[S]) {
         return;
     };
     let Some(app) = crate::focused_apps::requested(arguments).and_then(frame_app) else {
+        // The handle came from the command line and could be any window,
+        // so it is left alone: a frame of ours closes itself unanswered.
         halonic_shell_log::record("window", "a frame named no app with a frame");
-        let _ = halonic_app_frame::close(frame);
         return;
     };
     if let Ok(mut handed) = HANDED.lock() {
@@ -53,13 +58,13 @@ pub fn hand_over<S: AsRef<str>>(arguments: &[S]) {
 }
 
 /// Shows `app`'s window through its frame: in the frame handed over, or by
-/// starting its frame. `None` when `app` has no frame in this install, or
-/// its window is open already: the caller then opens it or brings it
-/// forward here.
+/// starting its frame. `None` when `app` has no frame in this install, the
+/// frame handed over was refused, or its window is open already: the
+/// caller then opens it or brings it forward here.
 pub fn show<R: Runtime>(handle: &AppHandle<R>, app: FocusedApp) -> Option<tauri::Result<()>> {
     let frame_app = frame_app(app)?;
     if let Some(frame) = take_handed(frame_app) {
-        return Some(adopt(handle, app, frame_app, frame));
+        return adopt(handle, app, frame_app, frame);
     }
     if handle.get_webview_window(app.name()).is_some() {
         return None;
@@ -85,26 +90,84 @@ fn take_handed(app: FrameApp) -> Option<isize> {
 }
 
 /// Opens `app`'s window in `frame`, once it is that app's own frame.
+/// `None` when it isn't: the window then opens here, so a frame refused,
+/// say from an install folder whose file can't be read, never keeps the
+/// app from opening.
 fn adopt<R: Runtime>(
     handle: &AppHandle<R>,
     app: FocusedApp,
     frame_app: FrameApp,
     frame: isize,
-) -> tauri::Result<()> {
+) -> Option<tauri::Result<()>> {
     let trusted = halonic_app_frame::process_image(frame)
         .zip(own_folder())
-        .is_some_and(|(image, folder)| halonic_app_frame::is_frame_exe(&image, &folder, frame_app));
+        .is_some_and(|(image, folder)| {
+            halonic_app_frame::is_frame_exe(
+                &image,
+                &folder,
+                frame_app,
+                halonic_app_frame::same_file,
+            )
+        });
     if !trusted {
-        halonic_shell_log::record("window", "a window that isn't Halonic's frame was refused");
-        let _ = halonic_app_frame::close(frame);
-        return Ok(());
+        // The handle came from the command line and could be any window,
+        // so it is left alone: a frame of ours closes itself unanswered.
+        halonic_shell_log::record(
+            "window",
+            format!(
+                "a window that isn't {}'s frame was refused; it opens here",
+                app.title()
+            ),
+        );
+        return None;
     }
     if let Some(window) = handle.get_webview_window(app.name()) {
         // Opened here before its frame came: it stays, and the new frame goes.
         let _ = halonic_app_frame::close(frame);
-        return bring_forward(&window);
+        return Some(bring_forward(&window));
     }
-    crate::window::open_in_frame(handle, app, frame).map(|_| ())
+    Some(open_in_frame(handle, app, frame))
+}
+
+/// Opens `app`'s window in `frame`, marked as in a frame until it is gone,
+/// so its kept place isn't saved over (`window_place::place_key`).
+fn open_in_frame<R: Runtime>(
+    handle: &AppHandle<R>,
+    app: FocusedApp,
+    frame: isize,
+) -> tauri::Result<()> {
+    set_framed(app.name(), true);
+    let window = match crate::window::open_in_frame(handle, app, frame) {
+        Ok(window) => window,
+        Err(error) => {
+            set_framed(app.name(), false);
+            return Err(error);
+        }
+    };
+    let label = app.name();
+    window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Destroyed) {
+            set_framed(label, false);
+        }
+    });
+    Ok(())
+}
+
+/// Whether the window labelled `label` sits in a frame.
+pub fn is_framed(label: &str) -> bool {
+    FRAMED
+        .lock()
+        .is_ok_and(|framed| framed.iter().any(|kept| *kept == label))
+}
+
+fn set_framed(label: &'static str, framed: bool) {
+    let Ok(mut labels) = FRAMED.lock() else {
+        return;
+    };
+    labels.retain(|kept| *kept != label);
+    if framed {
+        labels.push(label);
+    }
 }
 
 /// The folder Halonic's exe is in, where the installer puts the frames.
@@ -168,6 +231,19 @@ mod tests {
             assert_eq!(frame.name(), app.name());
             assert_eq!(frame.title(), app.title());
         }
+    }
+
+    #[test]
+    fn a_window_in_a_frame_has_no_place_kept_until_it_is_gone() {
+        use crate::window_place::{IN_FRAME, is_kept, place_key};
+        assert_eq!(place_key("inbox"), "inbox");
+        set_framed("inbox", true);
+        assert!(is_framed("inbox"));
+        assert_eq!(place_key("inbox"), IN_FRAME);
+        assert!(!is_kept(place_key("inbox")));
+        assert_eq!(place_key("messenger"), "messenger");
+        set_framed("inbox", false);
+        assert_eq!(place_key("inbox"), "inbox");
     }
 
     #[test]

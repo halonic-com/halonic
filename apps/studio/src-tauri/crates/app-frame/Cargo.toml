@@ -38,6 +38,8 @@ windows-sys = { version = "=0.61.2", features = [
   "Win32_Graphics_Gdi",
   # CreateMutexW's (null) security attributes.
   "Win32_Security",
+  # A frame's exe compared by its file identity, not its path.
+  "Win32_Storage_FileSystem",
   # The frame's own module handle, for its window class.
   "Win32_System_LibraryLoader",
   # Each frame's place, kept in the user's registry.

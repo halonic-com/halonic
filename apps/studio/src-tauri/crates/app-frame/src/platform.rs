@@ -5,10 +5,15 @@
 //! window.
 
 use std::ffi::OsStr;
+use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use windows_sys::Win32::Foundation::{CloseHandle, HWND, RECT};
+use windows_sys::Win32::Foundation::{CloseHandle, HWND, INVALID_HANDLE_VALUE, RECT};
+use windows_sys::Win32::Storage::FileSystem::{
+    BY_HANDLE_FILE_INFORMATION, CreateFileW, FILE_FLAG_BACKUP_SEMANTICS, FILE_SHARE_DELETE,
+    FILE_SHARE_READ, FILE_SHARE_WRITE, GetFileInformationByHandle, OPEN_EXISTING,
+};
 use windows_sys::Win32::System::Threading::{
     OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
 };
@@ -56,6 +61,54 @@ pub fn process_image(handle: isize) -> Option<PathBuf> {
     }
     buffer.truncate(length as usize);
     Some(PathBuf::from(String::from_utf16_lossy(&buffer)))
+}
+
+/// Whether `first` and `second` are one file: on one volume, with one file
+/// index. A hard link shares its file's index, so this holds for any two
+/// paths to it. `false` when either can't be opened.
+pub fn same_file(first: &Path, second: &Path) -> bool {
+    match (file_identity(first), file_identity(second)) {
+        (Some(first), Some(second)) => first == second,
+        _ => false,
+    }
+}
+
+/// The volume serial number and file index of the file at `path`.
+fn file_identity(path: &Path) -> Option<(u32, u32, u32)> {
+    let wide: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    // SAFETY: the path ends in a 0 and lives through the call. No access
+    // is asked for, only the file's information, and every sharing mode is
+    // allowed, so a running exe opens too.
+    let file = unsafe {
+        CreateFileW(
+            wide.as_ptr(),
+            0,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            std::ptr::null(),
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS,
+            std::ptr::null_mut(),
+        )
+    };
+    if file == INVALID_HANDLE_VALUE {
+        return None;
+    }
+    // SAFETY: an all-zero struct of integers is a valid value.
+    let mut information: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+    // SAFETY: the handle came from `CreateFileW` above, and Windows writes
+    // into the local struct.
+    let read = unsafe { GetFileInformationByHandle(file, &mut information) };
+    // SAFETY: the handle came from `CreateFileW` above and is closed once.
+    unsafe { CloseHandle(file) };
+    (read != 0).then_some((
+        information.dwVolumeSerialNumber,
+        information.nFileIndexHigh,
+        information.nFileIndexLow,
+    ))
 }
 
 /// The top-level window `handle` sits in: the frame for Halonic's window
