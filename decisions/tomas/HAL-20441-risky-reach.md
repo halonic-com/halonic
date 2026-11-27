@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20278 (plan approved by Liam, PR 3; 6.8 decided on HAL-20274, Julian's additions on HAL-20278; stack B on HAL-20441)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:gS95VRjrx3SsWToZaetpecqLZQn0JB1OVHCpHIPPX2R8p+4OTwlGLfmkUHBsVy8Nm4iHxhIkhx7pSmXmuqqgDw==
 
 Condition 2 of section 6.8 of the HAL-17491 note: the desktop shell's own
 confirmation of a risky approve names what it reaches. For an agent's join
