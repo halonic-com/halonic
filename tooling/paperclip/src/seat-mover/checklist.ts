@@ -58,6 +58,8 @@ export interface AgentPlace {
   readonly parked: boolean;
   /** The mover moved it less than `moveCooldownMinutes` ago. */
   readonly recentlyMoved: boolean;
+  /** When the mover moved it onto the seat it sits on now, if that was less than the cooldown ago. */
+  readonly arrivedAt?: string | undefined;
 }
 
 /** Agent id → connection id. */
@@ -177,8 +179,24 @@ export const sessionStopFor = (agent: AgentPlace, settings: SeatMoverSettings) =
   isReviewer(agent, settings) ? settings.reviewerSessionMovePercent : settings.sessionMovePercent;
 
 /**
+ * Whether the mover moved the agent onto `seat` after the seat's reading was
+ * taken (HAL-19695): the reading doesn't show its use yet, so it counts as an
+ * arrival. Readings come only at :17 and :47, so the next pass, a minute
+ * later, would otherwise fill the same seat again.
+ */
+export function arrivedSinceReading(agent: AgentPlace, seat: Seat): boolean {
+  return (
+    agent.arrivedAt !== undefined &&
+    seat.reading !== undefined &&
+    agent.connectionId === seat.connectionId &&
+    Date.parse(agent.arrivedAt) > Date.parse(seat.reading.at)
+  );
+}
+
+/**
  * Whether the seat stays below the agent's 5-hour stop with `arriving` agents
- * already sent to it this pass and this one: each arrival is counted at
+ * its reading doesn't show yet (sent to it this pass, or by the mover since
+ * the reading) and this one: each arrival is counted at
  * `targetHeadroomPercent` of the window. Readings don't change within a pass,
  * so without this headroom a seat just under the stop takes agents and the
  * next reading moves them off again.
@@ -197,7 +215,7 @@ export function sessionHasRoom(
  * Why `seat` may not take `agent` in `placement`, or `undefined` when every
  * checklist item holds. The 5-hour stop is the agent's own, so a reviewer is
  * never placed where it would have to move again at once. `arriving` is how
- * many agents this pass already sends to the seat.
+ * many agents the seat's reading doesn't show yet (see `sessionHasRoom`).
  */
 export function targetRefusal(
   seat: Seat,

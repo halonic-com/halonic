@@ -1,5 +1,6 @@
 import {
   type AgentPlace,
+  arrivedSinceReading,
   type Break,
   breaks,
   breaksQuietSeat,
@@ -153,11 +154,11 @@ function heavyReason(
 
 /**
  * For a reviewer, an empty seat first (it takes light company only when no
- * empty seat may take it). Then the seat with the fewest agents already sent
- * to it this pass, the most 5-hour room, the soonest weekly reset, the
- * emptiest, and the name. Readings don't change within a pass, so without the
- * arrivals rule every agent leaving a full seat would pick the same seat
- * (HAL-19394).
+ * empty seat may take it). Then the seat with the fewest agents sent to it
+ * since its reading (this pass or an earlier one, HAL-19695), the most 5-hour
+ * room, the soonest weekly reset, the emptiest, and the name. Readings don't
+ * change within a pass, so without the arrivals rule every agent leaving a
+ * full seat would pick the same seat (HAL-19394).
  */
 function compareTargets(
   a: Seat,
@@ -295,10 +296,14 @@ class Batch {
     return targetRefusal(seat, agent, placement, agents, settings, now, this.arrivals(seat));
   }
 
-  /** How many agents this batch has sent to the seat so far. */
+  /**
+   * How many agents on the seat its reading doesn't show yet: the ones this
+   * batch has sent there so far, and the ones earlier passes moved there since
+   * the reading (HAL-19695).
+   */
   arrivals(seat: Seat): number {
     return seatedOn(seat.connectionId, this.placement, this.agents).filter(
-      (agent) => this.start.get(agent.id) !== seat.connectionId,
+      (agent) => this.start.get(agent.id) !== seat.connectionId || arrivedSinceReading(agent, seat),
     ).length;
   }
 
