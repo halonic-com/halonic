@@ -58,9 +58,7 @@ export function checkStepGate(
       (each.requires?.length ?? 0) > 0 ||
       (each.requiredExpect?.length ?? 0) > 0;
     if (!comparesSomething) continue;
-    const lacksRequired = (each.requiredExpect ?? []).some(
-      (name) => !Object.hasOwn(expect, name),
-    );
+    const lacksRequired = (each.requiredExpect ?? []).some((name) => !Object.hasOwn(expect, name));
     if (lacksRequired) {
       return {
         ok: false,
