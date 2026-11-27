@@ -180,7 +180,7 @@ export class Inbox {
     return this.#state;
   }
 
-  /** The count for the sidebar, Home's Needs you and the phone's bar. */
+  /** The count for Home's Needs you: every item that waits. The sidebar counts the new ones. */
   signal(): PlaceSignal {
     return inboxSignal(this.#state.items);
   }

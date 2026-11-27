@@ -68,3 +68,36 @@ verifies("inbox.read-marks", () => {
     );
   });
 });
+
+verifies("inbox.sidebar-new", () => {
+  /** What the browser fires in this window when another window changes `storageArea`. */
+  const storageEvent = (key: string | null, storageArea: unknown) =>
+    Object.assign(new Event("storage"), { key, storageArea });
+
+  it("tells its listeners when another window changes the marks, and reads them again", () => {
+    const storage = deviceStorage();
+    const studioWindow = new EventTarget();
+    const studio = new StoredReadMarks(storage, undefined, studioWindow);
+    const inboxWindow = new StoredReadMarks(storage);
+    const listener = vi.fn();
+    const stop = studio.subscribe(listener);
+    expect(studio.isRead("r1:call-1")).toBe(false);
+
+    inboxWindow.markRead(["r1:call-1"]);
+    studioWindow.dispatchEvent(storageEvent("halonic.inbox.read", storage));
+    expect(listener).toHaveBeenCalledOnce();
+    expect(studio.isRead("r1:call-1")).toBe(true);
+
+    // Another window cleared the whole storage.
+    storage.kept.clear();
+    studioWindow.dispatchEvent(storageEvent(null, storage));
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(studio.isRead("r1:call-1")).toBe(false);
+
+    studioWindow.dispatchEvent(storageEvent("other.key", storage));
+    studioWindow.dispatchEvent(storageEvent("halonic.inbox.read", deviceStorage()));
+    stop();
+    studioWindow.dispatchEvent(storageEvent("halonic.inbox.read", storage));
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+});

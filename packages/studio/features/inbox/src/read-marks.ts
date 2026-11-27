@@ -33,16 +33,23 @@ export interface ReadMarks {
   markRead(keys: readonly string[]): void;
   /** Marks an item unread again, as **Mark as unread** does. */
   markUnread(key: string): void;
+  /**
+   * Calls `listener` after each change to the marks, this page's or another window's, so the
+   * sidebar's new count follows it (`inbox.sidebar-new`). Returns a function that stops the calls.
+   */
+  subscribe(listener: () => void): () => void;
 }
 
 /**
  * Read marks kept on this device, so they outlive a restart. Every window (Studio's, Halonic
  * Inbox's) has its own copy, so each change reads the key again first and changes only its own
- * entries: one window's older copy never overwrites another's newer marks. Without storage, or
- * with storage that throws, they last as long as this page; a failed write is logged.
+ * entries: one window's older copy never overwrites another's newer marks. Another window's change
+ * comes in through the window's `storage` event, which drops this page's copy and tells the
+ * listeners. Without storage, or with storage that throws, they last as long as this page; a
+ * failed write is logged.
  *
  * @example
- * inbox.readMarks = new StoredReadMarks(globalThis.localStorage ?? null);
+ * inbox.readMarks = new StoredReadMarks(window.localStorage, undefined, window);
  * inbox.readMarks.markRead([readKey(item)]);
  */
 export class StoredReadMarks implements ReadMarks {
@@ -52,10 +59,18 @@ export class StoredReadMarks implements ReadMarks {
   #marks: Map<string, string> | undefined;
   /** The last write failed: the marks live only in this page until one lands. */
   #unsaved = false;
+  readonly #listeners = new Set<() => void>();
+  /** Where the browser fires `storage` events for `storage`, normally `window`. */
+  readonly #events: EventTarget | null;
 
-  constructor(storage: ReadMarkStorage | null, now: () => Date = () => new Date()) {
+  constructor(
+    storage: ReadMarkStorage | null,
+    now: () => Date = () => new Date(),
+    events: EventTarget | null = null,
+  ) {
     this.#storage = storage;
     this.#now = now;
+    this.#events = events;
   }
 
   isRead(key: string): boolean {
@@ -75,6 +90,33 @@ export class StoredReadMarks implements ReadMarks {
     const marks = this.#fresh();
     if (!marks.delete(key)) return;
     this.#write(marks);
+  }
+
+  subscribe(listener: () => void): () => void {
+    // The window's listener lives only while someone listens, so a closed workspace leaves none.
+    if (this.#listeners.size === 0) {
+      this.#events?.addEventListener("storage", this.#changedElsewhere);
+    }
+    this.#listeners.add(listener);
+    return () => {
+      this.#listeners.delete(listener);
+      if (this.#listeners.size === 0) {
+        this.#events?.removeEventListener("storage", this.#changedElsewhere);
+      }
+    };
+  }
+
+  /** Another window wrote the marks, or cleared storage (`key` null): read them again. */
+  readonly #changedElsewhere = (event: Event): void => {
+    const { key, storageArea } = event as StorageEvent;
+    if (storageArea !== this.#storage || (key !== null && key !== storageKey)) return;
+    // A page whose last write failed holds newer marks than storage.
+    if (!this.#unsaved) this.#marks = undefined;
+    this.#tell();
+  };
+
+  #tell(): void {
+    for (const listener of [...this.#listeners]) listener();
   }
 
   /** The marks as another window may have just written them, now this page's copy. */
@@ -113,5 +155,7 @@ export class StoredReadMarks implements ReadMarks {
       this.#unsaved = true;
       console.error("Couldn't keep the Inbox's read marks on this device.", error);
     }
+    // This page's marks changed whether or not storage took them.
+    this.#tell();
   }
 }

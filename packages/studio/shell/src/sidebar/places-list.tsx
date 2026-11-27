@@ -37,7 +37,7 @@ export interface PlacesListProps {
  * place the features added, in the fixed order. Where you are shows the filled icon in `accent`
  * on the halo tint, and is `aria-current="page"`; the others show the outline in `fg-muted`. A
  * signal shows after the name: a count, or the still running dot, and a screen reader hears it
- * after the name ("Inbox, 2 waiting").
+ * after the name ("Inbox, 3 new, 8 waiting"). A `new` signal also sets the name semibold.
  *
  * A grouped place shows under its group's heading from the shell's `placeGroupNames`, such as
  * "Team" over Spend and seats (HAL-17510 flows, Choice P1); the places of one group stay together.
@@ -90,7 +90,7 @@ export function PlacesList({
                 {/* The kit names each place icon by the place's key, as `placeNames` does. */}
                 <PlaceIcon name={place.id} filled={current} />
               </span>
-              <span className="min-w-0 flex-1 truncate">{place.label}</span>
+              <span className={labelClasses(place.signal)}>{place.label}</span>
               {place.signal === undefined ? null : <Signal signal={place.signal} />}
             </LocationLink>
           </li>
@@ -179,6 +179,16 @@ function PlaceGroupSection(props: { readonly group: PlaceGroup; readonly childre
       {props.children}
     </section>
   );
+}
+
+/**
+ * A place's name, semibold while its signal counts something new, as an unread row's title
+ * (`shell.place-new-signal`).
+ */
+function labelClasses(signal: PlaceSignal | undefined): string {
+  return signal?.mark === "new"
+    ? "min-w-0 flex-1 truncate font-semibold"
+    : "min-w-0 flex-1 truncate";
 }
 
 /** A place's signal after its name. Its words are read after the name; the mark isn't. */

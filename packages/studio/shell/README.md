@@ -552,7 +552,8 @@ announcer. A result ("Saved key for Anthropic") or a failed command ("Couldn't r
 fixed order, from `showPlace`. Where you are (an item counts as in its outermost parent, from
 `parentsOf`) shows the filled icon in `accent` on the halo tint and is `aria-current="page"`. A
 count or the still running dot shows after the name, and a screen reader hears its words after the
-name ("Inbox, 2 waiting"). A click opens the place in the active tab and moves focus to the page's
+name ("Inbox, 3 new, 8 waiting"). A `new` signal also sets the name semibold, as an unread row's
+title (`shell.place-new-signal`). A click opens the place in the active tab and moves focus to the page's
 `h1`; a Ctrl-click or a middle-click opens it in a new tab and says so, like the sidebar's places.
 
 ```tsx

@@ -261,13 +261,13 @@ export const placeNames: Readonly<Record<SidebarPlace, PlaceName>> = {
 };
 
 /**
- * What a place shows next to its name. Nothing shows at zero. A `count` shows the number (the
- * Inbox, Changes); `problems` shows it after "!" in the warning colour (Spend and seats, Pull
- * requests);
- * `running` shows the still 6px running dot (Runs).
+ * What a place shows next to its name. Nothing shows at zero. A `count` shows the number
+ * (Changes); `new` shows it too and sets the place's name semibold, as an unread row's title
+ * (the Inbox's new items, `shell.place-new-signal`); `problems` shows it after "!" in the warning
+ * colour (Spend and seats, Pull requests); `running` shows the still 6px running dot (Runs).
  */
 export interface PlaceSignal {
-  readonly mark: "count" | "problems" | "running";
+  readonly mark: "count" | "new" | "problems" | "running";
   readonly value: number;
   /** What a screen reader hears after the place's name, such as "2 waiting", "2 problems" or "1 running". */
   readonly spoken: string;
