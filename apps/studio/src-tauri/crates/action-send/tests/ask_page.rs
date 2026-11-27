@@ -61,6 +61,20 @@ fn the_page_asks_only_for_what_the_step_needs() {
 }
 
 #[test]
+fn a_mistyped_name_is_shown_next_to_the_field_and_the_request_scrolls_by_keyboard() {
+    // HAL-20318: the webview blocks Send and says why, with no script.
+    let page = ask_page(&sheet(Some("acme/web.app"), &[]));
+    assert!(page.contains(r#"pattern="acme\/web\.app""#));
+    assert!(page.contains(r#"title="Type acme/web.app exactly as shown.""#));
+    // An escaped `-` is a syntax error under the `v` flag, which drops the pattern.
+    let page = ask_page(&sheet(Some("my-repo"), &[]));
+    assert!(page.contains(r#"pattern="my-repo""#));
+    let page = ask_page(&sheet(Some(r#"a"b$(c)"#), &[]));
+    assert!(page.contains(r#"pattern="a&quot;b\$\(c\)""#));
+    assert!(page.contains(r#"<pre tabindex="0" role="region" aria-label="The request">"#));
+}
+
+#[test]
 fn the_policy_allows_no_script_and_sends_the_form_only_to_the_shell() {
     let policy = page_policy();
     assert!(policy.starts_with("default-src 'none';"));

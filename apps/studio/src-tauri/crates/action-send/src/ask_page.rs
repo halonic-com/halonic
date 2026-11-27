@@ -94,6 +94,23 @@ fn escape(text: &str) -> String {
     escaped
 }
 
+/// The target's name as an input's `pattern` that matches only that name,
+/// so the webview blocks Send and says why when it's mistyped, with no
+/// script. Webviews compile `pattern` with the `v` flag, where an escaped
+/// `-` outside a class is a syntax error that drops the whole pattern, so
+/// only the syntax characters and `/` are escaped. The shell still checks
+/// the name itself.
+fn exact_pattern(text: &str) -> String {
+    let mut pattern = String::with_capacity(text.len());
+    for character in text.chars() {
+        if "^$\\.*+?()[]{}|/".contains(character) {
+            pattern.push('\\');
+        }
+        pattern.push(character);
+    }
+    pattern
+}
+
 /// The page: what the `admin` confirmation shows (the account, the method,
 /// the address the shell built and the body), a field for the target's
 /// name, a masked field for each secret, and Cancel and Send.
@@ -107,9 +124,10 @@ pub fn ask_page(sheet: &AskSheet) -> String {
     if let Some(target) = &sheet.target {
         fields.push_str(&format!(
             r#"<label for="target">This can't be undone. Type <strong>{target}</strong> to send.</label>
-<input id="target" name="target" type="text" required autofocus autocomplete="off" autocapitalize="off" spellcheck="false">
+<input id="target" name="target" type="text" required pattern="{pattern}" title="Type {target} exactly as shown." autofocus autocomplete="off" autocapitalize="off" spellcheck="false">
 "#,
             target = escape(target),
+            pattern = escape(&exact_pattern(target)),
         ));
     }
     for (index, name) in sheet.secrets.iter().enumerate() {
@@ -132,7 +150,7 @@ pub fn ask_page(sheet: &AskSheet) -> String {
 <form method="post" action="{BASE}send" accept-charset="utf-8" autocomplete="off">
 <h1>Send this request?</h1>
 <p>As {account}:</p>
-<pre>{call}</pre>
+<pre tabindex="0" role="region" aria-label="The request">{call}</pre>
 {fields}<p>Send only if you just pressed Run in Halonic.</p>
 <nav><a href="{BASE}cancel">Cancel</a><button type="submit">Send</button></nav>
 </form>
