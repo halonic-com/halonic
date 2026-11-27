@@ -10,9 +10,11 @@
 //! whatever the host answered. Nothing here knows Tauri: the shell gives it
 //! the keychain and its way to the host, so it builds and tests anywhere.
 
+use std::collections::HashMap;
 use std::fmt;
+use std::sync::{Arc, Mutex, PoisonError};
 
-use halonic_secrets::{SecretBackend, SecretError, SecretName, check_value};
+use halonic_secrets::{SecretBackend, SecretError, SecretName, check_value_fits};
 use serde_json::{Value, json};
 
 /// Where failures nobody else hears about go in the shell's log.
@@ -46,6 +48,21 @@ pub trait SignInHost {
     fn cancel(&self, sign_in_id: &str) -> Result<(), HostCallFailed>;
 }
 
+/// One turn per connection, so two keeps for one connection (Sign in again
+/// from two workspaces at once) take turns: otherwise one's put-back could
+/// overwrite the entry the other just confirmed. The shell holds one for as
+/// long as it runs; it names each connection once, and a person has few.
+#[derive(Default)]
+pub struct KeepTurns(Mutex<HashMap<String, Arc<Mutex<()>>>>);
+
+impl KeepTurns {
+    /// The turn of the connection `connection`.
+    fn of(&self, connection: &str) -> Arc<Mutex<()>> {
+        let mut turns = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        Arc::clone(turns.entry(connection.to_owned()).or_default())
+    }
+}
+
 /// The approved poll's answer, as the host sends it to the shell.
 #[derive(Debug)]
 struct Connected {
@@ -62,10 +79,12 @@ struct Connected {
 /// A `connected` one is kept: the page gets the connection, address and
 /// company only. When the shell can't read that answer, write the entry or
 /// confirm it, it puts back the entry held before, cancels the sign-in so
-/// the host revokes the new key, and the page gets `key-not-saved`.
+/// the host revokes the new key, and the page gets `key-not-saved`. A keep
+/// waits for any other keep of the same connection in `turns` to finish.
 pub fn keep_poll_answer(
     keychain: &dyn SecretBackend,
     host: &dyn SignInHost,
+    turns: &KeepTurns,
     sign_in_id: &str,
     body: Value,
 ) -> Value {
@@ -77,7 +96,12 @@ pub fn keep_poll_answer(
         cancel(host, sign_in_id);
         return key_not_saved();
     };
-    if !keep(keychain, host, sign_in_id, &connected) {
+    let turn = turns.of(&connected.connection);
+    let kept = {
+        let _turn = turn.lock().unwrap_or_else(PoisonError::into_inner);
+        keep(keychain, host, sign_in_id, &connected)
+    };
+    if !kept {
         return key_not_saved();
     }
     json!({
@@ -96,6 +120,13 @@ pub fn page_cancel_answer(body: Value) -> Value {
     if is_connected(&body) {
         return json!({ "status": "cancelled" });
     }
+    without_key(body)
+}
+
+/// What the page gets for the host's answer `body` to any other Paperclip
+/// route: the answer without a `key` field. None of them answers a key
+/// today; this keeps a later one from carrying it to the page.
+pub fn page_answer(body: Value) -> Value {
     without_key(body)
 }
 
@@ -130,7 +161,9 @@ fn keep(
         Err(error) => return refused(host, sign_in_id, &error),
     };
     let entry = entry_text(connected, before.as_deref());
-    if let Err(error) = fits(keychain, &entry).and_then(|()| keychain.set(&name, &entry)) {
+    if let Err(error) =
+        check_value_fits(keychain, &entry).and_then(|()| keychain.set(&name, &entry))
+    {
         return refused(host, sign_in_id, &error);
     }
     if confirmed(host, sign_in_id) {
@@ -139,16 +172,6 @@ fn keep(
     put_back(keychain, &name, before.as_deref());
     cancel(host, sign_in_id);
     false
-}
-
-/// Checks the entry's text as the token commands check a value: not empty,
-/// and no longer than the keychain can keep.
-fn fits(keychain: &dyn SecretBackend, entry: &str) -> Result<(), SecretError> {
-    check_value(entry)?;
-    if entry.len() > keychain.max_value_bytes() {
-        return Err(SecretError::InvalidValue);
-    }
-    Ok(())
 }
 
 /// Records why the key wasn't kept, cancels the sign-in and answers `false`.
@@ -304,3 +327,7 @@ fn record(message: impl fmt::Display) {
 #[cfg(test)]
 #[path = "paperclip_keep/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "paperclip_keep/keychain_tests.rs"]
+mod keychain_tests;

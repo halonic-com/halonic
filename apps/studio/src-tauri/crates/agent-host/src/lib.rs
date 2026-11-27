@@ -50,7 +50,8 @@ use handshake::{FirstLine, read_first_line};
 pub use handshake::{Handshake, read_handshake};
 use loopback_secrets::LoopbackSecrets;
 pub use paperclip_keep::{
-    HostCallFailed, SignInHost, forget_paperclip_key, keep_poll_answer, page_cancel_answer,
+    HostCallFailed, KeepTurns, SignInHost, forget_paperclip_key, keep_poll_answer, page_answer,
+    page_cancel_answer,
 };
 pub use paperclip_routes::{SIGN_IN_CANCEL, SIGN_IN_CONFIRM};
 use relay::Relay;

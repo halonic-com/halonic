@@ -109,7 +109,7 @@ pub const TOKEN_PREFIX: &str = "halonic_token_";
 /// before the connection's name ([`SecretName::paperclip_key`]).
 const PAPERCLIP_KEY_TOKEN: &str = "paperclip-";
 
-/// The canonical prefix of a stepper's sign-in:the user's own token for a
+/// The canonical prefix of a stepper's sign-in: the user's own token for a
 /// service and the account it belongs to (`halonic-action-send`). Only the
 /// shell's `action_*` commands reach these; the secret commands, the agent
 /// host and the engine never do, so no page, agent or integration sees the

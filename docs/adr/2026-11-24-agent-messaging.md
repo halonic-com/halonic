@@ -165,8 +165,10 @@ our server. Only the board's own Approve click is still to be tried live.
 3. Once a poll says `approved`, `/api/cli-auth/me` must show that the user
    belongs to the connection's company, and the key goes to the keychain.
    Studio's shell takes it out of the engine's answer, writes the keychain
-   entry and confirms it to the engine itself, so Studio's page never sees
-   the key (HAL-20278, section 6.8 of the HAL-17491 note).
+   entry and confirms it to the engine itself, so the sign-in never hands
+   Studio's page the key (HAL-20278, section 6.8 of the HAL-17491 note).
+   Connect and the restore still read it there until the next pull request
+   of HAL-20278.
 
 When a key expires or is revoked, calls get a 401, and Studio asks the board
 to sign in again. Disconnecting revokes the key (`revoke-current`) and deletes

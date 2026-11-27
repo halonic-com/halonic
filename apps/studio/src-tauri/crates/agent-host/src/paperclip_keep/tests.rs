@@ -10,25 +10,25 @@ use serde_json::{Value, json};
 use super::*;
 use crate::paperclip_routes::{SIGN_IN_CANCEL, SIGN_IN_CONFIRM};
 
-const SIGN_IN: &str = "si-1";
-const WORKSPACE: &str = "/work/acme";
+pub(super) const SIGN_IN: &str = "si-1";
+pub(super) const WORKSPACE: &str = "/work/acme";
 
 /// A host whose confirm answers as told, and that remembers every call.
-struct FakeHost {
+pub(super) struct FakeHost {
     confirms: Mutex<Vec<Result<bool, HostCallFailed>>>,
     calls: Mutex<Vec<String>>,
 }
 
 impl FakeHost {
     /// A host whose confirms answer `confirms`, in order, then `true`.
-    fn answering(confirms: Vec<Result<bool, HostCallFailed>>) -> Self {
+    pub(super) fn answering(confirms: Vec<Result<bool, HostCallFailed>>) -> Self {
         Self {
             confirms: Mutex::new(confirms),
             calls: Mutex::default(),
         }
     }
 
-    fn calls(&self) -> Vec<String> {
+    pub(super) fn calls(&self) -> Vec<String> {
         self.calls
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
@@ -61,7 +61,7 @@ impl SignInHost for FakeHost {
 
 /// A keychain that reads as `MemoryBackend` and refuses every write.
 #[derive(Default)]
-struct RefusesWrites(MemoryBackend);
+pub(super) struct RefusesWrites(pub(super) MemoryBackend);
 
 impl SecretBackend for RefusesWrites {
     fn get(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
@@ -84,7 +84,7 @@ impl SecretBackend for RefusesWrites {
     }
 }
 
-fn approved(key: &str) -> Value {
+pub(super) fn approved(key: &str) -> Value {
     json!({
         "status": "connected",
         "connection": "acme",
@@ -95,11 +95,11 @@ fn approved(key: &str) -> Value {
     })
 }
 
-fn entry_name() -> SecretName {
+pub(super) fn entry_name() -> SecretName {
     SecretName::paperclip_key("acme").expect("a connection's entry")
 }
 
-fn entry(keychain: &dyn SecretBackend) -> Option<Value> {
+pub(super) fn entry(keychain: &dyn SecretBackend) -> Option<Value> {
     let text = keychain.get(&entry_name()).expect("the keychain reads")?;
     Some(serde_json::from_str(&text).expect("the entry is JSON"))
 }
@@ -114,7 +114,13 @@ fn an_approved_poll_keeps_the_key_and_confirms_and_the_page_gets_no_key() {
     let keychain = MemoryBackend::new();
     let host = FakeHost::answering(vec![]);
 
-    let answer = keep_poll_answer(&keychain, &host, SIGN_IN, approved("pk-new-1"));
+    let answer = keep_poll_answer(
+        &keychain,
+        &host,
+        &KeepTurns::default(),
+        SIGN_IN,
+        approved("pk-new-1"),
+    );
 
     assert_eq!(
         answer,
@@ -153,7 +159,13 @@ fn a_keychain_that_refuses_the_write_cancels_and_the_page_gets_no_key() {
     let keychain = RefusesWrites::default();
     let host = FakeHost::answering(vec![]);
 
-    let answer = keep_poll_answer(&keychain, &host, SIGN_IN, approved("pk-new-2"));
+    let answer = keep_poll_answer(
+        &keychain,
+        &host,
+        &KeepTurns::default(),
+        SIGN_IN,
+        approved("pk-new-2"),
+    );
 
     assert_eq!(answer, json!({ "status": "key-not-saved" }));
     assert_eq!(host.calls(), vec!["cancel si-1"]);
@@ -164,7 +176,13 @@ fn a_confirm_the_host_refuses_removes_the_entry_and_cancels() {
     let keychain = MemoryBackend::new();
     let host = FakeHost::answering(vec![Ok(false)]);
 
-    let answer = keep_poll_answer(&keychain, &host, SIGN_IN, approved("pk-new-3"));
+    let answer = keep_poll_answer(
+        &keychain,
+        &host,
+        &KeepTurns::default(),
+        SIGN_IN,
+        approved("pk-new-3"),
+    );
 
     assert_eq!(answer, json!({ "status": "key-not-saved" }));
     assert_eq!(host.calls(), vec!["confirm si-1", "cancel si-1"]);
@@ -185,7 +203,13 @@ fn a_confirm_that_fails_twice_puts_back_the_old_key() {
         .expect("the old entry");
     let host = FakeHost::answering(vec![Err(HostCallFailed), Err(HostCallFailed)]);
 
-    let answer = keep_poll_answer(&keychain, &host, SIGN_IN, approved("pk-new-4"));
+    let answer = keep_poll_answer(
+        &keychain,
+        &host,
+        &KeepTurns::default(),
+        SIGN_IN,
+        approved("pk-new-4"),
+    );
 
     assert_eq!(answer, json!({ "status": "key-not-saved" }));
     assert_eq!(
@@ -200,7 +224,13 @@ fn a_confirm_whose_answer_got_lost_is_sent_once_more() {
     let keychain = MemoryBackend::new();
     let host = FakeHost::answering(vec![Err(HostCallFailed), Ok(true)]);
 
-    let answer = keep_poll_answer(&keychain, &host, SIGN_IN, approved("pk-new-5"));
+    let answer = keep_poll_answer(
+        &keychain,
+        &host,
+        &KeepTurns::default(),
+        SIGN_IN,
+        approved("pk-new-5"),
+    );
 
     assert_eq!(answer["status"], "connected");
     assert_eq!(host.calls(), vec!["confirm si-1", "confirm si-1"]);
@@ -218,7 +248,13 @@ fn an_approved_answer_the_shell_cant_read_is_cancelled_and_passes_on_no_key() {
                 "company": "company-acme", "workspace": WORKSPACE, "key": "pk-new-6" }),
     ] {
         let host = FakeHost::answering(vec![]);
-        let answer = keep_poll_answer(&keychain, &host, SIGN_IN, broken.clone());
+        let answer = keep_poll_answer(
+            &keychain,
+            &host,
+            &KeepTurns::default(),
+            SIGN_IN,
+            broken.clone(),
+        );
         assert_eq!(answer, json!({ "status": "key-not-saved" }), "{broken}");
         assert_eq!(host.calls(), vec!["cancel si-1"], "{broken}");
     }
@@ -242,7 +278,10 @@ fn other_poll_answers_pass_on_without_a_key_and_keep_nothing() {
             json!({ "status": "unknown" }),
         ),
     ] {
-        assert_eq!(keep_poll_answer(&keychain, &host, SIGN_IN, body), page);
+        assert_eq!(
+            keep_poll_answer(&keychain, &host, &KeepTurns::default(), SIGN_IN, body),
+            page
+        );
     }
     assert!(host.calls().is_empty());
     assert_eq!(entry(&keychain), None);
@@ -276,6 +315,7 @@ fn sign_in_again_adds_this_workspace_to_an_entry_for_the_same_place() {
     keep_poll_answer(
         &keychain,
         &FakeHost::answering(vec![]),
+        &KeepTurns::default(),
         SIGN_IN,
         approved("pk-new-8"),
     );
@@ -305,6 +345,7 @@ fn a_key_for_another_address_or_company_starts_the_list_again() {
         keep_poll_answer(
             &keychain,
             &FakeHost::answering(vec![]),
+            &KeepTurns::default(),
             SIGN_IN,
             approved("pk-new-9"),
         );
@@ -332,6 +373,7 @@ fn an_entry_whose_workspaces_isnt_a_list_of_texts_names_none() {
     keep_poll_answer(
         &keychain,
         &FakeHost::answering(vec![]),
+        &KeepTurns::default(),
         SIGN_IN,
         approved("pk-new-10"),
     );

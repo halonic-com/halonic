@@ -28,8 +28,8 @@ mod name;
 mod origins;
 
 pub use backend::{
-    MAX_VALUE_BYTES, SERVICE, SecretBackend, check_value, delete_secret, delete_token, get_secret,
-    get_token, has_secret, set_secret, set_token,
+    MAX_VALUE_BYTES, SERVICE, SecretBackend, check_value, check_value_fits, delete_secret,
+    delete_token, get_secret, get_token, has_secret, set_secret, set_token,
 };
 pub use contract::check_backend_contract;
 pub use error::SecretError;

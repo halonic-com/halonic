@@ -44,12 +44,12 @@ pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
         "POST /v1/paperclip/sign-in/start",
         route(Method::Post, "/v1/paperclip/sign-in/start", Answer::Json),
     ),
+    // The approved poll's key goes to the keychain in the shell, and the page
+    // gets the answer without it (`paperclip_keep.rs`, HAL-20278).
     (
         "POST /v1/paperclip/sign-in/poll",
         route(Method::Post, "/v1/paperclip/sign-in/poll", Answer::Json),
     ),
-    // The approved poll's key goes to the keychain in the shell, and the page
-    // gets the answer without it (`paperclip_keep.rs`, HAL-20278).
     (
         "POST /v1/paperclip/sign-in/cancel",
         route(Method::Post, "/v1/paperclip/sign-in/cancel", Answer::Json),

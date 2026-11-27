@@ -14,7 +14,7 @@ import type {
 import type { SignInConnection } from "@halonicjs/ports";
 import { HostAgentConnections } from "./host-agent-connections.ts";
 import { HostServiceSignIn } from "./host-service-sign-in.ts";
-import { paperclipKeyTokenName } from "./paperclip-key.ts";
+import { paperclipKeyEntryText, paperclipKeyTokenName } from "./paperclip-key.ts";
 
 /** The request `/api/cli-auth/revoke-current`, as the stand-in Paperclip logs it. */
 export const revokeCurrent = "POST /api/cli-auth/revoke-current";
@@ -65,7 +65,7 @@ export class StandInPaperclipHost {
     this.#setup = setup;
     for (const name of setup.keys ?? []) {
       const key = `acme-made-up-key-${name}`;
-      this.keychain.set(paperclipKeyTokenName(name), key);
+      this.keychain.set(paperclipKeyTokenName(name), this.#entryText(name, key));
       this.#held.set(name, key);
       this.#working.add(key);
     }
@@ -169,12 +169,20 @@ export class StandInPaperclipHost {
     if (status !== "approved") return { status: "pending" };
     challenge.status = "handed";
     // The shell writes the key to the keychain, confirms it, and answers the page without it.
-    this.keychain.set(paperclipKeyTokenName(challenge.connection), challenge.key);
+    const { connection, key } = challenge;
+    this.keychain.set(paperclipKeyTokenName(connection), this.#entryText(connection, key));
     this.onKeyWritten();
     this.#confirm(signInId);
     // Only a listed connection file's sign-in is started.
-    const { address, company } = this.#setup.connections[challenge.connection] as SignInConnection;
-    return { status: "connected", connection: challenge.connection, address, company };
+    const { address, company } = this.#setup.connections[connection] as SignInConnection;
+    return { status: "connected", connection, address, company };
+  }
+
+  /** The keychain entry the shell writes for `key`, signed in from this stand-in's workspace. */
+  #entryText(connection: string, key: string): string {
+    // Only a listed connection file's key is kept.
+    const { address, company } = this.#setup.connections[connection] as SignInConnection;
+    return paperclipKeyEntryText({ key, address, company, workspaces: ["/work/acme"] });
   }
 
   #confirm(signInId: string): void {

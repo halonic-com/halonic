@@ -15,15 +15,23 @@ into the shell (`studio.src-tauri.paperclip-key-keep`, Rust tests in
   client's `confirm` and its test go.
 - `services.host-agent-connections` no longer writes, puts back or confirms
   a key. Its tests for those cases move to the Rust tests, which cover each
-  of them: write refused, confirm refused, confirm lost and sent again, the
-  old key put back, a key for another place starting the list again.
+  of them: keychain unreadable, write refused, confirm refused, confirm lost
+  and sent again, the old key put back, a key for another place starting the
+  list again.
 - `services.paperclip-disconnect` is retired with `disconnectPaperclip` and
   its test file. The shell deletes the keychain entry whatever the host
   answers, as that requirement said.
 - `services.paperclip-restore` loses one test, for the real path the page
   recorded on a sign-in without a list first. The shell now takes that path
   from the host's answer. The restore itself is unchanged until the next pull
-  request of HAL-20278.
+  request of HAL-20278. Its first sentence now says the shell records the
+  workspace list and the services read it.
+- `agent-host.paperclip-key` named Studio's sign-in code in `studio/services`
+  as the one reader of the approved poll's key. It now names the shell, and
+  says the shell has the key revoked when its write or its confirm fails.
+- `services.paperclip-connect` said the services keep the key in the
+  keychain. It now says the shell does. Connect still reads the entry until
+  the next pull request of HAL-20278.
 
 The user sees nothing different: the sign-in, Sign in again and Disconnect
 behave as before.
@@ -33,6 +41,8 @@ behave as before.
 - services.host-agent-connections
 - services.paperclip-disconnect
 - services.paperclip-restore
+- services.paperclip-connect
+- agent-host.paperclip-key
 - agent-host.paperclip-sign-in
 - agent-host-client.paperclip-sign-in
 - packages/studio/services/src/paperclip-disconnect.test.ts

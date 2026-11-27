@@ -1,24 +1,75 @@
 //! Requirement `studio.src-tauri.paperclip-key-keep`: through
 //! `agent_host_request`, the approved sign-in poll reaches the page without
 //! its key, the shell confirms it itself, the page can't send the confirm,
-//! and Disconnect deletes the keychain entry whatever the host answers.
+//! and Disconnect deletes the keychain entry whatever the host answers, or
+//! tells the page when the keychain refused.
 //! Against the stand-in host of `agent_host_tests.rs`.
 
+use std::net::TcpListener;
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 
-use halonic_secrets::{MemoryBackend, SecretBackend, SecretName};
+use halonic_secrets::{MemoryBackend, SecretBackend, SecretError, SecretName};
 use serde_json::json;
 use tauri::Manager;
 
-use super::{AfterHandshake, FakeHost, Seen, Shell, as_json, request};
+use super::{AfterHandshake, FakeHost, HostAnswer, HostRefusal, Seen, Shell, as_json, request};
 use crate::secrets::SecretsState;
 
 /// A shell whose keychain is `keychain`.
-fn shell_with(fake: &FakeHost, keychain: &Arc<MemoryBackend>) -> Shell {
+fn shell_with(fake: &FakeHost, keychain: Arc<dyn SecretBackend>) -> Shell {
     let shell = Shell::new(fake, AfterHandshake::WaitForInput);
-    let backend: Arc<dyn SecretBackend> = keychain.clone();
-    shell.app.manage(SecretsState::with_backend(backend));
+    shell.app.manage(SecretsState::with_backend(keychain));
     shell
+}
+
+/// A host the shell can't reach: its handshake names a port nobody listens
+/// on.
+fn unreachable_host() -> FakeHost {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("a loopback port");
+    let port = listener.local_addr().expect("its address").port();
+    drop(listener);
+    let (_, seen) = channel();
+    let (release_bridge, _) = channel();
+    FakeHost {
+        port,
+        seen,
+        release_bridge,
+    }
+}
+
+/// A keychain that reads and writes as `MemoryBackend` but refuses every
+/// delete.
+#[derive(Default)]
+struct RefusesDeletes(MemoryBackend);
+
+impl SecretBackend for RefusesDeletes {
+    fn get(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        self.0.get(name)
+    }
+    fn set(&self, name: &SecretName, value: &str) -> Result<(), SecretError> {
+        self.0.set(name, value)
+    }
+    fn delete(&self, _: &SecretName) -> Result<(), SecretError> {
+        Err(SecretError::Denied)
+    }
+    fn get_origins(&self, name: &SecretName) -> Result<Option<String>, SecretError> {
+        self.0.get_origins(name)
+    }
+    fn set_origins(&self, name: &SecretName, origins: &str) -> Result<(), SecretError> {
+        self.0.set_origins(name, origins)
+    }
+    fn delete_origins(&self, _: &SecretName) -> Result<(), SecretError> {
+        Err(SecretError::Denied)
+    }
+}
+
+fn disconnect(shell: &Shell) -> Result<HostAnswer, HostRefusal> {
+    request(
+        &shell.handle(),
+        "POST /v1/paperclip/disconnect",
+        Some(json!({ "workspace": "/work/acme", "connection": "acme" })),
+    )
 }
 
 fn entry_name() -> SecretName {
@@ -54,7 +105,7 @@ fn the_page_cant_send_the_sign_ins_confirm() {
 fn an_approved_poll_reaches_the_page_without_its_key_and_the_shell_confirms() {
     let fake = FakeHost::serve();
     let keychain = Arc::new(MemoryBackend::new());
-    let shell = shell_with(&fake, &keychain);
+    let shell = shell_with(&fake, keychain.clone());
 
     let answer = request(
         &shell.handle(),
@@ -95,19 +146,46 @@ fn disconnect_deletes_the_entry_also_when_the_host_refuses() {
     keychain
         .set(&entry_name(), r#"{"key":"pk-old"}"#)
         .expect("an entry");
-    let shell = shell_with(&fake, &keychain);
+    let shell = shell_with(&fake, keychain.clone());
 
     // The stand-in host answers Disconnect 404, as a host that refuses it.
-    let answer = request(
-        &shell.handle(),
-        "POST /v1/paperclip/disconnect",
-        Some(json!({ "workspace": "/work/acme", "connection": "acme" })),
-    )
-    .expect("the host's refusal is an answer");
+    let answer = disconnect(&shell).expect("the host's refusal is an answer");
 
     assert_eq!(answer.status, 404);
     assert_eq!(
         keychain.get(&entry_name()).expect("the keychain reads"),
         None
     );
+}
+
+#[test]
+fn disconnect_deletes_the_entry_also_when_the_host_cant_be_reached() {
+    let fake = unreachable_host();
+    let keychain = Arc::new(MemoryBackend::new());
+    keychain
+        .set(&entry_name(), r#"{"key":"pk-old"}"#)
+        .expect("an entry");
+    let shell = shell_with(&fake, keychain.clone());
+
+    disconnect(&shell).expect_err("no host answers");
+
+    assert_eq!(
+        keychain.get(&entry_name()).expect("the keychain reads"),
+        None
+    );
+}
+
+#[test]
+fn disconnect_tells_the_page_when_the_keychain_refuses_the_delete() {
+    let fake = FakeHost::serve();
+    let keychain = Arc::new(RefusesDeletes::default());
+    keychain
+        .set(&entry_name(), r#"{"key":"pk-old"}"#)
+        .expect("an entry");
+    let shell = shell_with(&fake, keychain.clone());
+
+    let refusal = disconnect(&shell).expect_err("the keychain refused");
+
+    assert!(as_json(&refusal).contains(r#""kind":"keychain""#));
+    assert!(!as_json(&refusal).contains("pk-old"));
 }
