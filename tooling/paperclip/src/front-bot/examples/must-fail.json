@@ -543,7 +543,7 @@
           "Calls the video person Leo."
         ]
       },
-      "reply": "Sure\nChecking with Leo on the video",
+      "reply": "Hmm, let's see\nChecking with Leo on the video",
       "expect": "rejected",
       "reason": "unknown_name"
     },
