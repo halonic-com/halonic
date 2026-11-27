@@ -21,6 +21,7 @@ import { decide } from "../merge-control/decide.ts";
 import type { ReadOptions } from "../merge-control/facts.ts";
 import { meteredWrites, type ReadFetch, ReadRefused } from "../merge-control/read-client.ts";
 import { keepSent } from "../merge-control/retry.ts";
+import type { ReviewerTasks } from "../merge-control/reviewer-asks.ts";
 import {
   emptyShadowDay,
   nextShadowDay,
@@ -46,6 +47,12 @@ import { paperclipCopies } from "../verdicts/approval-copies.ts";
 import { withRecordedVerdicts } from "../verdicts/verdict-gate.ts";
 import { companyConfig, readSettings, requestTimeoutMs } from "./job.ts";
 import { type MergeStateClient, type PassLock, passStateKey } from "./merge-control-lock.ts";
+import {
+  type ReviewerTaskSettings,
+  type ReviewerTasksApi,
+  readReviewerTaskSettings,
+  reviewerTasksPass,
+} from "./merge-control-reviewer-tasks.ts";
 import { verdictGateOn, verdictReviewerIds } from "./review-verdict-declaration.ts";
 import { withVerdictChecks } from "./verdict-shadow.ts";
 
@@ -64,7 +71,8 @@ export interface MergeControlApi {
   readonly config: PluginConfigClient;
   readonly secrets: Pick<PluginSecretsClient, "resolve">;
   readonly http: PluginHttpClient;
-  readonly issues: Pick<PluginIssuesClient, "createComment" | "get" | "listComments">;
+  /** Also the review tasks' (HAL-20636), which change tasks through the host adapter. */
+  readonly issues: ReviewerTasksApi["issues"];
   /** The approvals' Paperclip copies, for the shadow diff (HAL-19324). */
   readonly agents: Pick<PluginAgentsClient, "list">;
   /** The recorded verdicts, compared with the gate in shadow mode (HAL-19481). */
@@ -108,6 +116,8 @@ export interface MergeControlSettings {
   readonly rules: MergeSettings;
   /** The reviewers' agents the board named for `review_verdict`, by name (HAL-19481). */
   readonly verdictReviewers: Readonly<Record<string, string>>;
+  /** The review tasks' switches (HAL-20636). */
+  readonly reviewerTasks: ReviewerTaskSettings;
 }
 
 const modes: readonly MergeControlMode[] = ["off", "shadow", "act"];
@@ -156,6 +166,7 @@ export function readMergeControlSettings(
     budget: readBudgetSettings(section),
     verdictReviewers: verdictReviewerIds(config),
     rules: rulesOf(config),
+    reviewerTasks: readReviewerTaskSettings(config),
   };
 }
 
@@ -166,6 +177,8 @@ export interface StoredMergeControl {
   readonly shadow: ShadowDay | null;
   /** The hour's GitHub calls per token; missing before the first counted pass. */
   readonly budget?: StoredBudget;
+  /** The open review tasks, by `<number>:<reviewer>` (HAL-20636); missing before the first. */
+  readonly reviewerTasks?: ReviewerTasks;
 }
 
 /** The stored entry, or a fresh one; another version is refused, not guessed at. */
@@ -410,11 +423,20 @@ async function lockedPass(
     }
   }
   const state = keepSent(stored.state, decision.state, decision.actions, results);
+  const reviewerTasks = await reviewerTasksPass(ctx, {
+    companyId,
+    repo: settings.repo,
+    snapshot: facts.snapshot,
+    rules: settings.rules,
+    settings: settings.reviewerTasks,
+    before: stored.reviewerTasks ?? {},
+  });
   await stateClient.set(passStateKey(companyId), {
     version: 1,
     state,
     shadow,
     budget: budget.stored,
+    reviewerTasks,
   });
   return { degraded: budget.degraded, summary: budget.summary };
 }

@@ -25,6 +25,7 @@ import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
  * set labels and nothing else, and `assignTaskBack` lets the hand-off limit
  * set the task's agent and nothing else, because the manifest can't narrow
  * `issues.update`. The unblock sweep's own adapter is in `unblock-host.ts`.
+ * `createReviewTask` is merge control's only new task (HAL-20636).
  */
 
 /** The part of the plugin context the adapter uses, so tests can fake it. */
@@ -141,6 +142,37 @@ export async function blockedToTodo(
   companyId: string,
 ): Promise<void> {
   await issues.update(taskId, todoOnly({ status: "todo" }), companyId);
+}
+
+/** A review task merge control makes (HAL-20636). */
+export interface ReviewTask {
+  readonly parent: { readonly id: string; readonly projectId: string | null };
+  readonly title: string;
+  readonly description: string;
+  readonly agentId: string;
+}
+
+/**
+ * Merge control's only new task: a child of the author's task, in its
+ * project, `todo` and `high`, for one agent. Answers its id.
+ */
+export async function createReviewTask(
+  issues: Pick<PluginIssuesClient, "create">,
+  task: ReviewTask,
+  companyId: string,
+): Promise<string> {
+  const { parent } = task;
+  const issue = await issues.create({
+    companyId,
+    parentId: parent.id,
+    ...(parent.projectId === null ? {} : { projectId: parent.projectId }),
+    title: task.title,
+    description: task.description,
+    status: "todo",
+    priority: "high",
+    assigneeAgentId: task.agentId,
+  });
+  return issue.id;
 }
 
 /** A host time (a `Date`, or a string over the wire) as ISO, or null when there is none. */

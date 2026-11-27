@@ -1341,6 +1341,17 @@ Settings under `mergeControl`, all empty by default:
   capacity is unknown and nothing jumps.
 - `mergerLogin`: the account the Merger acts as, so shadow mode can read what
   it did. It lives only in the settings, never in the repo.
+- `noraShadow`: on unless set to `false`. While on, a pull request whose only
+  counted approval is Nora's still needs Liam's, so it gets a review task.
+
+**Review tasks (HAL-20636).** In both modes, each pass keeps one task per pull
+request and reviewer for an approved, green pull request that waits only for
+Julian's security sign-off, or for Liam after Nora's approval
+(`src/merge-control/reviewer-asks.ts`). The task is assigned to the agent the
+routing names for the role (`todo`, `high`), is a child of the task the branch
+names, and is woken. A new head on the same wait wakes it again. Once the wait
+is gone, or the pull request merges or closes, the task is closed. While
+`mergeWatchersDryRun` is on, it only logs.
 
 **GitHub call budget (HAL-17913).** Reads go out on `githubToken`, the
 read-only GitHub App's installation token, which the host renews every
