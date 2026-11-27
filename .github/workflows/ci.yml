@@ -323,9 +323,23 @@ jobs:
           else
             echo "code=true" | tee -a "$GITHUB_OUTPUT"
           fi
+          # The files under packages/ that the shell's Rust code reads, mostly
+          # shared goldens through include_str!, also run the Tauri jobs
+          # (HAL-20521). Otherwise a change to a golden and its TypeScript
+          # side alone skips the Rust tests until main's push run. The list
+          # comes from the paths quoted in the Rust files of this checkout,
+          # so a new golden needs no change here.
+          rust_reads=$(git grep -ohE '"(\.\./)*packages/[^"]+"' -- 'apps/studio/src-tauri/*.rs' \
+            | sed -E 's|^"(\.\./)*||; s|"$||' | sort -u) || rust_reads=""
+          rust_read_changed=false
+          if [ -n "$rust_reads" ] && [ -n "$changed" ] && grep -qxFf <(echo "$rust_reads") <<< "$changed"; then
+            rust_read_changed=true
+            echo "::notice title=Tauri jobs::A file the shell's Rust code reads changed: $(grep -xFf <(echo "$rust_reads") <<< "$changed" | paste -sd' ')"
+          fi
           for area in "${areas[@]}"; do
             name="${area%%=*}"
-            if [ "$by_area" != true ] || grep -qE "${area#*=}" <<< "$changed"; then
+            if [ "$by_area" != true ] || grep -qE "${area#*=}" <<< "$changed" \
+              || { [ "$name" = tauri ] && [ "$rust_read_changed" = true ]; }; then
               echo "$name=true" | tee -a "$GITHUB_OUTPUT"
             else
               echo "$name=false" | tee -a "$GITHUB_OUTPUT"
