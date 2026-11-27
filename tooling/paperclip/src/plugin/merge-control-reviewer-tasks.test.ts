@@ -109,10 +109,15 @@ verifies("paperclip.merge-control-reviewer-tasks", () => {
   test("Nora's approval outside her scope gives Liam a task, also with the shadow off", async () => {
     const host = fakeHost();
     const outside = noraPull({ files: ["turbo.json"], fileNet: {} });
-    const tasks = await passOf(host.ctx, snapshot({ pulls: [outside] }), {}, {
-      ...live,
-      noraShadow: false,
-    });
+    const tasks = await passOf(
+      host.ctx,
+      snapshot({ pulls: [outside] }),
+      {},
+      {
+        ...live,
+        noraShadow: false,
+      },
+    );
     expect(Object.keys(tasks)).toEqual(["6678:liam"]);
     expect(host.create.mock.calls[0]?.[0]).toMatchObject({ assigneeAgentId: "agent-liam" });
   });
