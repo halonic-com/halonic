@@ -14,7 +14,12 @@ import {
   logMeta,
   notCalledRecord,
 } from "../front-bot/log-record.ts";
-import { assistantLabel, frontBotRequest, parseFirstReply } from "../front-bot/prompt.ts";
+import {
+  assistantLabel,
+  type FrontBotInput,
+  frontBotRequest,
+  parseFirstReply,
+} from "../front-bot/prompt.ts";
 import { choiceFor } from "../front-bot/run-choice.ts";
 import { type FrontBotSettings, frontBotKey, readFrontBotSettings } from "../front-bot/settings.ts";
 import { errorCode } from "./board-check-api.ts";
@@ -29,6 +34,7 @@ import {
 } from "./front-bot-budget.ts";
 import { askFrontBot, type FrontBotDeps } from "./front-bot-calls.ts";
 import { answerLookup, type LookupDeps } from "./front-bot-lookup.ts";
+import { type Exchange, readMemory, updateMemory } from "./front-bot-memory.ts";
 import { postNote } from "./front-bot-notes.ts";
 import { type PendingMessages, pendingMessages, storeRunChoice } from "./front-bot-run-choice.ts";
 import { agentAnswered, inputBlock, inputOf, type Scene, sceneOf } from "./front-bot-scene.ts";
@@ -45,8 +51,11 @@ import { writeMetrics } from "./metrics.ts";
  * or holds something shaped like a key, or the agent already answered. A
  * reply that fails the grounding check is never posted. With its own setting
  * on too, it answers a plain PR or run status question from a read-only
- * source instead (HAL-19222, front-bot-lookup.ts). Every decision leaves one
- * log record with ids, numbers and a fixed reason code only.
+ * source instead (HAL-19222, front-bot-lookup.ts). With memory on, the reply
+ * also reads the chat's summary and the board user's notes from state, and
+ * once its lines are out one background call rewrites them (HAL-19597,
+ * front-bot-memory.ts). Every decision leaves one log record with ids,
+ * numbers and a fixed reason code only.
  */
 
 /** The part of the plugin context the front bot uses, so tests can fake it. */
@@ -70,17 +79,23 @@ function eventIds(event: PluginEvent): { taskId?: string; commentId?: string } {
 
 /** Writes the one record of a decision to the log and the metrics. */
 async function report(ctx: FrontBotApi, record: FrontBotLogRecord): Promise<void> {
-  const firstReply = record.callType === "first_reply";
-  ctx.logger.info(
-    `Front bot: ${firstReply ? "first reply" : "lookup"} ${record.outcome}.`,
-    logMeta(record),
-  );
+  const kind = recordKind(record);
+  ctx.logger.info(`Front bot: ${kind.label} ${record.outcome}.`, logMeta(record));
   const tags = {
     companyId: record.companyId,
     outcome: record.outcome,
     reason: record.reason ?? "none",
   };
-  await writeMetrics(ctx, { [firstReply ? "front_bot.first_reply" : "front_bot.lookup"]: 1 }, tags);
+  await writeMetrics(ctx, { [kind.metric]: 1 }, tags);
+}
+
+/** How a record's kind reads in the log line and which metric counts it. */
+function recordKind(record: FrontBotLogRecord): { label: string; metric: string } {
+  if (record.callType === "first_reply") {
+    return { label: "first reply", metric: "front_bot.first_reply" };
+  }
+  if (record.callType === "memory") return { label: "memory", metric: "front_bot.memory" };
+  return { label: "lookup", metric: "front_bot.lookup" };
 }
 
 /** The ids and time every record of one message carries. */
@@ -227,15 +242,31 @@ function partReason(lines: LinesPosted): FrontBotReason | undefined {
   return lines.unsaved ? "note_unsaved" : undefined;
 }
 
+/** What one reply came to: its record, and the exchange the memory learns from when its lines went out. */
+interface Replied {
+  readonly record: FrontBotLogRecord;
+  readonly exchange?: Exchange;
+}
+
+/** The board user who wrote the message; the scene only holds a person's message. */
+function writerOf(scene: Scene): string {
+  return scene.message.authorUserId ?? "";
+}
+
+/** What the bot reads for a reply: the chat, and with memory on, the memory from state (no call). */
+async function replyInput(ctx: FrontBotApi, ready: Ready): Promise<FrontBotInput> {
+  const { scene } = ready;
+  const input = await inputOf(ctx, scene);
+  if (!ready.settings.memory) return input;
+  const { companyId, id } = scene.issue;
+  return { ...input, memory: await readMemory(ctx.state, companyId, id, writerOf(scene)) };
+}
+
 /** Calls Haiku, counts the call, keeps its run choice, checks the reply and posts it when it passes. */
-async function callAndPost(
-  ctx: FrontBotApi,
-  deps: FrontBotDeps,
-  ready: Ready,
-): Promise<FrontBotLogRecord> {
+async function callAndPost(ctx: FrontBotApi, deps: FrontBotDeps, ready: Ready): Promise<Replied> {
   const { scene, base, started } = ready;
   const { companyId } = scene.issue;
-  const input = await inputOf(ctx, scene);
+  const input = await replyInput(ctx, ready);
   const runChoice = ready.settings.runChoice;
   const call = await askFrontBot(
     ctx,
@@ -248,24 +279,22 @@ async function callAndPost(
   await recordCall(ctx, companyId, ready.health, deps.now(), !call.answered);
   const latencyMs = (end: Date = deps.now()) => end.getTime() - started.getTime();
   if (!call.answered) {
-    return { ...notCalledRecord(base, "failed", call.reason), latencyMs: latencyMs() };
+    return { record: { ...notCalledRecord(base, "failed", call.reason), latencyMs: latencyMs() } };
   }
   await keepRunChoice(ctx, ready, call.run);
   const cost = callCostMicroUsd(call.usage);
   await countSpend(ctx, companyId, ready.spend, cost);
-  const called = (
-    outcome: FrontBotOutcome,
-    reason?: FrontBotReason,
-    end?: Date,
-  ): FrontBotLogRecord => ({
-    ...base,
-    callType: "first_reply",
-    inputTokens: call.inputTokens,
-    outputTokens: call.outputTokens,
-    costMicroUsd: cost,
-    latencyMs: latencyMs(end),
-    outcome,
-    reason,
+  const called = (outcome: FrontBotOutcome, reason?: FrontBotReason, end?: Date): Replied => ({
+    record: {
+      ...base,
+      callType: "first_reply",
+      inputTokens: call.inputTokens,
+      outputTokens: call.outputTokens,
+      costMicroUsd: cost,
+      latencyMs: latencyMs(end),
+      outcome,
+      reason,
+    },
   });
   const reply = parseFirstReply(call.text);
   if (reply.kind === "skip") return called("skip");
@@ -277,9 +306,12 @@ async function callAndPost(
       ? called("rejected", "agent_answered")
       : called("failed", "post_failed");
   }
-  const record = called("posted", partReason(lines), lines.firstPostedAt);
+  const { record } = called("posted", partReason(lines), lines.firstPostedAt);
   await writeMetrics(ctx, { "front_bot.latency_ms": record.latencyMs }, { companyId });
-  return record;
+  if (!ready.settings.memory) return { record };
+  const posted = reply.lines.slice(0, lines.posted);
+  const userId = writerOf(scene);
+  return { record, exchange: { base, keyRef: ready.keyRef, userId, input, reply: posted } };
 }
 
 /**
@@ -293,23 +325,31 @@ async function handle(
   ctx: FrontBotApi,
   deps: FrontBotDeps & LookupDeps,
   event: PluginEvent,
-): Promise<FrontBotLogRecord[]> {
+): Promise<Handled> {
   const message = await messageOf(ctx, deps, event);
   if (message === undefined) {
-    return [];
+    return { records: [] };
   }
   const { scene, base } = message;
   const blocked = inputBlock(scene);
-  if (blocked !== undefined) return [notCalledRecord(base, "not_called", blocked)];
+  if (blocked !== undefined) return { records: [notCalledRecord(base, "not_called", blocked)] };
   if (await agentAnswered(ctx, scene))
-    return [notCalledRecord(base, "not_called", "agent_answered")];
+    return { records: [notCalledRecord(base, "not_called", "agent_answered")] };
   const lookup = message.settings.lookups ? await answerLookup(ctx, deps, scene, base) : undefined;
   if (lookup?.outcome === "posted") {
-    return [lookup];
+    return { records: [lookup] };
   }
   const ready = await beforeCall(ctx, deps, message);
-  const reply = "scene" in ready ? await callAndPost(ctx, deps, ready) : ready;
-  return lookup === undefined ? [reply] : [lookup, reply];
+  const { record, exchange } =
+    "scene" in ready ? await callAndPost(ctx, deps, ready) : { record: ready, exchange: undefined };
+  const records = lookup === undefined ? [record] : [lookup, record];
+  return exchange === undefined ? { records } : { records, exchange };
+}
+
+/** What one message came to: its records, and the exchange to remember once they are reported. */
+interface Handled {
+  readonly records: readonly FrontBotLogRecord[];
+  readonly exchange?: Exchange;
 }
 
 /** The front bot for one plugin worker. */
@@ -335,23 +375,40 @@ export function frontBot(
   inOrder: Serial = serial(),
   pending: PendingMessages = pendingMessages(),
 ): FrontBot {
+  const failed = (event: PluginEvent, error: unknown) =>
+    ctx.logger.error(`Front bot: couldn't handle a comment (${errorCode(error)}).`, {
+      companyId: event.companyId,
+    });
   return {
     async onCommentCreated(event) {
-      const work = async () => {
+      let exchange: Exchange | undefined;
+      const reply = async () => {
         try {
-          for (const record of await handle(ctx, deps, event)) {
+          const handled = await handle(ctx, deps, event);
+          for (const record of handled.records) {
             await report(ctx, record);
           }
+          exchange = handled.exchange;
         } catch (error) {
-          ctx.logger.error(`Front bot: couldn't handle a comment (${errorCode(error)}).`, {
-            companyId: event.companyId,
-          });
+          failed(event, error);
         }
       };
-      const done = inOrder(work);
+      // The memory is its own piece of work, queued after the reply: it never
+      // slows the reply's lines, and the run choice never waits for it.
+      const remember = async () => {
+        if (exchange === undefined) return;
+        try {
+          await report(ctx, await updateMemory(ctx, deps, exchange));
+        } catch (error) {
+          failed(event, error);
+        }
+      };
+      const done = inOrder(reply);
+      const remembered = inOrder(remember);
       const { commentId } = eventIds(event);
       if (commentId !== undefined) pending.track(commentId, done);
       await done;
+      await remembered;
     },
   };
 }

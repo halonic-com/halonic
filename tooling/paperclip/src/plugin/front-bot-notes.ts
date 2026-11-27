@@ -18,6 +18,31 @@ import { assistantLabel, automaticNotePrefix } from "../front-bot/prompt.ts";
 /** The route's key, as the manifest declares it. */
 export const chatNotesRouteKey = "chat-notes";
 
+/**
+ * The memory route's keys (HAL-19597, front-bot-memory.ts), kept here so the
+ * manifest imports no module beyond this one.
+ */
+export const chatMemoryRouteKey = "chat-memory";
+export const chatMemoryClearRouteKey = "chat-memory-clear";
+
+/** The front bot's board-only routes, as the manifest declares them. */
+export const frontBotRoutes = (
+  [
+    // The bot's own comment ids on one chat task, read by Messenger.
+    [chatNotesRouteKey, "GET", "/chat-notes/:taskId"],
+    // The bot's memory of one chat and the asking board user: read and clear (front-bot-memory.ts).
+    [chatMemoryRouteKey, "GET", "/chat-memory/:taskId"],
+    [chatMemoryClearRouteKey, "DELETE", "/chat-memory/:taskId"],
+  ] as const
+).map(([routeKey, method, path]) => ({
+  routeKey,
+  method,
+  path,
+  auth: "board" as const,
+  capability: "api.routes.register" as const,
+  companyResolution: { from: "query" as const, key: "companyId" },
+}));
+
 /** One comment the bot posted. */
 export interface AutomaticNote {
   readonly commentId: string;

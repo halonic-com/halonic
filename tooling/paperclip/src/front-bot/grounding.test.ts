@@ -23,8 +23,11 @@ function linesOf(reply: string): readonly string[] {
   return parsed.kind === "lines" ? parsed.lines : [];
 }
 
-function inputOf(example: Pick<FrontBotExample, "title" | "message" | "earlier">): FrontBotInput {
+function inputOf(
+  example: Pick<FrontBotExample, "title" | "message" | "earlier" | "memory">,
+): FrontBotInput {
   return {
+    memory: example.memory,
     title: example.title,
     message: example.message,
     messageAt: new Date("2026-11-26T14:03:00Z"),

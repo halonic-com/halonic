@@ -27,6 +27,11 @@ export interface FrontBotSettings {
    * kill switch is on too, so turning the bot off stops them as well.
    */
   readonly lookups: boolean;
+  /**
+   * The memory (HAL-19597): a chat's running summary and a board user's notes,
+   * read before a reply and rewritten after it. Off unless exactly `true`.
+   */
+  readonly memory: boolean;
 }
 
 function quickEffort(value: unknown): QuickEffort {
@@ -52,6 +57,7 @@ export function readFrontBotSettings(config: Readonly<Record<string, unknown>>):
       model: quickModel(config["frontBotQuickModel"]),
     },
     lookups: config["frontBotEnabled"] === true && config["frontBotLookups"] === true,
+    memory: config["frontBotMemory"] === true,
   };
 }
 
@@ -100,6 +106,13 @@ export const frontBotConfigProperties = {
     title: "Front bot lookups (Automatic answer)",
     description:
       'Off: the front bot never answers by itself. On, with the front bot on: a board user\'s plain question about a PR\'s status ("Is #6129 merged?") or a task\'s run ("Is HAL-123 running?") gets an answer read from GitHub or Paperclip, labelled "Automatic answer · from PR status" or "· from run status". It reads only, never acts, needs no Anthropic key, and leaves everything else to the agent.',
+    default: false,
+  },
+  frontBotMemory: {
+    type: "boolean",
+    title: "Front bot memory",
+    description:
+      "Off: the front bot remembers nothing between messages. On (with the front bot on): it keeps a short summary of each chat and a few notes per board user (preferences, open topics, names they use), rewritten by one Haiku 4.5 call after each reply it posts and counted in the $3 daily cap. Memory is background only: a reply may never take a number, name or result from it. Nothing shaped like a key is kept. The board reads and clears it on the chat-memory route.",
     default: false,
   },
   frontBotNotesEnabled: {

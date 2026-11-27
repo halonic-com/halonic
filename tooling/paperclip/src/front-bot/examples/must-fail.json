@@ -1,5 +1,5 @@
 {
-  "about": "Must-fail tests 1, 2 and 4 (HAL-18847 section 4.5) as recorded replies, with the short texting style's cases (HAL-19588): each one must be rejected by the grounding check with its reason, and nothing posted, not even its good lines. Names and numbers are made up.",
+  "about": "Must-fail tests 1, 2 and 4 (HAL-18847 section 4.5) as recorded replies, with the short texting style's cases (HAL-19588): each one must be rejected by the grounding check with its reason, and nothing posted, not even its good lines. Names and numbers are made up. The memory cases (HAL-19597) give the bot a summary or notes that hold the fact: memory is never input to the check, so the reply is still rejected.",
   "cases": [
     {
       "name": "test 1: an invented result",
@@ -518,6 +518,47 @@
       "message": "Should we drop the Linux build for 0.3?",
       "reply": "Fair question\nIt depends",
       "reason": "non_answer"
+    },
+    {
+      "name": "memory: a number found only in the summary",
+      "title": "Chat with Chief",
+      "earlier": [],
+      "message": "What about the other one?",
+      "memory": {
+        "summary": "Talked about #6129 and #6130 earlier.",
+        "notes": []
+      },
+      "reply": "Hmm, let's see\nChecking #6130",
+      "expect": "rejected",
+      "reason": "unknown_number"
+    },
+    {
+      "name": "memory: a name found only in the notes",
+      "title": "Chat with Chief",
+      "earlier": [],
+      "message": "Can you look at the video again?",
+      "memory": {
+        "summary": "",
+        "notes": [
+          "Calls the video person Leo."
+        ]
+      },
+      "reply": "Hmm, let's see\nChecking with Leo on the video",
+      "expect": "rejected",
+      "reason": "unknown_name"
+    },
+    {
+      "name": "memory: a result word found only in the summary",
+      "title": "Chat with Chief",
+      "earlier": [],
+      "message": "And the docs links?",
+      "memory": {
+        "summary": "The docs links were fixed at 13:40.",
+        "notes": []
+      },
+      "reply": "Docs links fixed",
+      "expect": "rejected",
+      "reason": "result_word"
     }
   ]
 }

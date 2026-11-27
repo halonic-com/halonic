@@ -91,6 +91,8 @@ verifies("paperclip.gh-guard-route", () => {
         ["github-summary", "board"],
         ["github-pull", "board"],
         ["chat-notes", "board"],
+        ["chat-memory", "board"],
+        ["chat-memory-clear", "board"],
         ["board-mentions", "board"],
         ["chief-line-open-thread", "board"],
         ["chief-line-thread", "board"],

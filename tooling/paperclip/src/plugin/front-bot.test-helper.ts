@@ -1,9 +1,11 @@
 import type { PluginEvent } from "@paperclipai/plugin-sdk";
 import type { PrStatusResult } from "../front-bot/lookups.ts";
+import type { ChatMemory } from "../front-bot/prompt.ts";
 import { fakeMetrics, fakeState } from "./fake-host.test-helper.ts";
 import { frontBot } from "./front-bot.ts";
 import type { FrontBotDeps } from "./front-bot-calls.ts";
 import type { LookupDeps } from "./front-bot-lookup.ts";
+import { writeMemory } from "./front-bot-memory.ts";
 
 /**
  * A plugin host for the front bot's tests, with a chat task, its comments and
@@ -17,7 +19,7 @@ export const plantedKey = `sk-ant-api03-${"Q7x2Lm9K".repeat(4)}`;
 export const companyId = "acme";
 export const chatTaskId = "0b5c2f9e-4d1a-4c3b-9a8e-1f2d3c4b5a69";
 export const chiefId = "agent-chief";
-const boardUserId = "user-board";
+export const boardUserId = "user-board";
 
 /** An earlier comment in an example: `board` for a person, else an agent's name. */
 export interface ExampleComment {
@@ -35,6 +37,8 @@ export interface FrontBotExample {
   readonly reply: string;
   readonly expect: "posted" | "skip" | "rejected";
   readonly reason?: string;
+  /** What the bot remembers for the message (HAL-19597); turns the memory on. */
+  readonly memory?: ChatMemory;
 }
 
 /** A comment as the fake host keeps it. */
@@ -75,6 +79,8 @@ export interface HarnessOptions {
   readonly onPause?: () => void;
   /** Posting fails from this line on (1-based), as if the host refused the comment. */
   readonly postFailsFrom?: number;
+  /** The memory already kept for the chat and its board user; turns the memory on (HAL-19597). */
+  readonly memory?: ChatMemory;
   /** Other tasks of the company, found by their identifier, for the run status lookup. */
   readonly tasks?: readonly OtherTask[];
 }
@@ -104,6 +110,10 @@ const agentNames = ["Chief", "Liam", "Julian", "Leo"];
 export function frontBotHarness(options: HarnessOptions = {}) {
   const { metrics, written } = fakeMetrics();
   const { state, saved } = fakeState();
+  if (options.memory !== undefined) {
+    // The fake state saves at once; the bot reads it only after the test awaits its event.
+    void writeMemory(state, companyId, chatTaskId, boardUserId, options.memory);
+  }
   const agents = agentNames.map((name) => ({ id: `agent-${name.toLowerCase()}`, name }));
   const comments: StoredComment[] = [];
   let nextComment = 0;
@@ -140,6 +150,8 @@ export function frontBotHarness(options: HarnessOptions = {}) {
       options.conversationAgentId === undefined ? chiefId : options.conversationAgentId,
     activeRun: { id: "run-1" },
   };
+  /** How many of the bot's comments were out when each request was made (HAL-19597). */
+  const postedAtRequest: number[] = [];
   const requests: {
     url: string;
     headers: Record<string, string>;
@@ -172,6 +184,9 @@ export function frontBotHarness(options: HarnessOptions = {}) {
       options.onPause?.();
     },
     anthropicFetch: async (url, init) => {
+      postedAtRequest.push(
+        comments.filter((each) => each.authorUserId === null && each.authorAgentId === null).length,
+      );
       requests.push({
         url: String(url),
         headers: (init?.headers ?? {}) as Record<string, string>,
@@ -207,7 +222,11 @@ export function frontBotHarness(options: HarnessOptions = {}) {
   const ctx = {
     metrics,
     state,
-    config: { get: async () => options.config ?? botOn },
+    config: {
+      get: async () =>
+        options.config ??
+        (options.memory === undefined ? botOn : { ...botOn, frontBotMemory: true }),
+    },
     secrets: { resolve: async () => plantedKey },
     logger: {
       info: (line: string, meta?: unknown) => logs.push({ level: "info", line, meta }),
@@ -245,6 +264,7 @@ export function frontBotHarness(options: HarnessOptions = {}) {
     written,
     logs,
     requests,
+    postedAtRequest,
     sourceReads,
     pauses,
     comments,
