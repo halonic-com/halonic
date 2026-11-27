@@ -51,10 +51,14 @@ export interface ManualForm {
 
 /**
  * Where a browser step's instructions come from: a library step, checked against the real page on
- * a date, or the requester's own words, which Halonic never checked (HAL-17491 7.1).
+ * a date, a library step written from the service's docs and never walked on the page, or the
+ * requester's own words, which Halonic never checked (HAL-17491 7.1). A library step whose
+ * `checkedOn` is neither a day nor `from docs` is `unchecked`, so no made-up date shows (HAL-20323).
  */
 export type InstructionsSource =
   | { readonly kind: "library"; readonly checkedOn: Date }
+  | { readonly kind: "docs" }
+  | { readonly kind: "unchecked" }
   | { readonly kind: "requester" };
 
 /**

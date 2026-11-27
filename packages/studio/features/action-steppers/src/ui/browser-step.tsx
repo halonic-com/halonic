@@ -27,9 +27,10 @@ export interface BrowserInstructionsProps {
 
 /**
  * A browser step's page and numbered instructions (`action-steppers.browser`), under the label that
- * says where they come from: "Checked on <date>" for a library step, "Instructions from
- * <requester>, not checked by Halonic" for the requester's own words. The instructions are text
- * nodes, never Markdown.
+ * says where they come from: "Checked on <date>" for a library step, "From the service's docs, not
+ * checked on the page" for one written from docs (`action-steppers.browser-docs`), "Instructions
+ * from <requester>, not checked by Halonic" for the requester's own words. The instructions are
+ * text nodes, never Markdown.
  */
 export function BrowserInstructions({ action, requester }: BrowserInstructionsProps) {
   return (

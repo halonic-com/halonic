@@ -28,6 +28,7 @@ import type {
 import { parse } from "@halonicjs/schema-kit";
 import { markHiddenName } from "@halonicjs/std";
 import type {
+  InstructionsSource,
   StepAction,
   StepperStage,
   StepperTouch,
@@ -113,10 +114,25 @@ function fill(template: string, parameters: InboxActionRequest["parameters"], en
   });
 }
 
-/** `2026-11-24` as that day in local time, so the label reads the same day in every time zone. */
-function localDay(day: string): Date {
-  const [year = 0, month = 1, date = 1] = day.split("-").map(Number);
-  return new Date(year, month - 1, date);
+/**
+ * `2026-11-24` as that day in local time, so the label reads the same day in every time zone, or
+ * `undefined` for anything that isn't a real day.
+ */
+function localDay(day: string): Date | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day);
+  if (match === null) return undefined;
+  const [year, month, date] = match.slice(1).map(Number) as [number, number, number];
+  const at = new Date(year, month - 1, date);
+  // `2026-02-31` rolls over into March: that is no day the catalog meant.
+  if (at.getMonth() !== month - 1 || at.getDate() !== date) return undefined;
+  return at;
+}
+
+/** Where a guided step's instructions come from, by its `checkedOn`: a day, `from docs`, or neither. */
+function librarySource(checkedOn: string): InstructionsSource {
+  if (checkedOn === "from docs") return { kind: "docs" };
+  const day = localDay(checkedOn);
+  return day === undefined ? { kind: "unchecked" } : { kind: "library", checkedOn: day };
 }
 
 /**
@@ -156,7 +172,7 @@ function stepAction(
         kind: "browser",
         address: fill(step.address, parameters, true),
         instructions: step.instructions.map((line) => fill(line, parameters, false)),
-        source: { kind: "library", checkedOn: localDay(step.checkedOn) },
+        source: librarySource(step.checkedOn),
         resultLabel: step.result?.label,
         resultPattern: step.result?.pattern,
       };

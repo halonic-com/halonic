@@ -91,6 +91,31 @@ export const acmeCatalog: StepperCatalog = {
   route: () => undefined,
 };
 
+/** The invented catalog with its guided step's `checkedOn` replaced, such as `from docs`. */
+export function catalogCheckedOn(checkedOn: string): StepperCatalog {
+  const changed: StepperDefinition<Values> = {
+    ...setVariable,
+    steps: setVariable.steps.map((step) =>
+      step.kind === "guided" ? { ...step, checkedOn } : step,
+    ),
+  };
+  return {
+    ...acmeCatalog,
+    definition: (id, version) =>
+      id === changed.id && version === changed.version
+        ? changed
+        : acmeCatalog.definition(id, version),
+  };
+}
+
+/** Set `DEPLOY_ENV` on `acme/app`: one guided step, then the secret value. */
+export const setVariableRequest: InboxActionRequest = {
+  definition: "github.set-variable",
+  version: 1,
+  parameters: { owner: "acme", repo: "app", name: "DEPLOY_ENV" },
+  expires: "2026-11-25T12:00:00.000Z",
+};
+
 /** The source "Paperclip · Acme", as its provider attests it. */
 export const acmeSource: MessagingSource = {
   id: "paperclip:acme",
