@@ -89,6 +89,7 @@ function KeyLine({
             {" "}
             <button
               type="button"
+              aria-label={words.changeKeyFor(secret)}
               aria-describedby={lineId}
               className={inlineLinkClasses}
               onClick={() => setAsking(true)}

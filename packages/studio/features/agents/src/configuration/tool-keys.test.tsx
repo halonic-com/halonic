@@ -53,6 +53,7 @@ function host(connectorKeys?: ConnectorKeys): AgentsHost {
       connectors: [
         { id: "acme-mail", name: "Acme mail", toolsWithoutAsking: 0, secrets: ["acme-mail-token"] },
         { id: "acme-files", name: "Acme files", toolsWithoutAsking: 1 },
+        { id: "acme-code", name: "Acme code", toolsWithoutAsking: 0, secrets: ["GITHUB_TOKEN"] },
       ],
     },
   });
@@ -153,6 +154,27 @@ verifies("agents.configuration.tool-keys", () => {
       "Couldn't save the key: The keychain is locked for . Your old key is still in use.",
     );
     expect(keys["acme-mail-token"]).toBe(oldKey);
+  });
+
+  it("names each connector's Change key by its key, starting with the words it shows", async () => {
+    const { store } = keyStore({ "acme-mail-token": oldKey, GITHUB_TOKEN: "acme-test-key-3" });
+    const memory = host(store);
+    await memory.update(ref, { connectors: ["acme-mail", "acme-code"] });
+    const page = await openTools(memory);
+    // Each button by its role and its name, as a screen reader's list of buttons has them.
+    const buttons = [
+      ...connectorsOf(page).querySelectorAll<HTMLElement>("button, [role=button]"),
+    ].filter((each) => each.getAttribute("aria-label")?.startsWith("Change key"));
+    expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Change key: acme-mail-token",
+      "Change key: GITHUB_TOKEN",
+    ]);
+    const button = buttons.find(
+      (each) => each.getAttribute("aria-label") === "Change key: GITHUB_TOKEN",
+    ) as HTMLElement;
+    expect(button.textContent).toBe("Change key");
+    const line = document.getElementById(button.getAttribute("aria-describedby") ?? "");
+    expect(line?.textContent).toBe("Acme code uses the key GITHUB_TOKEN.");
   });
 
   it("has no Change key when no key is stored, or keys can't be changed here", async () => {
