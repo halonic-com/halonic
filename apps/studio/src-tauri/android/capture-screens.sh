@@ -314,12 +314,15 @@ route_to_fake_computer
 # 1. The connect screen with the address typed. A fresh install has no paired
 #    computer and remembers no address, so the app opens on Pair with a
 #    computer (HAL-15985); the typed route's "Not listed? Enter its address"
-#    opens the connect screen.
+#    opens the connect screen. That link moves down while the picker looks for
+#    computers on this Wi-Fi (HAL-18138): the lines above it change until "No
+#    computers found yet" shows, after about 5 seconds. A tap before that
+#    lands where the link was (HAL-19864).
 keyboard_off
 launch_app
 wait_for_text "Type a code instead" 60
 tap_text "Type a code instead"
-wait_for_text "Not listed? Enter its address" 15
+wait_for_text "No computers found yet" 20
 tap_text "Not listed? Enter its address"
 wait_for_text "Connect to Halonic" 15
 type_address
