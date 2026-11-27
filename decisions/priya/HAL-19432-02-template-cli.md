@@ -3,6 +3,7 @@
 - Task: HAL-19432
 - Approval: the board chose the template design on HAL-19432 (step 1 only: its own file `template.yaml`, no `acme` fallback), after Liam's review of the `template-design` document. The lower case after the colon in the Home line is Julian's [minor] from the review of #6436.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FjOvyKC9+9jFiMzH5BjZQyGhnKDin/HarNAIIpFxVk/5+TmDkBDy4MXgIpoXONgHrRS+NNGSLaGKJT34iNR/Cw==
 
 ## What changes
 
