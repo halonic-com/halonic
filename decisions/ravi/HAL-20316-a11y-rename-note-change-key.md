@@ -2,6 +2,7 @@
 
 - Approval: HAL-20316 (team decision under HAL-2282; Liam signs on review)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uQ5ioJpbVkUn53edrc22vsHqKxeZ0ku4m4hf6X9XbcWOjvwVoclM2ZQ+/6a0JoD0bXbT+8eVbcd334J4yfVUCw==
 
 The rename note ("Also updates 2 places: …") appears under a name field that already has focus,
 and a screen reader doesn't read a description again when it changes under focus, so the user
