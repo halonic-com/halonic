@@ -38,6 +38,12 @@ export interface ApprovedDependency {
    * the user's decision of 8 Nov 2026; each addition needs their approval.
    */
   readonly cloudRuntime?: boolean;
+  /**
+   * For dev tooling only: the one adapter that may list it in `dependencies`
+   * and ship it, such as the TypeScript JS API until TypeScript 7.1 ships its
+   * own. Every other package keeps it in devDependencies.
+   */
+  readonly runtimeIn?: string;
 }
 
 /** The contents of `tooling/check/dependencies.json`. */
@@ -172,7 +178,7 @@ export function parseDependencyList(path: string, value: unknown): DependencyLis
       raw,
       field,
       ["category", "allowedIn", "layers", "reason"],
-      ["useInstead", "cloudRuntime"],
+      ["useInstead", "cloudRuntime", "runtimeIn"],
     );
     const reason = at.text(entry["reason"], `${field}.reason`);
     dependencies[name] = {
@@ -182,6 +188,9 @@ export function parseDependencyList(path: string, value: unknown): DependencyLis
       ...(entry["cloudRuntime"] === undefined
         ? {}
         : { cloudRuntime: at.flag(entry["cloudRuntime"], `${field}.cloudRuntime`) }),
+      ...(entry["runtimeIn"] === undefined
+        ? {}
+        : { runtimeIn: at.text(entry["runtimeIn"], `${field}.runtimeIn`) }),
       category: at.oneOf(entry["category"], `${field}.category`, dependencyCategories),
       allowedIn: at.strings(entry["allowedIn"], `${field}.allowedIn`, true),
       layers: at

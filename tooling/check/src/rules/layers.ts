@@ -240,6 +240,11 @@ function cloudflareProblem(
     : `"${specifier}" exists only on Cloudflare. Use it in targets/cloudflare/runtime, or in a cloudflare-* adapter that declares "runtime": "workers" or "any".`;
 }
 
+/** True when the entry's `runtimeIn` names this package, the one adapter that may ship it. */
+function shipsIn(approved: ApprovedDependency, site: ImportSite): boolean {
+  return approved.runtimeIn === (site.pkg.manifest.name ?? site.pkg.directory);
+}
+
 function externalImportProblem(
   context: CheckContext,
   site: ImportSite,
@@ -258,7 +263,7 @@ function externalImportProblem(
   }
   // Testing packages are test code themselves, such as testing/spec wrapping Vitest.
   const devLayer = site.layer === "tooling" || site.layer === "testing";
-  if (approved?.category === "dev-tooling" && !site.dev && !devLayer) {
+  if (approved?.category === "dev-tooling" && !site.dev && !devLayer && !shipsIn(approved, site)) {
     return `"${name}" is dev tooling and may only be imported from tests and config files.`;
   }
   return undefined;

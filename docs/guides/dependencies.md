@@ -12,7 +12,10 @@ Adding a dependency is a decision, not a side effect.
 4. **Dev tooling** (compiler, test runner, linter, build cache) goes in
    `devDependencies` and never ships. A testing package that wraps it, such
    as `testing/spec` wrapping Vitest, also lists it in `peerDependencies`:
-   the package using it brings its own copy.
+   the package using it brings its own copy. When one adapter really has to
+   ship a dev-tooling library, its entry names that adapter in `runtimeIn`
+   (one exact `@halonicjs/adapter-<name>`, also in `allowedIn`), and only that
+   adapter may list it in `dependencies` and import it from its source.
 
 ## The approved libraries and their wrappers
 
