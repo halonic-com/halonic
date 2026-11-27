@@ -1,9 +1,11 @@
 //! Sends one reviewed call step with the user's token (architecture note on
 //! HAL-17491, 2.4): check it against the route list, read the token, confirm
-//! an `admin` step in the native dialog, send it to the service's fixed
-//! origin without following a redirect, and hand back only the status, the
-//! route's kept fields and capped error text. The token goes into one
-//! header and nowhere else: not into the result, an error or a log line.
+//! an `admin` step in the native dialog, or ask in the dialog with text
+//! fields for an `irreversible` step's target and any `secret-input` value,
+//! send it to the service's fixed origin without following a redirect, and
+//! hand back only the status, the route's kept fields and capped error text.
+//! The token goes into one header and a typed secret into the body, and
+//! neither anywhere else: not into the result, an error or a log line.
 
 use std::future::Future;
 
@@ -13,9 +15,11 @@ use serde_json::{Map, Value};
 use url::Url;
 
 use crate::account::Account;
-use crate::answer::{MORE_THAN_ONE, error_text, kept_fields, redirect_text};
-use crate::call::{Refusal, SendRequest, prepare};
+use crate::answer::{MORE_THAN_ONE, cleaned_text, kept_fields, redirect_text};
+use crate::ask::{AskSheet, Mismatch, Typed, TypedText, body_bytes, checked, secret_fields};
+use crate::call::{PreparedCall, Refusal, SendRequest, prepare};
 use crate::routes::{Risk, RouteList};
+use crate::target::fill_target;
 use crate::wipe::{Wiped, wipe_bytes, wipe_text};
 
 /// One HTTP call, ready for the network. Its header values (one carries the
@@ -90,6 +94,10 @@ pub struct ConfirmSheet {
 pub trait Dialogs {
     /// Asks the user to confirm the call; `false` when they don't.
     fn confirm(&self, sheet: &ConfirmSheet) -> impl Future<Output = bool> + Send;
+
+    /// Shows the confirmation with a field for the target's name and a
+    /// masked field for each secret; `None` when the user closes it.
+    fn ask(&self, sheet: &AskSheet) -> impl Future<Output = Option<Typed>> + Send;
 }
 
 /// What sending a step did: `ActionSendResult` in `@halonicjs/ports`.
@@ -145,22 +153,12 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
                 return refused(Refusal::SignedOut);
             }
         };
-        if call.route.risk != Risk::Routine {
-            let sheet = ConfirmSheet {
-                account: account.name.clone(),
-                method: call.route.method.as_str(),
-                address: call.address.to_string(),
-                fields: call
-                    .body
-                    .iter()
-                    .flatten()
-                    .map(|(name, value)| (name.clone(), value.to_string()))
-                    .collect(),
-            };
-            if !self.dialogs.confirm(&sheet).await {
-                return SendResult::Cancelled;
-            }
-        }
+        let secrets = match self.ask_user(&call, &account, request, &step).await {
+            Ok(secrets) => secrets,
+            Err(result) => return result,
+        };
+        let mut hidden = vec![token.as_str()];
+        hidden.extend(secrets.iter().map(|(_, value)| value.as_str()));
         let mut headers: Vec<(String, String)> = call
             .route
             .service
@@ -175,7 +173,7 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
         let body = call
             .body
             .as_ref()
-            .map(|body| Value::Object(body.clone()).to_string().into_bytes());
+            .map(|fields| body_bytes(call.route, fields, &secrets));
         if body.is_some() {
             headers.push(("content-type".to_owned(), "application/json".to_owned()));
         }
@@ -190,7 +188,7 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
             Err(error) => {
                 (self.log)(format!(
                     "action_send {step}: unreachable ({})",
-                    error_text(&error, token.as_str())
+                    cleaned_text(&error, &hidden)
                 ));
                 return SendResult::Unreachable;
             }
@@ -208,7 +206,7 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
         }
         let shape = call.route.service.answers;
         if (200..300).contains(&status) {
-            return match kept_fields(&answer, shape, &call.route.keep, token.as_str()) {
+            return match kept_fields(&answer, shape, &call.route.keep, &hidden) {
                 Ok(kept) => SendResult::Answered {
                     status,
                     kept,
@@ -224,12 +222,74 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
                 }
             };
         }
-        let error = crate::answer::failure_text(&answer, shape, token.as_str());
+        let error = crate::answer::failure_text(&answer, shape, &hidden);
         SendResult::Answered {
             status,
             kept: Map::new(),
             error,
         }
+    }
+}
+
+impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
+    /// Asks the user before the call goes: nothing for a `routine` step, the
+    /// confirmation for an `admin` one, and the dialog with text fields for
+    /// an `irreversible` step or one with `secret-input` fields. Hands back
+    /// the typed secrets, or the result when nothing may be sent.
+    async fn ask_user(
+        &self,
+        call: &PreparedCall<'_>,
+        account: &Account,
+        request: &SendRequest,
+        step: &str,
+    ) -> Result<Vec<(String, TypedText)>, SendResult> {
+        let confirm = ConfirmSheet {
+            account: account.name.clone(),
+            method: call.route.method.as_str(),
+            address: call.address.to_string(),
+            fields: call
+                .body
+                .iter()
+                .flatten()
+                .map(|(name, value)| (name.clone(), value.to_string()))
+                .collect(),
+        };
+        let target = match &call.route.target {
+            Some(parts) => Some(fill_target(parts, &request.placeholders).ok_or(
+                SendResult::Refused {
+                    reason: Refusal::BadValue,
+                },
+            )?),
+            None => None,
+        };
+        let secrets = secret_fields(call.route);
+        if target.is_none() && secrets.is_empty() {
+            let confirmed =
+                call.route.risk == Risk::Routine || self.dialogs.confirm(&confirm).await;
+            return if confirmed {
+                Ok(Vec::new())
+            } else {
+                Err(SendResult::Cancelled)
+            };
+        }
+        let sheet = AskSheet {
+            confirm,
+            target,
+            secrets,
+        };
+        let typed = self
+            .dialogs
+            .ask(&sheet)
+            .await
+            .ok_or(SendResult::Cancelled)?;
+        checked(&sheet, typed).map_err(|mismatch| {
+            let why = match mismatch {
+                Mismatch::WrongTarget => "the name typed isn't the target's",
+                Mismatch::WrongSecrets => "a secret field was left empty",
+            };
+            (self.log)(format!("action_send {step}: not sent, {why}"));
+            SendResult::Cancelled
+        })
     }
 }
 

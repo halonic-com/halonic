@@ -14,6 +14,7 @@ use serde_json::Value;
 pub use crate::kinds::{Method, Risk};
 use crate::pattern::Pattern;
 use crate::services::{Service, service};
+use crate::target::{TargetPart, parse_target};
 use crate::template::{
     QueryPair, Segment, call_placeholder_names, is_name, parse_call_path, parse_path,
     placeholder_names,
@@ -63,6 +64,9 @@ pub struct CallRoute {
     pub query: Vec<QueryPair>,
     pub body: Vec<BodyField>,
     pub keep: Vec<String>,
+    /// The name the user types before an `irreversible` call is sent; only
+    /// such a call has one, and it must.
+    pub target: Option<Vec<TargetPart>>,
 }
 
 /// A step that opens a page on the service's own web origin.
@@ -115,6 +119,7 @@ struct RouteFile {
     body: Option<Vec<BodyFieldFile>>,
     keep: Option<Vec<String>>,
     address: Option<String>,
+    target: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -192,6 +197,12 @@ fn call_route(route: RouteFile) -> Result<CallRoute, String> {
     let method = route.method.ok_or("a call needs a method")?;
     let (path, query) = parse_call_path(route.path.as_deref().ok_or("a call needs a path")?)?;
     let placeholders = placeholders(&route, &call_placeholder_names(&path, &query)?)?;
+    let target = match (route.risk, route.target.as_deref()) {
+        (Risk::Irreversible, Some(template)) => Some(parse_target(template, &placeholders)?),
+        (Risk::Irreversible, None) => return Err("an irreversible call needs a target".to_owned()),
+        (_, Some(_)) => return Err("only an irreversible call has a target".to_owned()),
+        (_, None) => None,
+    };
     let body = route
         .body
         .unwrap_or_default()
@@ -220,6 +231,7 @@ fn call_route(route: RouteFile) -> Result<CallRoute, String> {
         query,
         body,
         keep,
+        target,
     })
 }
 
@@ -254,6 +266,7 @@ fn guided_route(route: RouteFile, origins: &[WebOrigin]) -> Result<GuidedRoute, 
         || route.path.is_some()
         || route.body.is_some()
         || route.keep.is_some()
+        || route.target.is_some()
     {
         return Err("a guided step has only an address".to_owned());
     }

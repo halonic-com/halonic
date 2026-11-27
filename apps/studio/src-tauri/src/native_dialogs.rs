@@ -306,7 +306,7 @@ where
 /// whichever app window is open (HAL-17915). `None` once every window is
 /// closed.
 #[cfg(desktop)]
-fn dialog_parent<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
+pub(crate) fn dialog_parent<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
     let open: Vec<WebviewWindow<R>> = crate::focused_apps::window_labels()
         .iter()
         .filter_map(|label| app.get_webview_window(label))

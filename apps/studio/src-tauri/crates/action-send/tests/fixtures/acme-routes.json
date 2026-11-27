@@ -61,7 +61,8 @@
       "method": "DELETE",
       "path": "/repos/{owner}/{repo}",
       "body": [],
-      "keep": []
+      "keep": [],
+      "target": "{owner}/{repo}"
     },
     {
       "kind": "call",
@@ -75,6 +76,22 @@
       "path": "/repos/{owner}/{repo}/actions/secrets/{name}",
       "body": [{ "name": "value", "kind": "secret-input" }],
       "keep": []
+    },
+    {
+      "kind": "call",
+      "definition": "acme.add-key",
+      "version": 1,
+      "step": 1,
+      "service": "github",
+      "risk": "routine",
+      "placeholders": { "owner": "^[A-Za-z0-9-]{1,39}$", "repo": "^[A-Za-z0-9._-]{1,100}$" },
+      "method": "POST",
+      "path": "/repos/{owner}/{repo}/keys",
+      "body": [
+        { "name": "title", "kind": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" },
+        { "name": "key", "kind": "secret-input" }
+      ],
+      "keep": ["id", "title", "key"]
     },
     {
       "kind": "guided",

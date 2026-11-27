@@ -1,8 +1,8 @@
 //! What the `action_*` commands give `halonic-action-send`: the network
 //! (reqwest, following no redirect), the OS keychain on a worker thread,
-//! the native confirmation, the clock, and the stepper that shows a
-//! sign-in's code. The crate decides what is sent; this file only carries
-//! it out.
+//! the native confirmation and the dialog with text fields (`dialog`), the
+//! clock, and the stepper that shows a sign-in's code. The crate decides
+//! what is sent; this file only carries it out.
 
 use std::future::Future;
 use std::sync::Arc;
@@ -10,8 +10,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use halonic_action_send::account::{self, Account};
 use halonic_action_send::{
-    Answer, Clock, CodeScreen, ConfirmSheet, Dialogs, Keychain, Outgoing, SignInCancel, Tokens,
-    Transport, UserCode,
+    Answer, AskSheet, Clock, CodeScreen, ConfirmSheet, Dialogs, Keychain, Outgoing, SignInCancel,
+    Tokens, Transport, Typed, UserCode,
 };
 use halonic_http_guard::{ProxySetting, Route, route_for};
 use halonic_secrets::{SecretBackend, SecretError};
@@ -20,6 +20,10 @@ use tauri::{AppHandle, Runtime};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::native_dialogs;
+
+/// The dialog with text fields, in a window of its own (HAL-18085).
+#[path = "action_dialog.rs"]
+pub mod dialog;
 
 /// The longest a call may take, from connecting to the last byte.
 const CALL_TIMEOUT: Duration = Duration::from_secs(30);
@@ -176,7 +180,8 @@ impl Keychain for ShellKeychain {
     }
 }
 
-/// The native confirmation, which the page can't draw or click.
+/// The native confirmation and the dialog with text fields, which the page
+/// can't draw or click.
 pub struct ShellDialogs<R: Runtime> {
     pub app: AppHandle<R>,
 }
@@ -191,6 +196,16 @@ impl<R: Runtime> Dialogs for ShellDialogs<R> {
             })
             .await
             .unwrap_or(false)
+        }
+    }
+
+    fn ask(&self, sheet: &AskSheet) -> impl Future<Output = Option<Typed>> + Send {
+        let app = self.app.clone();
+        let sheet = sheet.clone();
+        async move {
+            tauri::async_runtime::spawn_blocking(move || dialog::ask(&app, sheet))
+                .await
+                .unwrap_or(None)
         }
     }
 }

@@ -76,13 +76,14 @@ fn answer_fields(body: Value, shape: AnswerShape) -> Result<Map<String, Value>, 
 }
 
 /// The route's kept fields that the answer has as plain values. Nothing
-/// when the answer isn't a JSON object. A text value that holds the token
-/// or looks like a key is left out, in case the service echoes one back.
+/// when the answer isn't a JSON object. A text or number value that holds a
+/// `hidden` value (the token, a typed secret), or text that looks like a
+/// key, is left out, in case the service echoes one back.
 pub fn kept_fields(
     answer: &Answer,
     shape: AnswerShape,
     keep: &[String],
-    token: &str,
+    hidden: &[&str],
 ) -> Result<Map<String, Value>, MoreThanOne> {
     let Some(body) = json_body(answer) else {
         return Ok(Map::new());
@@ -93,10 +94,15 @@ pub fn kept_fields(
         .filter_map(|name| {
             let value = fields.get(name)?;
             let plain = match value {
-                Value::String(text) => !text
-                    .split_whitespace()
-                    .any(|word| looks_like_a_key(word, token)),
-                Value::Number(_) | Value::Bool(_) | Value::Null => true,
+                Value::String(text) => {
+                    !holds_hidden(text, hidden)
+                        && !text
+                            .split_whitespace()
+                            .any(|word| looks_like_a_key(word, hidden))
+                }
+                // A numeric secret can come back as a JSON number.
+                Value::Number(number) => !holds_hidden(&number.to_string(), hidden),
+                Value::Bool(_) | Value::Null => true,
                 Value::Array(_) | Value::Object(_) => false,
             };
             plain.then(|| (name.clone(), value.clone()))
@@ -127,9 +133,10 @@ fn envelope_errors(body: &Value) -> Option<String> {
     (!errors.is_empty()).then(|| errors.join("; "))
 }
 
-/// The service's message for a failed status, cleaned, with the permission
-/// GitHub says the call needs. `None` when there is neither.
-pub fn failure_text(answer: &Answer, shape: AnswerShape, token: &str) -> Option<String> {
+/// The service's message for a failed status, cleaned of the `hidden`
+/// values, with the permission GitHub says the call needs. `None` when
+/// there is neither.
+pub fn failure_text(answer: &Answer, shape: AnswerShape, hidden: &[&str]) -> Option<String> {
     let body = serde_json::from_slice::<Value>(&answer.body).ok();
     let message = body.and_then(|body| match shape {
         AnswerShape::Plain => body.get("message")?.as_str().map(str::to_owned),
@@ -150,17 +157,28 @@ pub fn failure_text(answer: &Answer, shape: AnswerShape, token: &str) -> Option<
         (None, Some(needs)) => needs,
         (Some(message), Some(needs)) => format!("{message} {needs}"),
     };
-    Some(error_text(&text, token))
+    Some(cleaned_text(&text, hidden))
 }
 
 /// Cleans untrusted text: every word holding the token, a key shape or a
 /// long random-looking run is replaced, and the rest is cut to
 /// [`MAX_ERROR_CHARS`].
 pub fn error_text(text: &str, token: &str) -> String {
+    cleaned_text(text, &[token])
+}
+
+/// As [`error_text`], for each of the `hidden` values. A hidden value may
+/// hold spaces, so each is replaced wherever it is before the words are
+/// looked at.
+pub(crate) fn cleaned_text(text: &str, hidden: &[&str]) -> String {
+    let mut text = text.to_owned();
+    for value in hidden.iter().filter(|value| !value.is_empty()) {
+        text = text.replace(value, REMOVED);
+    }
     let cleaned: Vec<&str> = text
         .split_whitespace()
         .map(|word| {
-            if looks_like_a_key(word, token) {
+            if looks_like_a_key(word, hidden) {
                 REMOVED
             } else {
                 word
@@ -170,10 +188,14 @@ pub fn error_text(text: &str, token: &str) -> String {
     cleaned.join(" ").chars().take(MAX_ERROR_CHARS).collect()
 }
 
-fn looks_like_a_key(word: &str, token: &str) -> bool {
-    (!token.is_empty() && word.contains(token))
-        || find_key_shape(word).is_some()
-        || is_long_random(word)
+fn holds_hidden(text: &str, hidden: &[&str]) -> bool {
+    hidden
+        .iter()
+        .any(|value| !value.is_empty() && text.contains(value))
+}
+
+fn looks_like_a_key(word: &str, hidden: &[&str]) -> bool {
+    holds_hidden(word, hidden) || find_key_shape(word).is_some() || is_long_random(word)
 }
 
 fn is_long_random(word: &str) -> bool {

@@ -7,7 +7,8 @@
 //!   the catalog and compiled in.
 //! - [`Sender::send`]: one call step, only from the list, to the service's
 //!   fixed origin with the user's token, following no redirect, handing back
-//!   only kept fields.
+//!   only kept fields. An `irreversible` step's target name and any
+//!   `secret-input` value are typed into the shell's dialog ([`ask_page`]).
 //! - [`open_guided`] and [`open_page`]: a guided step's page, and a
 //!   `browser` block's address checked against the web origins.
 //! - [`account`]: where the token and the signed-in account are kept.
@@ -16,6 +17,8 @@
 
 pub mod account;
 mod answer;
+mod ask;
+pub mod ask_page;
 mod call;
 mod device_flow;
 mod kinds;
@@ -25,11 +28,13 @@ mod routes;
 mod send;
 mod services;
 mod sign_in;
+mod target;
 mod template;
 mod web;
 mod wipe;
 
 pub use answer::{MAX_ERROR_CHARS, MORE_THAN_ONE, error_text};
+pub use ask::{AskSheet, Typed, TypedText};
 pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};
 pub use device_flow::{DEVICE_PAGE, DeviceFlow, NEVER_EXPIRES, is_client_id};
 pub use opens::{ANY_PAGE_GAP_MS, OpenLimiter, SAME_PAGE_GAP_MS, open_guided, open_page};
