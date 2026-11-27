@@ -4,6 +4,6 @@
 export const integrationGuideSource = {
   repository: "halonic-com/integrations",
   path: "docs/guides/integrations.md",
-  commit: "f8217b04dfb5188c1d137ee2e7fa2b1a8d15526f",
-  sha256: "2d9b9fd1099188005f896fa1aa092b38c1396aeebbc8108c5b4f1f5db9f34bf5",
+  commit: "62732928fb59bed9e8deebe34531d709772c0aa4",
+  sha256: "ca44a8b875e622ee01df862faece574094197b249331c4b58ad16d8db166ed8e",
 } as const;
