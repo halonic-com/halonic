@@ -14,6 +14,7 @@ import {
   RequestFacts,
 } from "./request-review.tsx";
 import { RunBar } from "./run-bar.tsx";
+import { ServiceSignInPanel } from "./service-sign-in-panel.tsx";
 import { MissingPermission, SignInPanel } from "./sign-in-panel.tsx";
 import { StepList } from "./step-list.tsx";
 import { findTarget, focusLost, focusTarget, resultText } from "./stepper-changes.ts";
@@ -118,6 +119,9 @@ export function ActionStepper({ view, actions, focusOnOpen = true }: ActionStepp
             permission={stage.permission}
             signInAgain={actions.signInAgain}
           />
+        ) : null}
+        {stage.kind === "ready" && view.serviceSignIn !== undefined ? (
+          <ServiceSignInPanel signIn={view.serviceSignIn} />
         ) : null}
         {stage.kind === "ready" && view.serviceDown ? (
           <Callout tone="attention">{serviceDownText(view.service)}</Callout>

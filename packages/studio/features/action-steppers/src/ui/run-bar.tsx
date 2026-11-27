@@ -11,6 +11,11 @@ import {
 } from "../stepper-view.ts";
 import { confirmWords, runWords } from "./stepper-words.ts";
 
+/** Whether the bar runs the step: an API call, or a part of the service's own sign-in. */
+function runsFromBar(step: StepView): boolean {
+  return step.action.kind === "call" || step.action.kind === "sign-in";
+}
+
 /** Props for {@link RunBar}. */
 export interface RunBarProps {
   readonly view: StepperView;
@@ -21,7 +26,7 @@ export interface RunBarProps {
 
 /**
  * The bar under a ready request (`action-steppers.run`): **Run step 2 of 3** for the next step, or
- * **Try step 2 again** after it failed, **Run all steps** only when every step is a routine call,
+ * **Try step 2 again** after it failed, the same for each part of a sign-in step, **Run all steps** only when every step is a routine call,
  * and **Decline**. A browser step has its own controls in the list instead. An irreversible step
  * asks once more in a dialog before `runStep` is called.
  */
@@ -40,7 +45,7 @@ export function RunBar({ view, actions, runningId }: RunBarProps) {
 
   return (
     <div className="flex flex-wrap gap-2 border-t border-border p-4">
-      {step === undefined || step.action.kind !== "call" ? null : (
+      {step === undefined || !runsFromBar(step) ? null : (
         <Button
           // While the service is down the run will likely fail, so it isn't the suggested action.
           variant={view.serviceDown ? "secondary" : "primary"}

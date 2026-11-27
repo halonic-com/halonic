@@ -241,6 +241,20 @@ export const signInWords = {
   signInAgain: "Sign in again",
 } as const;
 
+/** The Paperclip sign-in's panel in a stepper (`action-steppers.paperclip-sign-in-run`). */
+export const serviceSignInWords = {
+  heading: "Paperclip sign-in",
+  code: "Code",
+  compare: "On the approval page, check the code matches this one, then click Approve.",
+  timeLeft: (milliseconds: number) => {
+    const seconds = Math.ceil(milliseconds / 1000);
+    const shown = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    return `${shown} left to approve`;
+  },
+  timeUp: "The time to approve is up.",
+  signedInAs: (account: string) => `Signed in as ${account}.`,
+} as const;
+
 /** The line when the signed-in account lacks a permission the request needs. */
 export function missingPermissionText(
   service: StepperService,

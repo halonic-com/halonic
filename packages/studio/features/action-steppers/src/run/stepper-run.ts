@@ -8,6 +8,7 @@
  * later step is sent (`action-steppers.expect-stop`). In a browser the service runs nothing, so the
  * screen stays in review mode and only **Decline** answers.
  */
+import type { SignInPhase } from "@halonicjs/action-steppers";
 import type { ActionKeptValue, ActionOutcome } from "@halonicjs/events";
 import type { AnswerResult, InboxAnswer, MessagingSource } from "@halonicjs/ports";
 import type { ActionSteps } from "@halonicjs/studio-services";
@@ -17,7 +18,13 @@ import {
   type ActionReviewContext,
   reviewActionItem,
 } from "../review/action-item-review.ts";
-import { isDone, nextStep, type StepperActions, type StepperView } from "../stepper-view.ts";
+import {
+  isDone,
+  nextStep,
+  type StepperActions,
+  type StepperStage,
+  type StepperView,
+} from "../stepper-view.ts";
 import { checkedValues, expectStop, stoppedView } from "./expect-stop.ts";
 import {
   answerDay,
@@ -27,6 +34,7 @@ import {
   stepOutcome,
   stoppedOutcome,
 } from "./record-fold.ts";
+import { SignInRun, type StepperSignIn } from "./sign-in-run.ts";
 import { endedStage, signInStage } from "./stages.ts";
 import { setsSecret, stepRequest } from "./step-request.ts";
 
@@ -42,6 +50,8 @@ export interface StepperRunOptions {
   readonly answer: (answer: InboxAnswer) => Promise<AnswerResult>;
   /** The clock for expiry and for the day a secret was set. */
   readonly now: () => Date;
+  /** Runs a definition's `sign-in` steps; without it, such a request can't run here. */
+  readonly serviceSignIn?: StepperSignIn | undefined;
 }
 
 /**
@@ -58,11 +68,14 @@ export class StepperRun {
   /** How this run ended, for a Studio that keeps no record, such as one in a browser. */
   private endedWith: ActionOutcome | undefined;
   private readonly options: StepperRunOptions;
+  /** The request's sign-in steps, when its definition has any and this Studio can run them. */
+  private readonly signInRun: SignInRun | undefined;
 
   constructor(view: StepperView, options: StepperRunOptions) {
     this.options = options;
     this.view = view;
     this.request = `${options.item.source}/${options.item.id}`;
+    this.signInRun = signInRunOf(view, options);
   }
 
   /** What the screen shows now. */
@@ -106,6 +119,7 @@ export class StepperRun {
   /** Stops a sign-in this run started, when the screen closes. */
   async close(): Promise<void> {
     if (this.signingIn) await this.options.steps.cancelSignIn();
+    await this.signInRun?.close();
   }
 
   /** The last failure of a callback, for the card's line; cleared by the next one that works. */
@@ -178,8 +192,11 @@ export class StepperRun {
     const stop = expectStop(item.action, current);
     if (stop !== undefined) return this.set(stoppedView(shown, stop));
     if (record.finished !== undefined) {
-      return this.set({ ...shown, stage: endedStage(record.finished) });
+      const ended = { ...shown, stage: endedStage(record.finished) };
+      return this.set(hasSignIn(reviewed) ? this.withSignIn(ended, ended.stage) : ended);
     }
+    // A sign-in step is the sign-in: it needs no account first, only a Studio that can run it.
+    if (hasSignIn(reviewed)) return this.set(this.withSignIn(shown));
     const account = await steps.account(reviewed.service);
     const stage =
       account === undefined ? signInStage(reviewed.service, null) : { kind: "ready" as const };
@@ -232,14 +249,41 @@ export class StepperRun {
     const { item, catalog, steps } = this.options;
     const ran = await this.alone(async () => {
       await this.refresh();
+      if (this.view.stage.kind !== "ready") return;
+      const action = this.view.steps.find((step) => step.number === number)?.action;
+      if (action?.kind === "sign-in") return this.runSignInPart(number, action.phase);
       const route = catalog.route(item.action.definition, item.action.version, number);
-      if (this.view.stage.kind !== "ready" || route === undefined) return;
+      if (route === undefined) return;
       this.markRunning(number);
       const request = stepRequest(item.action, route);
       if (route.kind === "call") await steps.runStep(this.request, request);
       else await steps.openGuidedStep(this.request, request);
     });
     if (ran) await this.endIfDone();
+  }
+
+  /** Runs one part of the sign-in, and records the parts it says the record may now keep. */
+  private async runSignInPart(number: number, phase: SignInPhase): Promise<void> {
+    if (this.signInRun === undefined) return;
+    this.markRunning(number);
+    const parts = await this.signInRun.run(phase);
+    for (const step of this.view.steps) {
+      if (step.action.kind === "sign-in" && parts.includes(step.action.phase)) {
+        await this.options.steps.confirmStep(this.request, step.number);
+      }
+    }
+  }
+
+  /** The view of a request with sign-in steps: each part as this window has it, and the panel. */
+  private withSignIn(view: StepperView, stage: StepperStage = { kind: "ready" }): StepperView {
+    const signIn = this.signInRun;
+    if (signIn === undefined) return { ...view, stage: { kind: "not-available" } };
+    const steps = view.steps.map((step) =>
+      step.action.kind === "sign-in"
+        ? { ...step, outcome: signIn.outcome(step.action.phase, step.outcome) }
+        : step,
+    );
+    return { ...view, steps, stage, serviceSignIn: signIn.panel() };
   }
 
   private markRunning(number: number): void {
@@ -363,6 +407,26 @@ export class StepperRun {
     await this.options.steps.signOut(this.view.service);
     await this.signIn();
   }
+}
+
+/** Whether the request's definition has `sign-in` steps. */
+function hasSignIn(view: StepperView): boolean {
+  return view.steps.some((step) => step.action.kind === "sign-in");
+}
+
+/**
+ * The run of a request's sign-in steps, from its checked parameters: the connection file's name,
+ * the host the request names, and whether it is a test sign-in.
+ */
+function signInRunOf(view: StepperView, options: StepperRunOptions): SignInRun | undefined {
+  if (options.serviceSignIn === undefined || !hasSignIn(view)) return undefined;
+  const { parameters } = options.item.action;
+  const ref = {
+    service: "paperclip",
+    connection: String(parameters["connection"]),
+    host: String(parameters["host"]),
+  } as const;
+  return new SignInRun(options.serviceSignIn, ref, parameters["mode"] === "test", options.now);
 }
 
 /**

@@ -74,6 +74,11 @@ export {
   type HostAgentConnectionsOptions,
   signInPollMs,
 } from "./host-agent-connections.ts";
+export {
+  HostServiceSignIn,
+  type HostServiceSignInOptions,
+  isApprovalPage,
+} from "./host-service-sign-in.ts";
 export { MessageReactionsService } from "./message-reactions.ts";
 export {
   type InboxOpenRequests,
