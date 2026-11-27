@@ -56,6 +56,8 @@ mod actions;
 mod agent_host;
 #[cfg(target_os = "android")]
 mod android_plugins;
+#[cfg(windows)]
+mod app_frames;
 mod app_shortcuts;
 #[cfg(desktop)]
 mod background_start;

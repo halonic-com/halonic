@@ -75,6 +75,31 @@ pub fn open_focused<R: Runtime, M: Manager<R>>(
     Ok(window)
 }
 
+/// Opens `app`'s window inside its frame `frame` (HAL-20468,
+/// `app_frames`): the same page and label, as a child window that fills
+/// the frame's inside. The frame has the title bar, icons, taskbar ID and
+/// place, so the window has none of its own; the page's title goes to the
+/// frame.
+#[cfg(windows)]
+pub fn open_in_frame<R: Runtime, M: Manager<R>>(
+    manager: &M,
+    app: FocusedApp,
+    frame: isize,
+) -> tauri::Result<WebviewWindow<R>> {
+    let mut config = app_window_config(manager);
+    config.label = app.name().to_owned();
+    config.title = app.title().to_owned();
+    config.decorations = false;
+    config.shadow = false;
+    let parent = windows::Win32::Foundation::HWND(frame as *mut core::ffi::c_void);
+    let window = builder_from(manager, config)?.parent_raw(parent).build()?;
+    if let Some((width, height)) = halonic_app_frame::client_size(frame) {
+        window.set_position(tauri::PhysicalPosition::new(0, 0))?;
+        window.set_size(tauri::PhysicalSize::new(width, height))?;
+    }
+    Ok(window)
+}
+
 #[cfg(desktop)]
 /// Opens quick ask's window (HAL-18787), hidden, on the same page as
 /// Studio's: frameless and transparent, so the page draws the box with its
@@ -111,13 +136,27 @@ fn open_from<R: Runtime, M: Manager<R>>(
     manager: &M,
     config: WindowConfig,
 ) -> tauri::Result<WebviewWindow<R>> {
+    builder_from(manager, config)?.build()
+}
+
+/// The builder for the window `config` describes, its native title (and
+/// on Windows its frame's, when it sits in one) following the page's title.
+fn builder_from<'a, R: Runtime, M: Manager<R>>(
+    manager: &'a M,
+    config: WindowConfig,
+) -> tauri::Result<WebviewWindowBuilder<'a, R, M>> {
     let app_title = config.title.clone();
-    WebviewWindowBuilder::from_config(manager, &config)?
-        .on_document_title_changed(move |window, page_title| {
-            // A title the system refuses leaves the last one in place.
-            let _ = window.set_title(native_title(&page_title, &app_title));
-        })
-        .build()
+    Ok(
+        WebviewWindowBuilder::from_config(manager, &config)?.on_document_title_changed(
+            move |window, page_title| {
+                let title = native_title(&page_title, &app_title);
+                // A title the system refuses leaves the last one in place.
+                let _ = window.set_title(title);
+                #[cfg(windows)]
+                crate::app_frames::set_frame_title(&window, title);
+            },
+        ),
+    )
 }
 
 /// The native title for a page titled `page_title`: the page's title, or

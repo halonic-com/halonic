@@ -1648,6 +1648,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "halonic-app-frame"
+version = "0.1.1"
+dependencies = [
+ "halonic-window-app-id",
+ "halonic-window-caption",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "halonic-blob-store"
 version = "0.1.1"
 dependencies = [
@@ -1911,6 +1920,7 @@ version = "0.1.1"
 dependencies = [
  "halonic-action-send",
  "halonic-agent-host",
+ "halonic-app-frame",
  "halonic-blob-store",
  "halonic-command-paths",
  "halonic-connect",
@@ -1964,6 +1974,7 @@ dependencies = [
  "tauri-plugin-window-state",
  "tokio",
  "url",
+ "windows",
 ]
 
 [[package]]
