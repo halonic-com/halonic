@@ -6,6 +6,7 @@ import {
   VersionDialogService,
 } from "./api.ts";
 import { ChangesList, ChangesListService } from "./changes-list.ts";
+import { changesRailEntry } from "./rail-entry.ts";
 
 /**
  * The Source Control feature: the Changes place. It builds one {@link ChangesList} per open
@@ -21,6 +22,7 @@ export const sourceControlFeature = defineFeature({
   wants: [DeveloperViewService, ShareChoiceService],
   provides: [ChangesListService, VersionDialogService],
   register(studio) {
+    studio.rail.add(changesRailEntry);
     studio.services.provide(
       ChangesListService,
       (services) => new ChangesList(services.get(ChangesSourceService)),

@@ -22,6 +22,8 @@ import {
   pointOn,
   type Registered,
 } from "./point-store.ts";
+import type { RailEntryContribution } from "./rail.ts";
+import { type RailContributions, RailStore } from "./rail-points.ts";
 import { bySettingsGroup, checkSettingsScope } from "./settings-sections.ts";
 
 /**
@@ -54,6 +56,12 @@ export interface FramePoints {
    * unknown place, one another feature added, or Home, which the shell adds itself.
    */
   readonly places: Point<PlaceContribution>;
+  /**
+   * Adds the feature's entry to the icon rail, with its order and the rule that says when it
+   * shows. Throws a `ShellError` for an unknown entry, one another feature added, Home or Settings,
+   * which the shell adds itself, or an empty label.
+   */
+  readonly rail: Point<RailEntryContribution>;
   /** Adds a card to Home; the shell sets their order. */
   readonly home: HomePoint;
   /**
@@ -86,6 +94,8 @@ export interface FrameContributions {
   readonly settings: { list(): readonly Registered<SettingsSectionContribution>[] };
   /** Home, which the shell adds, and the places features added, in the sidebar's fixed order. */
   readonly places: { list(): readonly Registered<PlaceContribution>[] };
+  /** The icon rail's entries a folder shows. */
+  readonly rail: RailContributions;
   /** The cards features added to Home, in Home's fixed order. */
   readonly home: { cards(): readonly Registered<HomeCardContribution>[] };
   /** The views features added next to the Studio's places, by `order`, then `id`; none while no feature adds one. */
@@ -119,6 +129,7 @@ export class FrameStores {
   private readonly dialogs = new PointStore<DialogHostContribution>("dialogs.add", ["id"]);
   private readonly settings = new PointStore<SettingsSectionContribution>("settings.add", ["id"]);
   private readonly places = new PointStore<PlaceContribution>("places.add", ["id"]);
+  private readonly rail = new RailStore();
   private readonly sidebarViews = new PointStore<SidebarViewContribution>("sidebarViews.add", [
     "id",
   ]);
@@ -167,6 +178,7 @@ export class FrameStores {
           this.places.add(featureId, place);
         },
       },
+      rail: this.rail.pointFor(featureId, guard),
       sidebarViews: {
         add: (view) => {
           guard("sidebarViews.add");
@@ -213,6 +225,7 @@ export class FrameStores {
             (left, right) => sidebarPlaces.indexOf(left.id) - sidebarPlaces.indexOf(right.id),
           ),
       },
+      rail: this.rail.contributions(),
       sidebarViews: { list: () => byOrder(this.sidebarViews.all()) },
       focusedApps: { list: () => this.focusedApps.all() },
       home: {

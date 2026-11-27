@@ -1,0 +1,19 @@
+# inbox.rail-entry
+
+- Status: active
+- Since: unreleased
+- Source: HAL-20676 (P3 of the HAL-20617 build plan); HAL-20673 rail flows, line 15, revision 2
+
+The Inbox entry shall show in the icon rail while the open folder has items, or while at least one Inbox item waits, so a waiting question is never hidden. The feature shall add the entry through the shell's `rail.add`, with its own name, icon and order (40), so the shell holds no list of them (`shell.rail-entries`).
+
+## Examples
+
+- Given a workspace project,
+  when the rail's entries are listed,
+  then Inbox shows.
+- Given a code folder without items,
+  when the rail's entries are listed,
+  then Inbox is left out.
+- Given a code folder without items where an item waits,
+  when the rail's entries are listed,
+  then Inbox shows.

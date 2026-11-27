@@ -15,6 +15,7 @@ import { searchWords } from "./home-words.ts";
 import { listRows } from "./list/list-rows.ts";
 import { findRuns } from "./list/run-search.ts";
 import { RunNoticeClicksService } from "./notify/run-notice-open.ts";
+import { runsRailEntry } from "./rail-entry.ts";
 import { runFileKind, runFileOf } from "./run-view/run-file-ref.ts";
 import { runFileWords } from "./run-view/run-file-words.ts";
 import { runPageWords } from "./run-words.ts";
@@ -46,6 +47,7 @@ export const runsFeature = defineFeature({
   ],
   provides: [RunsListService],
   register(studio) {
+    studio.rail.add(runsRailEntry);
     studio.services.provide(
       RunsListService,
       (services) => new RunsList(services.get(RunsSourceService)),

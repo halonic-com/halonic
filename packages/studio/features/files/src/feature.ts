@@ -4,6 +4,7 @@ import { FileReviewService } from "./file-review.ts";
 import { FilesHostService } from "./files-host.ts";
 import { filesWords } from "./files-words.ts";
 import { problemsSignal, subscribeProblems } from "./problems/problems-signal.ts";
+import { codeRailEntry } from "./rail-entry.ts";
 
 /**
  * The Files feature. Its file tree is the view behind the sidebar's Files switch, and a file opens
@@ -17,6 +18,7 @@ export const filesFeature = defineFeature({
   needs: [FilesHostService],
   wants: [FilesWithErrorsService, FileReviewService],
   register(studio) {
+    studio.rail.add(codeRailEntry);
     studio.statusBar.add({
       id: "files.problems",
       order: 10,

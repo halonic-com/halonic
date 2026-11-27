@@ -76,6 +76,17 @@ export type {
   Registered,
 } from "./points/point-store.ts";
 export {
+  type FolderFacts,
+  type FolderGitState,
+  type FolderKind,
+  type RailEntry,
+  type RailEntryContribution,
+  type RailEntryId,
+  railEntryIds,
+  type ShownRailEntryId,
+} from "./points/rail.ts";
+export type { RailContributions } from "./points/rail-points.ts";
+export {
   bySettingsGroup,
   firstSettingsSection,
   settingsSectionToOpen,
