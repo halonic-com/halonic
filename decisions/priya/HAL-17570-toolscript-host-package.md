@@ -3,6 +3,7 @@
 - Approval: Liam approved the T5 plan on HAL-17570, including the new core package `packages/core/toolscript-host`. It changes `tooling/check/policy.json`, a trust root, so both guardians sign: Julian, then Liam
 - Kind: user-visible
 - Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:ef/po+ppDhg9pZenJLyW9tMfqCdIVuSVFAQRoJJO6BPh+tv1IPxfuUUNm0loCUl5Uf232cQ7TraQ/NNyxV/YDg==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:HQ7JesUiXbFQyW5Ajsu7Gj2GTRw6dEgAVbYySl3I1HgBrQFQPoqRiDJ96XaEVnu+LoXBrTiPSDP4ZPQsFdwYBg==
 
 ## What changes
 
