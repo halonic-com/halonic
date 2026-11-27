@@ -23,7 +23,9 @@
 # test's own input, not an installer for anyone to try.
 #
 # To test an older build with today's click test, name it; the installer
-# comes from that commit and the click test from the ref the workflow runs on:
+# comes from that commit and the click test from the ref the workflow runs on.
+# The commit must be on that ref; to test an unmerged commit, start the
+# workflow on its branch (--ref <branch>) instead:
 #
 #   gh workflow run studio-preview.yml --ref main -f build-ref=9115b95
 #
@@ -100,6 +102,17 @@ jobs:
           BUILD_REF: ${{ inputs.build-ref || github.sha }}
         run: |
           sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$BUILD_REF" --jq .sha)"
+          # The build runs with the cache scope of the workflow's ref, so it
+          # builds only a commit already on that ref. To build an unmerged
+          # commit, start the workflow on its own branch (--ref <branch>).
+          status="$(gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...$sha" --jq .status)"
+          case "$status" in
+            identical | behind) ;;
+            *)
+              echo "::error::The build ref $BUILD_REF ($sha) must be on $GITHUB_REF_NAME, the ref this workflow runs on. To build a commit that isn't, start the workflow on its own branch: gh workflow run studio-preview.yml --ref <branch>."
+              exit 1
+              ;;
+          esac
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "Building the installer from $sha; the click test runs from $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
       - id: reuse
