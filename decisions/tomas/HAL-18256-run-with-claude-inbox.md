@@ -3,6 +3,7 @@
 - Task: HAL-18256
 - Approval: Liam approved the plan on HAL-20454 (https://paperclip.halonic.com/HAL/issues/HAL-20454), which drops `server-session` from the unfinished sections and fixes its test, for HAL-18256. A team decision with no board card (HAL-2282 rule).
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:d1B2fYDZmot0kwg75N27etPz0zr4w5teUwgoQBw+gSjNUsWjq3ELf14zhPbA/sf1gsdhzi0NE+LJ5bEA+eXyCw==
 
 ## What changes
 
