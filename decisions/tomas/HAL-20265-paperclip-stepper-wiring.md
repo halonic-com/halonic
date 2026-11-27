@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20452 (Liam approved the HAL-20265 plan; follow-ups from Julian's reviews of #6694 and #6695 on HAL-17545)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2YNI7tY+AR/8ds8sbRO+GGGSTvnmgHWNC9xl104V0e7hKUnVUfi1RSNVLZcamkxjzC+D9M0U7RGP+pQI17GbAg==
 
 The Inbox card now gets the desktop app's `ServiceSignIn` (a `HostServiceSignIn`
 over the same connections Settings › Connections uses, provided under
