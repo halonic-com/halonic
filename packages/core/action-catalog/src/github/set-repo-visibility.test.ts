@@ -36,37 +36,28 @@ async function replay(scenario: string) {
 
 verifies("action-catalog.github-set-repo-visibility", () => {
   describe("github.set-repo-visibility@1", () => {
-    it("is irreversible, so its PATCH goes through the native dialog", () => {
+    it("is irreversible, with a check that runs without the dialog and a guided change", () => {
       expect(definition.risk).toBe("irreversible");
       expect(routesOf(definition)).toMatchObject([
         { step: 1, kind: "call", method: "GET", risk: "routine", body: [] },
-        {
-          step: 2,
-          kind: "call",
-          method: "PATCH",
-          risk: "irreversible",
-          path: "/repos/{owner}/{repo}",
-          body: [{ name: "visibility", kind: "string", pattern: "^(?:public|private)$" }],
-        },
+        { step: 2, kind: "guided", address: "https://github.com/{owner}/{repo}/settings" },
       ]);
     });
 
-    it("reads today's visibility, previews what becomes public, then sends only the visibility", async () => {
-      const { sender, recorded } = await replay("read-and-change");
+    it("reads today's visibility and previews what becomes public", async () => {
+      const { sender, recorded } = await replay("read");
       const today = await sender.send({ ...step, step: 1 });
       expect(today).toEqual({ outcome: "answered", status: 200, kept: { visibility: "private" } });
       expect(definition.preview(parameters, { visibility: "private" })[1]).toBe(
-        "acme/app is private today. After: public. Anyone on the internet can then see its code, its whole commit history, its issues, pull requests and releases, and fork it; making it private again doesn't take back what was public.",
+        "acme/app is private today. After: public. Anyone on the internet can then see its code, its whole commit history, its issues, pull requests and releases, and fork it; making it private again doesn't take back what was public. Opens its settings on GitHub, where you change it and type acme/app to confirm.",
       );
-      const change = await sender.send({ ...step, step: 2, body: { visibility: "public" } });
-      expect(change).toEqual({ outcome: "answered", status: 200, kept: { visibility: "public" } });
       expect(sender.sent).toEqual(recorded);
     });
 
     it("says what making a repository private removes", () => {
       expect(definition.preview({ ...parameters, visibility: "private" })).toEqual([
         "Reads whether acme/app is public or private; it needs your GitHub sign-in to have the Administration permission there.",
-        "Makes acme/app private. Only people with access can then see it: its stars and watchers are removed, and public forks stay public.",
+        "Makes acme/app private. Only people with access can then see it: its stars and watchers are removed, and public forks stay public. Opens its settings on GitHub, where you change it and type acme/app to confirm.",
       ]);
     });
 

@@ -73,7 +73,7 @@ export const catalogEntries = {
   },
   "github/set-repo-visibility": {
     definition: githubSetRepoVisibility,
-    sourceHash: "3557cd4f6f0bf9b48e746e0bdbabcc39ac925eae10155227441b8c399e568127",
+    sourceHash: "1ecdc137a8f64e137ec8afd2d30fea9f50614e2cdd4e1b52cba5a5f61eb515c0",
   },
   "github/upload-social-preview": {
     definition: githubUploadSocialPreview,

@@ -18,9 +18,11 @@ const consequences: Readonly<Record<string, string>> = {
 
 /**
  * Makes a repository public or private (inventory part 1, row 3). Risk
- * `irreversible`: once code is public it can't be taken back. The shell sends
- * an `irreversible` step only once its native dialog can ask the user to type
- * the repository name (HAL-20242); until then the manual guide does it.
+ * `irreversible`: once code is public it can't be taken back. The check reads
+ * today's visibility; the change is a `guided` step, where GitHub's own dialog
+ * asks the user to type the repository name. A `PATCH` can't carry the
+ * choice: the shell's pattern subset has no `public|private`, and it sends no
+ * `irreversible` step until its dialog has a text field (HAL-20242).
  */
 export const definition: StepperDefinition<Parameters> = {
   id: "github.set-repo-visibility",
@@ -47,18 +49,13 @@ export const definition: StepperDefinition<Parameters> = {
       },
     },
     {
-      kind: "call",
-      method: "PATCH",
-      path: repositoryPath,
-      body: [{ name: "visibility", kind: "parameter" }],
-      keep: ["visibility"],
-      manual: {
-        url: settingsPage,
-        instructions: [
-          "Under **Danger Zone**, click **Change visibility**, then **Change to {visibility}**.",
-          "Read what GitHub says changes, type the repository name to confirm, and click the button below it.",
-        ],
-      },
+      kind: "guided",
+      address: settingsPage,
+      instructions: [
+        "Under **Danger Zone**, click **Change visibility**, then **Change to {visibility}**.",
+        "Read what GitHub says changes, type the repository name to confirm, and click the button below it.",
+      ],
+      checkedOn: "from docs",
     },
   ],
   targets: (parameters) => [
@@ -72,9 +69,10 @@ export const definition: StepperDefinition<Parameters> = {
       typeof today === "string"
         ? `${repository} is ${today} today. After: ${after}.`
         : `Makes ${repository} ${after}.`;
+    const byHand = `Opens its settings on GitHub, where you change it and type ${repository} to confirm.`;
     return [
       `Reads whether ${repository} is public or private; it needs your GitHub sign-in to have the Administration permission there.`,
-      `${change} ${consequences[after] ?? ""}`.trim(),
+      [change, consequences[after], byHand].filter(Boolean).join(" "),
     ];
   },
 };
