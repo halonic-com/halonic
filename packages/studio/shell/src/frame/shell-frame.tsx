@@ -270,7 +270,13 @@ function FramedContent(props: {
       data-framed-panel={desktop ? "" : undefined}
       className={desktopPanelClass(desktop, props.besideSidebar)}
     >
-      {desktop ? <EngineLine engine={frame.engine} starting={frame.engineStarting} /> : null}
+      {desktop ? (
+        <EngineLine
+          engine={frame.engine}
+          announcer={frame.announcer}
+          starting={frame.engineStarting}
+        />
+      ) : null}
       <div className={desktop ? "relative flex min-h-0 flex-1" : "contents"}>
         {props.children}
         {frame.panel}
@@ -302,7 +308,11 @@ function TopLines(props: {
   return (
     <>
       {frame.phoneTopBar}
-      <EngineLine engine={frame.engine} starting={frame.engineStarting} />
+      <EngineLine
+        engine={frame.engine}
+        announcer={frame.announcer}
+        starting={frame.engineStarting}
+      />
       {frame.strips}
       <PhoneNotices saveNote={frame.saveNote} badges={frame.phoneBadges} />
     </>
