@@ -81,7 +81,7 @@ export interface ConnectionRow {
   address: string;
   /** The Paperclip company's ID the file names, which Studio compares with its keychain entry. */
   company: string;
-  /** `no-key` while this computer holds no key for it; `signed-out` only once Paperclip refused the key. */
+  /** `no-key` while this computer holds no key for it; `signed-out` only once Paperclip refused the key or the file no longer matches it. */
   state: ConnectionRowState;
   /** The Paperclip user the connection is signed in as, once read. */
   userName?: string;
