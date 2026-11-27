@@ -5,13 +5,11 @@ import { inNpmPackage } from "../../npm-package.ts";
 export interface InitExample {
   /** The name after `--example`, which is also the folder a copy goes in by default. */
   readonly name: string;
-  /** The folder its files are copied from. */
+  /**
+   * The folder its files are copied from. Its `template.yaml` names the workflow and input
+   * the `Next:` block starts.
+   */
   readonly folder: string;
-  /** The workflow the `Next:` block starts: its id and its input file in the example. */
-  readonly workflow: {
-    readonly id: string;
-    readonly input: string;
-  };
 }
 
 /**
@@ -39,9 +37,5 @@ export const initExamples: Readonly<Record<string, InitExample>> = {
   acme: {
     name: "acme",
     folder: join(examplesFolder, "acme"),
-    workflow: {
-      id: "support-reply",
-      input: "examples/refund-question.json",
-    },
   },
 };

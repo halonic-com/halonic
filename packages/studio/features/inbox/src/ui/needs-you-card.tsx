@@ -56,7 +56,7 @@ export interface NeedsYouViewProps {
 const servedNextStep = "Runs that need your yes show up here.";
 
 /** The line after it on the sample: how to start a run that will wait here. */
-const servedDemoStep = "Start one on your computer: Run the Support reply workflow in Studio.";
+const servedDemoStep = "Start one on your computer: run the Support reply workflow in Studio.";
 
 /** What an empty Needs you says under its title: nothing in the desktop app, the served lines otherwise. */
 function nextStepOf(served: ServedHomeHint | undefined): ReactNode {

@@ -300,7 +300,8 @@ verifies("cli.commands.init.copy-example", () => {
         expect(filesOf(copy, kind)).toEqual([]);
       }
       const workflows = filesOf(copy, "workflow").map((file) => file.value.id);
-      expect(workflows).toContain(acme.workflow.id);
+      const template = readFileSync(join(folder, "acme", "template.yaml"), "utf8");
+      expect(workflows).toContain(/^ {2}- workflow: (\S+)$/mu.exec(template)?.[1]);
     });
   });
 

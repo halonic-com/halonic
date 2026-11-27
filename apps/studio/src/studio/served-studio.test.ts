@@ -366,7 +366,7 @@ verifies("studio.served-google-setup-accounts", () => {
 });
 
 verifies("inbox.home-next-step", () => {
-  const demoStep = "Start one on your computer: Run the Support reply workflow in Studio.";
+  const demoStep = "Start one on your computer: run the Support reply workflow in Studio.";
 
   /** Starts the served Studio on a workspace with nothing waiting; `sample` says if it is the sample. */
   function startEmpty(sample: boolean) {

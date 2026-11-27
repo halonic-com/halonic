@@ -1,5 +1,6 @@
 import { basename, relative, resolve } from "node:path";
 import { FolderDefinitionStore } from "@halonicjs/adapter-fs-node";
+import type { TryFirst } from "@halonicjs/format";
 import { KindedError } from "@halonicjs/std";
 import {
   copyWorkspace,
@@ -11,6 +12,7 @@ import {
 } from "@halonicjs/workspace";
 import {
   type CliCommand,
+  type CommandContext,
   type CommandInput,
   type CommandResult,
   UsageError,
@@ -24,6 +26,7 @@ import { printable } from "../../output/printable.ts";
 import { shellWord } from "../../output/shell-word.ts";
 import { checkProfilePlace } from "../../profile-place.ts";
 import { shownPath, typedPath } from "../../shown-path.ts";
+import { firstThingToTry } from "../../workspace-template.ts";
 import { writeFailure } from "../../write-failure.ts";
 import { type InitExample, initExamples } from "./examples.ts";
 
@@ -64,7 +67,7 @@ export const initCommand: CliCommand = {
     }
     const exampleName = input.options["example"];
     if (typeof exampleName === "string") {
-      return await copyExample(knownExample(exampleName), input, context.cwd);
+      return await copyExample(knownExample(exampleName), input, context);
     }
     return await createEmpty(initFolder(input, context.cwd, "."), context.cwd);
   },
@@ -106,8 +109,9 @@ async function createEmpty(folder: InitFolder, cwd: string): Promise<CommandResu
 async function copyExample(
   example: InitExample,
   input: CommandInput,
-  cwd: string,
+  context: CommandContext,
 ): Promise<CommandResult> {
+  const { cwd } = context;
   const named = input.positionals.length > 0;
   const folder = named ? initFolder(input, cwd, ".") : await freeExampleFolder(example, cwd);
   await checkProfilePlace(folder.root);
@@ -127,11 +131,13 @@ async function copyExample(
     workflows: filesOf(copy, "workflow").length,
     routines: filesOf(copy, "routine").length,
   };
+  // The template only picks which run `Next:` suggests: one that can't be read leaves it out.
+  const tryFirst = await firstThingToTry(store, (line) => context.warn(line));
   const firstChoice = shownPath(cwd, resolve(cwd, example.name));
   const beside = !named && folder.shown !== firstChoice ? firstChoice : undefined;
   return {
     exitCode: exitCode.ok,
-    lines: exampleLines(example, folder, contents, beside, cwd),
+    lines: exampleLines({ folder, contents, tryFirst, beside }, cwd),
     json: {
       workspace: {
         name: filesOf(copy, "workspace")[0]?.value.name ?? folder.name,
@@ -220,28 +226,32 @@ function createdLines(workspace: InitializedWorkspace, folder: InitFolder, cwd: 
   ];
 }
 
+/** What the lines about a copy of an example say. */
+interface ExampleCopy {
+  readonly folder: InitFolder;
+  readonly contents: ExampleContents;
+  /** The template's first thing to try, for the `halonic run` line; none leaves it out. */
+  readonly tryFirst: TryFirst | undefined;
+  /** The folder that was already there, when the copy went next to it. */
+  readonly beside: string | undefined;
+}
+
 /**
  * The ✓ line and the example's contents under it, then the `Next:` block:
- * `cd`, `halonic test`, then `halonic run` on the example's input.
- *
- * @param beside - the folder that was already there, when the copy went next to it
+ * `cd`, `halonic test`, then `halonic run` on the input the template names.
  */
-function exampleLines(
-  example: InitExample,
-  folder: InitFolder,
-  contents: ExampleContents,
-  beside: string | undefined,
-  cwd: string,
-): Phrase[] {
+function exampleLines(copy: ExampleCopy, cwd: string): Phrase[] {
+  const { folder, contents, tryFirst, beside } = copy;
   const shown = printable(folder.shown);
   const created =
     beside === undefined
       ? initMessages.createdExample(shown)
       : initMessages.createdExampleBeside(shown, printable(beside));
   const test = { command: initMessages.nextTest().phrase, why: initMessages.nextTestWhy().phrase };
-  const run = {
-    command: initMessages.nextRun(example.workflow.id, example.workflow.input).phrase,
-  };
+  const run =
+    tryFirst?.input === undefined
+      ? []
+      : [{ command: initMessages.nextRun(tryFirst.workflow, shellWord(tryFirst.input)).phrase }];
   const watch = {
     command: initMessages.nextWatch().phrase,
     why: initMessages.nextWatchWhy().phrase,
@@ -252,7 +262,7 @@ function exampleLines(
     ...nextSteps([
       ...changeFolder(folder, cwd),
       test,
-      run,
+      ...run,
       ...(contents.routines > 0 ? [watch] : []),
     ]),
   ];
