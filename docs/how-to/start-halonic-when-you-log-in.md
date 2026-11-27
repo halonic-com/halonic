@@ -51,9 +51,12 @@ aren't affected.
 Off, Halonic starts only when you open it, and routines run only after you do.
 
 If the switch says "Couldn't turn this on: only an installed Halonic can start
-when you log in", you are running Halonic from somewhere other than where it
-was installed, such as a downloads folder. Install Halonic, open the installed
-copy, then turn the switch on. Turning it off always works.
+when you log in. Install Halonic, then try again.", you are running Halonic
+from somewhere other than where it was installed, such as a downloads folder.
+On Windows, that is the folder the installer put it in; on macOS, Halonic must
+run from `/Applications` or `~/Applications`. Install Halonic, open the
+installed copy, then turn the switch on. Turning it off works wherever Halonic
+runs from.
 
 ### What the setting writes
 
@@ -67,7 +70,8 @@ Halonic adds one entry for your user, which starts Halonic with `--background`:
 Turning the switch off removes the entry. On Windows, uninstalling Halonic
 removes it too. Use Halonic's switch rather than your system's list of startup
 apps: the switch reads the entry itself, so it may still show on after you
-turn Halonic off in that list.
+turn Halonic off in that list. If you did turn Halonic off there, turn it back
+on in the same list: Halonic's switch can't undo it.
 
 ## Stop the engines
 
