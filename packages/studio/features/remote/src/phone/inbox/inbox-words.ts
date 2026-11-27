@@ -1,7 +1,7 @@
 /**
  * The words of the phone's Inbox (Sofia's flow B; Noah's HAL-17514 `wording`, rows p02a and
- * p03a–p03f). The risky line is the built `ANSWER_RISKY_ON_COMPUTER`; what became of a sent answer
- * is `sendOutcomeLine`'s.
+ * p03a–p03f; p03g is `waitForComputerToAnswer`). The risky line is the built
+ * `ANSWER_RISKY_ON_COMPUTER`; what became of a sent answer is `sendOutcomeLine`'s.
  */
 
 /** "14:02": the phone's own clock for `iso`, hours and minutes. */
@@ -29,4 +29,6 @@ export const inboxWords = {
   noScreenLock: "Set a screen lock on this phone to answer from it. Reading still works.",
   openSettings: "Open settings",
   gone: "This card is gone from Paperclip.",
+  /** The gone card's button, as its row says: "This card is gone from Paperclip. · Back". */
+  backFromGone: "Back",
 } as const;

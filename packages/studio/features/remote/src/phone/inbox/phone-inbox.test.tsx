@@ -125,6 +125,15 @@ const text = () => document.body.textContent ?? "";
 
 const noScreenLock = "Set a screen lock on this phone to answer from it. Reading still works.";
 
+/** The host says its Inbox changed, and answers the phone's new read with `items`. */
+async function reread(scene: GatewayScene, items: readonly InboxItem[]): Promise<void> {
+  await step(() => scene.host({ type: "msg-changed", source: "acme" }));
+  await step(() => {
+    const replyTo = scene.tunnel.lastOf("msg-read").id;
+    scene.host({ type: "msg-data", replyTo, what: "inbox", items: [...items] });
+  });
+}
+
 /** The host answers the phone's one `msg-answer` with `result`. */
 async function result(scene: GatewayScene, answer: AnswerResult): Promise<void> {
   const replyTo = scene.tunnel.lastOf("msg-answer").id;
@@ -147,8 +156,72 @@ verifies("remote.phone-inbox", () => {
     ]);
     await result(scene, { outcome: "answered", answeredAt });
     expect(text()).toContain(`You chose: Today · ${timeOf(answeredAt)}`);
+    // The pressed option is gone, so the focus moves to Next.
+    expect(document.activeElement).toBe(button("Next"));
     await press("Next");
     expect(text()).toContain("Needs you");
+    expect(document.activeElement).toBe(row("Ship phase 2 now?"));
+  });
+
+  it("puts the focus back on the card's row after Back", async () => {
+    await mountInbox([item(), hire]);
+    await open("Hire a designer?");
+    await press("Inbox");
+    expect(document.activeElement).toBe(row("Hire a designer?"));
+  });
+
+  it("puts the focus on the title when the last card has left the Inbox", async () => {
+    const { scene } = await mountInbox([item()]);
+    await open("Ship phase 2 now?");
+    await press("Today");
+    await result(scene, { outcome: "answered", answeredAt });
+    await reread(scene, []);
+    await press("Next");
+    expect(document.activeElement?.textContent).toBe("Nothing is waiting for you");
+  });
+
+  it("offers Back on a card that is gone from Paperclip", async () => {
+    const { scene } = await mountInbox([item()]);
+    await open("Ship phase 2 now?");
+    await press("Today");
+    await result(scene, { outcome: "refused", reason: "not-found" });
+    expect(text()).toContain("This card is gone from Paperclip.");
+    expect(document.activeElement).toBe(button("Back"));
+  });
+
+  it("says the answers wait for the computer while it isn't answering", async () => {
+    const { scene } = await mountInbox([item()]);
+    await open("Ship phase 2 now?");
+    await step(() => scene.tunnel.status("unreachable"));
+    expect(text()).toContain(
+      `You can answer once ${SCENE_COMPUTER} answers again. Nothing is sent later.`,
+    );
+    await step(() => scene.tunnel.status("phoneOffline"));
+    expect(text()).toContain("You can answer once your phone reconnects.");
+    expect(text()).not.toContain("Nothing is sent later.");
+  });
+
+  it("puts the focus on Needs you when the card has left a list that still holds others", async () => {
+    const { scene } = await mountInbox([item(), hire]);
+    await open("Ship phase 2 now?");
+    await press("Today");
+    await result(scene, { outcome: "answered", answeredAt });
+    await reread(scene, [hire]);
+    await press("Next");
+    expect(document.activeElement).toBe(document.querySelector("section h2"));
+    expect(document.activeElement?.textContent).toContain("Needs you");
+  });
+
+  it("moves the focus to Needs you when the focused row leaves on the next read", async () => {
+    const { scene } = await mountInbox([item(), hire]);
+    await open("Ship phase 2 now?");
+    await press("Today");
+    await result(scene, { outcome: "answered", answeredAt });
+    // Next comes before the host's re-read: the answered card's row takes the focus, then leaves.
+    await press("Next");
+    expect(document.activeElement).toBe(row("Ship phase 2 now?"));
+    await reread(scene, [hire]);
+    expect(document.activeElement).toBe(document.querySelector("section h2"));
   });
 
   it("says who answered first when the card was answered elsewhere", async () => {

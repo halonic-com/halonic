@@ -70,6 +70,13 @@ verifies("remote.phone-remote-answers", () => {
         expect(open.offReason).toBe(RECONNECT_TO_ANSWER);
       }
     });
+    it("says p03g while the computer isn't answering, and the approvals keep their own line", () => {
+      const view = viewOf(holding({ state: "unreachable" }));
+      expect(view.offReason).toBe(
+        `You can answer once ${holding().computer} answers again. Nothing is sent later.`,
+      );
+      for (const open of view.openApprovals) expect(open.offReason).toBe(RECONNECT_TO_ANSWER);
+    });
   });
 
   describe("open approvals", () => {

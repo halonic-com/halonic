@@ -66,7 +66,13 @@ function offOf(item: InboxItem, view: RemoteView): Off {
  * settles too, on its final state); or a line about the send.
  */
 type Answered =
-  | { readonly settled: true; readonly line: string; readonly mark: "chose" | "computer" | "none" }
+  | {
+      readonly settled: true;
+      readonly line: string;
+      readonly mark: "chose" | "computer" | "none";
+      /** The card is gone from Paperclip: its button says Back, as its row does. */
+      readonly gone?: true;
+    }
   | { readonly settled: false; readonly line: string | undefined };
 
 function answeredOf(
@@ -92,7 +98,9 @@ function answeredOf(
     const ended = { kind: "closed", reason: result.reason, closedAt: result.closedAt } as const;
     return { settled: true, line: finalState(ended).line, mark: "none" };
   }
-  if (result.reason === "not-found") return { settled: true, line: inboxWords.gone, mark: "none" };
+  if (result.reason === "not-found") {
+    return { settled: true, line: inboxWords.gone, mark: "none", gone: true };
+  }
   return { settled: false, line: ANSWER_RISKY_ON_COMPUTER };
 }
 
@@ -124,9 +132,15 @@ export function InboxCard({
   const lineId = useId();
   const [sending, setSending] = useState<string | undefined>(undefined);
   const [answered, setAnswered] = useState<Answered | undefined>(undefined);
+  const next = useRef<HTMLButtonElement>(null);
   useEffect(() => heading.current?.focus(), []);
   const settled = answered?.settled === true;
   const off = settled ? undefined : offOf(item, view);
+  // The pressed option turns off once the answer settles, so the focus moves to Next (the status
+  // line still says what became of the answer).
+  useEffect(() => {
+    if (settled) next.current?.focus();
+  }, [settled]);
   const send = (key: string, label: string, answer: GatewayInboxAnswer) => {
     if (settled || off !== undefined || sending !== undefined) return;
     setSending(key);
@@ -186,8 +200,10 @@ export function InboxCard({
         />
       </div>
       {settled ? (
-        <Button variant="primary" size="touch" onClick={onBack}>
-          {inboxWords.next}
+        <Button ref={next} variant="primary" size="touch" onClick={onBack}>
+          {answered?.settled === true && answered.gone === true
+            ? inboxWords.backFromGone
+            : inboxWords.next}
         </Button>
       ) : null}
     </div>

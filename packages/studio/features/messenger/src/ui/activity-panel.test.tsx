@@ -125,6 +125,14 @@ verifies("messenger.activity-panel", () => {
       expect(localStorage.getItem("halonic.messenger.activity-open")).toBe("closed");
       await press(byText(page, "main [data-typing] button", "Show activity"));
       expect(panel(page)).not.toBeNull();
+      // Show activity is gone once the panel opens, so the focus moves into the panel.
+      expect(panel(page)?.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement?.textContent).toBe("Chief's activity");
+    });
+
+    it("tells of its Ctrl+I shortcut on the header button", async () => {
+      const { page } = await chiefsChat(working);
+      expect(button(page)?.getAttribute("aria-keyshortcuts")).toBe("Control+I");
     });
 
     it("opens and closes with Ctrl+I, and stays as the person left it", async () => {
