@@ -134,8 +134,9 @@ verifies("kit.rail-button-motion", () => {
     const scaling: string[] = [];
     for (const file of files) {
       const text = await readFile(path.join(source, file), "utf8");
-      // Named groups too: `group-hover/rail-button:scale-110`.
-      if (/(hover|active)(\/[\w-]+)?:scale-/.test(text))
+      // Named groups and variants in between too: `group-hover/rail-button:scale-110`,
+      // `hover:motion-safe:scale-105`.
+      if (/(hover|active)(\/[\w-]+)?:([\w-]+:)*scale-/.test(text))
         scaling.push(file.split(path.sep).join("/"));
     }
     expect(scaling).toEqual(["rail-button/rail-button.tsx"]);
@@ -144,8 +145,8 @@ verifies("kit.rail-button-motion", () => {
 
 verifies("kit.rail-button-count-cap", () => {
   it("shows 99+ past 99 and still says the whole count", () => {
-    const { target } = renderButton({ count: { value: 120, name: "120 unread" } });
-    expect(target.getAttribute("aria-label")).toBe("Messenger, 120 unread");
+    const { target } = renderButton({ count: { value: 100, name: "100 unread" } });
+    expect(target.getAttribute("aria-label")).toBe("Messenger, 100 unread");
     expect(target.querySelector('[aria-hidden="true"]')?.textContent).toBe("99+");
   });
 

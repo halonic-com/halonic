@@ -2604,8 +2604,9 @@ A count above 99 shows as "99+"; screen readers still hear the whole count.
 ## SearchField
 
 The search over a two-pane app's list: a 40px round `surface-muted` pill with the glass at its
-start, named by its `label`, which the empty field also shows. On keyboard focus it turns `surface`
-with a 2px `accent` ring inside its edge. A form's own fields keep `Input`.
+start, named by its `label`, which the empty field also shows. While its text has focus it turns
+`surface` with a 2px `accent` ring inside its edge. An Enter that picks a word in an input method
+doesn't reach your handler. A form's own fields keep `Input`.
 
 ```tsx
 <SearchField label="Search chats" value={term} onChange={(event) => setTerm(event.target.value)} />;

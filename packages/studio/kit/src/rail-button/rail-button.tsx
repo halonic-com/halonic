@@ -108,7 +108,7 @@ export function RailButton({ label, icon, selected, onSelect, count, href }: Rai
   );
 }
 
-/** Past this the badge shows "99+", as the kit's other counts do (`kit.rail-button-count-cap`). */
+/** Past this the badge shows "99+", as the Messenger's rows do (`kit.rail-button-count-cap`). */
 const maxShownCount = 99;
 
 /**

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { render, unmountAll } from "../test/render.tsx";
 import { SearchField } from "./search-field.tsx";
 
@@ -24,6 +24,9 @@ verifies("kit.search-field", () => {
     expect(input.getAttribute("aria-label")).toBe("Search chats");
     expect(input.placeholder).toBe("Search chats");
     expect(input.className).toContain("text-body");
+    // 16px on a phone and under a coarse pointer, so the page doesn't zoom.
+    expect(input.className).toContain("phone:text-input-touch");
+    expect(input.className).toContain("touch:text-input-touch");
   });
 
   it("draws a 40px round surface-muted pill, the glass 16px in and 12px before the text", () => {
@@ -38,11 +41,11 @@ verifies("kit.search-field", () => {
     expect(glass.querySelector("svg")).not.toBeNull();
   });
 
-  it("turns surface with a 2px accent ring inside its edge on keyboard focus", () => {
+  it("turns surface with a 2px accent ring inside its edge while its text has focus", () => {
     const { pill } = renderField();
-    expect(pill.className).toContain("has-focus-visible:bg-surface");
+    expect(pill.className).toContain("field-focus:bg-surface");
     expect(pill.className).toContain(
-      "has-focus-visible:outline-2 has-focus-visible:-outline-offset-2 has-focus-visible:outline-accent",
+      "field-focus:outline-2 field-focus:-outline-offset-2 field-focus:outline-accent",
     );
     expect(pill.className).toContain("forced-colors:border forced-colors:border-[CanvasText]");
   });
@@ -55,5 +58,30 @@ verifies("kit.search-field", () => {
     });
     expect(press.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(input);
+  });
+
+  // A cancelled Enter is what keeps a form round the field from submitting (`kit.enter-while-composing`).
+  it("keeps the Enter that picks a word in an input method from the form and the screen", () => {
+    const onKeyDown = vi.fn();
+    const { container } = render(
+      <form>
+        <SearchField label="Search chats" onKeyDown={onKeyDown} />
+      </form>,
+    );
+    const input = container.querySelector("input") as HTMLInputElement;
+    const press = (init: KeyboardEventInit & { keyCode?: number }) => {
+      const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+      if (init.keyCode !== undefined)
+        Object.defineProperty(event, "keyCode", { value: init.keyCode });
+      act(() => {
+        input.dispatchEvent(event);
+      });
+      return event.defaultPrevented;
+    };
+    expect(press({ key: "Enter", isComposing: true })).toBe(true);
+    expect(press({ key: "Enter", keyCode: 229 })).toBe(true);
+    expect(onKeyDown).not.toHaveBeenCalled();
+    expect(press({ key: "Enter" })).toBe(false);
+    expect(onKeyDown).toHaveBeenCalledTimes(1);
   });
 });
