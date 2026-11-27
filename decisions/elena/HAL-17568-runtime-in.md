@@ -3,6 +3,7 @@
 - Task: HAL-17568 (T3 of the ToolScript track, HAL-17560)
 - Approval: Liam chose option 1 on HAL-17568 (26 Nov); Liam signs this note in review
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:hi1Jy+nTX79Rl7vwpTb3d6E4gFtVs0nHWsWAd7n33BrUDaojscm2OHVL2G1ob9bMKMUaHqErg79d24hAvZ67CQ==
 
 ## What changes
 
