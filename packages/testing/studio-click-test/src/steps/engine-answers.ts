@@ -80,9 +80,10 @@ async function sendAndWaitForReply(context: StepContext): Promise<StepOutcome> {
   const reads = Math.ceil(replyWaitMs / pollEveryMs);
   for (let read = 0; read < reads; read += 1) {
     text = await context.driver.pageText().catch(() => "");
-    const state = await replyState(context, text);
-    if (state === "replied") return startingLineGone(context);
-    if (state !== undefined) return failure(state, "", text);
+    const judged = await replyState(context, text);
+    text = judged.text;
+    if (judged.state === "replied") return startingLineGone(context);
+    if (judged.state !== undefined) return failure(judged.state, "", text);
     await context.sleep(pollEveryMs);
   }
   const note = replyAfterProbe(text) === undefined ? "No reply." : "Writer's reply never ended.";
@@ -96,13 +97,29 @@ async function sendAndWaitForReply(context: StepContext): Promise<StepOutcome> {
  * (HAL-20543). So a reply in the transcript that is no longer `aria-busy` counts too, but only one
  * with no end line, as "Writer replied." is announced only when Writer answered.
  */
-async function replyState(context: StepContext, text: string): Promise<string | undefined> {
+async function replyState(
+  context: StepContext,
+  text: string,
+): Promise<{ state: string | undefined; text: string }> {
+  const code = errorCodeIn(text);
+  if (code !== undefined) return { state: code, text };
+  if (text.includes(`${screenText.writer.text}${screenText.replied.text}`)) {
+    return { state: "replied", text };
+  }
+  if (replyAfterProbe(text) === undefined) return { state: undefined, text };
+  if ((await context.driver.count(busyReply)) > 0) return { state: undefined, text };
+  // The reply may have ended after `text` was read, before its end line showed there, so judge
+  // only a read taken once it isn't busy (HAL-20543, review round 2).
+  const ended = await context.driver.pageText().catch(() => "");
+  return { state: endedState(ended), text: ended };
+}
+
+/** How a reply that is no longer busy ended: "replied", an end line's code, or unread. */
+function endedState(text: string): string | undefined {
   const code = errorCodeIn(text);
   if (code !== undefined) return code;
-  if (text.includes(`${screenText.writer.text}${screenText.replied.text}`)) return "replied";
   const reply = replyAfterProbe(text);
   if (reply === undefined) return undefined;
-  if ((await context.driver.count(busyReply)) > 0) return undefined;
   if (reply.includes(screenText.stoppedByYou.text)) return "REPLY_STOPPED";
   if (reply.includes(screenText.turnLimit.text)) return "TURN_LIMIT";
   return "replied";
