@@ -63,10 +63,13 @@ export interface ScriptStep {
 /**
  * One field of a `call` step's body. A `parameter` field takes the request's
  * parameter of the same name, checked by that parameter's own field; a
- * `constant` is the definition's value, which the shell adds itself.
+ * `parameter-list` is one integer parameter the page sends as a one-item
+ * list, such as `environment_ids: [environment_id]`; a `constant` is the
+ * definition's value, which the shell adds itself.
  */
 export type CallBodyField =
   | { name: string; kind: "parameter" }
+  | { name: string; kind: "parameter-list"; parameter: string }
   | { name: string; kind: "constant"; value: ActionValue };
 
 /**
@@ -86,17 +89,28 @@ export interface CallStep {
 }
 
 /**
- * A value a `check` step must have kept for the stepper to go on, such as a
- * runner's `status` being `offline` before it is removed. `reason` is the
- * definition's own sentence the stepper stops with; the kept value stays out
- * of it.
+ * A value a `check` step must have kept for the stepper to go on: either a
+ * fixed value, such as a runner's `status` being `offline` before it is
+ * removed, or the value of one of the request's parameters, such as an
+ * environment's kept `id` being the `environment_id` the next step approves,
+ * so the step can't change something other than what the check read and the
+ * preview shows. `reason` is the definition's own sentence the stepper stops
+ * with; the kept value stays out of it.
  */
-export interface CheckRequirement {
-  /** A field the step keeps. */
-  name: string;
-  equals: ActionValue;
-  reason: string;
-}
+export type CheckRequirement =
+  | {
+      /** A field the step keeps. */
+      name: string;
+      equals: ActionValue;
+      reason: string;
+    }
+  | {
+      /** A field the step keeps. */
+      name: string;
+      /** The parameter the kept value must equal. */
+      equalsParameter: string;
+      reason: string;
+    };
 
 /**
  * A read-only `GET` (architecture note, 1.2 and 6.2): it reads the state a
@@ -117,6 +131,12 @@ export interface CheckStep {
   changedAfterStart?: string;
   /** What the kept values must be before the next step runs; see `checkStepGate`. */
   requires?: readonly CheckRequirement[];
+  /**
+   * Fields the request's `expect` must name, such as a run's `head_sha`:
+   * without one, there is nothing to compare, so a change since the request
+   * would go unseen. Each is one of `keep`.
+   */
+  requiredExpect?: readonly string[];
   manual: ManualForm;
 }
 
