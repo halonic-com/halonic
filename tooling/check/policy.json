@@ -40,6 +40,7 @@
     "@halonicjs/studio-services"
   ],
   "toolingUsesCore": [
+    "@halonicjs/tooling-check",
     "@halonicjs/tooling-discover",
     "@halonicjs/tooling-paperclip"
   ],
@@ -114,7 +115,8 @@
       "./golden"
     ],
     "@halonicjs/std": [
-      "./error-kind"
+      "./error-kind",
+      "./secret-rules"
     ],
     "@halonicjs/studio-feature-assistant": [
       "./words"

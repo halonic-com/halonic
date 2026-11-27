@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AllowList, hasInlineAllow } from "./allow.ts";
-import { fingerprint } from "./secrets.ts";
+import { fingerprint } from "./fingerprint.ts";
 
 const print = fingerprint("some-value");
 

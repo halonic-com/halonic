@@ -40,6 +40,17 @@ export {
 export { sheetHostsNamedIn } from "./build/sheet-hosts-named.ts";
 export { toolTexts } from "./build/tool-texts.ts";
 export {
+  type OfferFile,
+  type OfferFinding,
+  type OfferFindingKind,
+  type OfferScan,
+  type SettingValue,
+  scanOffer,
+  shortestCheckedValue,
+  type UserValueKind,
+  type UserValues,
+} from "./offer/scan.ts";
+export {
   chatsToDrop,
   chatToSave,
   draftTitle,
