@@ -7,8 +7,8 @@ import { bannerWarning, UsageBannerMemory } from "../usage-banner-memory.ts";
 import { resetDay, usageBannerWords } from "./usage-banner-words.ts";
 
 /**
- * The 80% banner under the top bar (`account-menu.usage-banner`, flow C3, board 10's first row):
- * "You've used 80% of this month's agent time · It resets on 2 December." with **See usage**,
+ * The usage banner under the top bar (`account-menu.usage-banner`, flow C3, board 10's first row):
+ * "You've used 82% of this month's agent time · It resets on 2 Dec 2026." with **See usage**,
  * which opens the account page's plan section, and a close button. It shows the highest unit at
  * 80% or more and under 100%, once per unit and period: closing it is remembered on this device.
  * Without a host, while loading, when the computer can't say or once signed out, it draws nothing.
@@ -42,7 +42,7 @@ export function UsageBanner({ context }: StripProps) {
           <BarsIcon />
         </span>
         <p id={titleId} className="min-w-0 flex-1 basis-60 text-fg">
-          <strong className="font-semibold">{usageBannerWords.title(name)}</strong>
+          <strong className="font-semibold">{usageBannerWords.title(warning.percent, name)}</strong>
           {" · "}
           {usageBannerWords.resets(resetDay(warning.resetsAt))}
         </p>

@@ -94,11 +94,11 @@ function button(container: HTMLElement, name: string): HTMLButtonElement | undef
 
 verifies("account-menu.usage-banner", () => {
   describe("the usage banner", () => {
-    it("says agent time at 82% is 80% used, with the reset day, and opens the plan", async () => {
+    it("says agent time at 82% is 82% used, with the reset day, and opens the plan", async () => {
       const host = fakeHost(Promise.resolve(facts([agentTime])));
       const container = await renderBanner(host);
       expect(bannerText(container)).toBe(
-        "You've used 80% of this month's agent time · It resets on 2 December.",
+        "You've used 82% of this month's agent time · It resets on 2 Dec 2026.",
       );
       await act(async () => button(container, usageBannerWords.seeUsage)?.click());
       expect(host.open).toHaveBeenCalledWith("https://account.example.com/acme#plan");
@@ -110,7 +110,7 @@ verifies("account-menu.usage-banner", () => {
       const region = container.querySelector("section[aria-labelledby]");
       const name = document.getElementById(region?.getAttribute("aria-labelledby") ?? "");
       expect(name?.textContent).toBe(
-        "You've used 80% of this month's agent time · It resets on 2 December.",
+        "You've used 82% of this month's agent time · It resets on 2 Dec 2026.",
       );
       expect(container.querySelector("[aria-live]")).toBeNull();
     });
@@ -141,7 +141,7 @@ verifies("account-menu.usage-banner", () => {
       const cost = { unit: "cost", percent: 85, resetsAt: december };
       const container = await renderBanner(fakeHost(Promise.resolve(facts([cost]))));
       const text = bannerText(container);
-      expect(text).toBe("You've used 80% of this month's usage · It resets on 2 December.");
+      expect(text).toBe("You've used 85% of this month's usage · It resets on 2 Dec 2026.");
       expect(text).not.toMatch(/[€$£]|cost|EUR|USD/);
     });
 
