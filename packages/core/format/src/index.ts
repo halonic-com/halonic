@@ -173,6 +173,8 @@ export type {
 } from "./kinds/workflow/schema.ts";
 export type { WorkflowTest, WorkflowTestCase } from "./kinds/workflow-test/schema.ts";
 export type { SessionAssistant, WorkspaceSettings } from "./kinds/workspace/schema.ts";
+export { workspaceTemplatePath } from "./kinds/workspace-template/kind.ts";
+export type { TryFirst, WorkspaceTemplate } from "./kinds/workspace-template/schema.ts";
 export {
   type FileProblem,
   type IdSource,

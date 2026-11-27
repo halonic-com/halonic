@@ -27,6 +27,7 @@ const kindIcons: { readonly [Kind in ItemKind]: () => ReactNode } = {
   plugin: () => <SectionIcon name="plugins" />,
   hub: () => <SettingsIcon />,
   workspace: () => <SettingsIcon />,
+  workspaceTemplate: () => <SettingsIcon />,
   deployments: () => <SettingsIcon />,
 };
 

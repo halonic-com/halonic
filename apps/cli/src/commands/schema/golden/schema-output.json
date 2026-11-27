@@ -1,6 +1,6 @@
 {
   "stdout": [
-    "✓ Wrote 20 JSON Schemas to ./schemas."
+    "✓ Wrote 21 JSON Schemas to ./schemas."
   ],
   "stderr": [],
   "files": [
@@ -23,6 +23,7 @@
     "tool.schema.json",
     "workflow.schema.json",
     "workflowTest.schema.json",
-    "workspace.schema.json"
+    "workspace.schema.json",
+    "workspaceTemplate.schema.json"
   ]
 }

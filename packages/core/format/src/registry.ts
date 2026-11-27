@@ -38,6 +38,8 @@ import { workflowTestKind } from "./kinds/workflow-test/kind.ts";
 import type { WorkflowTest } from "./kinds/workflow-test/schema.ts";
 import { workspaceKind } from "./kinds/workspace/kind.ts";
 import type { WorkspaceSettings } from "./kinds/workspace/schema.ts";
+import { workspaceTemplateKind } from "./kinds/workspace-template/kind.ts";
+import type { WorkspaceTemplate } from "./kinds/workspace-template/schema.ts";
 import type { Routing } from "./snapshot/routing.ts";
 
 /** The value each file kind parses to, by kind name. */
@@ -62,6 +64,7 @@ export interface KindValues {
   routine: Routine;
   integration: IntegrationSheet;
   plugin: Plugin;
+  workspaceTemplate: WorkspaceTemplate;
 }
 
 /** The name of a file kind: `workspace`, `agent`, `workflowTest`, … */
@@ -93,12 +96,13 @@ export const fileKinds: { readonly [Name in KindName]: FileKind<KindValues[Name]
   routine: routineKind,
   integration: integrationKind,
   plugin: pluginKind,
+  workspaceTemplate: workspaceTemplateKind,
 };
 
 /**
  * The names of every file kind, workspace-level kinds first and the
- * integration sheet and the plugin manifest, which sit outside workspaces,
- * last, in a fixed order.
+ * integration sheet, the plugin manifest and the workspace template, which
+ * the workspace loader doesn't read, last, in a fixed order.
  *
  * @example
  * for (const name of kindNames()) console.log(name, fileKinds[name].about);

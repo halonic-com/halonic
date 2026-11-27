@@ -26,6 +26,10 @@ the reply approved. `reject` finishes it without a reply. Nothing is actually
 sent: this is an example. Spam ends right after the Sorter, with no draft to
 review.
 
+`template.yaml` says how the example presents itself when it is copied or
+served: a demo, and the Support reply workflow as the first thing to try.
+It only changes what Halonic shows.
+
 `examples/refund-question.json` is an input for the workflow: Sam's email
 about a damaged order. The test model's script answers that one run: the
 Sorter says `refund` and the Writer drafts a short, friendly reply. The draft
