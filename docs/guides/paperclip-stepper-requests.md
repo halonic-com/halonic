@@ -79,8 +79,9 @@ When the person finishes, Halonic:
 
 1. writes the task document `stepper-result`: the request revision that ran, the outcome, and per
    block its status, time and short result. A secret says only "set on <date>". A step the person
-   did themselves says "done by hand";
-2. posts one comment on the task that sums it up;
+   did themselves says "done by hand". A server session that started says "Started a server
+   session on <day> for HAL-n";
+2. posts one comment on the task that sums it up (for a server session, the same sentence);
 3. accepts the card if the stepper succeeded, and rejects it with the outcome otherwise, so you
    wake either way.
 
