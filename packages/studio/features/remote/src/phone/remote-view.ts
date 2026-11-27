@@ -27,6 +27,14 @@ import type { PhoneStatusLabel } from "./phone-status.ts";
 export const RECONNECT_TO_ANSWER = "You can answer once your phone reconnects.";
 
 /**
+ * `p03g` (Noah's HAL-17514 `wording`): why the answers are off while the phone is online but the
+ * computer isn't answering. Nothing waits to be sent, so the line says so.
+ */
+export function waitForComputerToAnswer(computer: string): string {
+  return `You can answer once ${computer} answers again. Nothing is sent later.`;
+}
+
+/**
  * Why they are off while this phone and the computer speak different
  * versions of the remote gateway's messages: reconnecting won't help, an
  * update will. The phone can't tell which side is older, so it names both.
@@ -119,7 +127,10 @@ export interface RemoteView {
    * and approvals with `asOf`, and Approve, Reject and the prompt box are off.
    */
   readonly canAnswer: boolean;
-  /** Why they are off, while `canAnswer` is false; `undefined` while it is true. */
+  /**
+   * Why they are off, while `canAnswer` is false; `undefined` while it is true. While the computer
+   * is the one not answering it is {@link waitForComputerToAnswer} (p03g), else as an approval's.
+   */
   readonly offReason: string | undefined;
   /**
    * Whether the computer said, with its last session list, that phones may

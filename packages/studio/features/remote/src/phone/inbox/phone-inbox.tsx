@@ -10,7 +10,7 @@ import {
   StatusChip,
   waitingFor,
 } from "@halonicjs/studio-kit";
-import { useEffect, useId, useState } from "react";
+import { type RefObject, useEffect, useId, useRef, useState } from "react";
 import type { MessagingClient } from "../messaging-client.ts";
 import type { RemoteView } from "../remote-view.ts";
 import { answersOnPhone, InboxCard } from "./inbox-card.tsx";
@@ -23,8 +23,9 @@ const riskyRowHint = "Answer this on your computer";
 
 /**
  * `p02a`, `p03d`: the Inbox tab of one computer, its open cards oldest first under "Needs you".
- * Tapping a card opens it in place of the list; Back or Next comes back to the list. `items` come
- * from `usePhoneInbox`, read by the screen so the tab bar can count them too.
+ * Tapping a card opens it in place of the list; Back or Next comes back to the list, with the focus
+ * on that card's row, or on the list's title once the card has left it (C48). `items` come from
+ * `usePhoneInbox`, read by the screen so the tab bar can count them too.
  */
 export function PhoneInbox({
   items,
@@ -41,6 +42,8 @@ export function PhoneInbox({
 }) {
   // The card the person opened, kept as it was so it still shows after its answer leaves the list.
   const [opened, setOpened] = useState<InboxItem | undefined>(undefined);
+  // The card the person came back from, whose row takes the focus once the list is back.
+  const returnTo = useRef<string | undefined>(undefined);
   if (opened !== undefined) {
     return (
       <InboxCard
@@ -48,20 +51,39 @@ export function PhoneInbox({
         view={view}
         messaging={messaging}
         computer={computer}
-        onBack={() => setOpened(undefined)}
+        onBack={() => {
+          returnTo.current = opened.id;
+          setOpened(undefined);
+        }}
         onOpenSettings={onOpenSettings}
       />
     );
   }
   if (items === undefined) return <InboxLoading />;
-  if (items.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col justify-center">
-        <EmptyState title={inboxWords.emptyTitle} description={inboxWords.emptyText} />
-      </div>
-    );
-  }
-  return <InboxList items={items} view={view} onOpen={setOpened} />;
+  if (items.length === 0) return <EmptyInbox returnTo={returnTo} />;
+  return <InboxList items={items} view={view} returnTo={returnTo} onOpen={setOpened} />;
+}
+
+/**
+ * `p03d`: nothing waits. Back from the last card, or its row leaving while it had the focus, puts
+ * the focus on its title.
+ */
+function EmptyInbox({ returnTo }: { readonly returnTo: RefObject<string | undefined> }) {
+  const title = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (returnTo.current === undefined) return;
+    returnTo.current = undefined;
+    if (focusFell(title.current)) title.current?.focus();
+  }, [returnTo]);
+  return (
+    <div className="flex flex-1 flex-col justify-center">
+      <EmptyState
+        title={inboxWords.emptyTitle}
+        description={inboxWords.emptyText}
+        titleRef={title}
+      />
+    </div>
+  );
 }
 
 /**
@@ -103,19 +125,44 @@ function InboxLoading() {
 function InboxList({
   items,
   view,
+  returnTo,
   onOpen,
 }: {
   readonly items: readonly InboxItem[];
   readonly view: RemoteView;
+  /** The card the person came back from: its row, or the title once it is gone, takes the focus. */
+  readonly returnTo: RefObject<string | undefined>;
   readonly onOpen: (item: InboxItem) => void;
 }) {
   const titleId = useId();
+  const section = useRef<HTMLElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  // Whether the returned-to row has had the focus yet. While it keeps it, `returnTo` holds its id,
+  // so a read that drops the row (its answer landed) moves the focus to the title, not the page.
+  const placed = useRef(false);
+  useEffect(() => {
+    const id = returnTo.current;
+    if (id === undefined) return;
+    const rows = section.current?.querySelectorAll<HTMLElement>("button[data-item]") ?? [];
+    const row = [...rows].find((each) => each.dataset["item"] === id);
+    if (row !== undefined && !placed.current) {
+      placed.current = true;
+      row.focus();
+      return;
+    }
+    // The person moved on from the row: nothing to look after.
+    if (row !== undefined && row.ownerDocument.activeElement !== row) returnTo.current = undefined;
+    if (row !== undefined) return;
+    returnTo.current = undefined;
+    if (!placed.current || focusFell(section.current)) heading.current?.focus();
+  }, [returnTo, items]);
   const now = new Date();
   return (
     // The rows run edge to edge, their rules across the whole screen.
-    <section aria-labelledby={titleId} className="-mx-4 -mt-4 flex flex-col">
+    <section ref={section} aria-labelledby={titleId} className="-mx-4 -mt-4 flex flex-col">
       <ListHeading
         id={titleId}
+        headingRef={heading}
         name={inboxWords.needsYou}
         detail={inboxWords.waiting(items.length)}
       />
@@ -124,6 +171,7 @@ function InboxList({
           <li key={item.id} className="border-b border-border">
             <button
               type="button"
+              data-item={item.id}
               className="flex w-full items-start gap-3 px-4 py-3 text-start focus-ring-inset"
               onClick={() => onOpen(item)}
             >
@@ -152,4 +200,10 @@ function InboxList({
       </ul>
     </section>
   );
+}
+
+/** The focused element went away with its row or card, so the focus fell to `node`'s page. */
+function focusFell(node: Element | null): boolean {
+  const page = node?.ownerDocument;
+  return page !== undefined && (page.activeElement === null || page.activeElement === page.body);
 }

@@ -12,6 +12,7 @@ import {
   type RemoteSession,
   type RemoteView,
   UPDATE_TO_ANSWER,
+  waitForComputerToAnswer,
 } from "./remote-view.ts";
 import type { SentAnswers } from "./sent-answers.ts";
 import type { SessionMemory } from "./session-memory.ts";
@@ -62,13 +63,24 @@ export function viewOf(holding: ClientHolding): RemoteView {
     sessions: holding.sessions.map((session) => sessionOf(session, holding.memories)),
     openApprovals: openApprovalsOf(holding, live, risky, notLiveReason),
     canAnswer: live,
-    offReason: live ? undefined : notLiveReason,
+    offReason: live ? undefined : viewOffReason(holding, notLiveReason),
     answersRisky: holding.answersRisky,
     ownerCheck: holding.ownerCheck,
     answerCheck: holding.answerCheck,
     updateNeeded: holding.updateNeeded,
     olderComputer: holding.olderComputer,
   };
+}
+
+/**
+ * Why the view's answers are off while it isn't live: p03g while the computer is the one not
+ * answering, else the approvals' own reason. Only the Inbox card reads it.
+ */
+function viewOffReason(holding: ClientHolding, notLiveReason: string): string {
+  if (holding.state === "unreachable" && notLiveReason === RECONNECT_TO_ANSWER) {
+    return waitForComputerToAnswer(holding.computer);
+  }
+  return notLiveReason;
 }
 
 function sessionOf(

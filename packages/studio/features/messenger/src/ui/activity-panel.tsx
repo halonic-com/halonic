@@ -27,6 +27,9 @@ export const activityPanelId = "messenger-activity";
  */
 export const panelCloseId = `${activityPanelId}-close`;
 
+/** The panel title's id: **Show activity** puts the focus there when nothing in the panel has it. */
+export const activityTitleId = `${activityPanelId}-title`;
+
 /**
  * Where the panel shows (HAL-18558 section 3): `beside` the chat on a wide window, a `sheet` over
  * the chat's right side on a medium one, or a `place` of its own instead of the chat on a narrow
@@ -86,7 +89,7 @@ export function ActivityPanel({
     <aside
       ref={aside}
       id={activityPanelId}
-      aria-labelledby={`${activityPanelId}-title`}
+      aria-labelledby={activityTitleId}
       onKeyDown={onKeyDown}
       className={`flex flex-col ${placeClass[place]} ${focusedPanelClass}`}
     >
@@ -151,7 +154,11 @@ function PanelHeader({
           <bdi>{chat}</bdi>
         </button>
       ) : null}
-      <h2 id={`${activityPanelId}-title`} className="flex-1 truncate text-body-strong">
+      <h2
+        id={activityTitleId}
+        tabIndex={-1}
+        className="flex-1 truncate rounded-sm text-body-strong focus-ring"
+      >
         <bdi>{activityWords.title(name)}</bdi>
       </h2>
       {place === "place" ? null : (

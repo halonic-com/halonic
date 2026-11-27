@@ -1,7 +1,8 @@
 import { Button, Tooltip, useNarrow } from "@halonicjs/studio-kit";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { activityWords } from "../activity-words.ts";
-import { activityPanelId } from "./activity-panel.tsx";
+import { activityPanelId, activityTitleId } from "./activity-panel.tsx";
 
 /** Where the person's choice to show the panel or not is kept, on this computer. */
 const rememberedKey = "halonic.messenger.activity-open";
@@ -132,10 +133,18 @@ export function ActivityButton() {
 export function ShowActivity() {
   const toggle = useContext(ActivityToggleContext);
   if (toggle === undefined || toggle.open) return null;
+  // The button goes once the panel opens, so the focus moves into the panel (WCAG 2.4.3): a sheet
+  // or a place already gives it to its close, beside the chat the title takes it.
+  const show = () => {
+    flushSync(toggle.toggle);
+    const panel = document.getElementById(activityPanelId);
+    if (panel?.contains(document.activeElement)) return;
+    document.getElementById(activityTitleId)?.focus();
+  };
   return (
     <button
       type="button"
-      onClick={toggle.toggle}
+      onClick={show}
       className="focus-ring inline-flex min-h-6 items-center rounded-xs text-accent-text hover:underline"
     >
       {activityWords.show}
