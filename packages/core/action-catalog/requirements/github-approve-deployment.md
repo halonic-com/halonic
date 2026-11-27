@@ -1,0 +1,28 @@
+# action-catalog.github-approve-deployment
+
+- Status: active
+- Since: unreleased
+- Source: stream HAL-17488 (user-only action steppers); architecture note on HAL-17491, sections 1.2, 5 (row 8), 6.2 and 7.8; task HAL-17522; plan approved on HAL-17522 (option b)
+
+When a request names `github.approve-deployment@1` with a GitHub `owner`, `repo`, a workflow `run_id`, an `environment` name and its `environment_id`, the action-catalog package shall offer:
+
+- a `check` step that reads `GET /repos/{owner}/{repo}/actions/runs/{run_id}`, keeps only `status`, `head_sha`, `head_branch` and `triggering_actor.login`, requires the request's `expect` to name `head_sha`, and requires `status` to be `waiting`;
+- a `check` step that reads `GET /repos/{owner}/{repo}/environments/{environment}`, keeps only `id` and `name`, and requires the kept `id` to equal `environment_id`;
+- a `call` step of risk `irreversible` that sends `POST /repos/{owner}/{repo}/actions/runs/{run_id}/pending_deployments` with `environment_ids` as a one-item list of `environment_id`, `state: approved` and a constant comment.
+
+The stepper shall refuse the approval when the run's head commit differs from the request's `expect`, when the run is no longer waiting ("This run is no longer waiting for approval, so there is nothing to approve."), when the request's `expect` has no `head_sha`, or when GitHub's id for the named environment isn't `environment_id`. The preview shall name the repository, the run, its short head commit, head branch and who started it, and the environment by the name GitHub answered, never by the request's text. There is no check on `pending_deployments`, since its answer is a list `keep` can't read; GitHub refuses the approval with a 422 for an environment the run isn't waiting on. The manual guide shall be a numbered list holding `https://github.com/{owner}/{repo}/actions/runs/{run_id}`.
+
+## Examples
+
+- Given the recorded run 7001 of `acme/app`, waiting on commit `4f2c9e1…` on `main`, started by `acme-dev`, and the environment `production` with id 42,
+  when both checks run and the approval is sent,
+  then the preview reads "Run 7001 of acme/app: commit `4f2c9e1` on `main`, started by `acme-dev`." and "Environment `production` (id 42).", and the approval sends `environment_ids: [42]`.
+- Given a recorded run whose head commit is no longer the one in `expect`,
+  when the gate is asked about the approval,
+  then it stops at the first check with the changed `head_sha`.
+- Given a recorded run whose `status` is `completed`,
+  when the gate is asked about the approval,
+  then it stops with "This run is no longer waiting for approval, so there is nothing to approve."
+- Given a request naming `staging` with production's id 42, and GitHub's id for `staging` is 41,
+  when the gate is asked about the approval,
+  then it stops at the second check.

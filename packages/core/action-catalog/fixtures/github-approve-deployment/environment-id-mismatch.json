@@ -1,0 +1,103 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/actions/runs/7001"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "actor": {
+              "id": 1001,
+              "login": "acme-dev",
+              "type": "User"
+            },
+            "conclusion": null,
+            "event": "push",
+            "head_branch": "main",
+            "head_sha": "4f2c9e1b7a3d5c8e0f6a2b4d9c1e7f3a5b8d0c2e",
+            "html_url": "https://github.com/acme/app/actions/runs/7001",
+            "id": 7001,
+            "name": "release",
+            "run_number": 118,
+            "status": "waiting",
+            "triggering_actor": {
+              "id": 1001,
+              "login": "acme-dev",
+              "type": "User"
+            }
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    },
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/environments/staging"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "can_admins_bypass": false,
+            "created_at": "2026-10-02T08:14:00Z",
+            "deployment_branch_policy": {
+              "custom_branch_policies": false,
+              "protected_branches": true
+            },
+            "html_url": "https://github.com/acme/app/deployments/activity_log?environments_filter=staging",
+            "id": 41,
+            "name": "staging",
+            "protection_rules": [
+              {
+                "id": 3755,
+                "prevent_self_review": false,
+                "reviewers": [
+                  {
+                    "reviewer": {
+                      "id": 1002,
+                      "login": "acme-lead"
+                    },
+                    "type": "User"
+                  }
+                ],
+                "type": "required_reviewers"
+              }
+            ],
+            "updated_at": "2026-11-20T16:40:12Z",
+            "url": "https://api.github.com/repos/acme/app/environments/staging"
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1"
+}

@@ -1,0 +1,50 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/actions/runs/7001"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "actor": {
+              "id": 1001,
+              "login": "acme-dev",
+              "type": "User"
+            },
+            "conclusion": null,
+            "event": "push",
+            "head_branch": "main",
+            "head_sha": "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b",
+            "html_url": "https://github.com/acme/app/actions/runs/7001",
+            "id": 7001,
+            "name": "release",
+            "run_number": 118,
+            "status": "waiting",
+            "triggering_actor": {
+              "id": 1001,
+              "login": "acme-dev",
+              "type": "User"
+            }
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1"
+}
