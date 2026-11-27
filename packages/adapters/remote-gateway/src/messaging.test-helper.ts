@@ -102,7 +102,11 @@ export class FakePhoneMessaging {
   messages: Message[] = [1, 2, 3].map(message);
   sendResult: SendResult = { outcome: "sent", message: message(4) };
   /** What `limit` allows of each kind before it refuses. */
-  readonly left: Record<GatewayRateLimited, number> = { search: 10, send: 10 };
+  readonly left: Record<GatewayRateLimited, number> = {
+    search: 10,
+    send: 10,
+    reactions: 30,
+  };
   private readonly changed: ((source: MessagingId) => void)[] = [];
 
   /** The view as the gateway gets it, every member recorded. */

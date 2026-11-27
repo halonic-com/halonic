@@ -14,11 +14,13 @@ import type { GatewayPolicy } from "./session-source.ts";
 /**
  * What a paired phone may spend on calls that cost the board a Paperclip
  * request each. A reaction is a write, like a message, so it counts as a send.
+ * A reactions read has a kind of its own: unlike the other reads it isn't
+ * served from the hub's cache, and a phone reads it each time a chat opens.
  */
-export type GatewayRateLimited = "search" | "send";
+export type GatewayRateLimited = "search" | "send" | "reactions";
 
 /**
- * One paired phone's rate for searches and sends (Julian, HAL-17540). The
+ * One paired phone's rate for searches, sends and reactions reads (Julian, HAL-17540). The
  * host keys it by the paired phone, not by the connection, so a reconnect
  * doesn't refill it.
  */
@@ -132,17 +134,19 @@ async function readMessaging(context: Context, message: MessageOf<"msg-read">): 
 /**
  * A conversation's reactions, one item per message that has any, only for a
  * conversation the view lists. A source that keeps none gives `not-supported`,
- * and the phone shows the chat without them.
+ * and the phone shows the chat without them. Each read reaches Paperclip, so
+ * it counts against the phone's reactions reads (HAL-20260).
  */
 async function readReactions(
   context: Context,
   message: Extract<MessageOf<"msg-read">, { what: "reactions" }>,
 ): Promise<void> {
-  const { view } = context.messaging;
+  const { view, rateLimit } = context.messaging;
   if (!(await listsConversation(view, message.conversation))) {
     return context.replies.refuse(message.id, "not-found");
   }
   if (view.reactions === undefined) return context.replies.refuse(message.id, "not-supported");
+  if (!rateLimit.take("reactions")) return context.replies.refuse(message.id, "rate-limited");
   const read = await view.reactions.list(message.conversation);
   if (read.outcome === "refused") {
     return context.replies.refuse(message.id, portRefusalOr(read.reason, "not-supported"));

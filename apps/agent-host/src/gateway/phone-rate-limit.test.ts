@@ -1,4 +1,5 @@
 import { ManualClock } from "@halonicjs/adapter-memory";
+import type { GatewayRateLimited } from "@halonicjs/adapter-remote-gateway";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { PhoneRateLimits, phoneCallsPerMinute } from "./phone-rate-limit.ts";
@@ -9,7 +10,7 @@ const other = new Uint8Array(32).fill(2);
 /** Takes `count` calls of `kind`; gives how many were allowed. */
 function takeMany(
   rate: ReturnType<PhoneRateLimits["forPhone"]>,
-  kind: "search" | "send",
+  kind: GatewayRateLimited,
   count: number,
 ) {
   let allowed = 0;
@@ -29,6 +30,17 @@ verifies("agent-host.gateway-phone-messaging", () => {
       clock.advance(1);
       expect(rate.take("search")).toBe(true);
       expect(rate.take("search")).toBe(false);
+    });
+
+    it("allows 30 reactions reads a minute, on their own rate, and refills one every two seconds", () => {
+      const clock = new ManualClock("2026-11-25T08:00:00.000Z");
+      const limits = new PhoneRateLimits(clock);
+      const rate = limits.forPhone(pixel);
+      expect(takeMany(rate, "reactions", 31)).toBe(30);
+      expect(rate.take("search")).toBe(true);
+      clock.advance(2_000);
+      expect(rate.take("reactions")).toBe(true);
+      expect(rate.take("reactions")).toBe(false);
     });
 
     it("keeps a used-up rate when the same phone reconnects", () => {
