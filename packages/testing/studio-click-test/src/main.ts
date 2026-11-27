@@ -18,6 +18,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { chooseSteps } from "./affected.ts";
+import { findMainWindow } from "./main-window.ts";
 import { startPaperclipBoard } from "./paperclip-board.ts";
 import { requirementFiles } from "./requirement-files.ts";
 import { allPassed, type LeftOut, resultsMarkdown } from "./results.ts";
@@ -92,7 +93,7 @@ async function stopApp(current: Driver): Promise<void> {
 }
 
 async function contextFor(current: Driver): Promise<StepContext> {
-  const [mainWindow = ""] = await current.windowHandles();
+  const mainWindow = await findMainWindow(current, sleep);
   return {
     driver: current,
     paperclipUrl: board.address,
