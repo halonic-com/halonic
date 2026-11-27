@@ -3,7 +3,9 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
 <group android:translateX="24" android:translateY="24" android:scaleX="0.6" android:scaleY="0.6">
 <path android:strokeWidth="16" android:pathData="M8,50 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0 Z"><aapt:attr name="android:strokeColor"><gradient android:type="linear" android:startX="0" android:startY="100" android:endX="100" android:endY="0"><item android:color="#3175f2" android:offset="0" /><item android:color="#1bc6c8" android:offset="1" /></gradient></aapt:attr></path>
+<group android:pivotX="50" android:pivotY="50" android:scaleX="1.1195" android:scaleY="1.1195">
 <path android:fillColor="#ffffff" android:strokeColor="#ffffff" android:strokeWidth="4.5" android:strokeLineJoin="round" android:pathData="M40 38 H60 A7 7 0 0 1 67 45 V55 A7 7 0 0 1 60 62 H40 A7 7 0 0 1 33 55 V45 A7 7 0 0 1 40 38 Z" />
 <path android:strokeColor="#020617" android:strokeWidth="7" android:strokeLineCap="round" android:strokeLineJoin="round" android:pathData="M35 40.5 L50 52 L65 40.5" />
+</group>
 </group>
 </vector>

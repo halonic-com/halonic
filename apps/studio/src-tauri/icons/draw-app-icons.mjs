@@ -234,12 +234,27 @@ const generated =
 const vector = (body) =>
   `<?xml version="1.0" encoding="utf-8"?>\n${generated}\n<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n${body}\n</vector>\n`;
 
-/** The ring and the glyph, 60 dp across in the middle, as the launcher icon's ring is. */
+/**
+ * The glyph's size against the ring's 100 units in the approved taskbar logo at 256 px (HAL-20219):
+ * that ring is 256 px across, so one unit is 2.56 px, and the glyph spans its share of the hole.
+ */
+function glyphOnRing(app) {
+  const pixels = 256;
+  const hole = pixels - 2 * ringStroke[pixels];
+  const glyphScale = (hole * glyphFill[app]) / glyphWidth[app];
+  return (glyphScale / (pixels / 100)) * appGlyphScale(pixels);
+}
+
+/**
+ * The ring and the glyph, 60 dp across in the middle, as the launcher icon's ring is; the glyph at
+ * the logos' size against the ring, so the long-press menu matches Windows.
+ */
 function shortcutForeground(app) {
   const ring = `<path android:strokeWidth="16" android:pathData="M8,50 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0 Z"><aapt:attr name="android:strokeColor"><gradient android:type="linear" android:startX="0" android:startY="100" android:endX="100" android:endY="0"><item android:color="${blue}" android:offset="0" /><item android:color="${cyan}" android:offset="1" /></gradient></aapt:attr></path>`;
   const glyph = appGlyphs[app].map(vectorPath).join("\n");
+  const scale = glyphOnRing(app).toFixed(4);
   return vector(
-    `<group android:translateX="24" android:translateY="24" android:scaleX="0.6" android:scaleY="0.6">\n${ring}\n${glyph}\n</group>`,
+    `<group android:translateX="24" android:translateY="24" android:scaleX="0.6" android:scaleY="0.6">\n${ring}\n<group android:pivotX="50" android:pivotY="50" android:scaleX="${scale}" android:scaleY="${scale}">\n${glyph}\n</group>\n</group>`,
   );
 }
 

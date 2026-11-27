@@ -54,6 +54,7 @@ export function PairedComputers({
   onForget,
   onPair,
   onRetry,
+  atFoot = true,
   now = () => new Date(),
 }: {
   /** `PhoneTunnel.pairedComputers()`'s answer. */
@@ -65,6 +66,8 @@ export function PairedComputers({
   readonly onPair: () => void;
   /** Lists the computers again after `keys-unavailable`. */
   readonly onRetry: () => void;
+  /** Whether Pair with a computer is the screen's last block, so it clears the home bar. Default yes. */
+  readonly atFoot?: boolean;
   /** Where "Paired 14 Nov" counts the year from. Default the clock. */
   readonly now?: () => Date;
 }) {
@@ -151,8 +154,8 @@ export function PairedComputers({
             </ul>
             <p className="text-small text-fg-muted">{computersWords.note}</p>
           </div>
-          {/* In thumb reach at the foot: 16px from the sides; pb-safe clears the home bar. */}
-          <div className="px-4 pb-safe">
+          {/* In thumb reach: 16px from the sides; at the foot, pb-safe clears the home bar. */}
+          <div className={atFoot ? "px-4 pb-safe" : "px-4"}>
             <Button
               variant="primary"
               size="touch"
