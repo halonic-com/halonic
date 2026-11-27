@@ -2,6 +2,7 @@
 
 import type { RequesterPolicy, StepperCatalog } from "@halonicjs/action-steppers";
 import type { ServiceSignIn } from "@halonicjs/ports";
+import { type OpenExternal, OpenExternalProvider } from "@halonicjs/studio-kit";
 import { createActionSteps, FakeAgentConnections } from "@halonicjs/studio-services";
 import {
   FakeActionRecords,
@@ -11,7 +12,7 @@ import {
 } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { acmeSignInCatalog, testAcmeSignIn } from "../agent/acme-actions.test-helper.ts";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
@@ -30,8 +31,21 @@ async function settled(): Promise<void> {
   });
 }
 
-/** Opens the Inbox's one agent item, a test sign-in to `acme`, with `serviceSignIn` or none. */
-async function openSignInItem(catalog: StepperCatalog, serviceSignIn?: ServiceSignIn) {
+/** How the app opens pages: `openExternal` for every page, `openSignIn` for a sign-in page. */
+interface PageOpeners {
+  readonly openExternal: OpenExternal;
+  readonly openSignIn: OpenExternal;
+}
+
+/**
+ * Opens the Inbox's one agent item, a test sign-in to `acme`, with `serviceSignIn` or none, and
+ * inside an `OpenExternalProvider` with `openers` when given.
+ */
+async function openSignInItem(
+  catalog: StepperCatalog,
+  serviceSignIn?: ServiceSignIn,
+  openers?: PageOpeners,
+) {
   const messaging = new FakeAgentMessaging({ now: () => asked });
   const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
   const chief = messaging.addAgent(source.id, { name: "Chief" });
@@ -57,7 +71,7 @@ async function openSignInItem(catalog: StepperCatalog, serviceSignIn?: ServiceSi
       },
     ],
   });
-  const root = render(
+  const view = (
     <InboxView
       inbox={new Inbox(fakeRuns([]).runs)}
       now={() => later}
@@ -67,7 +81,10 @@ async function openSignInItem(catalog: StepperCatalog, serviceSignIn?: ServiceSi
       actionSteps={steps}
       agentConnections={agentConnections}
       serviceSignIn={serviceSignIn}
-    />,
+    />
+  );
+  const root = render(
+    openers === undefined ? view : <OpenExternalProvider {...openers}>{view}</OpenExternalProvider>,
   );
   await settled();
   const cell = root.querySelector<HTMLElement>('[role="grid"] tr [role="gridcell"]');
@@ -76,10 +93,11 @@ async function openSignInItem(catalog: StepperCatalog, serviceSignIn?: ServiceSi
   return root;
 }
 
-const runStepOne = (root: HTMLElement) =>
+const runStep = (root: HTMLElement, number: number) =>
   [...root.querySelectorAll("button")].find((button) =>
-    button.textContent?.startsWith("Run step 1 of 4"),
+    button.textContent?.startsWith(`Run step ${number} of 4`),
   );
+const runStepOne = (root: HTMLElement) => runStep(root, 1);
 
 verifies("inbox.agent-action-run", () => {
   describe("an agent's Paperclip sign-in request in the desktop app", () => {
@@ -94,6 +112,29 @@ verifies("inbox.agent-action-run", () => {
       const root = await openSignInItem(acmeSignInCatalog, signIn);
       expect(root.textContent).not.toContain("isn't available in this version of Halonic");
       expect(runStepOne(root)).toBeDefined();
+    });
+
+    it("opens the approval page in the sign-in window, not with openExternal (kit.open-sign-in)", async () => {
+      const signIn = new FakeServiceSignIn({
+        connections: {
+          acme: { address: "https://paperclip.acme.example", company: "acme-company" },
+        },
+        approver: "Acme Board",
+        now: () => later,
+      });
+      const openers = {
+        openExternal: vi.fn<OpenExternal>(async () => {}),
+        openSignIn: vi.fn<OpenExternal>(async () => {}),
+      };
+      const root = await openSignInItem(acmeSignInCatalog, signIn, openers);
+      await act(async () => runStep(root, 1)?.click());
+      await settled();
+      await act(async () => runStep(root, 2)?.click());
+      await settled();
+      expect(openers.openSignIn).toHaveBeenCalledWith(
+        "https://paperclip.acme.example/cli-auth/challenge-1",
+      );
+      expect(openers.openExternal).not.toHaveBeenCalled();
     });
 
     it("says the request isn't available here without one, as in a browser", async () => {

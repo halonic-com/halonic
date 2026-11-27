@@ -8,7 +8,7 @@ import {
   type StepperCatalog,
   useStepperRun,
 } from "@halonicjs/studio-feature-action-steppers/api";
-import { useOpenExternal } from "@halonicjs/studio-kit";
+import { useOpenSignIn } from "@halonicjs/studio-kit";
 import type { ActionSteps } from "@halonicjs/studio-services";
 import { useEffect, useRef } from "react";
 import { AgentItemCard, type AgentItemCardProps } from "./agent-item-card.tsx";
@@ -80,8 +80,9 @@ interface ActionRunProps {
 function ActionRun(props: ActionRunProps) {
   const { reviewed, card, catalog, policy, steps, paperclips, serviceSignIn } = props;
   const { item, source, now, answer } = card;
-  // The sign-in's approval page opens in the browser, as Settings › Connections opens it.
-  const openExternal = useOpenExternal();
+  // The sign-in's approval page opens in the sign-in window, as every sign-in page opens it
+  // (`kit.open-sign-in`).
+  const openSignIn = useOpenSignIn();
   // The run keeps its first options, so it reads the Paperclips through a ref that every draw updates.
   const connected = useRef(paperclips);
   connected.current = paperclips;
@@ -96,7 +97,7 @@ function ActionRun(props: ActionRunProps) {
     now,
     paperclips: paperclipsNow,
     serviceSignIn:
-      serviceSignIn === undefined ? undefined : { signIn: serviceSignIn, openPage: openExternal },
+      serviceSignIn === undefined ? undefined : { signIn: serviceSignIn, openPage: openSignIn },
   });
   // A request that waited for the connections checks again once they are read, in the same card,
   // so the stepper's heading keeps the focus (`action-steppers.paperclip-host`).
