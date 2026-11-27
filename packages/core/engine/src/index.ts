@@ -178,6 +178,14 @@ export type { ConnectorsRun, RunConnectors } from "./run/run-connectors.ts";
 export { type RunFailure, runFailureReasonOf } from "./run/run-failure-reason-of.ts";
 export { RunStoreTurnLog } from "./run/run-store-turn-log.ts";
 export {
+  type ActionRequests,
+  fileActionRequest,
+  type RequestActionToolOptions,
+  type RequesterPolicySource,
+  requestActionTool,
+  requestActionToolName,
+} from "./tools/action-requests/request-action-tool.ts";
+export {
   knowledgeToolNames,
   knowledgeTools,
   noHitsText,

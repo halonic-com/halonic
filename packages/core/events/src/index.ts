@@ -18,6 +18,7 @@ export type {
   ActionParameterValue,
   ActionRecordEvent,
   ActionRequestedEvent,
+  ActionRequestedRunEvent,
   ActionRequester,
   ActionReviewedEvent,
   ActionSignedInEvent,

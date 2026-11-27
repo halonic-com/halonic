@@ -50,6 +50,7 @@ loop of one model turn, which the local chat turn runs.
 | `ResolvedModel` | the model a turn starts on, the name of its key's secret, its alias's params, and its alias's own fallbacks | `engine.offline-falls-back`, `engine.model-params` |
 | `runFailureReasonOf` | the one place an error becomes the reason, and the host, that a `run.failed` event records | `engine.run-failure-reason-of`, `engine.model-failure-stops` |
 | `runLogTools` | `list_runs` and `read_run` for an agent with `runLogs: true`: its own hub's runs, read-only and cut short for a model | `engine.run-log-tools` |
+| `requestActionTool` | `request_action`: an agent files a request to run a reviewed action stepper, checked against the catalog and the user's requester policy, and written as `action.requested`; it runs nothing | `engine.request-action` |
 | `runModelTurn` | offers the caller's, Halonic's and the servers' tools, runs the calls to Halonic's and the servers' tools, and asks again | `engine.turn-runs-tool-calls`, `engine.turn-caller-tools-return` |
 | `RunState` | what the kernel knows about a run: a fold of its events by `evolve` (or `foldRun`), stored as the run's snapshot | `engine.run-state-fold` |
 | `RunStoreTurnLog` | the `TurnLog` of a run's model call: appends its turn, and its subagents' turns, to the run's log in a `RunStore`, in the call's item or branch | `engine.turn-logs-events`, `engine.run-turn-log` |
@@ -116,7 +117,9 @@ turn again at the same call. A chat turn can't wait, so a subagent's stop fails 
 
 A run's agent gets the tools its kept file grants after its memory tools (requirement
 `engine.run-agent-tools`): `list_runs` and `read_run` with `runLogs: true`, the records tools of
-its `collections` when the executor has a record store, and a `delegate_` tool per subagent. The
+its `collections` when the executor has a record store, a `delegate_` tool per subagent, and
+`request_action` when the executor has `actionRequests` (the catalog and the profile's requester
+policy; requirement `engine.request-action`). The
 collections come from the run's kept definitions (`RunDefinitions.collections`). A chat turn gets
 none of them.
 

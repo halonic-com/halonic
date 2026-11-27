@@ -73,6 +73,8 @@ const eventKinds: { readonly [Type in RunEventType]: Shown<Type> | "hidden" } = 
   "tool.refused": "hidden",
   "tool.unasked": "hidden",
   "effect.requested": "hidden",
+  // Shown in the Inbox, where the user reviews it, not in the run view.
+  "action.requested": "hidden",
   "connector.started": "hidden",
   "connector.listing-failed": "hidden",
   "connector.part-off": "hidden",

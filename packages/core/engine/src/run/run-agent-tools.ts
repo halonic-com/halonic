@@ -1,13 +1,18 @@
 // The tools an agent's file grants in a run (HAL-186 step 4d): the run log
 // with `runLogs`, the records of its `collections`, and a `delegate_` tool
-// per subagent. A chat turn gets none of them, because it belongs to no run
-// and has no kept definitions.
+// per subagent, and `request_action` when the host lets agents file action
+// requests. A chat turn gets none of them, because it belongs to no run and
+// has no kept definitions.
 
 import type { Agent } from "@halonicjs/format";
-import type { Clock, RecordStore, RunStore } from "@halonicjs/ports";
+import type { Clock, IdGenerator, RecordStore, RunStore } from "@halonicjs/ports";
 import type { TurnLog } from "../agent/turn-log.ts";
 import type { HalonicTool } from "../agent/turn-tools.ts";
 import type { RunDefinitions } from "../kernel/decide-types.ts";
+import {
+  type ActionRequests,
+  requestActionTool,
+} from "../tools/action-requests/request-action-tool.ts";
 import { recordTools } from "../tools/records/record-tools.ts";
 import { runLogTools } from "../tools/run-log/run-log-tools.ts";
 import {
@@ -32,7 +37,12 @@ export interface RunAgentToolsOptions {
   /** Where records live; without it, an agent with `collections` gets no records tools. */
   readonly records?: RecordStore;
   readonly clock: Clock;
-  /** The log of the run's model call, where a subagent's `agent.*` events go. */
+  /**
+   * The catalog and the user's requester policy; without them, the agent gets
+   * no `request_action`. Together with `ids`, which names each request.
+   */
+  readonly actionRequests?: ActionRequests & { readonly ids: IdGenerator };
+  /** The log of the run's model call, where a subagent's `agent.*` and an `action.requested` go. */
   readonly log: TurnLog;
   /** Runs a subagent's own turn on a task and gives its answer, or where it stopped. */
   runSubagent(task: DelegatedTask): Promise<SubagentOutcome>;
@@ -41,7 +51,8 @@ export interface RunAgentToolsOptions {
 /**
  * The run-log, records and subagent tools of a run's agent (requirement
  * `engine.run-agent-tools`), in that order; none for a field the agent's
- * file leaves at its default.
+ * file leaves at its default. Then `request_action` (requirement
+ * `engine.request-action`) when `actionRequests` is given.
  */
 export function runAgentTools(options: RunAgentToolsOptions): HalonicTool[] {
   const { agent, clock, records, runId } = options;
@@ -70,6 +81,21 @@ export function runAgentTools(options: RunAgentToolsOptions): HalonicTool[] {
         state: options.state,
         log: options.log,
         runSubagent: options.runSubagent,
+      }),
+    );
+  }
+  if (options.actionRequests !== undefined) {
+    const { catalog, policy, ids } = options.actionRequests;
+    tools.push(
+      requestActionTool({
+        catalog,
+        policy,
+        ids,
+        hubId: options.hubId,
+        runId,
+        agent: agent.id,
+        clock,
+        log: options.log,
       }),
     );
   }

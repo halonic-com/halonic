@@ -14,6 +14,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@halonicjs/action-steppers": "workspace:*",
     "@halonicjs/app": "workspace:*",
     "@halonicjs/events": "workspace:*",
     "@halonicjs/format": "workspace:*",
