@@ -39,6 +39,11 @@ cost. You can also make the same copy in a terminal with
 `halonic init --example acme` (see [Try it in 5 minutes](#try-it-in-5-minutes)),
 then **Open folder** and pick the `acme` folder.
 
+Studio keeps your routines running in the tray when you close its window, and
+can start when you log in:
+[Keep routines running with the window closed](docs/how-to/keep-routines-running-with-the-window-closed.md)
+and [Start Halonic when you log in](docs/how-to/start-halonic-when-you-log-in.md).
+
 ## Status: what is not in 0.1.1 yet
 
 0.1.1 is an early release; expect rough edges. The list below is what we
