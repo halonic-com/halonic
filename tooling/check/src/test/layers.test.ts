@@ -151,6 +151,23 @@ describe("tooling/check: layers", () => {
     expect(messages.some((message) => message.includes("is dev tooling"))).toBe(true);
   });
 
+  it("lets only the leak guard reach the shared secret rules by path", () => {
+    const rules = "../../../../packages/core/std/src/secret-rules.ts";
+    const check: FixturePackage = {
+      directory: "tooling/check",
+      manifest: manifestFor("@halonicjs/tooling-check", "tooling"),
+      files: {
+        "src/leaks/scan.ts": `import "${rules}";\n`,
+        "src/leaks/other.ts": 'import "../../../../packages/core/std/src/index.ts";\n',
+        "src/rules/x.ts": `import "../${rules}";\n`,
+      },
+    };
+    const outside = runChecks([std, check], { coreOrder })
+      .filter((problem) => problem.message.includes("reaches outside"))
+      .map((problem) => problem.file);
+    expect(outside).toEqual(["tooling/check/src/leaks/other.ts", "tooling/check/src/rules/x.ts"]);
+  });
+
   it("catches relative imports that leave the package and deep imports past exports", () => {
     const sneaky = {
       ...format,
