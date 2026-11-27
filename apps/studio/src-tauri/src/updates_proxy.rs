@@ -128,6 +128,10 @@ pub(super) fn client_for(url: &Url, setting: &Arc<ProxySetting>) -> Result<Clien
 /// A client for a sandbox part's download (HAL-20583): the same proxy
 /// rules, with one redirect policy that asks every hop of the parts
 /// allow-list and of `route_for`.
+#[allow(
+    dead_code,
+    reason = "setup (HAL-20583 PR 3b) and the updater (PR 4) call it"
+)]
 pub(crate) fn part_client(setting: &Arc<ProxySetting>) -> ClientBuilder {
     tunnelled(
         Client::builder().redirect(part_redirect_policy(Arc::clone(setting))),
@@ -191,6 +195,10 @@ fn redirect_policy(setting: Arc<ProxySetting>) -> Policy {
 /// Follows a part's download only to a hop the parts allow-list takes, at
 /// most `PART_MAX_REDIRECTS` times, and only where `route_for` allows it.
 /// Nothing widens it, in any build.
+#[allow(
+    dead_code,
+    reason = "setup (HAL-20583 PR 3b) and the updater (PR 4) call it"
+)]
 fn part_redirect_policy(setting: Arc<ProxySetting>) -> Policy {
     Policy::custom(move |attempt| {
         // The first URL in `previous` is the request's own, so this hop is

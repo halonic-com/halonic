@@ -38,18 +38,10 @@ pub(crate) fn part_hop_allowed(url: &Url, redirects: usize) -> Result<(), String
 
 /// Downloads parts on the proxy setting `http_fetch` read at start. Its
 /// calls block, so it runs off the async threads (`spawn_blocking`).
-#[allow(
-    dead_code,
-    reason = "setup (HAL-20583 PR 3b) and the updater (PR 4) use it"
-)]
 pub(crate) struct PartDownloader {
     setting: Arc<ProxySetting>,
 }
 
-#[allow(
-    dead_code,
-    reason = "setup (HAL-20583 PR 3b) and the updater (PR 4) use it"
-)]
 impl PartDownloader {
     /// A downloader on the app's proxy setting.
     pub(crate) fn for_app<R: Runtime>(app: &AppHandle<R>) -> Self {
