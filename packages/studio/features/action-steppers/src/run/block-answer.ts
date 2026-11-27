@@ -47,9 +47,10 @@ function blockStep(answer: ActionResultAnswer): ActionResultStep | undefined {
   if (steps.length === 0) return undefined;
   const failed = steps.find((step) => step.outcome === "failed");
   if (failed !== undefined) return { ...failed, step: onlyBlock };
+  // Checked before "all skipped": a run stopped after skipped steps still lists no block.
+  if (outcome !== "succeeded") return undefined;
   const done = steps.filter((step) => step.outcome === "succeeded");
   if (done.length === 0) return { step: onlyBlock, outcome: "skipped" };
-  if (outcome !== "succeeded") return undefined;
   return succeededBlock(done);
 }
 

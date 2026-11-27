@@ -139,6 +139,9 @@ verifies("action-steppers.stepper-items", () => {
       expect(blockAnswer(answerOf("failed", [{ step: 1, outcome: "succeeded" }]))).toEqual(
         answerOf("failed", []),
       );
+      expect(blockAnswer(answerOf("failed", [{ step: 1, outcome: "skipped" }]))).toEqual(
+        answerOf("failed", []),
+      );
       expect(blockAnswer(answerOf("declined", []))).toEqual(answerOf("declined", []));
       expect(blockAnswer(answerOf("expired", []))).toEqual(answerOf("expired", []));
     });
