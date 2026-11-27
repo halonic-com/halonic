@@ -532,7 +532,10 @@ jobs:
           }
           Assert-Signed "dist/$env:INSTALLER"
           $dir = Join-Path $env:RUNNER_TEMP 'Halonic'
-          $p = Start-Process "dist/$env:INSTALLER" -ArgumentList '/S', "/D=$dir" -Wait -PassThru
+          # /SANDBOX=1 asks for the sandbox step, without which a silent
+          # install leaves out vcruntime140.dll.pinned and the helper's setup
+          # exits 39 (HAL-17810). The runner is elevated, so the step runs.
+          $p = Start-Process "dist/$env:INSTALLER" -ArgumentList '/S', '/SANDBOX=1', "/D=$dir" -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "The installer exited with $($p.ExitCode)" }
           foreach ($f in 'halonic-runtime.tar.gz', 'halonic-runtime.json') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f, the WSL runtime, is missing from the install folder" }
