@@ -20,8 +20,8 @@ use reqwest::{Client, ClientBuilder, Proxy, Url};
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_updater::{Error as UpdaterError, UpdaterBuilder, UpdaterExt};
 
-use crate::parts_download::part_hop_allowed;
 use crate::http_fetch::HttpFetchState;
+use crate::parts_download::part_hop_allowed;
 
 /// As many redirects as reqwest follows by default. More than the guard's
 /// `MAX_REDIRECTS` for `http_fetch` (5): update servers and their download
