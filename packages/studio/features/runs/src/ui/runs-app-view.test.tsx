@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { NarrowProvider } from "@halonicjs/studio-kit";
 import { engineWordsOf, type PlaceViewProps } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -45,18 +47,29 @@ function feedOf(changes: Partial<AllRunsFeedState>): AllRunsFeed {
   return { state, subscribe: () => () => undefined, refresh: async () => undefined };
 }
 
-function show(feed: AllRunsFeed) {
-  const openRun = vi.fn();
+function show(feed: AllRunsFeed, narrow = false) {
+  const openInNewTab = vi.fn();
   const root = render(
-    <RunsAppView
-      feed={feed}
-      engine={engineWordsOf({})}
-      openRun={openRun}
-      now={() => now}
-      timeZone="Europe/Madrid"
-    />,
+    <NarrowProvider narrow={narrow}>
+      <RunsAppView
+        feed={feed}
+        engine={engineWordsOf({})}
+        runPane={(item) => <p data-testid="run-pane">{`Run page ${item.id}`}</p>}
+        openInNewTab={openInNewTab}
+        now={() => now}
+        timeZone="Europe/Madrid"
+      />
+    </NarrowProvider>,
   );
-  return { root, openRun };
+  return { root, openInNewTab };
+}
+
+function clickRow(root: HTMLElement, id: string) {
+  act(() => root.querySelector<HTMLElement>(`[data-row-id="${id}"] td`)?.click());
+}
+
+function paneText(root: HTMLElement): string | null | undefined {
+  return root.querySelector('[data-part="run-pane"]')?.textContent;
 }
 
 verifies("runs.app-sources", () => {
@@ -92,12 +105,44 @@ verifies("runs.app-sources", () => {
       expect(root.textContent).toContain("ACME-7 Fix the loginPaperclip · Acme");
     });
 
-    it("opens a workspace run's page, and nothing yet for an agent's run", () => {
-      const { root, openRun } = show(feedOf({ rows: [teamRow, workspaceRow] }));
-      act(() => root.querySelector<HTMLElement>('[data-row-id="a1"] td')?.click());
-      expect(openRun).not.toHaveBeenCalled();
-      act(() => root.querySelector<HTMLElement>('[data-row-id="w1"] td')?.click());
-      expect(openRun).toHaveBeenCalledWith({ kind: "run", hub: "acme", id: "w1" });
+    it("shows a workspace run in the pane, and nothing yet for an agent's run", () => {
+      const { root } = show(feedOf({ rows: [teamRow, workspaceRow] }));
+      clickRow(root, "a1");
+      expect(paneText(root)).toContain("No run open");
+      clickRow(root, "w1");
+      expect(paneText(root)).toBe("Run page w1");
+    });
+  });
+});
+
+verifies("runs.list-column", () => {
+  describe("RunsAppView's two columns", () => {
+    it("shows the list column and an empty content pane while no run is open", () => {
+      const { root } = show(feedOf({ rows: [workspaceRow] }));
+      expect(root.querySelector('[data-part="list-column"]')?.className).toContain("max-w-[380px]");
+      expect(paneText(root)).toBe("No run openPick a run in the list to see its steps.");
+    });
+
+    it("marks the open run's row as the current one", () => {
+      const { root } = show(feedOf({ rows: [teamRow, workspaceRow] }));
+      clickRow(root, "w1");
+      // The kit marks the row and its open control, so the rows they sit in are compared.
+      const current = [...root.querySelectorAll("[aria-current]")].map((marked) =>
+        marked.closest("[data-row-id]")?.getAttribute("data-row-id"),
+      );
+      expect(new Set(current)).toEqual(new Set(["w1"]));
+    });
+
+    it("shows the list, then the run alone with a way back, in one pane", () => {
+      const { root } = show(feedOf({ rows: [workspaceRow] }), true);
+      expect(root.querySelector('[data-part="run-pane"]')).toBeNull();
+      clickRow(root, "w1");
+      expect(root.querySelector('[data-part="list-column"]')).toBeNull();
+      expect(paneText(root)).toBe("← RunsRun page w1");
+      const back = [...root.querySelectorAll("button")].find((b) => b.textContent === "← Runs");
+      act(() => back?.click());
+      expect(root.querySelector('[data-part="run-pane"]')).toBeNull();
+      expect(root.querySelector('[data-row-id="w1"]')).not.toBeNull();
     });
   });
 });
