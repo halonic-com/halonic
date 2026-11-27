@@ -18,6 +18,9 @@ showing as not available. In a browser there is none, and it still does.
   The reopened screen used to offer step 4 for a key that was gone. The
   regression test now checks the step the screen offers, instead of running
   step 1 itself, and a new test covers a connect sign-in going on at step 4.
+  The `already-signed-in` refusal now covers a sign-in that isn't a test too
+  (#6795), so its text says what to do next: "This connection is already
+  signed in. Disconnect it in Settings › Connections first, then try again."
 - `action-steppers.paperclip-sign-in-review`: what the request touches names
   its Paperclip "<host>, from this workspace's connection file". The host
   binding (`action-steppers.paperclip-host`) has checked that address by then.

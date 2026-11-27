@@ -35,7 +35,7 @@ export const signInRunWords = {
   "no-connection": "This workspace has no such Paperclip connection.",
   "other-host": "The sign-in didn't stay on the connection's own Paperclip address.",
   "already-signed-in":
-    "This connection is already signed in. Disconnect it first to test a new sign-in.",
+    "This connection is already signed in. Disconnect it in Settings › Connections first, then try again.",
   unreachable: "Paperclip couldn't be reached. Try again in a moment.",
   "too-many-sign-ins": "Paperclip has too many sign-ins waiting. Try again in a few minutes.",
   notSignedIn: "Paperclip doesn't accept this connection's key.",
