@@ -25,6 +25,7 @@ import {
   type StepperStage,
   type StepperView,
 } from "../stepper-view.ts";
+import { gateRefusal, requiresStop } from "./check-gate.ts";
 import { checkedValues, expectStop, stoppedView } from "./expect-stop.ts";
 import {
   answerDay,
@@ -64,6 +65,8 @@ export class StepperRun {
   private view: StepperView;
   private readonly listeners = new Set<() => void>();
   private busy = false;
+  /** The request's record as {@link refresh} read it last, for the stop after a check. */
+  private record: RecordState | undefined;
   private signingIn = false;
   /** How this run ended, for a Studio that keeps no record, such as one in a browser. */
   private endedWith: ActionOutcome | undefined;
@@ -187,9 +190,13 @@ export class StepperRun {
     // Expired and blocked requests can't run, and outside the desktop app nothing can.
     if (reviewed.stage.kind !== "desktop-only" || !steps.canRun) return this.set(reviewed);
     const record = foldRecord(await steps.history(this.request));
+    this.record = record;
     const current = checkedValues(this.definition(), record);
     const shown = this.withRecord(current === undefined ? reviewed : this.review(current), record);
-    const stop = expectStop(item.action, current);
+    const next = nextStep(shown)?.number;
+    const stop =
+      expectStop(item.action, current) ??
+      (next === undefined ? undefined : requiresStop(catalog, item.action, next, record));
     if (stop !== undefined) return this.set(stoppedView(shown, stop));
     if (record.finished !== undefined) {
       const ended = { ...shown, stage: endedStage(record.finished) };
@@ -254,6 +261,8 @@ export class StepperRun {
       if (action?.kind === "sign-in") return this.runSignInPart(number, action.phase);
       const route = catalog.route(item.action.definition, item.action.version, number);
       if (route === undefined) return;
+      // A check before it hasn't run, or kept something it shouldn't have: send nothing.
+      if (this.record === undefined || this.refusal(number, this.record) !== undefined) return;
       this.markRunning(number);
       const request = stepRequest(item.action, route);
       if (route.kind === "call") await steps.runStep(this.request, request);
@@ -284,6 +293,13 @@ export class StepperRun {
         : step,
     );
     return { ...view, steps, stage, serviceSignIn: signIn.panel() };
+  }
+
+  /** Why step `number` can't run after the checks before it, or `undefined`. */
+  private refusal(number: number, record: RecordState): string | undefined {
+    const { catalog, item } = this.options;
+    const gate = gateRefusal(catalog, item.action, number, record);
+    return gate.ok ? undefined : gate.message;
   }
 
   private markRunning(number: number): void {

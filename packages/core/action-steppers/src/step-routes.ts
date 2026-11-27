@@ -101,6 +101,9 @@ function routeOf(
         step.changedAfterStart === undefined || step.keep.includes(step.changedAfterStart),
         `${where}: changedAfterStart "${step.changedAfterStart}" isn't a kept field`,
       );
+      for (const rule of step.requires ?? []) {
+        assert(step.keep.includes(rule.name), `${where}: requires ${rule.name} isn't a kept field`);
+      }
       // A read runs without the native dialog, whatever the definition's risk (ToolScript ADR, S9).
       return {
         ...base,
@@ -129,7 +132,7 @@ function routeOf(
  * `script` or `sign-in` step has no route.
  *
  * @throws Error when a step names a placeholder or body field that isn't a
- *   parameter, or the parameters weren't built with `strictParameters`: a bug
+ *   parameter, a `requires` rule names a field its check doesn't keep, or the parameters weren't built with `strictParameters`: a bug
  *   in the reviewed definition, which the catalog's tests catch
  *
  * @example
