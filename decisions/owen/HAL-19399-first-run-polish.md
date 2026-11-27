@@ -3,6 +3,7 @@
 - Approval: HAL-19399, from Sofia's first-run walk-through of the 0.2.0 build (HAL-19383); team
   decisions on details of approved screens, no board card
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8ugVBxsXJfO6RCxLcqIIYMt/JiQzJAMHJ+HuZXbU8xExin8ucHmroJNr/ez0N9KBv8NOLrJlB/I5oxgBksgIAg==
 
 ## What changes
 
