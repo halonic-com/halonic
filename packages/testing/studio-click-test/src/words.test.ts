@@ -28,6 +28,13 @@ verifies("studio-click-test.steps", () => {
     });
   });
 
+  // " said" alone is also in "Showing what it said last.", so check the heading's own template.
+  it("still gives each Try it reply the hidden heading `<agent> said`", async () => {
+    const source = await readFile(new URL(screenText.said.file, repo), "utf8");
+    expect(screenText.said.text).toBe(" said");
+    expect(source).toMatch(/`\$\{agent\} said`/);
+  });
+
   describe("basicsText", () => {
     it.each(Object.values(basicsText))("$text is still in $file", async ({ text, file }) => {
       const source = await readFile(new URL(file, repo), "utf8");

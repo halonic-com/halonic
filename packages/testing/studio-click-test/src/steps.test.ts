@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
 import { connectPaperclip } from "./steps/connect-paperclip.ts";
-import { engineAnswers, probeMessage } from "./steps/engine-answers.ts";
+import { busyReply, engineAnswers, probeMessage } from "./steps/engine-answers.ts";
 import { messengerEmpty } from "./steps/messenger-empty.ts";
 import { keys } from "./webdriver.ts";
 import { buttonLabels, screenText, words } from "./words.ts";
@@ -33,6 +33,40 @@ function studioWithChat(reply: string): FakeStudio {
   return studio;
 }
 
+/**
+ * Runs step 1 on a chat whose reply to the probe shows busy. On the first wait after the step
+ * asked whether it's busy, `then` adds its text to the reply and sets whether it's still busy;
+ * with no `then` the reply stays busy. With `inBusyCheck`, it ends inside that first check
+ * instead, after the step read the page and before the check answers.
+ */
+async function replyThatEnds(
+  then: { text: string; busy: boolean; inBusyCheck?: boolean } | undefined,
+) {
+  const studio = studioWithChat(`${screenText.writer.text}${screenText.said.text} Sam wants a`);
+  studio.elements.set(busyReply, 1);
+  let askedBusy = false;
+  const end = () => {
+    if (then === undefined) return;
+    main(studio).text = `${main(studio).text} ${then.text}`;
+    studio.elements.set(busyReply, then.busy ? 1 : 0);
+  };
+  const { driver } = studio.context;
+  return engineAnswers.run({
+    ...studio.context,
+    driver: {
+      ...driver,
+      count: async (xpath) => {
+        if (xpath === busyReply && !askedBusy && then?.inBusyCheck === true) end();
+        askedBusy ||= xpath === busyReply;
+        return driver.count(xpath);
+      },
+    },
+    sleep: async () => {
+      if (askedBusy && then?.inBusyCheck !== true) end();
+    },
+  });
+}
+
 verifies("studio-click-test.steps", () => {
   describe("step 1, the engine answers", () => {
     // Run 45675354530: the demo's mock model answers with its own line, not an echo.
@@ -49,6 +83,51 @@ verifies("studio-click-test.steps", () => {
         keys.enter,
       ]);
       expect(studio.typed).toEqual([probeMessage]);
+    });
+
+    // Runs 45965592082 and 45966738840: the reply showed, but the updater's announcement had taken
+    // the one polite live region from "Writer replied." before the next read (HAL-20543).
+    it("passes on Writer's ended reply when a later announcement took the live region", async () => {
+      const { writer, said } = screenText;
+      const announcement = "Halonic 0.1.2-preview.446 is ready to install. Restart to update.";
+      const studio = studioWithChat(
+        `${writer.text}${said.text} Sam wants a refund. ${announcement}`,
+      );
+      await expect(engineAnswers.run(studio.context)).resolves.toEqual({ passed: true });
+    });
+
+    it("fails as NO_REPLY, with the screen, while Writer's reply is still being written", async () => {
+      const outcome = await replyThatEnds(undefined);
+      expect(outcome).toMatchObject({ passed: false, code: "NO_REPLY" });
+      expect(outcome.passed ? "" : outcome.note).toContain("Writer's reply never ended.");
+      expect(outcome.passed ? "" : outcome.note).toContain("Screen: ");
+    });
+
+    // "Writer replied." is announced only when Writer answered, so its reply passes only then.
+    it.each([
+      ["REPLY_FAILED", `${screenText.writer.text}${screenText.replyFailed.text}no model.`],
+      [
+        "TURN_LIMIT",
+        `${screenText.writer.text} used all 8 model calls${screenText.turnLimit.text}`,
+      ],
+      ["REPLY_STOPPED", screenText.stoppedByYou.text],
+    ])("fails as %s when Writer's busy reply ends on that line", async (code, endLine) => {
+      const outcome = await replyThatEnds({ text: `refund. ${endLine}`, busy: false });
+      expect(outcome).toMatchObject({ passed: false, code });
+    });
+
+    // Review round 2: a reply that ends between the step's read and its busy check must be judged
+    // on a read taken after the check, which holds the end line.
+    it("fails as TURN_LIMIT when Writer's reply ends between the read and the busy check", async () => {
+      const turnLimit = `${screenText.writer.text} used all 8 model calls${screenText.turnLimit.text}`;
+      const outcome = await replyThatEnds({ text: turnLimit, busy: false, inBusyCheck: true });
+      expect(outcome).toMatchObject({ passed: false, code: "TURN_LIMIT" });
+    });
+
+    it("fails as ENGINE_NOT_ANSWERING as soon as that line shows while Writer's reply is busy", async () => {
+      const outcome = await replyThatEnds({ text: words.engineNotAnswering, busy: true });
+      expect(outcome).toMatchObject({ passed: false, code: "ENGINE_NOT_ANSWERING" });
+      expect(outcome.passed ? "" : outcome.note).toContain(`Screen: `);
     });
 
     it("fails with the engine line's code, the page and the shell log's lines", async () => {
