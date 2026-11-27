@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20558
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:6d4/N1XpRHWHLcV9YBiQ4PLjC6as7t85VOMh0IRdq+8612LAiPvj+kSYdL9+vW9kM6ZxT0gqCStMt/5WI9dkAQ==
 
 ## What changes
 
