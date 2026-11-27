@@ -135,7 +135,7 @@ export const catalogEntries = {
   },
   "paperclip/connect-and-test": {
     definition: paperclipConnectAndTest,
-    sourceHash: "17513dd30f629d9a462d286a11bfea51978ea3c9363fbd32094503e7e45c8f5e",
+    sourceHash: "30beff479825d6b8970149c7bed7fa4998069a0161c97a16da7b549357b683c9",
   },
   "paperclip/set-secret": {
     definition: paperclipSetSecret,

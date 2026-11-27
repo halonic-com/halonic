@@ -46,7 +46,7 @@ verifies("action-catalog.paperclip-connect-and-test", () => {
           "3. On the approval page Studio opens on this Paperclip, sign in as a board member if it asks.",
           "4. Check the code matches the one Studio shows, then click **Approve**.",
           "5. Keep Studio open until it says `acme` is connected. Closing it before then cancels the sign-in.",
-          "6. Check who **Studio › Settings › Connections** says `acme` is signed in as.",
+          "6. In **Settings › Connections**, check which account `acme` is signed in as.",
           "7. For a test sign-in, click **Disconnect** there (**Studio › Settings › Connections › Disconnect**). It revokes the key, so Paperclip no longer accepts it.",
           "",
         ].join("\n"),

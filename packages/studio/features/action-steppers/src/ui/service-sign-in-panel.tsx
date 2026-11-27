@@ -30,9 +30,14 @@ export function ServiceSignInPanel({ signIn, now = Date.now }: ServiceSignInPane
       {signIn.kept ? null : (
         <>
           <p className="text-body text-fg">{serviceSignInWords.compare}</p>
-          <p className="text-small text-fg-muted">
-            {left > 0 ? serviceSignInWords.timeLeft(left) : serviceSignInWords.timeUp}
-          </p>
+          <div className="text-small text-fg-muted">
+            {left > 0 ? <p>{serviceSignInWords.timeLeft(left)}</p> : null}
+            {/* In the page from the start and empty until the time is up, so a screen reader
+                says that once and not every second of the countdown. */}
+            <p role="status" aria-atomic="true">
+              {left > 0 ? null : serviceSignInWords.timeUp}
+            </p>
+          </div>
         </>
       )}
       {signIn.account === null ? null : (

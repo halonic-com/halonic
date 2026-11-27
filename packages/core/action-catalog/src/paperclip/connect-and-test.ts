@@ -74,7 +74,7 @@ export const definition: StepperDefinition<Record<string, string | number>> = {
       manual: {
         url: paperclipPage,
         instructions: [
-          "Check who **Studio › Settings › Connections** says {connection} is signed in as.",
+          "In **Settings › Connections**, check which account {connection} is signed in as.",
           "For a test sign-in, click **Disconnect** there (**Studio › Settings › Connections › Disconnect**). It revokes the key, so Paperclip no longer accepts it.",
         ],
       },
