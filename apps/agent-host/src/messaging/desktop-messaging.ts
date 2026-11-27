@@ -131,6 +131,14 @@ export class DesktopMessaging {
     await Promise.all([...this.#workspaces.values()].map((workspace) => workspace.refresh()));
   }
 
+  /**
+   * Tells each workspace which connections' live events touched their local copy, so Studio hears
+   * of it before the read the events bring ends (`agent-host.paperclip-event-notice`).
+   */
+  heardEvents(ids: readonly string[]): void {
+    for (const workspace of this.#workspaces.values()) workspace.heardEvents(ids);
+  }
+
   /** The workspace's engine as its setting says; "This computer" without a setting. */
   #engineOf(workspace: string): Promise<JoinedEngine> {
     const { engines, fetch, now } = this.#options;

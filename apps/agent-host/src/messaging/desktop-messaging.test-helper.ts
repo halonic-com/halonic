@@ -358,6 +358,7 @@ export async function startDesktop(
     clock,
     sync,
     counters,
+    onEvents: (ids) => messaging.heardEvents(ids),
     report: (error) => log(`live events ${error}\n`),
   });
   await sync.start();

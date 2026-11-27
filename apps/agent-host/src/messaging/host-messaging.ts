@@ -145,6 +145,7 @@ export function hostMessaging(
     clock: systemClock,
     sync,
     counters,
+    onEvents: (ids) => messaging.heardEvents(ids),
     report: (error) => report({ provider: "paperclip", action: "live events", error }),
   });
   const signIn = hostSignIn(keys, messaging, scheduler, sync);

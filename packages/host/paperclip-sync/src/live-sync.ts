@@ -27,6 +27,12 @@ export interface LiveSyncOptions {
   sync: Pick<SyncScheduler, "pollNow" | "setEvents">;
   /** Hears whether events reach the engine, for diagnostics. */
   counters?: Pick<SyncCounters, "setConnection">;
+  /**
+   * Hears, when a batch of events ends and before the read it brings, the sources whose events
+   * touched their local copy. A full read can take seconds, and what Studio reads live (a chat's
+   * messages) needs none of it, so the host tells Studio at once (`agent-host.paperclip-event-notice`).
+   */
+  onEvents?: (ids: readonly string[]) => void;
   /** Hears a failure of a socket's timer or of the poll a signal brings; nothing is thrown. */
   report: (error: unknown) => void;
   /** For the reconnect waits' jitter; `Math.random` by default. */
@@ -36,7 +42,8 @@ export interface LiveSyncOptions {
 /**
  * Every connected source's live events, joined to the sync (requirement
  * `agent-host.paperclip-live-events`). An event that touches a local copy brings a read
- * {@link eventsBatchMs} later, gathering the ones that follow, and so does a `resync`, so a server
+ * {@link eventsBatchMs} later, gathering the ones that follow, and is told to
+ * {@link LiveSyncOptions.onEvents} just before that read starts; a `resync` brings a read too, so a server
  * that repeats it can't bring reads back to back; a (re)connect reads at once, since events can't
  * be replayed. Adding and removing a source run one at a time per source. Events count as
  * connected only while every source's socket is open; otherwise the sync polls at the rates
@@ -52,6 +59,8 @@ export class LiveSync {
   readonly #announced = new Map<string, { source: SyncSource; heard: number }>();
   #heardCount = 0;
   #batching = false;
+  /** The sources whose events touched their local copy in the batch still gathering. */
+  readonly #changedInBatch = new Set<string>();
   /** Per source, the add or remove still running, which the next one waits for. */
   readonly #changing = new Map<string, Promise<void>>();
   #combined: SyncConnection = "polling-only";
@@ -97,6 +106,7 @@ export class LiveSync {
     const keeper = this.#keepers.get(id);
     this.#keepers.delete(id);
     this.#announced.delete(id);
+    this.#changedInBatch.delete(id);
     await keeper?.stop();
     await this.#combine();
   }
@@ -150,6 +160,7 @@ export class LiveSync {
     const batch = liveSyncTimers.batch;
     if (timer.key === batch.key && timer.timerId === batch.timerId) {
       this.#batching = false;
+      this.#tellChanged();
       await this.#options.sync.pollNow();
       return true;
     }
@@ -176,6 +187,7 @@ export class LiveSync {
     switch (signal.kind) {
       case "change":
         this.#announce(id, "event");
+        this.#changedInBatch.add(id);
         await this.#batch();
         return;
       case "resync":
@@ -201,6 +213,18 @@ export class LiveSync {
       source: known === "catch-up" ? known : source,
       heard: this.#heardCount,
     });
+  }
+
+  /** Tells {@link LiveSyncOptions.onEvents} the batch's changed sources; a listener that throws is reported. */
+  #tellChanged(): void {
+    const ids = [...this.#changedInBatch];
+    this.#changedInBatch.clear();
+    if (ids.length === 0) return;
+    try {
+      this.#options.onEvents?.(ids);
+    } catch (error) {
+      this.#options.report(error);
+    }
   }
 
   async #batch(): Promise<void> {

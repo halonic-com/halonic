@@ -46,6 +46,8 @@ async function startLive(random = () => 0.5) {
   const connections: string[] = [];
   const counters = { applied: (source: SyncSource) => void applied.push(source) };
   const errors: unknown[] = [];
+  /** Each `onEvents` call, with how many reads had run when it came. */
+  const told: { ids: readonly string[]; pollsBefore: number }[] = [];
   let live: LiveSync | undefined;
   const sync = new SyncScheduler({
     scheduler,
@@ -60,6 +62,7 @@ async function startLive(random = () => 0.5) {
     clock: scheduler.clock,
     sync,
     counters: { setConnection: (state) => void connections.push(state) },
+    onEvents: (ids) => void told.push({ ids, pollsBefore: polls }),
     report: (error) => void errors.push(error),
     random,
   });
@@ -85,6 +88,7 @@ async function startLive(random = () => 0.5) {
     applied,
     connections,
     errors,
+    told,
     pollDueIn,
     reconnectDueIn,
   };
@@ -384,6 +388,43 @@ verifies("agent-host.paperclip-live-events", () => {
       expect(combinedState(["connected", "polling-only"])).toBe("polling-only");
       expect(combinedState(["connected", "not-allowed"])).toBe("not-allowed");
       expect(combinedState(["not-allowed", "polling-only"])).toBe("polling-only");
+    });
+  });
+});
+
+verifies("agent-host.paperclip-event-notice", () => {
+  describe("events are told before their read", () => {
+    it("a batch of events names its source once, 300 ms after the first, before the read starts", async () => {
+      const on = await startLive();
+      await on.events.current.say({ kind: "open" });
+      await on.scheduler.pass(0);
+      const before = on.polls();
+
+      for (let event = 0; event < 10; event += 1) {
+        await on.events.current.say({ kind: "change" });
+        await on.scheduler.pass(25);
+      }
+      expect(on.told).toEqual([]);
+      await on.scheduler.pass(50);
+
+      expect(on.told).toEqual([{ ids: ["acme"], pollsBefore: before }]);
+      expect(on.polls()).toBe(before + 1);
+      expect(on.errors).toEqual([]);
+    });
+
+    it("a resync, an open and a removed source name nothing early", async () => {
+      const on = await startLive();
+      await on.events.current.say({ kind: "open" });
+      await on.events.current.say({ kind: "resync" });
+      await on.scheduler.pass(300);
+      expect(on.told).toEqual([]);
+
+      await on.events.current.say({ kind: "change" });
+      await on.live.remove("acme");
+      await on.scheduler.pass(300);
+
+      expect(on.told).toEqual([]);
+      expect(on.errors).toEqual([]);
     });
   });
 });

@@ -17,6 +17,9 @@ body or an ID (requirement `agent-host.sync-diagnostics`). The agent host answer
 after an event that touches the local copy, and tells `SyncScheduler` and `SyncCounters` whether
 events reach the engine (requirement `agent-host.paperclip-live-events`). The provider opens the
 socket and cuts each event down to an `EventsSignal`; no event's content reaches this package.
+Just before that read starts, `onEvents` hears which sources' events touched their copy, so the host
+can tell Studio at once rather than after a read that can take seconds
+(`agent-host.paperclip-event-notice`).
 
 - **Layer:** host
 - **Owner:** tomas
