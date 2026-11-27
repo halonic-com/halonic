@@ -21,6 +21,7 @@ import { NewConnectorHostService } from "./new-connector-host.ts";
 import { requestNewConnector } from "./new-connector-request.ts";
 import { newConnectorWords } from "./new-connector-words.ts";
 import { NewSkillHostService } from "./new-skill-host.ts";
+import { libraryRailEntry } from "./rail-entry.ts";
 import { sharedHubKey } from "./shared-hub-key.ts";
 import { SkillHostService } from "./skill-host.ts";
 
@@ -73,6 +74,7 @@ export const libraryFeature = defineFeature({
     FilesHostService,
   ],
   register(studio) {
+    studio.rail.add(libraryRailEntry);
     studio.places.add({
       id: "library",
       view: "LibraryPlace",

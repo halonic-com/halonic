@@ -7,6 +7,7 @@ import { defineFeature } from "@halonicjs/studio-shell";
 import { ChatOpensService, MessengerService } from "./api.ts";
 import { Messenger } from "./messenger.ts";
 import { messengerWords } from "./messenger-words.ts";
+import { messengerRailEntry } from "./rail-entry.ts";
 import { StoredReadMarks } from "./read-marks.ts";
 
 /**
@@ -24,6 +25,7 @@ export const messengerFeature = defineFeature({
   wants: [AgentMessagingService, AgentActivityService, MessageReactionsService, ChatOpensService],
   provides: [MessengerService],
   register(studio) {
+    studio.rail.add(messengerRailEntry);
     studio.services.provide(
       MessengerService,
       (services) =>

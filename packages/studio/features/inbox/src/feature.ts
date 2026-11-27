@@ -30,6 +30,7 @@ import { Inbox } from "./inbox.ts";
 import { inboxNewSignal } from "./inbox-count.ts";
 import type { InboxNotices } from "./notices/inbox-notices.ts";
 import { joinInboxNotices } from "./notices/merge-notices.ts";
+import { inboxRailEntry } from "./rail-entry.ts";
 import { StoredReadMarks } from "./read-marks.ts";
 import { onHoldSetup } from "./sandbox/on-hold-setup-source.ts";
 import { sandboxSetup } from "./sandbox/sandbox-setup-source.ts";
@@ -81,6 +82,7 @@ export const inboxFeature = defineFeature({
   ],
   provides: [InboxService],
   register(studio) {
+    studio.rail.add(inboxRailEntry);
     studio.services.provide(InboxService, (services) => {
       const inbox = new Inbox(services.get(InboxRunsService));
       const notices: InboxNotices[] = [];
