@@ -1,4 +1,7 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it } from "vitest";
 import { startPaperclipBoard } from "./paperclip-board.ts";
@@ -14,12 +17,21 @@ interface Recorded {
 }
 
 const servers: Server[] = [];
+const folders: string[] = [];
 
 afterEach(async () => {
   await Promise.all(
     servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))),
   );
+  await Promise.all(folders.splice(0).map((folder) => rm(folder, { recursive: true })));
 });
+
+/** A file for the seeded agent's cards, in a folder removed after the test. */
+async function cardsFile(): Promise<string> {
+  const folder = await mkdtemp(join(tmpdir(), "click-test-cards-"));
+  folders.push(folder);
+  return join(folder, "cards.json");
+}
 
 /** A loopback HTTP server that records each request and answers with `handler`. */
 async function fakeServer(handler: Handler): Promise<{ url: string; requests: Recorded[] }> {
@@ -196,8 +208,23 @@ verifies("studio-click-test.paperclip-steps", () => {
   describe("seedPaperclip and testPaperclip", () => {
     it("seeds a company, an agent, a task, a card on it and a chat, then reads them back", async () => {
       const paperclip = await fakeServer(seededPaperclip);
-      const seeded = await seedPaperclip(`${paperclip.url}/`);
-      expect(seeded).toEqual({ companyId: "co1", approvalId: "a1", chatId: "chat1" });
+      const file = await cardsFile();
+      const seeded = await seedPaperclip(`${paperclip.url}/`, file);
+      expect(seeded).toEqual({
+        companyId: "co1",
+        approvalId: "a1",
+        chatId: "chat1",
+        cardsFile: file,
+      });
+      // The agent posts the cards a card step asks for, none yet (HAL-19002).
+      await expect(readFile(file, "utf8")).resolves.toBe("[]");
+      const agent = paperclip.requests.find((request) => request.url.endsWith("/agents"));
+      expect(JSON.parse(agent?.body ?? "")).toMatchObject({
+        adapterConfig: {
+          args: [expect.stringMatching(/card-agent\.ts$/)],
+          env: { CARDS_FILE: file },
+        },
+      });
       const sent = paperclip.requests.map((request) => `${request.method} ${request.url}`);
       expect(sent[0]).toBe("PATCH /api/instance/settings/experimental");
       const approval = paperclip.requests.find((request) => request.url.endsWith("/approvals"));
@@ -218,7 +245,7 @@ verifies("studio-click-test.paperclip-steps", () => {
 
     it("stops the seed at the first call Paperclip refuses", async () => {
       const paperclip = await fakeServer(() => ({ status: 404, json: { error: "disabled" } }));
-      await expect(seedPaperclip(paperclip.url)).rejects.toThrow(
+      await expect(seedPaperclip(paperclip.url, await cardsFile())).rejects.toThrow(
         'PATCH /api/instance/settings/experimental: HTTP 404 {"error":"disabled"}',
       );
     });

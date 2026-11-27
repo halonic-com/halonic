@@ -43,7 +43,11 @@ const leftOut: LeftOut | undefined =
 
 const paperclipUrl = required("PAPERCLIP_URL");
 const board = await startPaperclipBoard(paperclipUrl);
-const paperclip = testPaperclip(paperclipUrl, await seedPaperclip(paperclipUrl), board.studioKey);
+const paperclip = testPaperclip(
+  paperclipUrl,
+  await seedPaperclip(paperclipUrl, join(out, "paperclip-cards.json")),
+  board.studioKey,
+);
 const sleep = (milliseconds: number) => delay(milliseconds);
 const devTools = required("HALONIC_DEVTOOLS");
 let driver = await startApp();

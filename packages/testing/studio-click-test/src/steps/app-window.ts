@@ -6,14 +6,14 @@ const windowWaitMs = 30_000;
 /**
  * Opens a Start menu shortcut, such as "Halonic Inbox", and switches to the
  * window it shows: the first one other than the main window whose text
- * `shows` accepts. With `onlyNew`, a window that was open before doesn't
- * count, so the shortcut itself must have opened it. Returns the window's
- * last text when none showed.
+ * `shows` accepts, given its text and its Tauri label. With `onlyNew`, a
+ * window that was open before doesn't count, so the shortcut itself must
+ * have opened it. Returns the window's last text when none showed.
  */
 export async function openAppWindow(
   context: StepContext,
   shortcut: string,
-  shows: (text: string) => boolean,
+  shows: (text: string, label: string) => boolean,
   onlyNew = false,
 ): Promise<{ opened: boolean; text: string }> {
   const { driver } = context;
@@ -25,7 +25,8 @@ export async function openAppWindow(
     for (const handle of handles.filter((each) => !before.includes(each))) {
       await driver.switchToWindow(handle);
       text = await driver.pageText().catch(() => "");
-      if (shows(text)) return { opened: true, text };
+      const label = await driver.windowLabel().catch(() => "");
+      if (shows(text, label)) return { opened: true, text };
     }
     await context.sleep(pollEveryMs);
   }

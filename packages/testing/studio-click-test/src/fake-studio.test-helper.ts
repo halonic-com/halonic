@@ -1,3 +1,4 @@
+import type { CardRecord } from "./card-seed.ts";
 import type { StepContext } from "./runner.ts";
 import type { TestPaperclip } from "./test-paperclip.ts";
 import type { Driver, WindowSize } from "./webdriver.ts";
@@ -33,6 +34,8 @@ export interface FakeStudio {
   approval: string | undefined;
   /** What the fake test Paperclip answers: the card's status, the chat's comments, the key. */
   readonly paperclip: { status: string; comments: string[]; keyWorks: boolean | undefined };
+  /** The seeded cards' copies by id, `inbox-<key>` and `messenger-<key>`; undefined fails the seed. */
+  cards: Map<string, CardRecord> | undefined;
   /** The main window's size; the installed app opens at 800 × 600. */
   windowSize: WindowSize;
   /** Every size a step set, in order. */
@@ -58,6 +61,7 @@ export function fakeStudio(text = ""): FakeStudio {
     shownWithin: new Map(),
     approval: undefined,
     paperclip: { status: "pending", comments: [], keyWorks: true },
+    cards: new Map(),
     windowSize: { width: 800, height: 600 },
     resizes: [],
     resizeRefusal: undefined,
@@ -114,10 +118,27 @@ export function fakeStudio(text = ""): FakeStudio {
     close: async () => undefined,
   };
   const paperclip: TestPaperclip = {
-    seeded: { companyId: "company-1", approvalId: "approval-1", chatId: "chat-1" },
+    seeded: {
+      companyId: "company-1",
+      approvalId: "approval-1",
+      chatId: "chat-1",
+      cardsFile: "cards.json",
+    },
     approvalStatus: async () => studio.paperclip.status,
     chatComments: async () => studio.paperclip.comments,
     studioKeyWorks: async () => studio.paperclip.keyWorks,
+    seedCard: async (fixture) => {
+      const cards = studio.cards;
+      if (cards === undefined) throw new Error("the agent never posted the card");
+      for (const copy of ["inbox", "messenger"]) {
+        cards.set(`${copy}-${fixture.key}`, { status: "pending", result: null });
+      }
+      return {
+        Inbox: { issueId: `task-${fixture.key}`, id: `inbox-${fixture.key}` },
+        Messenger: { issueId: "chat-1", id: `messenger-${fixture.key}` },
+      };
+    },
+    card: async (ref) => studio.cards?.get(ref.id) ?? { status: "missing", result: null },
   };
   Object.assign(studio, {
     context: {
