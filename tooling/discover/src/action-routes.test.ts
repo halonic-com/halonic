@@ -24,19 +24,24 @@ const shellPattern = new RegExp(String.raw`^\^(?:${item}${quantifier})*\$$`);
 // A placeholder fills a whole segment and an address has no query or fragment (`template.rs`).
 const plainTemplate = /^(?:https:\/\/[a-z0-9.-]+)?(?:\/(?:\{[A-Za-z][A-Za-z0-9_]*\}|[^/{}?#]*))+$/;
 
-const guidedOnlyFields = ["method", "path", "body", "keep", "target"];
+const callOnlyFields = ["method", "path", "body", "keep", "target"];
+
+// A body field name (`template.rs`, `is_name`): a letter, then letters, digits or `_`.
+const bodyFieldName = /^[A-Za-z][A-Za-z0-9_]*$/;
 
 /**
- * The shape rules of the shell's reader (`routes.rs`, `call_route` and
- * `guided_route`), which refuses the whole list for one route that breaks
- * them: only an irreversible call has a target, and it must have one; a GET
- * has no body; no body field twice; a guided route has only an address.
+ * The shape rules of the shell's reader (`routes.rs`, `call_route`,
+ * `body_field` and `guided_route`), which refuses the whole list for one
+ * route that breaks them: only an irreversible call has a target, and it must
+ * have one; a GET has no body; no body field twice; every body field has a
+ * plain name and a constant one a value (serde reads `null` as missing); no
+ * kept field without a name; a guided route has only an address.
  */
 function shapeProblems(routes: readonly ActionRoute[]): string[] {
   return routes.flatMap((route) => {
-    const where = `${route.definition}@${route.version}#${route.step}`;
+    const where = whereOf(route);
     if (route.kind === "guided") {
-      const extra = guidedOnlyFields.filter((field) => Object.hasOwn(route, field));
+      const extra = callOnlyFields.filter((field) => Object.hasOwn(route, field));
       return extra.length > 0 ? [`${where}: a guided step has only an address`] : [];
     }
     return callProblems(route).map((problem) => `${where}: ${problem}`);
@@ -52,7 +57,27 @@ function callProblems(route: ActionCallRoute): string[] {
   if (route.method === "GET" && route.body.length > 0) problems.push("a GET has no body");
   const names = route.body.map((field) => field.name);
   if (new Set(names).size !== names.length) problems.push("a body field is listed twice");
+  for (const field of route.body) {
+    if (!bodyFieldName.test(field.name)) problems.push(`\`${field.name}\` isn't a body field name`);
+    if (field.kind === "constant" && (field.value === undefined || field.value === null)) {
+      problems.push(`the constant body field \`${field.name}\` has no value`);
+    }
+  }
+  if (route.keep.some((name) => name === "")) problems.push("a kept field has no name");
   return problems;
+}
+
+/** The first call route the shipped catalog writes, for the tests that break one rule on it. */
+function shippedCall(): ActionCallRoute {
+  const call = actionRouteList(shipped).routes.find(
+    (route): route is ActionCallRoute => route.kind === "call",
+  );
+  if (call === undefined) throw new Error("the shipped catalog writes no call route");
+  return call;
+}
+
+function whereOf(route: ActionRoute): string {
+  return `${route.definition}@${route.version}#${route.step}`;
 }
 
 verifies("discover.action-routes", () => {
@@ -102,6 +127,34 @@ verifies("discover.action-routes", () => {
           irreversible.steps.findIndex((step) => step.kind === "call") + 1
         }: an irreversible call needs a target`,
       );
+    });
+
+    it("catches a constant body field whose value is null", () => {
+      const call = shippedCall();
+      const broken = {
+        ...call,
+        body: [...call.body, { name: "query", kind: "constant" as const, value: null }],
+      };
+      expect(shapeProblems([broken])).toContain(
+        `${whereOf(call)}: the constant body field \`query\` has no value`,
+      );
+    });
+
+    it("catches a body field name the shell refuses", () => {
+      const call = shippedCall();
+      const broken = {
+        ...call,
+        body: [...call.body, { name: "run-id", kind: "integer" as const }],
+      };
+      expect(shapeProblems([broken])).toContain(
+        `${whereOf(call)}: \`run-id\` isn't a body field name`,
+      );
+    });
+
+    it("catches an empty name in keep", () => {
+      const call = shippedCall();
+      const broken = { ...call, keep: [...call.keep, ""] };
+      expect(shapeProblems([broken])).toContain(`${whereOf(call)}: a kept field has no name`);
     });
 
     it("names each guided host once, with no browser prefixes", () => {
