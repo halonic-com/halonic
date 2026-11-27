@@ -81,6 +81,8 @@ The steps, in `src/steps/`:
 | 29 | A key in a Try it message is held | `agents.chat.box-lines` | a message with a made-up key stays out of the chat while the key line shows, and Send anyway sends it |
 | 30 | The Model page checks the harness | `agents.configuration.harness-model` | on Writer's page, Configuration (after the panel's button in the 800 px window) › Harness › Codex, then Model › `default` (the demo's test model) shows "This model can't be used with Codex. Choose another.", and Writer goes back to Halonic |
 | 31 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
+| 32 | The focus ring after a click | `shell.focus-ring-after-pointer` | from Welcome (the demo closed first), Open demo leaves the page's title focused with no ring and `<html data-input="pointer">`; Shift alone keeps that mark and Tab turns it to `keyboard` |
+| 33 | A wait step's answers | `inbox.wait-card` | in a 1280 × 800 window, the demo's Support reply, started from New request with an invented email, waits at its review step, and that card's Reject and Approve sit in one right-aligned row at their natural width, Approve at the right end |
 
 Steps 4 to 8 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
 They and steps 9 to 21 come straight after Connect Paperclip: the restart after a failing step used
@@ -99,7 +101,9 @@ as each Settings step, opens the demo again from there. Steps 28 and 29 are Try 
 they come straight after Settings so they find step 1's chat in that reopened demo. The Build chat
 has no step: the desktop app doesn't load the Assistant feature. Step 30 puts Writer in Codex
 for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 31
-opens the other places (HAL-18870) last, so its page visits come after Try it has read the chat.
+opens the other places (HAL-18870), so its page visits come after Try it has read the chat.
+Steps 32 and 33 come last (HAL-20621): step 32 closes and reopens the demo, and step 33's run
+would otherwise show in the Runs app that step 31 expects empty; it leaves that run waiting.
 The app opens at 800 × 600, a narrow window
 where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step
 sizes the window to 1280 × 800 first and gives it its size back afterwards (HAL-19048).

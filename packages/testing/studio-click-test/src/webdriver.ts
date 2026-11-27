@@ -6,6 +6,7 @@ const elementKey = "element-6066-11e4-a52e-4f735466cecf";
 
 /** The W3C key values for the keys that have no character of their own. */
 export const keys = {
+  tab: "\uE004",
   enter: "\uE007",
   escape: "\uE00C",
   shift: "\uE008",
@@ -16,6 +17,26 @@ export const keys = {
 export interface WindowSize {
   readonly width: number;
   readonly height: number;
+}
+
+/** Where an element is drawn, in CSS pixels from the page's top left. */
+export interface Rect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** The element that has focus in a window, as a step that checks a focus ring reads it. */
+export interface Focused {
+  /** Its tag, such as `H1`. */
+  readonly tag: string;
+  /** The start of its text, for a failing step's note. */
+  readonly text: string;
+  /** Whether it is one code focuses: a heading with `tabindex="-1"`, or `data-code-focus`. */
+  readonly codeFocused: boolean;
+  /** Its computed `box-shadow`, which draws the kit's ring; `none` when it shows no ring. */
+  readonly boxShadow: string;
 }
 
 /** One open WebDriver session on the installed Studio. */
@@ -30,6 +51,10 @@ export interface Driver {
   attribute(xpath: string, name: string): Promise<string | null>;
   /** The computed value of a CSS property of the first element the XPath finds, such as `rgb(…)`. */
   cssValue(xpath: string, property: string): Promise<string>;
+  /** Where the first element the XPath finds is drawn. */
+  rect(xpath: string): Promise<Rect>;
+  /** The element that has focus in the current window, or undefined when the page itself has it. */
+  focused(): Promise<Focused | undefined>;
   /** The visible text of the current window's page. */
   pageText(): Promise<string>;
   /** The current window's title, as the task bar shows it. */
@@ -115,6 +140,9 @@ export async function openSession(serverUrl: string, debuggerAddress: string): P
       const value = await call("GET", `/element/${element}/css/${encodeURIComponent(property)}`);
       return typeof value === "string" ? value : "";
     },
+    rect: async (xpath) => readRect(await call("GET", `/element/${await find(xpath)}/rect`)),
+    focused: async () =>
+      readFocused(await call("POST", "/execute/sync", { script: focusedScript, args: [] })),
     pageText: async () => {
       const text = await call("POST", "/execute/sync", {
         script: "return document.body.innerText;",
@@ -185,6 +213,19 @@ const describeScript = `
   ].join("; ");
 `;
 
+// Runs in the page. Reads the focused element the way the kit's ring rule picks it
+// (packages/studio/kit/src/theme-utilities.css).
+const focusedScript = `
+  const active = document.activeElement;
+  if (!active || active === document.body) return null;
+  return {
+    tag: active.tagName,
+    text: (active.innerText || "").replace(/\\s+/g, " ").trim().slice(0, 60),
+    codeFocused: active.matches(':is(h1, h2, h3, h4, h5, h6)[tabindex="-1"], [data-code-focus]'),
+    boxShadow: getComputedStyle(active).boxShadow,
+  };
+`;
+
 async function command(
   base: string,
   method: string,
@@ -221,6 +262,26 @@ function readSize(value: unknown): WindowSize {
     throw new WebDriverError("unknown error", "the window rect has no width and height");
   }
   return { width, height };
+}
+
+function readRect(value: unknown): Rect {
+  const x = isRecord(value) ? value["x"] : undefined;
+  const y = isRecord(value) ? value["y"] : undefined;
+  if (typeof x !== "number" || typeof y !== "number") {
+    throw new WebDriverError("unknown error", "the element rect has no x and y");
+  }
+  return { x, y, ...readSize(value) };
+}
+
+function readFocused(value: unknown): Focused | undefined {
+  if (!isRecord(value)) return undefined;
+  const { tag, text, codeFocused, boxShadow } = value;
+  return {
+    tag: typeof tag === "string" ? tag : "",
+    text: typeof text === "string" ? text : "",
+    codeFocused: codeFocused === true,
+    boxShadow: typeof boxShadow === "string" ? boxShadow : "",
+  };
 }
 
 // msedgedriver attached through debuggerAddress may answer with the older

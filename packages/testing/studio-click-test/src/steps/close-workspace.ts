@@ -23,7 +23,11 @@ export const closeWorkspace: Step = {
   run: (context) => inWideWindow(context, () => closesToWelcome(context)),
 };
 
-async function closesToWelcome(context: StepContext): Promise<StepOutcome> {
+/**
+ * Closes the shown workspace with the workspace menu's Close workspace and checks Welcome shows,
+ * with the demo under Recent and Open demo. Needs a wide window, where the switcher shows.
+ */
+export async function closesToWelcome(context: StepContext): Promise<StepOutcome> {
   const workspace = await onWorkspaceWithoutSettings(context);
   if (!workspace.passed) return workspace;
   const menu = await openWorkspaceMenu(context);
