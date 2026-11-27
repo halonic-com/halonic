@@ -146,4 +146,44 @@ verifies("ports.agent-messaging-questions", () => {
     expect(inboxItemFits(withPicks([], ["elsewhere"]))).toBe(false);
     expect(inboxItemFits(withPicks([], ["docs", "docs"]))).toBe(false);
   });
+
+  it("takes an Other answer's text instead of an option, for a question that allows it", () => {
+    const other = withOther(true);
+    const fork = { question: "repo", options: [], text: "A fork" };
+
+    expect(answerFitsItem(other, answers(fork))).toBe(true);
+    expect(answerFitsItem(other, answers({ ...fork, text: "  " }))).toBe(false);
+    expect(answerFitsItem(other, answers({ ...fork, options: ["mono"] }))).toBe(false);
+    expect(answerFitsItem(withOther(false), answers(fork))).toBe(false);
+    expect(answerFitsItem(withOther(false), answers({ ...fork, options: ["mono"] }))).toBe(true);
+  });
+
+  it("takes text with one picked free-text option, and refuses it blank or with two", () => {
+    const freeText = withFreeTextPhase();
+    const tests = { question: "phase", options: ["tests"] };
+    const both = { question: "phase", options: ["tests", "other"], text: "A demo" };
+
+    expect(answerFitsItem(freeText, answers(mono, { ...tests, text: "Load tests" }))).toBe(true);
+    expect(answerFitsItem(freeText, answers(mono, tests))).toBe(false);
+    expect(answerFitsItem(freeText, answers(mono, { ...tests, text: " " }))).toBe(false);
+    expect(answerFitsItem(freeText, answers(mono, both))).toBe(false);
+  });
 });
+
+const mono = { question: "repo", options: ["mono"] };
+
+function withOther(allowOther: boolean): InboxItem {
+  const [repo, phase] = asking.questions ?? [];
+  if (repo === undefined || phase === undefined) throw new Error("the fixture asks two questions");
+  return { ...asking, questions: [{ ...repo, allowOther }, phase] };
+}
+
+function withFreeTextPhase(): InboxItem {
+  const [repo, phase] = asking.questions ?? [];
+  if (repo === undefined || phase === undefined) throw new Error("the fixture asks two questions");
+  const options = [
+    { id: "tests", label: "Tests", freeText: true },
+    { id: "other", label: "Something else", freeText: true },
+  ];
+  return { ...asking, questions: [repo, { ...phase, options }] };
+}

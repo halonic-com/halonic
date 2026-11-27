@@ -186,6 +186,7 @@ function keptOption(option: InboxItemOption): InboxItemOption {
   if (option.noteRequired !== undefined) kept.noteRequired = option.noteRequired;
   if (option.noteLabel !== undefined) kept.noteLabel = option.noteLabel;
   if (option.declines !== undefined) kept.declines = option.declines;
+  if (option.freeText !== undefined) kept.freeText = option.freeText;
   return kept;
 }
 
@@ -198,6 +199,7 @@ function keptQuestion(question: InboxQuestion): InboxQuestion {
     required: question.required,
   };
   if (question.preselected !== undefined) kept.preselected = [...question.preselected];
+  if (question.allowOther !== undefined) kept.allowOther = question.allowOther;
   return kept;
 }
 
