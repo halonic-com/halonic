@@ -29,15 +29,15 @@ verifies("inbox.row-marks", () => {
     expect(isValidElement(itemMark(setup).avatar)).toBe(true);
   });
 
-  it("draws every mark on the sidebar's 60px tile (HAL-19735)", () => {
+  it("draws every mark on the sidebar's 48px tile (HAL-20675)", () => {
     const ada = { from: { kind: "agent", agent: "acme:ada", name: "Ada" } } as Pick<
       AgentItem,
       "from"
     > as AgentItem;
 
-    expect(tileClasses(itemMark(setup))).toContain("size-15");
-    expect(tileClasses(agentMark(undefined))).toContain("size-15");
-    expect(tileClasses(agentMark(ada))).toContain("size-15");
+    expect(tileClasses(itemMark(setup))).toContain("size-12");
+    expect(tileClasses(agentMark(undefined))).toContain("size-12");
+    expect(tileClasses(agentMark(ada))).toContain("size-12");
   });
 
   it("steps a mark's tile up to surface on a hovered or open row's muted fill (HAL-19751)", () => {

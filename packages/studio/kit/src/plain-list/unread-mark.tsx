@@ -27,7 +27,7 @@ export function UnreadMark({ unread }: { readonly unread: PlainRowUnread }) {
   return (
     <span
       data-unread
-      className={`inline-flex h-4.5 min-w-4.5 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-caption text-on-primary ${forcedFill} forced-colors:text-[Canvas]`}
+      className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-caption text-on-primary ${forcedFill} forced-colors:text-[Canvas]`}
     >
       {unread.count}
       <span className="sr-only">{unread.label}</span>

@@ -89,12 +89,12 @@ verifies("inbox.row-meta-wraps", () => {
 });
 
 verifies("inbox.proposal-page", () => {
-  it("clamps a long title to two lines in the Inbox's 80px rows", async () => {
+  it("clamps a long title to two lines in the Inbox's 72px rows", async () => {
     const root = await inboxWith("Approve the refund for the Acme order from last week");
     const title = spanWith(root, "Approve the refund for the Acme order from last week");
     expect(title?.className).toContain("line-clamp-2");
     expect(title?.className).toContain("leading-5");
     const inside = title?.closest('[role="gridcell"]')?.firstElementChild;
-    expect(inside?.className.split(" ")).toContain("h-20");
+    expect(inside?.className.split(" ")).toContain("h-18");
   });
 });

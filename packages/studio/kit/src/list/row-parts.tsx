@@ -22,7 +22,7 @@ export function showsError(row: AnyListRow): boolean {
 /**
  * How the meta line fits: an error's reason wraps; any other line fits as the row's other lines,
  * or, with `wrapMeta`, on up to two lines and then cut, so a long line keeps its end. A `plain`
- * List's line stays on one line, so its row stays 80px (HAL-20018): its end is a `metaEnd` there.
+ * List's line stays on one line, so its row stays 72px (HAL-20018): its end is a `metaEnd` there.
  */
 function metaFit(row: AnyListRow, plain: boolean): string {
   if (showsError(row)) {
@@ -39,7 +39,7 @@ interface LeadingProps {
   readonly row: AnyListRow;
   /** A 32px `dense` row: a 16px icon. */
   readonly small: boolean;
-  /** A `plain` List's row, a sidebar's: a 60px avatar (HAL-19735, `kit.plain-row-size`). */
+  /** A `plain` List's row, a sidebar's: a 48px avatar (HAL-20675, `kit.plain-row-size`). */
   readonly sidebar?: boolean;
 }
 
@@ -57,7 +57,7 @@ export function Leading({ row, small, sidebar = false }: LeadingProps) {
     return (
       <span
         aria-hidden="true"
-        className={`${sidebar ? "size-15" : `size-7 ${place}`} shrink-0 ${dim ? "opacity-45" : ""}`}
+        className={`${sidebar ? "size-12" : `size-7 ${place}`} shrink-0 ${dim ? "opacity-45" : ""}`}
       >
         {row.avatar}
       </span>

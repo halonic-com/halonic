@@ -36,9 +36,9 @@ verifies("kit.plain-row-fit", () => {
     expect(classesOf(title)).toEqual(expect.arrayContaining(["line-clamp-2", "leading-5"]));
     expect(classesOf(meta)).not.toContain("line-clamp-2");
     expect(meta?.querySelector("span")?.className).toContain("truncate");
-    // 10px above and below and the text's 60px: exactly 80px, not a minimum, and a short title centred.
-    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-20", "py-2.5", "items-center"]));
-    expect(classesOf(inside)).not.toContain("min-h-20");
+    // 6px above and below and the text's 60px: exactly 72px, not a minimum, and a short title centred.
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["h-18", "py-1.5", "items-center"]));
+    expect(classesOf(inside)).not.toContain("min-h-18");
   });
 
   it.each<[string, Partial<ListRow>]>([
@@ -51,8 +51,8 @@ verifies("kit.plain-row-fit", () => {
     ],
   ])("lets a plain row with %s grow rather than spill over the next row", (_, extra) => {
     const { inside } = rowParts({ ...refund, ...extra }, true);
-    expect(classesOf(inside)).toEqual(expect.arrayContaining(["min-h-20", "py-2.5"]));
-    expect(classesOf(inside)).not.toContain("h-20");
+    expect(classesOf(inside)).toEqual(expect.arrayContaining(["min-h-18", "py-1.5"]));
+    expect(classesOf(inside)).not.toContain("h-18");
   });
 
   it("keeps the whole title and line in what screen readers hear", () => {

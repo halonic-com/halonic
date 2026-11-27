@@ -144,7 +144,7 @@ verifies("kit.plain-list", () => {
     const action = row.querySelector(":scope > button:last-child") as HTMLButtonElement;
 
     expect(classesOf(action)).toEqual(
-      expect.arrayContaining(["min-h-5", "top-5", "inline-flex", "items-center"]),
+      expect.arrayContaining(["min-h-5", "top-4", "inline-flex", "items-center"]),
     );
     expect(classesOf(action)).not.toContain("min-h-6");
   });

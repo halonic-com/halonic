@@ -22,7 +22,7 @@ export const STILL_LOADING_AFTER_MS = 10_000;
 
 /** The shape of the rows that are coming, so the page doesn't jump when they arrive. */
 export interface ListSkeletonShape {
-  /** The rows' icon (20px) or avatar (28px, 60px in a `plain` List). */
+  /** The rows' icon (20px) or avatar (28px, 48px in a `plain` List). */
   readonly leading?: "icon" | "avatar";
   /** The rows have a chip or a value on the right. */
   readonly trailing?: boolean;
@@ -188,9 +188,9 @@ function skeletonSpacing(look: ListLook): string {
 
 /** A skeleton row's height: a `plain` List's sidebar row, else a real row with a meta line. */
 function skeletonHeight(look: ListLook, phone: boolean): string {
-  // A sidebar row is exactly 80px, on a phone too (HAL-19735, `kit.plain-row-size`).
+  // A sidebar row is exactly 72px, on a phone too (HAL-20675, `kit.plain-row-size`).
   if (look === "plain") {
-    return "h-20 py-2.5";
+    return "h-18 py-1.5";
   }
   // A real row with a meta line: 56px, or at least 64px on a phone.
   return phone ? "min-h-16 py-3" : "min-h-14";
@@ -210,7 +210,7 @@ function SkeletonRow({
   readonly line: string;
   readonly look: ListLook;
 }) {
-  // A `plain` List's avatar is the sidebar's 60px picture.
+  // A `plain` List's avatar is the sidebar's 48px picture.
   const leading = look === "plain" && shape.leading === "avatar" ? "sidebar" : shape.leading;
   return (
     <div

@@ -19,7 +19,7 @@ verifies("kit.avatar-badge", () => {
     const sizes: [AvatarSize, string, string][] = [
       ["row", "size-7", "size-4"],
       ["header", "size-10", "size-5"],
-      ["sidebar", "size-15", "size-5"],
+      ["sidebar", "size-12", "size-5"],
     ];
     for (const [size, tile, badge] of sizes) {
       const avatar = avatarOf(

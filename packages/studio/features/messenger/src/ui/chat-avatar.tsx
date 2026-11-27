@@ -7,7 +7,7 @@ import { chatAgent } from "../chat-name.ts";
 import type { ConversationRow } from "../messenger.ts";
 import { type AgentPictures, agentPicture, pictureOf } from "./agent-pictures.ts";
 
-/** Where a conversation's picture shows: its list row (60px) or its open header (40px). */
+/** Where a conversation's picture shows: its list row (48px) or its open header (40px). */
 export type ChatAvatarSize = Extract<AvatarSize, "sidebar" | "header">;
 
 /**
@@ -18,7 +18,7 @@ export type ChatAvatarSize = Extract<AvatarSize, "sidebar" | "header">;
  * gap is `gap`.
  */
 const pairs = {
-  sidebar: { tile: "header", square: "size-15", centre: 40, gap: 22 },
+  sidebar: { tile: "row", square: "size-12", centre: 34, gap: 16 },
   header: { tile: "row", square: "size-10", centre: 26, gap: 16 },
 } as const satisfies Record<
   ChatAvatarSize,

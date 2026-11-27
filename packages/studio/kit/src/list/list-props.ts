@@ -21,7 +21,7 @@ interface ListRowBase<Id extends string> {
    */
   readonly icon?: ReactNode;
   /**
-   * A 28px avatar before the text, in place of the icon, or a setup step's 24px circle; 60px in a
+   * A 28px avatar before the text, in place of the icon, or a setup step's 24px circle; 48px in a
    * `plain` List, so pass an `Avatar` with `size="sidebar"` there. Hidden from screen readers too.
    */
   readonly avatar?: ReactNode;
@@ -61,7 +61,7 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
   /**
    * The title wraps onto more lines instead of being cut, as Home's Recent runs' "Support reply ·
    * run 2ff090", whose end is what tells two rows apart (HAL-13305). The meta line stays cut. In a
-   * `plain` List it takes at most two 20px lines, then is cut, so the row stays 80px (HAL-20018).
+   * `plain` List it takes at most two 20px lines, then is cut, so the row stays 72px (HAL-20018).
    */
   readonly wrapTitle?: boolean;
   /**
@@ -72,7 +72,7 @@ export interface ListRow<Id extends string = string> extends ListRowBase<Id> {
   /**
    * The meta line wraps onto a second line, then is cut with an ellipsis, as the Inbox's "Support
    * reply · run 891b5a · a person step · Waiting 1 h", whose end is what the row is for (HAL-15126).
-   * A `plain` List keeps it on one line, so the row stays 80px: give the end as `metaEnd` there.
+   * A `plain` List keeps it on one line, so the row stays 72px: give the end as `metaEnd` there.
    */
   readonly wrapMeta?: boolean;
   /**
@@ -278,8 +278,8 @@ interface ListBase<Id extends string> {
   /**
    * Rows as `PlainList`'s, as the Inbox's Needs you (HAL-19192): no box or lines, each row rounded
    * and 4px apart, a regular title, and the muted fill on hover and on the `current` row. Its rows
-   * are a sidebar's bigger ones (HAL-19735): exactly 80px (one with `wrap`, an error, `under` or
-   * `actions` may grow), a 60px avatar, a 15px title over a 14px meta line. It wins over `flush`, on a phone too.
+   * are a sidebar's bigger ones (HAL-19735, HAL-20675): exactly 72px (one with `wrap`, an error, `under` or
+   * `actions` may grow), a 48px avatar, a 15px title over a 14px meta line. It wins over `flush`, on a phone too.
    */
   readonly plain?: boolean;
   /**

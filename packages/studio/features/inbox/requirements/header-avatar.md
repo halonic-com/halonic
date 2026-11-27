@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: the board's feedback on HAL-19536, item 3 (bigger avatars, especially in headers), plan approved by Liam on HAL-19539; the shared header of HAL-19192; built on HAL-19586 and HAL-19492; the list's rows grew to 60px pictures with the board's bigger sidebar rows (HAL-10, HAL-19735)
 
-When an item is open, the Inbox shall show a header over its card, as the Messenger's chat header does: its row's picture at 40px, the item's title over its row's line, and, while it waits, where it is among what waits. For a bundle of an agent's cards, the header shall name what in it still waits. Once an item no longer waits (an agent's card answered, an approval or a person step decided, or its run moved on), the header's line shall drop the wait: an agent's card's line ends at who asks, and a run's item keeps its run. With one pane at a time, a back arrow named "Back to Inbox" shall lead the header. The card under the header shall keep who asks over the title, without a second picture. The list's rows shall keep their own 60px sidebar pictures (`kit.plain-row-size`).
+When an item is open, the Inbox shall show a header over its card, as the Messenger's chat header does: its row's picture at 40px, the item's title over its row's line, and, while it waits, where it is among what waits. For a bundle of an agent's cards, the header shall name what in it still waits. Once an item no longer waits (an agent's card answered, an approval or a person step decided, or its run moved on), the header's line shall drop the wait: an agent's card's line ends at who asks, and a run's item keeps its run. With one pane at a time, a back arrow named "Back to Inbox" shall lead the header. The card under the header shall keep who asks over the title, without a second picture. The list's rows shall keep their own 48px sidebar pictures (`kit.plain-row-size`).
 
 ## Examples
 
@@ -29,4 +29,4 @@ When an item is open, the Inbox shall show a header over its card, as the Messen
   then the header starts with a back arrow whose name is "Back to Inbox".
 - Given the same question from Chief,
   when the list shows it,
-  then its row's picture stays the sidebar's 60px.
+  then its row's picture stays the sidebar's 48px.

@@ -12,7 +12,7 @@ import type { InboxItem } from "../inbox-items.ts";
 /*
  * The mark that leads each Needs you row, so an approval, a question, a person step and an agent's
  * card read apart at a glance (design review HAL-18481, 5; `inbox.row-marks`). Each mark sits on
- * the agent Avatar's round tile, 60px in the sidebar (HAL-19735), so every row's title starts at the
+ * the agent Avatar's round tile, 48px in the sidebar (HAL-20675), so every row's title starts at the
  * same place (HAL-18617).
  * The marks are decoration: the row's title and meta line say what it is. The open item's header
  * shows the same mark at 40px (`inbox.header-avatar`).
@@ -35,7 +35,7 @@ export function itemMark(item: InboxItem, size: AvatarSize = "sidebar"): Pick<Li
 }
 
 /**
- * The mark that leads a Notices row (`inbox.notice-bell`): a bell on the same 60px tile as Needs
+ * The mark that leads a Notices row (`inbox.notice-bell`): a bell on the same 48px tile as Needs
  * you's own marks, with no badge, since Halonic itself tells.
  */
 export function noticeMark() {

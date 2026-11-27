@@ -58,11 +58,11 @@ function bell(): string {
 
 verifies("inbox.notice-bell", () => {
   describe("a Notices row", () => {
-    it("starts with the kit's bell on the 60px tile, with no badge", async () => {
+    it("starts with the kit's bell on the 48px tile, with no badge", async () => {
       const [row] = await noticeRows([failed]);
       const tile = row?.firstElementChild;
       expect(tile?.getAttribute("aria-hidden")).toBe("true");
-      expect(tile?.className).toContain("size-15");
+      expect(tile?.className).toContain("size-12");
       expect(tile?.className).toContain("rounded-full");
       expect(tile?.innerHTML).toBe(bell());
       expect(row?.querySelector("[data-avatar-badge]")).toBeNull();
