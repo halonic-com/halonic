@@ -1,4 +1,8 @@
-import { toolScriptDefaultLimits, toolScriptSecretHandle } from "@halonicjs/ports";
+import {
+  toolScriptDefaultLimits,
+  toolScriptMessageCharacters,
+  toolScriptSecretHandle,
+} from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
 import { CpuMeter } from "./cpu-meter.ts";
@@ -70,5 +74,64 @@ verifies("toolscript-quickjs.isolate", () => {
     expect(second.idFor(handle)).not.toBe(id);
     first.clear();
     expect(first.handleFor(id)).toBeUndefined();
+  });
+});
+
+verifies("toolscript-quickjs.ctx-fail", () => {
+  const runCode = (code: string, functions = {}) =>
+    createQuickJsToolScriptIsolate().run({
+      runId: "acme-run",
+      code,
+      input: null,
+      functions,
+      limits: toolScriptDefaultLimits.agent,
+    });
+
+  it("ends the run with the message when the script calls ctx.fail without await", async () => {
+    const result = await runCode('export async function run(ctx) { ctx.fail("nothing to copy"); }');
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "toolscript.failed",
+      message: "nothing to copy",
+    });
+  });
+
+  it("ends the run even when the script catches the error and calls the host", async () => {
+    let called = false;
+    const result = await runCode(
+      `export async function run(ctx) {
+        try { ctx.fail("stop"); } catch {}
+        await ctx.acme();
+        return 1;
+      }`,
+      {
+        acme: async () => {
+          called = true;
+          return null;
+        },
+      },
+    );
+    expect(result).toMatchObject({ ok: false, reason: "toolscript.failed", message: "stop" });
+    expect(called).toBe(false);
+  });
+
+  it("cuts a long message and refuses one holding a handle id", async () => {
+    const long = await runCode(
+      `export function run(ctx) { ctx.fail("a".repeat(${toolScriptMessageCharacters + 10})); }`,
+    );
+    expect(long).toMatchObject({ message: "a".repeat(toolScriptMessageCharacters) });
+    const handle = await runCode(`export function run(ctx) { ctx.fail("${handleIdPrefix}0"); }`);
+    expect(handle).toMatchObject({ ok: false, reason: "toolscript.bad-handle" });
+  });
+
+  it("refuses a host function named fail", async () => {
+    const result = await runCode("export function run() { return 1; }", {
+      fail: async () => null,
+    });
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "toolscript.failed",
+      message: "a host function can't be named fail",
+    });
   });
 });

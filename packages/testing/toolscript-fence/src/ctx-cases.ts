@@ -96,6 +96,27 @@ export function ctxCases(make: MakeToolScriptIsolate): void {
     ctxShapeCases(make);
     afterEndCases(make);
   });
+  verifies("toolscript-fence.ctx-fail", () => {
+    failCases(make);
+  });
+}
+
+/** `ctx.fail` ends the run at once, awaited or not. */
+function failCases(make: MakeToolScriptIsolate): void {
+  const it = fenceIt(make);
+  it("ends the run at ctx.fail without waiting for the script to return", async () => {
+    const code = script(`
+      try { ctx.fail("nothing to copy"); } catch {}
+      ctx.log("after fail");
+      return 1;`);
+    const result = await runScript(make, code);
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "toolscript.failed",
+      message: "nothing to copy",
+      log: [],
+    });
+  });
 }
 
 /** `ctx`, its namespaces and the input are frozen; `this` is ignored. */
@@ -123,7 +144,7 @@ function ctxShapeCases(make: MakeToolScriptIsolate): void {
       false,
       false,
       true,
-      ["acme", "input", "log"],
+      ["acme", "fail", "input", "log"],
     ]);
   });
 

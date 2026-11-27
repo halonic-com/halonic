@@ -12,11 +12,11 @@ import { shortMessage } from "./script-errors.ts";
 import type { RunState } from "./session.ts";
 
 /** `ctx`'s own members, which no host function may take. */
-const ownMembers = new Set(["input", "log"]);
+const ownMembers = new Set(["input", "log", "fail"]);
 
 /**
  * Builds `ctx`: a frozen object with no prototype that holds the frozen
- * input, `log` and the host functions, each namespace frozen with no
+ * input, `log`, `fail` and the host functions, each namespace frozen with no
  * prototype too, so `Object.getPrototypeOf(ctx)` and `Reflect` reach
  * nothing. `undefined` when the run already failed.
  */
@@ -31,6 +31,12 @@ export function buildCtx(state: RunState): QuickJSHandle | undefined {
     ctx,
     "log",
     hostFunction(state, "log", (args) => writeLog(state, args)),
+  );
+  define(
+    state,
+    ctx,
+    "fail",
+    hostFunction(state, "fail", (args) => stopRun(state, args)),
   );
   for (const [name, entry] of Object.entries(state.request.functions)) {
     if (ownMembers.has(name)) {
@@ -189,4 +195,26 @@ function writeLog(state: RunState, args: QuickJSHandle[]): undefined {
   }
   state.log.push(line.slice(0, state.limits.logLineCharacters));
   return undefined;
+}
+
+/**
+ * `ctx.fail(message)`: ends the run at once with `toolscript.failed` and the
+ * message, cut to `toolScriptMessageCharacters`. It is the isolate's own
+ * member, not a host function, so it takes effect before the script's next
+ * line, `await` or not, and throws so the script unwinds. A message that
+ * isn't a string is dropped; one holding a handle id fails the run with
+ * `toolscript.bad-handle`, as `log` does.
+ */
+function stopRun(state: RunState, args: QuickJSHandle[]): never {
+  const [value] = args;
+  if (value === undefined || state.vm.typeof(value) !== "string") {
+    state.fail("toolscript.failed");
+  } else {
+    const message = state.vm.getString(value);
+    if (message.includes(handleIdPrefix)) state.fail("toolscript.bad-handle");
+    else state.fail("toolscript.failed", shortMessage(message));
+  }
+  // The run has already ended with the reason above, which wins over this
+  // error; throwing only makes the script stop here.
+  throw new Error("ctx.fail ended the run");
 }

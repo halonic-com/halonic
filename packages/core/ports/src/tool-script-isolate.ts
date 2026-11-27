@@ -137,7 +137,9 @@ export function isToolScriptStop(value: unknown): value is ToolScriptStop {
  * Worker implement it, and every implementation passes the same fence suite.
  *
  * Each run gets a new isolate with no state from an earlier run, and
- * `ctx` holds only `input`, `log` and the given functions, frozen. `run`
+ * `ctx` holds only `input`, `log`, `fail` and the given functions, frozen;
+ * `ctx.fail(message)` ends the run at once with `toolscript.failed`, awaited
+ * or not, so no given function may be named `fail`. `run`
  * rejects only for request limits that `effectiveToolScriptLimits` refuses,
  * the caller's own bug. Otherwise a thrown script error is
  * `toolscript.script-error`, a tripped limit
