@@ -87,7 +87,7 @@ verifies("files.ui.rename-file", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(document.activeElement).toBe(rowNamed(page, "providers.yaml"));
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector<HTMLInputElement>('input:not([type="search"])')).toBeNull();
   });
 
   it("opens the new path when the renamed file was the open one", async () => {
@@ -105,7 +105,7 @@ verifies("files.ui.rename-file", () => {
     await typeInto(input, "other.yaml");
     await key(input, "Escape");
     expect(rename).not.toHaveBeenCalled();
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector<HTMLInputElement>('input:not([type="search"])')).toBeNull();
     expect(document.activeElement).toBe(rowNamed(page, "models.yaml"));
   });
 
@@ -117,7 +117,7 @@ verifies("files.ui.rename-file", () => {
     const input = rowNamed(page, "models.yaml").querySelector("input");
     await typeInto(input, "providers.yaml");
     await key(input, "Enter");
-    expect(page.querySelector("input")).not.toBeNull();
+    expect(page.querySelector<HTMLInputElement>('input:not([type="search"])')).not.toBeNull();
     const alert = page.querySelector(`[id="${input?.getAttribute("aria-describedby")}"]`);
     expect(alert?.textContent).toBe("providers.yaml already exists.");
     expect(input?.getAttribute("aria-invalid")).toBe("true");
@@ -144,7 +144,9 @@ verifies("files.ui.rename-file", () => {
       refuse(kinded("conflict", "providers.yaml already exists."));
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(page.querySelector("input")?.value).toBe("providers.yaml");
+    expect(page.querySelector<HTMLInputElement>('input:not([type="search"])')?.value).toBe(
+      "providers.yaml",
+    );
     expect(document.activeElement).toBe(elsewhere);
     expect(show).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -175,9 +177,9 @@ verifies("files.ui.rename-file", () => {
     const { page, toasts, rename, elsewhere } = await refusedAway([]);
     expect(tryAgain(toasts)).toBeDefined();
     await act(async () => {
-      page.querySelector("input")?.focus();
+      page.querySelector<HTMLInputElement>('input:not([type="search"])')?.focus();
     });
-    await key(page.querySelector("input"), "Escape");
+    await key(page.querySelector<HTMLInputElement>('input:not([type="search"])'), "Escape");
     expect(tryAgain(toasts)).toBeUndefined();
     expect(rename).toHaveBeenCalledTimes(1);
     elsewhere.remove();
@@ -186,7 +188,10 @@ verifies("files.ui.rename-file", () => {
   it("tries again with the name now in the row, and shows one toast at a time", async () => {
     const names: string[] = [];
     const { page, toasts, elsewhere } = await refusedAway(names);
-    await typeInto(page.querySelector("input"), "rates.yaml");
+    await typeInto(
+      page.querySelector<HTMLInputElement>('input:not([type="search"])'),
+      "rates.yaml",
+    );
     await act(async () => {
       tryAgain(toasts)?.action?.onClick();
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -226,7 +231,7 @@ verifies("files.ui.rename-file", () => {
       for (const listener of subscribers) listener();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector<HTMLInputElement>('input:not([type="search"])')).toBeNull();
     expect(document.activeElement).toBe(elsewhere);
     expect(rowNamed(page, "providers.yaml").tabIndex).toBe(0);
     elsewhere.remove();
@@ -267,7 +272,7 @@ verifies("files.ui.rename-file", () => {
       for (const listener of subscribers) listener();
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector<HTMLInputElement>('input:not([type="search"])')).toBeNull();
     expect(document.activeElement).toBe(elsewhere);
     expect(rowNamed(page, "providers.yaml").tabIndex).toBe(0);
     elsewhere.remove();
@@ -281,7 +286,9 @@ verifies("files.ui.rename-file", () => {
     const input = rowNamed(page, "models.yaml").querySelector("input");
     await typeInto(input, "providers.yaml");
     const elsewhere = await leaveRow(input);
-    expect(page.querySelector("input")?.value).toBe("providers.yaml");
+    expect(page.querySelector<HTMLInputElement>('input:not([type="search"])')?.value).toBe(
+      "providers.yaml",
+    );
     expect(document.activeElement).toBe(elsewhere);
     elsewhere.remove();
   });
@@ -292,7 +299,7 @@ verifies("files.ui.rename-file", () => {
     const input = rowNamed(page, "models.yaml").querySelector("input");
     const elsewhere = await leaveRow(input);
     expect(rename).not.toHaveBeenCalled();
-    expect(page.querySelector("input")).toBeNull();
+    expect(page.querySelector<HTMLInputElement>('input:not([type="search"])')).toBeNull();
     expect(document.activeElement).toBe(elsewhere);
     expect(rowNamed(page, "models.yaml").tabIndex).toBe(0);
     elsewhere.remove();

@@ -37,6 +37,13 @@ function shownName(node: TreeNode, { room, widthOf }: NameRoom): string {
   return cutToWidth(node.name, width, widthOf);
 }
 
+/**
+ * A tree row in the list column (requirement `files.ui.tree-rows`): at least 36px high with 8px
+ * corners, 10px inside the column's edges through the tree's own padding.
+ */
+const treeRowClasses =
+  "group flex min-h-9 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-surface-muted aria-selected:text-body-strong aria-selected:not-focus-visible:selected-forced";
+
 /** The file a menu is open for, with where it opened. */
 interface RowMenu extends ContextMenuTarget {
   readonly path: string;
@@ -244,7 +251,7 @@ export function FilesTree({
       ref={tree}
       role="tree"
       aria-label={filesWords.treeLabel}
-      className="grid"
+      className="grid px-2.5"
       onKeyDown={onKeyDown}
     >
       <ContextMenu
@@ -274,10 +281,12 @@ export function FilesTree({
               // The marks are not read along with the name field while it is edited.
               aria-description={descriptionOf(node, label, renaming?.path)}
               // A row never grows past the tree: the name gives way, so the marks and ⋮ stay in
-              // sight. In high contrast both marks are outlines: the open file's steps aside while
-              // the row has keyboard focus, so the focus outline shows.
-              className={`group flex min-h-8 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-accent-soft aria-selected:not-focus-visible:selected-forced`}
-              style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
+              // sight. The row under the pointer and the open file's share one fill, as the list
+              // rows of the two-column layout do, so the open file's name is also in medium
+              // weight (`files.ui.tree-rows`). In high contrast both marks are outlines: the open
+              // file's steps aside while the row has keyboard focus, so the focus outline shows.
+              className={treeRowClasses}
+              style={{ paddingLeft: `${row.depth * 16 + 8}px` }}
               onClick={(event) => {
                 event.stopPropagation();
                 activate(row);

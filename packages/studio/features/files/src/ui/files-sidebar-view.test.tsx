@@ -206,7 +206,9 @@ verifies("files.ui.tree-view", () => {
         inEmpty?.click();
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
-      expect(document.querySelector<HTMLInputElement>("input")?.value).toBe("hubs/");
+      expect(document.querySelector<HTMLInputElement>('input:not([type="search"])')?.value).toBe(
+        "hubs/",
+      );
       const cancel = [...document.querySelectorAll("button")].find(
         (button) => button.textContent === "Cancel",
       );
@@ -312,21 +314,25 @@ verifies("files.ui.new-file", () => {
   it("has a New file button that opens the dialog at hubs/", async () => {
     await open();
     await press("New file");
-    expect(document.querySelector<HTMLInputElement>("input")?.value).toBe("hubs/");
+    expect(document.querySelector<HTMLInputElement>('input:not([type="search"])')?.value).toBe(
+      "hubs/",
+    );
   });
 
   it("starts at the focused folder", async () => {
     const { page } = await open();
     act(() => rowNamed(page, "agents").click());
     await press("New file");
-    expect(document.querySelector<HTMLInputElement>("input")?.value).toBe("agents/");
+    expect(document.querySelector<HTMLInputElement>('input:not([type="search"])')?.value).toBe(
+      "agents/",
+    );
   });
 
   it("opens the file it made and closes the dialog", async () => {
     const create = vi.fn(async () => {});
     const { openItem } = await open(create);
     await press("New file");
-    const input = document.querySelector<HTMLInputElement>("input");
+    const input = document.querySelector<HTMLInputElement>('input:not([type="search"])');
     const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     await act(async () => {
       set?.call(input, "hubs/b.yaml");
@@ -335,7 +341,7 @@ verifies("files.ui.new-file", () => {
     await press("Create");
     expect(create).toHaveBeenCalledWith("hubs/b.yaml");
     expect(openItem).toHaveBeenCalledWith({ kind: "file", hub: "workspace", id: "hubs/b.yaml" });
-    expect(document.querySelector("input")).toBeNull();
+    expect(document.querySelector('input:not([type="search"])')).toBeNull();
   });
 });
 
@@ -350,7 +356,7 @@ verifies("files.ui.delete-file", () => {
       row.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
     });
     expect(remove).toHaveBeenCalledWith("models.yaml");
-    expect(document.querySelector("input")).toBeNull();
+    expect(document.querySelector('input:not([type="search"])')).toBeNull();
   });
 
   it("moves focus to the next row after a delete, and to the restored row after Undo", async () => {

@@ -3,6 +3,13 @@ import type { EditorReviewPartFacts } from "@halonicjs/studio-code-editor";
 /** The words the file tree shows (microcopy for the Files frames). */
 export const filesWords = {
   treeLabel: "Files",
+  /** The search field above the tree: its name and what the empty field says. */
+  search: "Search files",
+  /** Under the search field while it holds text: how many files match. */
+  searchCount: (count: number) => (count === 1 ? "1 file" : `${count} files`),
+  /** In place of the tree when no file matches the search. */
+  noMatchTitle: (text: string) => `No files match “${text}”`,
+  noMatchDescription: "Check the spelling, or search for part of the name.",
   loading: "Loading files",
   emptyTitle: "Everything in this workspace is a file.",
   emptyDescription: "Add one with +.",

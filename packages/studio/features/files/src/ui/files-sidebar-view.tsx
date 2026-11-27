@@ -2,12 +2,13 @@ import {
   Button,
   EmptyState,
   PlusIcon,
+  SearchField,
   SkeletonBar,
   useToastStore,
   useWriteClipboard,
 } from "@halonicjs/studio-kit";
 import { errorReasonFor, type WorkspaceContext } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyPath } from "../copy-path.ts";
 import { FILE_KIND, fileItem, fileName } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
@@ -19,10 +20,11 @@ import { renamedPath, renameFile, typedNameProblem } from "../rename-file.ts";
 import { subscribeRenameAsked, takeRenameAsked } from "../rename-request.ts";
 import { type FilesRevealTaken, takeFilesRevealRequests } from "../reveal-request.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
-import { buildTree } from "../tree/tree-model.ts";
 import { deepestRow, revealRow, visibleRows } from "../tree/visible-rows.ts";
 import { FilesTree } from "./files-tree.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
+import { TreeSearchStatus } from "./tree-search-status.tsx";
+import { useTreeSearch } from "./use-tree-search.ts";
 
 /** What the sidebar's Files view gets: the context of the feature that added it. */
 export interface FilesSidebarViewProps {
@@ -116,10 +118,13 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   );
   const activePath = activeFile === "" ? undefined : activeFile;
 
-  const roots = useMemo(
-    () => (loaded.kind === "ready" ? buildTree(loaded.listing.paths, loaded.listing.marks) : []),
-    [loaded],
+  // The rows to draw: the whole tree, or only what the search field asks for.
+  const search = useTreeSearch(
+    loaded.kind === "ready" ? loaded.listing : undefined,
+    state,
+    setState,
   );
+  const { roots, allRoots, type: typeSearch } = search;
 
   const focusRow = useCallback((path: string | undefined) => {
     if (path === undefined) return;
@@ -146,17 +151,18 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
 
   // A path another feature asked to show, such as the Library's docs folder, taken once the tree
   // is listed: its row, else its deepest folder there, else the tree's first row. The answer says
-  // which, so the Library can say there's no docs folder.
+  // which, so the Library can say there's no docs folder. A search would hide the row, so it ends.
   const revealAsked = useCallback(
     (path: string): FilesRevealTaken => {
-      const row = deepestRow(roots, path);
-      const target = row?.path ?? roots[0]?.path;
+      typeSearch("");
+      const row = deepestRow(allRoots, path);
+      const target = row?.path ?? allRoots[0]?.path;
       if (row !== undefined)
         setState((was) => ({ ...was, expanded: revealRow(was.expanded, row) }));
       if (target !== undefined) setReveal({ path: target, focus: true });
       return row?.path === path ? "shown" : "nearest";
     },
-    [roots],
+    [allRoots, typeSearch],
   );
   const listedNow = loaded.kind === "ready";
   useEffect(
@@ -215,6 +221,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     [host, renaming],
   );
 
+  const shownExpanded = search.state.expanded;
   const onIntent = useCallback(
     (intent: TreeIntent) => {
       if (intent.kind === "open") context.openItem?.(fileItem(intent.path));
@@ -224,7 +231,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
       if (intent.kind === "trash") {
         pendingFocus.current = undefined;
         // Focus goes to the next row, else the previous one, else the folder.
-        const rows = visibleRows(roots, state.expanded);
+        const rows = visibleRows(roots, shownExpanded);
         const index = rows.findIndex((row) => row.node.path === intent.path);
         const target = (rows[index + 1] ?? rows[index - 1])?.node.path ?? rows[index]?.parent;
         void removeFile(host, toasts, intent.path, {
@@ -233,7 +240,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         });
       }
     },
-    [context, host, toasts, writeClipboard, roots, state.expanded, focusRow],
+    [context, host, toasts, writeClipboard, roots, shownExpanded, focusRow],
   );
 
   if (loaded.kind === "loading") {
@@ -271,8 +278,8 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   const tree = (
     <FilesTree
       roots={roots}
-      state={state}
-      onStateChange={setState}
+      state={search.state}
+      onStateChange={search.onStateChange}
       onIntent={onIntent}
       {...(renaming === undefined
         ? {}
@@ -297,7 +304,8 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   );
   // `workspace.yaml` alone stays a row, with a quiet line under it and no button: the + is the way in.
   const onlyWorkspaceFile = files.every((path) => path === "workspace.yaml");
-  const body = (
+  const nothingFound = search.searching && search.matches === 0;
+  const body = nothingFound ? null : (
     <>
       {tree}
       {onlyWorkspaceFile && (
@@ -309,7 +317,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   );
   return (
     <div className="flex min-h-0 flex-col">
-      <div className="flex items-center justify-end px-2 pt-1">
+      <div className="flex items-center justify-end px-2.5 pt-1">
         <Button
           ref={addButton}
           variant="ghost"
@@ -319,6 +327,25 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           onClick={startAdding}
         />
       </div>
+      <div className="px-5 pt-1 pb-2">
+        <SearchField
+          label={filesWords.search}
+          value={search.typed}
+          onChange={(event) => typeSearch(event.target.value)}
+          onKeyDown={(event) => {
+            // Escape empties the field first; with nothing typed it is left to the page.
+            if (event.key !== "Escape" || search.typed === "") return;
+            event.preventDefault();
+            event.stopPropagation();
+            typeSearch("");
+          }}
+        />
+      </div>
+      <TreeSearchStatus
+        searching={search.searching}
+        typed={search.typed}
+        matches={search.matches}
+      />
       {body}
       {adding && (
         <NewFileDialog
