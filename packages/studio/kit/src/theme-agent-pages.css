@@ -34,10 +34,10 @@
   /* Two or more behind: surface-muted in light, surface in dark, because dark surface-muted is
      lighter than surface-subtle and would read as nearer. */
   --stack-shade-2: light-dark(#e9edf5, #060d1d);
-  --stack-scrim: light-dark(rgb(16 16 46 / 0.12), rgb(0 0 0 / 0.36)); /* lighter than overlay */
+  --stack-scrim: light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.36)); /* lighter than overlay */
 
   /* The workflow canvas's dots, only through bg-canvas-grid. Faint on purpose: no text sits on it. */
-  --canvas-grid-dot: light-dark(rgb(16 16 46 / 0.12), rgb(242 242 255 / 0.1));
+  --canvas-grid-dot: light-dark(rgb(0 0 0 / 0.12), rgb(255 255 255 / 0.1));
 }
 
 /* The workflow canvas: a faint dot grid on surface-subtle. The 20px step is the grid a dragged

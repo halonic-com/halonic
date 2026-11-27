@@ -1,7 +1,15 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { blend, contrastRatio } from "./test/contrast.ts";
-import { colourToken, control, text, themeTokens } from "./test/theme-colours.spec.ts";
+import { blend, contrastRatio, parseColour, type Rgba } from "./test/contrast.ts";
+import {
+  colourToken,
+  control,
+  css,
+  type Mode,
+  text,
+  themeTokens,
+} from "./test/theme-colours.spec.ts";
+import { blockBody, customProperties, lightDarkPair } from "./test/theme-file.spec.ts";
 
 /** Every surface text sits on in the WhatsApp layout: the frame, the sidebar, panels and menus. */
 const surfaces = [
@@ -15,6 +23,19 @@ const surfaces = [
 ];
 
 const textColours = ["fg", "fg-muted", "fg-subtle"];
+
+const moreContrast = customProperties(
+  blockBody(blockBody(css, "@media (prefers-contrast: more)"), ":root"),
+);
+
+/** A text colour as `prefers-contrast: more` raises it. */
+function moreContrastColour(name: string, mode: Mode): Rgba {
+  const pair = lightDarkPair(moreContrast.get(`--color-${name}`) ?? "");
+  if (pair === undefined) {
+    throw new Error(`--color-${name} isn't raised as light-dark() under more contrast.`);
+  }
+  return parseColour(pair[mode]);
+}
 
 verifies("kit.whatsapp-theme", () => {
   describe("theme.css WhatsApp surfaces", () => {
@@ -46,6 +67,14 @@ verifies("kit.whatsapp-theme", () => {
           }
           const edge = colourToken("border-control", mode);
           expect(contrastRatio(edge, background)).toBeGreaterThanOrEqual(control);
+        });
+
+        it(`keeps raised quiet text at 4.5:1 on ${surface} in ${mode} mode with more contrast`, () => {
+          const background = colourToken(surface, mode);
+          for (const foreground of ["fg-muted", "fg-subtle"]) {
+            const seen = blend(moreContrastColour(foreground, mode), background);
+            expect(contrastRatio(seen, background), foreground).toBeGreaterThanOrEqual(text);
+          }
         });
       }
     }

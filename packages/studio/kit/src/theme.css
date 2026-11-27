@@ -79,7 +79,7 @@
      from the white panel; in dark the frame is the lighter one. */
   --color-app-frame: light-dark(#f3f5fa, #0a1630); /* a focused app's window frame */
   --color-app-panel: light-dark(#ffffff, #060d1d); /* a focused app's one content panel */
-  --color-overlay: light-dark(rgb(16 16 46 / 0.32), rgb(0 0 0 / 0.56)); /* behind a dialog */
+  --color-overlay: light-dark(rgb(0 0 0 / 0.32), rgb(0 0 0 / 0.56)); /* behind a dialog */
 
   /* ---------------------------------------------------------------- Colour: lines (border-*) */
   --color-border: light-dark(#e3e8f1, #1b2638); /* dividers, card edges */
@@ -319,12 +319,12 @@
  */
 :root {
   /* light-dark() only takes colours, so the shadow colours are variables and the shapes are
-     tokens above. The edge is the mode's ink at a low alpha (the same ink as fg, 16 16 46 in
-     light and 242 242 255 in dark); the lifted shades are that ink in light and black in dark. */
-  --shade-edge: light-dark(rgb(16 16 46 / 0.06), rgb(242 242 255 / 0.07)); /* keeps an edge */
-  --shade-soft: light-dark(rgb(16 16 46 / 0.06), rgb(0 0 0 / 0.4));
-  --shade-mid: light-dark(rgb(16 16 46 / 0.1), rgb(0 0 0 / 0.5));
-  --shade-deep: light-dark(rgb(16 16 46 / 0.22), rgb(0 0 0 / 0.6));
+     tokens above. The edge is the mode's ink at a low alpha (black in light and white in dark,
+     as fg-muted and fg-subtle); the lifted shades are black in both modes. */
+  --shade-edge: light-dark(rgb(0 0 0 / 0.06), rgb(255 255 255 / 0.07)); /* keeps an edge */
+  --shade-soft: light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.4));
+  --shade-mid: light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.5));
+  --shade-deep: light-dark(rgb(0 0 0 / 0.22), rgb(0 0 0 / 0.6));
   /* The board's grey in light (HAL-19142); in dark a plain shadow barely shows, so it's deeper. */
   --shade-prompt: light-dark(rgb(60 64 67 / 0.12), rgb(0 0 0 / 0.5));
   --shade-prompt-focus: light-dark(rgb(60 64 67 / 0.2), rgb(0 0 0 / 0.6));
@@ -379,8 +379,8 @@
  */
 @media (prefers-contrast: more) {
   :root {
-    --color-fg-muted: light-dark(rgb(16 16 46 / 0.8), rgb(242 242 255 / 0.82));
-    --color-fg-subtle: light-dark(rgb(16 16 46 / 0.74), rgb(242 242 255 / 0.74));
+    --color-fg-muted: light-dark(rgb(0 0 0 / 0.8), rgb(255 255 255 / 0.82));
+    --color-fg-subtle: light-dark(rgb(0 0 0 / 0.74), rgb(255 255 255 / 0.74));
     --color-border: var(--color-border-control);
     --color-border-strong: var(--color-border-control);
     --color-border-prompt: var(--color-border-control);

@@ -56,7 +56,7 @@ verifies("kit.slim-scrollbars", () => {
   it("uses about 3:1 of the mode's ink, 45% light and 38% dark", async () => {
     const css = squeezed(await buildCss([]));
     expect(css).toContain(
-      "--scrollbar-thumb: light-dark(rgb(16 16 46 / 0.45), rgb(242 242 255 / 0.38));",
+      "--scrollbar-thumb: light-dark(rgb(0 0 0 / 0.45), rgb(255 255 255 / 0.38));",
     );
   });
 
@@ -85,7 +85,7 @@ verifies("kit.slim-scrollbars", () => {
   it("keeps the thumb shown at rest, and stronger on hover and focus too, under more contrast", async () => {
     const css = squeezed(await buildCss([]));
     expect(css).toContain(
-      "--scrollbar-thumb-strong: light-dark(rgb(16 16 46 / 0.7), rgb(242 242 255 / 0.7)); @media (prefers-contrast: more) { --scrollbar-thumb: var(--scrollbar-thumb-strong); }",
+      "--scrollbar-thumb-strong: light-dark(rgb(0 0 0 / 0.7), rgb(255 255 255 / 0.7)); @media (prefers-contrast: more) { --scrollbar-thumb: var(--scrollbar-thumb-strong); }",
     );
     expect(css).toContain(
       "@media (prefers-contrast: more) { --scrollbar-thumb-now: var(--scrollbar-thumb); } }",
