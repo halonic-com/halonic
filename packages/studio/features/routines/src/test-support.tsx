@@ -1,3 +1,4 @@
+import { FormatLocaleProvider } from "@halonicjs/studio-kit";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type {
@@ -19,12 +20,14 @@ export function unmount(): void {
   element?.remove();
 }
 
-/** Draws `node` in the document and waits for what it reads. */
+/** Draws `node` in the document, in the en-GB format so times read the same anywhere, and waits for what it reads. */
 export async function show(node: React.ReactNode): Promise<HTMLElement> {
   element = document.createElement("div");
   document.body.append(element);
   root = createRoot(element);
-  await act(async () => root?.render(node));
+  await act(async () =>
+    root?.render(<FormatLocaleProvider locale="en-GB">{node}</FormatLocaleProvider>),
+  );
   return element;
 }
 

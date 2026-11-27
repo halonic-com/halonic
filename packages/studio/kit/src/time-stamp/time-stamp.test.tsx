@@ -77,6 +77,16 @@ verifies("kit.time-stamp", () => {
     expect(shortTime(new Date("2026-03-29T21:30:00Z"), new Date(), "en-GB")).toBe("Yesterday");
   });
 
+  it("writes the time in the zone the computer is in now, not the one its first time was in", () => {
+    const moment = new Date("2026-11-26T08:41:00Z");
+    vi.stubEnv("TZ", "Europe/London");
+    expect(shortTime(moment, moment, "en-GB")).toBe("08:41");
+    vi.stubEnv("TZ", "Europe/Amsterdam");
+    expect(shortTime(moment, moment, "en-GB")).toBe("09:41");
+    vi.stubEnv("TZ", "Pacific/Auckland");
+    expect(fullTime(moment, "en-GB")).toMatch(/^Thursday,? 26 November 2026.*21:41$/u);
+  });
+
   it("reads a time later than now as its day", () => {
     expect(shortTime(at(2026, 11, 27, 8, 0), new Date(), "en-GB")).toBe("27 Nov");
   });

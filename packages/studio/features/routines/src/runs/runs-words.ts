@@ -1,3 +1,4 @@
+import { shortTime } from "@halonicjs/studio-kit";
 import { withFullStop } from "@halonicjs/studio-shell";
 import type { RoutineRun, RoutineRunStart, RoutineSkip, RoutineSkipReason } from "../api.ts";
 
@@ -32,8 +33,8 @@ export const runsWords = {
    * A run row's name, so it isn't read as its loose words ("Done 81d0ae Run now 08:39"), the way
    * the Runs list names its rows: "Run 81d0ae, done. Started: Run now, 08:39." (HAL-14241).
    */
-  rowName: (shortId: string, outcome: string, startedBy: string, time: string) =>
-    `Run ${shortId}, ${outcome.toLowerCase()}. Started: ${startedBy}, ${time}.`,
+  rowName: (shortId: string, outcome: string, startedBy: string, time: string | undefined) =>
+    `Run ${shortId}, ${outcome.toLowerCase()}. Started: ${startedBy}${time === undefined ? "" : `, ${time}`}.`,
 } as const;
 
 /** The chip word for each outcome of a run (the Runs list's words). */
@@ -188,15 +189,15 @@ export function queuedSentence(
     : `${when}: ${queued.count} times waiting to start, one after another`;
 }
 
-/** When a run started, for its row: "09:05" today, "yesterday", "Thu 08:12" this week, then the date. */
-export function runTime(iso: string, now: Date): string {
+/**
+ * When a run started, for its row's name: the kit's short time (`kit.time-stamp`), as the row
+ * shows it, so "09:05" today, "Yesterday", "Thu" this week, then the date, in `locale`'s way.
+ * None for a start that isn't a date, as the row shows none.
+ */
+export function runTime(iso: string, now: Date, locale?: string): string | undefined {
   const moment = new Date(iso);
-  const ago = daysAgo(moment, now);
-  if (ago <= 0) return clock(moment);
-  if (ago === 1) return "yesterday";
-  if (ago < 7) return `${days[moment.getDay()]} ${clock(moment)}`;
-  const date = `${moment.getDate()} ${months[moment.getMonth()]}`;
-  return moment.getFullYear() === now.getFullYear() ? date : `${date} ${moment.getFullYear()}`;
+  // `shortTime` throws on an invalid date, which would take the routine's page down.
+  return Number.isNaN(moment.getTime()) ? undefined : shortTime(moment, now, locale);
 }
 
 /** A time for the empty line: "Fri 6 Nov at 07:30". */

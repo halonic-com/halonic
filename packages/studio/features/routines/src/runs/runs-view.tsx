@@ -1,4 +1,11 @@
-import { EmptyState, SkeletonBar, StatusChip, usePresentation } from "@halonicjs/studio-kit";
+import {
+  EmptyState,
+  SkeletonBar,
+  StatusChip,
+  TimeStamp,
+  useFormatLocale,
+  usePresentation,
+} from "@halonicjs/studio-kit";
 import type { ReactNode } from "react";
 import type { RoutineRun, RoutineRuns, RoutinesHost, RoutineView } from "../api.ts";
 import { viewCantStartReason } from "../cant-start.ts";
@@ -195,8 +202,9 @@ function RunRow({
       {startedByWords[run.startedBy]}
     </span>
   );
-  const time = runTime(run.startedAt, now);
-  const when = <span className="text-small text-fg-muted">{time}</span>;
+  const locale = useFormatLocale();
+  const time = runTime(run.startedAt, now, locale);
+  const when = <TimeStamp at={new Date(run.startedAt)} now={now} />;
   // On a phone the row has two lines: chip, id and time, then what started it.
   const content = phone ? (
     <span className="flex min-w-0 flex-1 flex-col gap-1">

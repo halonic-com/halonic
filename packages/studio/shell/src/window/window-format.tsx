@@ -26,8 +26,8 @@ const followsComputer: ChosenFormat = { get: () => undefined, subscribe: () => (
 /**
  * The locale a window's times are written in (`kit.time-stamp`): the format chosen in Settings →
  * Formats, else the system's region format, as Formats' "Follow this computer" does, or the
- * browser's language until the shell has read it. Studio's window and every focused app's window
- * share it, so a time reads the same in both, and a new choice shows at once.
+ * browser's language until the shell has read it. Studio's window and the Inbox's and Messenger's
+ * windows share it, so a time reads the same in each, and a new choice shows at once.
  *
  * @example
  * <WindowFormatLocale regionFormat="en_GB.UTF-8" chosenFormat={chosen}>{page}</WindowFormatLocale>

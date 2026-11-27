@@ -173,6 +173,28 @@ verifies("runs.row-columns", () => {
     );
   });
 
+  it("says the start in the sentence as a list without day headings asks, or leaves it out", () => {
+    const spokenAs = (spokenTime: (startedAt: Date) => string | undefined) =>
+      runRow(
+        { summary: summaryWith({ status: "running", state: "draft" }) },
+        {
+          workflow: supportReply,
+          routine: undefined,
+          currency: "EUR",
+          now: mondayMorning,
+          spokenTime,
+        },
+      );
+
+    expect(spokenAs(() => "Yesterday").label).toBe(
+      "Run 01jd8q, Support reply, running, in Draft. Started by you, in the terminal, Yesterday.",
+    );
+    expect(spokenAs(() => undefined).label).toBe(
+      "Run 01jd8q, Support reply, running, in Draft. Started by you, in the terminal.",
+    );
+    expect(spokenAs(() => "Yesterday").time).toBe("10:40");
+  });
+
   describe("Started by", () => {
     const morningBrief: RunRoutine = { name: "Morning brief", schedule: "Weekdays at 08:00" };
     const triggered = (trigger: RunTrigger, routine?: RunRoutine) =>

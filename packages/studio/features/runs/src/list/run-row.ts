@@ -77,6 +77,11 @@ export interface RowContext {
   /** The workspace's `budget.currency`. */
   readonly currency: string;
   readonly now: Date;
+  /**
+   * How the row's name says when the run started, for a list without day headings; the time of
+   * day by default, since the list's heading names the day. `undefined` leaves the time out.
+   */
+  readonly spokenTime?: (startedAt: Date) => string | undefined;
 }
 
 const chipLooks: Readonly<Record<RunStanding, Omit<RunChip, "word">>> = {
@@ -104,7 +109,9 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
   const workflow = context.workflow?.name ?? summary.workflowId;
   const line = rowLine(run, standing, context);
   const test = summary.kind === "test";
-  const time = clockTime(new Date(summary.startedAt));
+  const startedAt = new Date(summary.startedAt);
+  const time = clockTime(startedAt);
+  const spokenTime = context.spokenTime === undefined ? time : context.spokenTime(startedAt);
   const started = startedBy(run, context.routine);
   const spoken =
     standing === "failed"
@@ -125,7 +132,7 @@ export function runRow(run: SourcedRun, context: RowContext): RunRow {
     startedAt: summary.startedAt,
     time,
     took: summary.endedAt === null ? undefined : whenWords.took(took(summary)),
-    label: rowLabelWords.row(shortId, workflow, spoken, started.spoken, time, test),
+    label: rowLabelWords.row(shortId, workflow, spoken, started.spoken, spokenTime, test),
   };
 }
 

@@ -4,6 +4,7 @@ import {
   runRow,
   type SourcedRun,
 } from "@halonicjs/studio-feature-runs/api";
+import { shortTime } from "@halonicjs/studio-kit";
 import type { WorkflowRef } from "../api.ts";
 import type { RunsLoad } from "./use-runs.ts";
 
@@ -44,12 +45,17 @@ export function runSections(rows: readonly RunRow[]): RunSections {
   };
 }
 
-/** The rows of the workflow's real runs, in the order given. */
+/**
+ * The rows of the workflow's real runs, in the order given. A row's name says when the run
+ * started as its row shows it, the kit's short time in `locale`'s way (`kit.time-stamp`), since
+ * this view has no day headings.
+ */
 export function runRowsOf(
   runs: readonly SourcedRun[],
   workflow: WorkflowRef,
   source: Pick<RunsSource, "workflow" | "routine" | "currency">,
   now: Date,
+  locale?: string,
 ): RunRow[] {
   const currency = source.currency();
   return realRunsOf(runs, workflow).map((run) => {
@@ -59,8 +65,15 @@ export function runRowsOf(
       routine: key === undefined ? undefined : source.routine(key),
       currency,
       now,
+      spokenTime: (startedAt) => spokenShortTime(startedAt, now, locale),
     });
   });
+}
+
+/** The kit's short time for a row's name; none for a start the run log couldn't date. */
+function spokenShortTime(at: Date, now: Date, locale: string | undefined): string | undefined {
+  // `shortTime` throws on an invalid date, which would take the whole view down.
+  return Number.isNaN(at.getTime()) ? undefined : shortTime(at, now, locale);
 }
 
 /** The amber count on the Runs tab: this workflow's runs that wait for the person; 0 until they load. */

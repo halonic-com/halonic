@@ -2584,9 +2584,10 @@ because the place's name says the same.
 
 When something happened, at the end of a list row's name line (`kit.time-stamp`): "09:41" today,
 "Yesterday", the weekday within the last week ("Mon"), "26 Nov" this year, else "26/11/2025".
-Hovering shows the full date and time. It's small muted text with tabular figures that never
-wraps, so the name beside it is cut first. An invalid date shows nothing. Give every row of one
-list the same `now`, so they all read against one moment.
+Hovering shows the full date and time. Rows under a day heading (Runs, Source control) keep the
+plain time of day, since the heading already names the day. It's small muted text with tabular
+figures that never wraps, so the name beside it is cut first. An invalid date shows nothing. Give
+every row of one list the same `now`, so they all read against one moment.
 
 ```tsx
 <TimeStamp at={new Date(chat.sentAt)} now={now} />;
