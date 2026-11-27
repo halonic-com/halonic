@@ -27,7 +27,8 @@ url = "2"
 # to the build. Only the features it calls are turned on: the default browser
 # and its open command (RegGetValueW), the browser's process path
 # (OpenProcess, QueryFullProcessImageNameW) and its windows (EnumWindows,
-# GetClassNameW, GetWindowThreadProcessId, IsWindowVisible, SetWindowPos).
+# GetClassNameW, GetWindow, GetWindowLongPtrW, GetWindowThreadProcessId,
+# IsWindowVisible, SetWindowPos).
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "=0.61.2", features = [
   "Win32_Foundation",

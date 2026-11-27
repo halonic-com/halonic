@@ -1,12 +1,13 @@
 //! Requirement `studio.src-tauri.crates.sign-in-window.sign-in-window`: the
 //! default browsers that get a sign-in window, the browser's path in its
-//! open command, the address check, the window's place and its command line.
+//! open command, the address check, the window's place, its command line
+//! and which browser windows count as frames.
 
 use std::path::{Path, PathBuf};
 
 use halonic_sign_in_window::{
-    Browser, MIN_HEIGHT, MIN_WIDTH, Rect, Url, browser_exe, chromium_browser, launch_arguments,
-    popup_rect, sign_in_url,
+    Browser, MIN_HEIGHT, MIN_WIDTH, Rect, Url, WS_EX_TOOLWINDOW, browser_exe, chromium_browser,
+    is_browser_frame, launch_arguments, popup_rect, sign_in_url,
 };
 
 const CHROME: &str = r"C:\Program Files\Google\Chrome\Application\chrome.exe"; // leak-guard: allow absolute-path standard browser install paths under test
@@ -273,4 +274,18 @@ fn a_screen_smaller_than_the_least_size_bounds_it() {
             height: 500
         }
     );
+}
+
+#[test]
+fn owned_and_tool_windows_are_not_browser_frames() {
+    // Requirement studio.src-tauri.crates.sign-in-window.sign-in-window:
+    // Chromium's bubbles and menus share the frame's class, so they must
+    // never be taken for the new sign-in window.
+    const WS_EX_APPWINDOW: u32 = 0x0004_0000;
+    assert!(is_browser_frame(false, 0));
+    assert!(is_browser_frame(false, WS_EX_APPWINDOW));
+    assert!(!is_browser_frame(true, 0));
+    assert!(!is_browser_frame(false, WS_EX_TOOLWINDOW));
+    assert!(!is_browser_frame(false, WS_EX_TOOLWINDOW | WS_EX_APPWINDOW));
+    assert!(!is_browser_frame(true, WS_EX_TOOLWINDOW));
 }

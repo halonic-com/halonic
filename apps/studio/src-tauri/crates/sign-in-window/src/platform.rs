@@ -18,12 +18,12 @@ use windows_sys::Win32::System::Threading::{
     OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetClassNameW, GetWindowThreadProcessId, IsWindowVisible, SWP_NOACTIVATE,
-    SWP_NOZORDER, SetWindowPos,
+    EnumWindows, GW_OWNER, GWL_EXSTYLE, GetClassNameW, GetWindow, GetWindowLongPtrW,
+    GetWindowThreadProcessId, IsWindowVisible, SWP_NOACTIVATE, SWP_NOZORDER, SetWindowPos,
 };
 use windows_sys::core::BOOL;
 
-use crate::{BrowserWindow, Handle, Rect};
+use crate::{BrowserWindow, Handle, Rect, is_browser_frame};
 
 /// Where Windows keeps the default app for `https`. Windows 11 writes
 /// `UserChoiceLatest` and may leave `UserChoice` behind, so it is read first.
@@ -118,6 +118,7 @@ pub fn browser_windows(exe: &Path) -> Result<Vec<BrowserWindow>, String> {
     let windows = handles
         .into_iter()
         .filter(|&window| class_name(window).as_deref() == Some(CHROMIUM_WINDOW_CLASS))
+        .filter(|&window| is_browser_frame(has_owner(window), extended_style(window)))
         .filter(|&window| {
             let path = paths
                 .entry(process_id(window))
@@ -137,6 +138,21 @@ fn is_visible(window: HWND) -> bool {
     // since it was listed is "not visible".
     let visible = unsafe { IsWindowVisible(window) };
     visible != 0
+}
+
+fn has_owner(window: HWND) -> bool {
+    // SAFETY: no pointers; Windows checks the handle and returns null for
+    // a window with no owner or one gone since it was listed.
+    let owner = unsafe { GetWindow(window, GW_OWNER) };
+    !owner.is_null()
+}
+
+fn extended_style(window: HWND) -> u32 {
+    // SAFETY: no pointers; Windows checks the handle and returns 0 for a
+    // window gone since it was listed.
+    let style = unsafe { GetWindowLongPtrW(window, GWL_EXSTYLE) };
+    // The extended style is a 32-bit value; the cast keeps those bits.
+    style as u32
 }
 
 unsafe extern "system" fn collect(window: HWND, list: LPARAM) -> BOOL {
