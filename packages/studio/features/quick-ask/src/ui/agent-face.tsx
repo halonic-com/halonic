@@ -51,7 +51,7 @@ function AgentSkeleton() {
       <span
         ref={greys}
         data-agent-skeleton=""
-        className={`flex items-center gap-1.5${shown ? "" : " invisible"}`}
+        className={shown ? "flex items-center gap-1.5" : "flex items-center gap-1.5 invisible"}
       >
         <SkeletonBar kind="avatar" />
         <span data-name-bar="" className="w-16">
