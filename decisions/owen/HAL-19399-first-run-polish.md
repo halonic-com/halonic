@@ -10,7 +10,8 @@
 width, the first at the right end, as Approve is on the approval card; the full-width first answer over a row of the others stays on the
 phone. Stretched across a 730 px pane, Approve and Reject read as one bar. Three tests in
 `wait-card.test.tsx` that held the buttons' desktop order now hold the new order, with the same
-labels.
+labels. Sofia confirmed this desktop row after #6443 (HAL-20191, option B); the step's closing
+words from `inbox.wait-context` stay as the caption directly above the buttons on both layouts.
 
 `shell.focus-ring-after-pointer` (G9, new): after a pointer press, a heading that code focused
 keeps focus but shows no ring; the next key press, not a modifier alone, shows it again. Welcome's
