@@ -277,12 +277,15 @@
       "category": "dev-tooling",
       "allowedIn": [
         "@halonicjs/tooling-check",
-        "@halonicjs/tooling-paperclip"
+        "@halonicjs/tooling-paperclip",
+        "@halonicjs/adapter-toolscript-check"
       ],
       "layers": [
+        "adapters",
         "tooling"
       ],
-      "reason": "The TypeScript parser API until TypeScript 7.1 ships its own API (D9). Remove then. tooling/check uses it for its rules; tooling-paperclip only in tests, to check that signal and workflow rules stay pure (HAL-18987)."
+      "reason": "The TypeScript parser API until TypeScript 7.1 ships its own API (D9). Remove then. tooling/check uses it for its rules; tooling-paperclip only in tests, to check that signal and workflow rules stay pure (HAL-18987). adapter-toolscript-check ships it (runtimeIn) for the ToolScript profile check and type stripping: the TypeScript JS API until 7.1 ships its own; remove then. Approved by Liam on HAL-17568 (option 1).",
+      "runtimeIn": "@halonicjs/adapter-toolscript-check"
     },
     "@vitest/coverage-v8": {
       "category": "dev-tooling",
