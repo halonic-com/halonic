@@ -41,7 +41,6 @@ import {
   NoLimitMemoryService,
   ProviderCheckService,
 } from "@halonicjs/studio-feature-models/api";
-import { AskWindowService } from "@halonicjs/studio-feature-quick-ask/api";
 import { RoutinesHostService } from "@halonicjs/studio-feature-routines/api";
 import { InstructionTrustHostService, RunsSourceService } from "@halonicjs/studio-feature-runs/api";
 import { HostSettingsService } from "@halonicjs/studio-feature-settings/api";
@@ -51,7 +50,6 @@ import {
   WorkflowsHostService,
 } from "@halonicjs/studio-feature-workflows/api";
 import {
-  provideServerSessionShell,
   ShellHttpClient,
   shellKeychain,
   shellKeyOrigins,
@@ -102,12 +100,12 @@ import { WorkspaceRoutines } from "../routines/workspace-routines.ts";
 import { provideAllRuns } from "../runs/all-runs-sources.ts";
 import { WorkspaceWorkflowReview } from "../workflows/workspace-workflow-review.ts";
 import { WorkspaceWorkflows } from "../workflows/workspace-workflows.ts";
-import { desktopAskWindow } from "./desktop-ask-window.ts";
 import { folderEngine } from "./folder-engine.ts";
 import { focusOf, storageOf } from "./page-window.ts";
 import { provideEngineAutoOpen } from "./provide-engine-auto-open.ts";
 import { provideRunStart } from "./provide-run-start.ts";
 import { provideShellHandOvers } from "./provide-shell-hand-overs.ts";
+import { provideShellWindows } from "./provide-shell-windows.ts";
 import { provideWorkspaceRuns } from "./provide-workspace-runs.ts";
 import { WorkspaceInstructionTrust } from "./workspace-instruction-trust.ts";
 import type { WorkspaceTrust } from "./workspace-trust.ts";
@@ -183,8 +181,7 @@ export function provideFolderServices(
   );
   provideModelChoice(services, { ipc, trust, keys, settle });
   services.provide(NoLimitMemoryService, new WorkspaceNoLimit(storageOf(window), location));
-  services.provide(AskWindowService, desktopAskWindow(ipc));
-  provideServerSessionShell(services, window, platform);
+  provideShellWindows(services, { ipc, window, platform });
   services.provide(
     ProviderCheckService,
     new WorkspaceProviderCheck(new ShellHttpClient(ipc), trust),
