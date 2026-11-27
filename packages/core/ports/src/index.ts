@@ -85,6 +85,15 @@ export {
   questionsAnswerFits,
 } from "./agent-messaging-questions.ts";
 export {
+  type InboxReach,
+  type InboxReachEnv,
+  type InboxReachSecret,
+  inboxReachEnvMax,
+  inboxReachFits,
+  inboxReachNameMax,
+  reachNameFits,
+} from "./agent-messaging-reach.ts";
+export {
   checkInboxStepperRequest,
   type InboxStepperCheck,
   type InboxStepperRequest,

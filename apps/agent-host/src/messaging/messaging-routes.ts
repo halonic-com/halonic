@@ -43,7 +43,8 @@ const changesBody = s
   .strict();
 const focusBody = s.object({ inFront: s.boolean() }).strict();
 const connectionsBody = s.object({ workspace }).strict();
-// Only the shell asks whether the workspace may start a run, so Settings › Connections runs no trust check.
+// Studio's shell is the one caller that asks whether the workspace may start a run, so Settings ›
+// Connections runs no trust check. A page that asks too gets the same answer for one trust check.
 const connectionsListBody = s.object({ workspace, mayStart: s.literal(true).optional() }).strict();
 /** A time with its zone, as `toISOString` writes it: the bound of today's finished runs. */
 const isoTime = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
@@ -238,7 +239,8 @@ async function mayStartRun(deps: MessagingRouteDeps, workspace: string): Promise
   try {
     return (await deps.mayStart?.(workspace)) === true;
   } catch (error) {
-    deps.log(`The run gate failed for a connections list: ${describe(error)}\n`);
+    // Only the error's name: the run gate's errors may name the workspace's files.
+    deps.log(`The run gate failed for a connections list (${errorName(error)}).\n`);
     return false;
   }
 }
@@ -271,6 +273,11 @@ function readList(messaging: AgentMessaging, body: ReadBody): Promise<readonly u
     case "search":
       return body.text === undefined ? Promise.resolve([]) : messaging.search(body.text);
   }
+}
+
+/** The error's name only, for errors whose message may name a file. */
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : "an unknown error";
 }
 
 /** The error's name and message: the client's errors name the request and status only, never a key. */

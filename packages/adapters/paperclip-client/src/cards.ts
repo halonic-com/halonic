@@ -27,6 +27,7 @@ import {
 import { asList, asRecord, asRecords, field, type JsonRecord, text } from "./json.ts";
 import { authorOf, fullLinksOf, type MapContext, timeOf } from "./map.ts";
 import type { PaperclipRequestName } from "./requests.ts";
+import { hireReach } from "./risky-reach.ts";
 
 /** The request that answers a card or an approval, and its body. */
 export interface AnswerRequest {
@@ -388,15 +389,18 @@ export function approvalToItem(
   const decided = decidedOptions.get(status);
   const closed = closedReasons.get(status);
   const note = text(record, "decisionNote");
+  const payload = asRecord(field(record, "payload"));
+  const reach = type === "hire_agent" ? hireReach(payload) : undefined;
   return {
     id: context.ids.make("approval", id),
     source: context.ids.source(),
     from: authorOf(context, text(record, "requestedByAgentId"), text(record, "requestedByUserId")),
-    question: fullLinksOf(context, approvalQuestion(type, asRecord(field(record, "payload")))),
+    question: fullLinksOf(context, approvalQuestion(type, payload)),
     options: type === budgetOverrideType ? budgetOverrideOptions : approvalOptions,
     kind: "approval",
     ...(work === undefined ? {} : { work }),
     risk: approvalRisk(type),
+    ...(reach === undefined ? {} : { reach }),
     createdAt: timeOf(record, "createdAt"),
     // The Inbox adds the files of the card's task (`card-files.ts`).
     attachments: [],

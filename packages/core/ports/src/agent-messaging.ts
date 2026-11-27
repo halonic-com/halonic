@@ -2,6 +2,7 @@ import type { ActionResultAnswer, InboxActionRequest } from "./agent-messaging-a
 import type { ChannelResult, MessageSendOptions, MessageWork } from "./agent-messaging-channels.ts";
 import type { InboxItemKind } from "./agent-messaging-kinds.ts";
 import type { InboxQuestion, InboxQuestionsAnswer } from "./agent-messaging-questions.ts";
+import type { InboxReach } from "./agent-messaging-reach.ts";
 import type { InboxStepperRequest } from "./agent-messaging-steppers.ts";
 
 /**
@@ -291,6 +292,11 @@ export interface InboxItem {
   kind?: InboxItemKind;
   /** Set by the provider only: `risky` is an approval that spends money or changes who may do what. Absent reads as `normal`. */
   risk?: "normal" | "risky";
+  /**
+   * Only on a `risky` item, set by the provider: what approving or accepting it reaches, by name.
+   * It never holds a value (requirement `ports.agent-messaging-reach`).
+   */
+  reach?: InboxReach;
   createdAt: string;
   state: InboxItemState;
 }
