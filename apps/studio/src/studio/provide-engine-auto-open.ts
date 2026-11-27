@@ -36,14 +36,14 @@ export function provideEngineAutoOpen(
     engineAutoOpenKey,
     new EngineAutoOpen({
       open: async () => {
-        if (!(await ownEngine)) return;
         // A run waiting for a timer resumes on an engine with the Local only just saved.
         await engine.reopenOnLocalOnlySave();
         return engine.open();
       },
       definitions: new TauriDefinitionStore(files, location),
       records: new TauriRecordStore(ipc, location),
-      mayStart: (workspace) => trust.mayStart(workspace),
+      // Waits here for the shell's answer: a folder closed meanwhile is caught right after it.
+      mayStart: async (workspace) => (await ownEngine) && trust.mayStart(workspace),
       onChange: (listener) => {
         const stops = [trust.subscribe(listener), scope.events.on("files.saved", listener)];
         return () => {

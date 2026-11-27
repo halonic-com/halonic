@@ -14,6 +14,7 @@ import type { Announcer } from "../announcer/announcer.ts";
 import type { CloseStack } from "../close-stack/close-stack.ts";
 import type { ShellEngine } from "../engine/engine-connection.ts";
 import { EngineLine } from "../engine/engine-line.tsx";
+import type { EngineStarting } from "../engine/engine-starting.ts";
 import {
   useDocumentLanguage,
   useEscapeClosesTopLayer,
@@ -34,6 +35,11 @@ export interface ShellFrameProps {
   readonly toasts: ToastStore;
   /** The window's engine connection; the frame shows its one line while it isn't answering. */
   readonly engine: ShellEngine;
+  /**
+   * Whether the shown workspace's engine still starts, `StudioWorkspace.engineStarting`; the same
+   * line says "Starting the engine…" until it has.
+   */
+  readonly engineStarting?: EngineStarting | undefined;
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
   /**
@@ -108,8 +114,8 @@ export interface ShellFrameProps {
  * status bar (component specs 15.1, 15.2).
  * In a narrow window (600 to 899px) the sidebar folds into the Places drawer, opened by a Places
  * button at the title bar's far left.
- * While the engine isn't answering, its one line sits over the page, at the top of the framed
- * panel on the desktop and under the top bar on a phone.
+ * While the engine isn't answering, or the shown workspace's engine still starts, its one line
+ * sits over the page, at the top of the framed panel on the desktop and under the top bar on a phone.
  *
  * Everything inside learns the layout through the kit's `PresentationProvider`, and whether the
  * window is narrower than 900px through its `NarrowProvider`; every kit
@@ -264,7 +270,7 @@ function FramedContent(props: {
       data-framed-panel={desktop ? "" : undefined}
       className={desktopPanelClass(desktop, props.besideSidebar)}
     >
-      {desktop ? <EngineLine engine={frame.engine} /> : null}
+      {desktop ? <EngineLine engine={frame.engine} starting={frame.engineStarting} /> : null}
       <div className={desktop ? "relative flex min-h-0 flex-1" : "contents"}>
         {props.children}
         {frame.panel}
@@ -296,7 +302,7 @@ function TopLines(props: {
   return (
     <>
       {frame.phoneTopBar}
-      <EngineLine engine={frame.engine} />
+      <EngineLine engine={frame.engine} starting={frame.engineStarting} />
       {frame.strips}
       <PhoneNotices saveNote={frame.saveNote} badges={frame.phoneBadges} />
     </>

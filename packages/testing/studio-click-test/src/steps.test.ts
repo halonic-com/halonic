@@ -61,6 +61,13 @@ verifies("studio-click-test.steps", () => {
       );
     });
 
+    it('fails as STILL_STARTING when "Starting the engine…" stays after the reply', async () => {
+      const { writer, replied, engineStarting } = screenText;
+      const studio = studioWithChat(`${engineStarting.text} ${writer.text}${replied.text}`);
+      const outcome = await engineAnswers.run(studio.context);
+      expect(outcome).toMatchObject({ passed: false, code: "STILL_STARTING" });
+    });
+
     it("fails as NO_REPLY when nothing comes back, even an echo of the message", async () => {
       const outcome = await engineAnswers.run(studioWithChat(probeMessage).context);
       expect(outcome).toMatchObject({ passed: false, code: "NO_REPLY" });

@@ -63,14 +63,14 @@ verifies("studio.open-folder-before-engine", () => {
     const opened = await openFolder(shell, webview.page, "/work/acme", displaySettings());
 
     expect(opened.workspace.name).toBe("acme");
-    expect(shell.engine.connection).toBe("starting");
+    expect(opened.workspace.engineStarting.starting).toBe(true);
     expect(webview.engineCalls).toEqual([]);
 
     webview.engineUp();
     await expect(opened.workspace.services.get(InboxRunsService).waiting()).resolves.toEqual([
       waitingRun,
     ]);
-    expect(shell.engine.connection).toBe("connected");
+    expect(opened.workspace.engineStarting.starting).toBe(false);
     expect(webview.engineCalls).toEqual(["GET /api/hello", "GET /api/waiting-runs"]);
     await opened.dispose();
   });
@@ -98,8 +98,26 @@ verifies("studio.open-folder-before-engine", () => {
 
     webview.engineUp();
     await expect(opened.workspace.services.get(InboxRunsService).waiting()).resolves.toEqual([]);
-    expect(shell.engine.connection).toBe("connected");
+    expect(opened.workspace.engineStarting.starting).toBe(false);
     expect(webview.engineCalls).toEqual(["GET /api/hello"]);
     await opened.dispose();
+  });
+
+  it("leaves the window's engine answering while a second folder's engine starts", async () => {
+    const first = startingEngineWebview();
+    const shell = createShell({ features: [], host: "desktop-app", platform: "linux" });
+    const acme = await openFolder(shell, first.page, "/work/acme", displaySettings());
+    first.engineUp();
+    await settle();
+
+    const second = startingEngineWebview();
+    const globex = await openFolder(shell, second.page, "/work/globex", displaySettings());
+
+    expect(globex.workspace.engineStarting.starting).toBe(true);
+    expect(acme.workspace.engineStarting.starting).toBe(false);
+    expect(shell.engine.connection).toBe("connected");
+    expect(shell.engine.stale).toBe(false);
+    await globex.dispose();
+    await acme.dispose();
   });
 });

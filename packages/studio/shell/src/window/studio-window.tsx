@@ -1,4 +1,3 @@
-import type { MenuEntry } from "@halonicjs/studio-kit";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { HeaderBadges } from "../badges/header-badges.tsx";
 import { FeatureDialogs } from "../dialogs/feature-dialogs.tsx";
@@ -28,7 +27,6 @@ import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
 import { useHelpMenu } from "../sidebar/help-menu.ts";
 import { studioTab } from "../sidebar/sidebar-views.tsx";
-import type { WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
 import { usePageHeadingFocus, usePageHeadingFocusAfterDialog } from "../tabs/history-moves.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
 import { currentLocation } from "../tabs/tab-set.ts";
@@ -56,18 +54,10 @@ import { useWindowOpeners } from "./window-openers.ts";
 import { windowPanelParts } from "./window-panel.tsx";
 import { useOpenSettings } from "./window-settings.ts";
 import { useActiveTabPage, useActiveTabTitle, useWindowTitle } from "./window-title.ts";
-import { withActions } from "./with-actions.ts";
+import { type StudioSwitcher, withActions } from "./with-actions.ts";
 
-/** What the window lets its workspace menu do. */
-export interface WindowActions {
-  /** Runs the command with this id, any feature's, and says whether a feature added it. */
-  readonly runCommand: (commandId: string) => boolean;
-}
-
-/** The workspace switcher as {@link StudioWindow} takes it. */
-export interface StudioSwitcher extends Omit<WorkspaceSwitcherProps, "menu"> {
-  readonly menu: readonly MenuEntry[] | ((window: WindowActions) => readonly MenuEntry[]);
-}
+// The switcher's types live with `withActions`, which reads them; the window still offers them.
+export type { StudioSwitcher, WindowActions } from "./with-actions.ts";
 
 /** Props for {@link StudioWindow}. */
 export interface StudioWindowProps {
@@ -332,6 +322,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       shownPage={activeTabPage}
       closeStack={shell.closeStack}
       engine={shell.engine}
+      engineStarting={workspace.engineStarting}
       toasts={shell.toasts}
       language={props.language}
       titleBar={

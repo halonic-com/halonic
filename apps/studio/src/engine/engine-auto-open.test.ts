@@ -2,7 +2,7 @@ import { TauriRecordStore } from "@halonicjs/adapter-fs-tauri";
 import type { MemoryDefinitionStore } from "@halonicjs/adapter-memory";
 import { runTimerCollection } from "@halonicjs/adapter-workspace-models";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EngineAutoOpen, type EngineAutoOpenParts } from "./engine-auto-open.ts";
 import { acmeFiles, fakeShell, location, lockCalls, serviceOn } from "./engine-service.testing.ts";
 
@@ -123,6 +123,22 @@ describe("EngineAutoOpen", () => {
     await autoOpen.check();
 
     expect(listeners.size).toBe(0);
+    expect(lockCalls(shell)).toEqual([]);
+  });
+
+  it("opens nothing when disposed while `mayStart` still waits, as for the shell's answer", async () => {
+    let answer: ((may: boolean) => void) | undefined;
+    const { shell, autoOpen } = autoOpenOn(
+      acmeFiles({}, { [routinePath]: routine("{ every: 1h }") }),
+      { mayStart: () => new Promise<boolean>((resolve) => (answer = resolve)) },
+    );
+    const checking = autoOpen.check();
+    await vi.waitFor(() => expect(answer).toBeDefined());
+
+    autoOpen.dispose();
+    answer?.(true);
+    await checking;
+
     expect(lockCalls(shell)).toEqual([]);
   });
 });

@@ -126,6 +126,11 @@ export const screenText = {
     text: "Showing what it said last.",
     file: "packages/studio/shell/src/engine/engine-words.ts",
   },
+  // The engine line while the shown workspace's engine starts (HAL-19965).
+  engineStarting: {
+    text: "Starting the engine…",
+    file: "packages/studio/shell/src/welcome/welcome-open-words.ts",
+  },
   staleInbox: {
     text: "Showing what was read last.",
     file: "packages/studio/features/inbox/src/ui/load-lines.tsx",

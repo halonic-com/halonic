@@ -5,9 +5,12 @@ import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import { createShell } from "../shell.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
+import { MapTarget } from "../test-support/map-target.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { StudioWorkspace } from "../window/studio-workspace.ts";
 import type { ShellEngineState } from "./engine-connection.ts";
 import { EngineLine } from "./engine-line.tsx";
+import { EngineStarting } from "./engine-starting.ts";
 
 /** A promise the test settles by hand, like the shell's answer to `engine_open`. */
 function handSettled() {
@@ -27,72 +30,68 @@ function setUp() {
   return { shell, events };
 }
 
+function workspaceOf(shell: ReturnType<typeof setUp>["shell"], engineReady?: Promise<unknown>) {
+  return new StudioWorkspace({ toasts: shell.toasts, services: new MapTarget(), engineReady });
+}
+
 afterEach(unmountAll);
 
 verifies("shell.engine-starting", () => {
-  it("is starting until the engine's open settles, then connected, and announces neither", async () => {
+  it("is starting until the workspace's engine open settles, and announces nothing", async () => {
     const { shell, events } = setUp();
     const open = handSettled();
-
-    shell.engine.startingUntil(open.promise);
-    expect(shell.engine.connection).toBe("starting");
-    expect(shell.engine.stale).toBe(false);
+    const workspace = workspaceOf(shell, open.promise);
+    expect(workspace.engineStarting.starting).toBe(true);
 
     open.resolve();
     await open.promise;
-    expect(shell.engine.connection).toBe("connected");
-    expect(events).toEqual(["starting", "connected"]);
+
+    expect(workspace.engineStarting.starting).toBe(false);
+    expect(events).toEqual([]);
   });
 
-  it("is connected again when the engine's open fails, as the window then runs its own", async () => {
-    const { shell } = setUp();
+  it("has started when the engine's open fails, as the window then runs its own", async () => {
     const open = handSettled();
-    shell.engine.startingUntil(open.promise);
+    const starting = new EngineStarting(open.promise);
 
     open.reject(new Error("The engine didn't start."));
     await open.promise.catch(() => undefined);
 
-    expect(shell.engine.connection).toBe("connected");
+    expect(starting.starting).toBe(false);
   });
 
-  it("keeps starting while a newer open still waits", async () => {
+  it("isn't starting for a workspace opened without an engine open", () => {
     const { shell } = setUp();
-    const first = handSettled();
-    const second = handSettled();
-    shell.engine.startingUntil(first.promise);
-    shell.engine.startingUntil(second.promise);
-
-    first.resolve();
-    await first.promise;
-    expect(shell.engine.connection).toBe("starting");
-
-    second.resolve();
-    await second.promise;
-    expect(shell.engine.connection).toBe("connected");
+    expect(workspaceOf(shell).engineStarting.starting).toBe(false);
   });
 
-  it("changes nothing while the shell follows an executor", () => {
-    const { shell } = setUp();
+  it("keeps the window's engine connected while a second workspace's engine starts", () => {
+    const { shell, events } = setUp();
     shell.engine.watch({});
+    workspaceOf(shell, Promise.resolve());
 
-    shell.engine.startingUntil(new Promise(() => {}));
+    workspaceOf(shell, new Promise(() => {}));
 
     expect(shell.engine.connection).toBe("connected");
+    expect(shell.engine.stale).toBe(false);
+    expect(events).toEqual([]);
   });
 
-  it('shows the line "Starting the engine…" while the engine starts, and drops it once it answers', async () => {
+  it('shows "Starting the engine…" for the shown workspace only, and drops it once it answers', async () => {
     const { shell } = setUp();
     const open = handSettled();
-    const container = render(<EngineLine engine={shell.engine} />);
-    expect(container.textContent).toBe("");
+    const globex = workspaceOf(shell, open.promise);
+    const acme = workspaceOf(shell);
 
-    act(() => shell.engine.startingUntil(open.promise));
-    expect(container.textContent).toBe("Starting the engine…");
+    const acmeLine = render(<EngineLine engine={shell.engine} starting={acme.engineStarting} />);
+    expect(acmeLine.textContent).toBe("");
+    const line = render(<EngineLine engine={shell.engine} starting={globex.engineStarting} />);
+    expect(line.textContent).toBe("Starting the engine…");
 
     await act(async () => {
       open.resolve();
       await open.promise;
     });
-    expect(container.textContent).toBe("");
+    expect(line.textContent).toBe("");
   });
 });
