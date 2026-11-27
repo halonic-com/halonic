@@ -34,6 +34,7 @@ export default defineConfig({
         "spend-and-seats": `${import.meta.dirname}/e2e/pages/spend-and-seats.html`,
         "pull-requests": `${import.meta.dirname}/e2e/pages/pull-requests.html`,
         "update-button": `${import.meta.dirname}/e2e/pages/update-button.html`,
+        "first-run-polish": `${import.meta.dirname}/e2e/pages/first-run-polish.html`,
       },
     },
   },

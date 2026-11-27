@@ -147,6 +147,8 @@ verifies("shell.phone-bars", () => {
     expect(count?.className).toContain("top-0");
     expect(count?.className).not.toContain("-top-");
     expect(count?.className).toContain("-end-3.5");
+    // A flex backing, so the count fills it rather than sitting on a text line's baseline.
+    expect(count?.className.split(" ")).toContain("flex");
     const dot = link("Runs").querySelector('[aria-hidden="true"].absolute');
     expect(dot?.className).toContain("bg-running");
     expect(dot?.className).toContain("ring-surface");
