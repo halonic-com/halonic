@@ -1,3 +1,4 @@
+import { isWordsOnly } from "../reviewer-paths.ts";
 import { lastPushOf } from "./approval.ts";
 import { plainLines, requestsChanges } from "./signed.ts";
 import type { GatePull, PullText } from "./snapshot.ts";
@@ -16,7 +17,10 @@ import type { GatePull, PullText } from "./snapshot.ts";
  * part of Julian's limits: `apps/studio/src-tauri/`, `docs/security/`,
  * `packages/core/action-catalog/` (HAL-20215), `SECURITY.md`, or a path naming sandbox, secret, sign-in, oauth, keychain
  * or trust. Changesets don't count, nor do lockfiles, `package.json` or CI
- * paths, which would hold every dependency pull request.
+ * paths, which would hold every dependency pull request; nor, outside
+ * `docs/security/` and `SECURITY.md`, do tests, Markdown and wording files,
+ * by the same rule as `reviewerFor` (HAL-14809, HAL-20402). The gate's reason
+ * names what made it a security pull request.
  */
 
 /** The label that marks a security pull request. */
@@ -34,24 +38,28 @@ const reviewLine = /^\s*security[- ]review\b/im;
 const signOffLine = /^Julian:[ \t]*security sign-off on head[ \t]*`?([0-9a-f]{7,40})`?/;
 
 function securityPath(path: string): boolean {
-  if (path.startsWith(".changeset/")) {
+  if (path === "SECURITY.md" || path.startsWith("docs/security/")) {
+    return true;
+  }
+  if (path.startsWith(".changeset/") || isWordsOnly(path)) {
     return false;
   }
-  return (
-    path === "SECURITY.md" ||
-    securityFolders.some((folder) => path.startsWith(folder)) ||
-    securityWords.test(path)
-  );
+  return securityFolders.some((folder) => path.startsWith(folder)) || securityWords.test(path);
 }
 
-/** Whether the pull request keeps the security sign-off gate. */
-export function isSecurityPull(pull: GatePull): boolean {
-  return (
-    pull.labels.includes(securityLabel) ||
-    reviewLine.test(pull.body ?? "") ||
-    pull.filesTotal > pull.files.length ||
-    pull.files.some(securityPath)
-  );
+/** What makes the pull request a security one, for the gate's reason, or undefined when nothing does. */
+export function securityCause(pull: GatePull): string | undefined {
+  if (pull.labels.includes(securityLabel)) {
+    return `the \`${securityLabel}\` label`;
+  }
+  if (reviewLine.test(pull.body ?? "")) {
+    return "a security-review line in its description";
+  }
+  if (pull.filesTotal > pull.files.length) {
+    return `${pull.filesTotal} changed files, more than the gate reads`;
+  }
+  const path = pull.files.find(securityPath);
+  return path === undefined ? undefined : `\`${path}\``;
 }
 
 /** The head a comment's one sign-off line names, or null: none, quoted or in code, or with a change request. */
@@ -92,8 +100,9 @@ export function signedOff(pull: GatePull, teamLogin: string): boolean {
 
 /** The gate's reason for a security pull request still waiting for the sign-off, or undefined. */
 export function securityReason(pull: GatePull, teamLogin: string): string | undefined {
-  if (!isSecurityPull(pull) || signedOff(pull, teamLogin)) {
+  const cause = securityCause(pull);
+  if (cause === undefined || signedOff(pull, teamLogin)) {
     return undefined;
   }
-  return `security PR: waiting for "Julian: security sign-off on head ${pull.head.slice(0, 9)}"`;
+  return `security PR (${cause}): waiting for "Julian: security sign-off on head ${pull.head.slice(0, 9)}"`;
 }

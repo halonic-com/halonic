@@ -4,7 +4,7 @@ import { pathReviewer } from "../reviewer-paths-who.ts";
 import { type GateVerdictPull, type RecordedGate, unreadGate } from "../verdicts/gate.ts";
 import { type ApprovalVerdict, approvalOf, routedOf } from "./approval.ts";
 import { type ChangeRequest, changeRequestOf } from "./change-request.ts";
-import { isSecurityPull, securityReason } from "./security-signoff.ts";
+import { securityCause, securityReason } from "./security-signoff.ts";
 import type { GatePull, MergeSnapshot } from "./snapshot.ts";
 
 /**
@@ -107,9 +107,10 @@ export function recordedSide(snapshot: MergeSnapshot, pull: GatePull): ApprovalS
     unreadGate("the recorded verdicts weren't read this pass");
   const [hold] = gate.holds;
   const reasons = [...gate.reasons];
-  if (isSecurityPull(pull) && !gate.securityOk) {
+  const cause = securityCause(pull);
+  if (cause !== undefined && !gate.securityOk) {
     reasons.push(
-      `security PR: waiting for Julian's recorded security-ok on head ${pull.head.slice(0, 9)}`,
+      `security PR (${cause}): waiting for Julian's recorded security-ok on head ${pull.head.slice(0, 9)}`,
     );
   }
   return {

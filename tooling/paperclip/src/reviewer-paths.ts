@@ -124,8 +124,9 @@ export function isTestPath(path: string): boolean {
  * A file that only holds words: tests, Markdown, and wording (the CLI's
  * `messages/`, `*-words.ts`). Only the CLI's `messages/` folder counts, so a
  * future `messages/` folder of code (an IPC protocol, say) keeps the word rule.
+ * The merge gate's security check skips the same files (HAL-20402).
  */
-function isWordsOnly(path: string): boolean {
+export function isWordsOnly(path: string): boolean {
   return (
     isTestPath(path) ||
     path.endsWith(".md") ||
