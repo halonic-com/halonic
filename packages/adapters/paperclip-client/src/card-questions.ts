@@ -30,7 +30,7 @@ export function questionOptions(question: JsonRecord | undefined): InboxItemOpti
  */
 export function cardQuestions(payload: JsonRecord | undefined): InboxQuestion[] | undefined {
   const records = asRecords(field(payload, "questions"));
-  const multiple = records.some((record) => text(record, "selectionMode") === "multiple");
+  const multiple = records.some(isMultiSelect);
   if (records.length < 2 && !multiple) {
     return undefined;
   }
@@ -39,11 +39,17 @@ export function cardQuestions(payload: JsonRecord | undefined): InboxQuestion[] 
     if (id === undefined) {
       return [];
     }
-    const selection = text(record, "selectionMode") === "multiple" ? "multiple" : "single";
+    const selection = isMultiSelect(record) ? "multiple" : "single";
     const prompt = text(record, "prompt") ?? "";
     const required = field(record, "required") !== false;
     return [{ id, prompt, selection, options: questionOptions(record), required }];
   });
+}
+
+// Paperclip names a multi-select question `"multi"` (`askUserQuestionsQuestionSchema`
+// in 2026.1117.0); anything else is single-select, as Paperclip reads it.
+function isMultiSelect(question: JsonRecord): boolean {
+  return text(question, "selectionMode") === "multi";
 }
 
 /** An answered card's `answers` result as an `answers` answer: every question's options, and its written text. */

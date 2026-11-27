@@ -36,7 +36,7 @@ const planQuestions = [
   {
     id: "phase",
     prompt: "What goes into phase 2?",
-    selectionMode: "multiple",
+    selectionMode: "multi",
     required: false,
     options: [
       { id: "tests", label: "Tests" },
