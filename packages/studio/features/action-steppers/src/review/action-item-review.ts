@@ -230,13 +230,16 @@ export const fromConnectionFile = "from this workspace's connection file";
 /**
  * One line of what the request touches. A sign-in's Paperclip is the address its connection file
  * names, which the host binding has checked by then: the file is what the user trusts, not the
- * request (Julian's review on HAL-17545).
+ * request (Julian's review on HAL-17545). It leaves out the kind, which only repeats the service
+ * there ("Paperclip: Paperclip …", Nina's copy check on HAL-20477).
  */
 function touchOf(target: StepperTarget, signsIn: boolean): StepperTouch {
   if (target.kind === "page") return { kind: "page", address: `https://${target.name}` };
-  const name =
-    signsIn && target.kind === "Paperclip" ? `${target.name}, ${fromConnectionFile}` : target.name;
-  return { kind: "target", service: serviceName(target.service), target: `${target.kind} ${name}` };
+  const service = serviceName(target.service);
+  if (signsIn && target.kind === "Paperclip") {
+    return { kind: "target", service, target: `${target.name}, ${fromConnectionFile}` };
+  }
+  return { kind: "target", service, target: `${target.kind} ${target.name}` };
 }
 
 /** Who asked, as the provider attests it: "You", or the agent's name with hidden characters marked. */

@@ -16,4 +16,4 @@ When the stepper shows a request whose definition has `sign-in` steps for review
   then it says "Opens the approval page the sign-in gives, on the connection's own Paperclip".
 - Given a sign-in request for `paperclip.acme.example`,
   when it is shown for review,
-  then what it touches reads "Paperclip paperclip.acme.example, from this workspace's connection file".
+  then what it touches reads "Paperclip: paperclip.acme.example, from this workspace's connection file".

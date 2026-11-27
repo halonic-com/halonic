@@ -68,7 +68,7 @@ verifies("action-steppers.paperclip-sign-in-review", () => {
         {
           kind: "target",
           service: "Paperclip",
-          target: "Paperclip paperclip.acme.example, from this workspace's connection file",
+          target: "paperclip.acme.example, from this workspace's connection file",
         },
       ]);
     });
