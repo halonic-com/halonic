@@ -112,6 +112,24 @@ describe("scanOffer", () => {
     ]);
   });
 
+  it("finds a URL-encoded address, and a key in a file's path", () => {
+    const encoded = otherAddress.replace("@", "%40");
+    const recording = file("recordings/find.json", `{ "url": "/orders?from=${encoded}" }`);
+    const keyed = { path: `${folder}/${fakeGithubToken}.json`, text: "{}" };
+    expect(scanOffer([recording, keyed], user).findings).toEqual([
+      { kind: "email", file: recording.path, line: 1 },
+      { kind: "secret", rule: "github-token", file: keyed.path, line: undefined },
+    ]);
+  });
+
+  it("scans a value with a lone surrogate instead of throwing", () => {
+    const broken = { ...user, settings: [{ name: "shopName", value: "Harbour \uD800 Goods" }] };
+    const offer = file("OFFER.md", "Harbour \uD800 Goods");
+    expect(scanOffer([offer], broken).findings).toEqual([
+      { kind: "setting", setting: "shopName", file: offer.path, line: 1 },
+    ]);
+  });
+
   it("names values too short to check instead of matching them everywhere", () => {
     const code = file("backend/index.js", 'const region = "eu";');
     expect(scanOffer([code], user)).toEqual({

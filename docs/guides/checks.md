@@ -759,9 +759,10 @@ Who may use what:
 types packages, listed under `apiTypes` in `policy.json`, use only each other and no third-party code
 ([decision](../adr/2026-11-09-api-types-stand-alone.md)). The tooling packages listed under
 `toolingUsesCore` in `policy.json` may also use core packages. It exists for the Agent tools plugin
-(`@halonicjs/tooling-paperclip`), whose workflow host runs on our own engine (HAL-18009), and for the leak
-guard (`@halonicjs/tooling-check`), which shares its secret rules with Studio's offer scans through
-`@halonicjs/std/secret-rules` (HAL-20537). A core package
+(`@halonicjs/tooling-paperclip`), whose workflow host runs on our own engine (HAL-18009). The leak guard
+runs with nothing installed, so it imports the secret rules it shares with Studio's offer scans by path,
+from `packages/core/std/src/secret-rules.ts`: the only import allowed to reach into another package
+(HAL-20537). A core package
 may not be named `root` or `host`, or start with another layer's prefix
 (`app-`, `adapter-`, `host-`, `target-`, `studio-`, `testing-`, `tooling-`).
 

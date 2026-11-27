@@ -40,7 +40,6 @@
     "@halonicjs/studio-services"
   ],
   "toolingUsesCore": [
-    "@halonicjs/tooling-check",
     "@halonicjs/tooling-discover",
     "@halonicjs/tooling-paperclip"
   ],

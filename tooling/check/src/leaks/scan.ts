@@ -3,7 +3,7 @@ import {
   isPlaceholder,
   maskSecret,
   secretRules,
-} from "@halonicjs/std/secret-rules";
+} from "../../../../packages/core/std/src/secret-rules.ts";
 import { type AllowList, allowFilePath, hasInlineAllow } from "./allow.ts";
 import { fileNameOf, fileRules } from "./files.ts";
 import { fingerprint } from "./fingerprint.ts";

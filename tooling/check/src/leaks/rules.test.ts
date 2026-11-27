@@ -1,10 +1,10 @@
+import { describe, expect, it } from "vitest";
 import {
   findRuleMatches,
   isPlaceholder,
   maskSecret,
   secretRules,
-} from "@halonicjs/std/secret-rules";
-import { describe, expect, it } from "vitest";
+} from "../../../../packages/core/std/src/secret-rules.ts";
 import { fileNameOf, fileRules } from "./files.ts";
 import { fingerprint } from "./fingerprint.ts";
 import { findAbsolutePaths } from "./paths.ts";

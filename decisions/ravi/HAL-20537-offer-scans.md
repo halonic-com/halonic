@@ -4,18 +4,21 @@
 - Kind: user-visible
 
 The secret rules move unchanged from `tooling/check/src/leaks/secrets.ts` to
-`@halonicjs/std/secret-rules`, so the leak guard and Studio's "Offer to Halonic"
-scan run the same rules and can't drift apart.
+`packages/core/std/src/secret-rules.ts`, so the leak guard and Studio's "Offer
+to Halonic" scan run the same rules and can't drift apart.
 
 ## What changes
 
-- `tooling/check` imports the rules from `@halonicjs/std/secret-rules`. Only
-  `fingerprint` stays in `tooling/check/src/leaks/fingerprint.ts`, because core
-  code can't use `node:crypto`.
-- `tooling/check/package.json` gets `@halonicjs/std` as a dependency.
-- `tooling/check/policy.json` lists `@halonicjs/tooling-check` under
-  `toolingUsesCore` and `./secret-rules` under std's `extraExports`.
-
+- Studio imports the rules as `@halonicjs/std/secret-rules` (a new entry in
+  std's `extraExports`).
+- The leak guard imports the same file by relative path. CI runs it on plain
+  Node with nothing installed, so it can't resolve a package name. The `layers`
+  rule allows exactly this one import out of `tooling/check/src/leaks/`, and
+  `leaks-imports.test.ts` fails if any file `leaks.ts` loads imports anything
+  but a relative path or a `node:` module. `tooling/check/package.json` and
+  `toolingUsesCore` stay as they are.
+- Only `fingerprint` stays in `tooling/check/src/leaks/fingerprint.ts`,
+  because core code can't use `node:crypto`.
 - The rules stay guarded after the move: `packages/core/std/src/secret-rules.ts`
   joins the guard's own paths (`guardedPaths`, the `check.guard-own-paths`
   requirement and its test) and CODEOWNERS next to `/tooling/check/src/leaks/`.
@@ -23,17 +26,18 @@ scan run the same rules and can't drift apart.
   plain `std` pull request can't loosen a rule and switch off part of the leak
   guard. It isn't a trust root: the guard runs from the merge base's copy.
 
-`tooling/check/package.json` and `toolingUsesCore` are trust roots, so this
-note needs both guardians' signatures.
+`tooling/check/src/guard/guarded-paths.ts` is a trust root, so this note needs
+both guardians' signatures.
 
 ## Why
 
 The plan asks for pre-send scans that run the same secret rules as the repo's
-leak guard. A copy would drift; a core module both import can't.
+leak guard. A copy would drift; one file both import can't.
 
 ## Covers
 
 - .github/
 - tooling/check/
+- tooling/check/policy.json
 - packages/core/std/src/secret-rules.ts
 - check.guard-own-paths

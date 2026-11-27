@@ -11,7 +11,7 @@ import { findRealEmails } from "./emails.ts";
  * (the integration's setting values, the profile name and e-mail, and any
  * e-mail address outside the example domains). A user value is also found
  * as it is written in a JSON or JS string and in a URL or form body; any
- * other address only as written. Stored key values are not checked here:
+ * other address as written or with its `@` URL-encoded (`%40`). Stored key values are not checked here:
  * row 4 of the I6 plan (HAL-18392) adds a shell command for them, so they
  * never reach the page.
  */
@@ -83,7 +83,8 @@ function escapeForPattern(value: string): string {
  * body (a space as `+`).
  */
 function writtenForms(value: string): string[] {
-  const inUrl = encodeURIComponent(value);
+  // A lone surrogate would make encodeURIComponent throw; the typed form still matches.
+  const inUrl = encodeURIComponent(value.toWellFormed());
   const forms = [value, JSON.stringify(value).slice(1, -1), inUrl, inUrl.replaceAll("%20", "+")];
   return [...new Set(forms)];
 }
@@ -133,8 +134,9 @@ function findSecrets(line: string): OfferFindingKind[] {
 }
 
 /**
- * The user values on a line, then any other real e-mail address. The
- * profile e-mail is reported once, as itself, not again as an address.
+ * The user values on a line, then any other real e-mail address, also one
+ * whose `@` is URL-encoded. The profile e-mail is reported once, as itself,
+ * not again as an address.
  */
 function findUserValues(
   line: string,
@@ -145,7 +147,7 @@ function findUserValues(
     .filter(({ pattern }) => pattern.test(line))
     .map(({ kind }) => kind);
   const own = profileEmail?.trim().toLowerCase();
-  for (const address of findRealEmails(line)) {
+  for (const address of findRealEmails(line.replaceAll(/%40/gi, "@"))) {
     if (address.toLowerCase() !== own) {
       found.push({ kind: "email" });
     }
@@ -153,17 +155,25 @@ function findUserValues(
   return found;
 }
 
+/** Both scans over one line of a file, or over a file's path. */
+function scanLine(
+  line: string,
+  patterns: readonly UserValuePattern[],
+  profileEmail: string | undefined,
+): OfferFindingKind[] {
+  return [...findSecrets(line), ...findUserValues(line, patterns, profileEmail)];
+}
+
 /** Runs both scans over every file of the offer, its path included. */
 export function scanOffer(files: readonly OfferFile[], user: UserValues): OfferScan {
   const { patterns, notChecked } = userValuePatterns(user);
   const findings: OfferFinding[] = [];
   for (const file of files) {
-    for (const kind of findUserValues(file.path, patterns, user.profileEmail)) {
+    for (const kind of scanLine(file.path, patterns, user.profileEmail)) {
       findings.push({ ...kind, file: file.path, line: undefined });
     }
     file.text.split("\n").forEach((text, index) => {
-      const kinds = [...findSecrets(text), ...findUserValues(text, patterns, user.profileEmail)];
-      for (const kind of kinds) {
+      for (const kind of scanLine(text, patterns, user.profileEmail)) {
         findings.push({ ...kind, file: file.path, line: index + 1 });
       }
     });
