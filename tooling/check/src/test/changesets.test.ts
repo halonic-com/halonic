@@ -48,10 +48,10 @@ verifies("check.changesets-name-the-app", () => {
 });
 
 verifies("check.changesets-patch-only", () => {
-  test("fails on a minor changeset, with its line", () => {
+  test("passes a minor changeset while 0.2.0 is released", () => {
     expect(
       problems({ ".changeset/a.md": `---\n"@halonicjs/app-studio": minor\n---\n${sentence}` }),
-    ).toEqual([".changeset/a.md:2"]);
+    ).toEqual([]);
   });
 
   test("fails on a major changeset", () => {
@@ -60,13 +60,13 @@ verifies("check.changesets-patch-only", () => {
     ).toEqual([".changeset/a.md:2"]);
   });
 
-  test("names the file and says to use patch until a minor release is approved", () => {
+  test("names the file and says to use minor until a major release is approved", () => {
     const [problem] = runChecks([], {
       rules: ["changesets"],
-      extraFiles: { ".changeset/a.md": `---\n"@halonicjs/app-studio": minor\n---\n${sentence}` },
+      extraFiles: { ".changeset/a.md": `---\n"@halonicjs/app-studio": major\n---\n${sentence}` },
     });
     expect(problem?.message).toContain(".changeset/a.md");
-    expect(problem?.message).toContain("Use patch until a minor release is approved");
+    expect(problem?.message).toContain("Use minor until a major release is approved");
   });
 });
 

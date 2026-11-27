@@ -11,9 +11,11 @@ type Bump = (typeof bumps)[number];
 /**
  * The biggest version step a changeset may ask for. Raise it only when the
  * board approves a minor release on a release card (HAL-14730): two stray
- * `minor` lines once turned the planned 0.1.1 into 0.2.0.
+ * `minor` lines once turned the planned 0.1.1 into 0.2.0. Raised to `minor`
+ * for the 0.2.0 release the board approved on HAL-17109; set it back to
+ * `patch` once that release has merged.
  */
-export const maxBump: Bump = "patch";
+export const maxBump: Bump = "minor";
 
 /** A changeset file, not the folder's README or config. */
 const changesetFile = /^\.changeset\/(?!README\.md$)[^/]+\.md$/;
