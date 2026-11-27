@@ -6,7 +6,6 @@ import {
   type TauriFileShell,
   TauriInstructionTrustStore,
   TauriRecordStore,
-  webCryptoDigest,
 } from "@halonicjs/adapter-fs-tauri";
 import {
   InstructionTrustService,
@@ -74,7 +73,8 @@ import { provideChangesServices } from "../changes/provide-changes-services.ts";
 import { type WatchItemTryItChanges, watchTryItChanges } from "../changes/try-it-changes.ts";
 import { provideCheckComputer } from "../check-computer/provide-check-computer.ts";
 import { answerChatOn, chatExecutorOf } from "../engine/answer-chat-on.ts";
-import { EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import { type EngineService, engineServiceKey } from "../engine/engine-service.ts";
+import { LateEngine } from "../engine/late-engine.ts";
 import type { RemoteEngine } from "../engine/remote-engine.ts";
 import { provideFilesServices } from "../files/provide-files-services.ts";
 import { provideGoogleSetup } from "../google/provide-google-setup.ts";
@@ -134,10 +134,10 @@ export interface FolderServiceParts {
   /** Hears when the workspace's engine lock was lost, and which kind of loss (`studio.engine-lock-lost-toast`). */
   readonly onEngineLockLost?: (kind: EngineLockLostKind) => void;
   /**
-   * The engine that runs the workspace in the background, when the shell reported one as the
-   * folder opened. Then the page opens no engine of its own: no engine lock, no routine timers.
+   * The shell's answer whether an engine runs the workspace in the background, which may come
+   * after the folder shows (HAL-19965). With one, the page opens no engine of its own.
    */
-  readonly remoteEngine?: RemoteEngine | undefined;
+  readonly backgroundEngine?: Promise<RemoteEngine | undefined> | undefined;
   /** The window's engine connection: an Assistant answer ends when the engine stops answering. */
   readonly engineConnection?: Pick<ShellEngine, "on" | "connection"> | undefined;
 }
@@ -157,10 +157,17 @@ export function provideFolderServices(
     scope,
     settle,
     onEngineLockLost,
-    remoteEngine,
+    backgroundEngine,
     engineConnection,
   }: FolderServiceParts,
 ): void {
+  // Runs, answers and chats wait for the shell's answer. The page's own engine, made below, opens
+  // only when no background engine runs the folder.
+  let ownEngine: EngineService | undefined;
+  const engine = new LateEngine(backgroundEngine ?? Promise.resolve(undefined), () => {
+    if (ownEngine === undefined) throw new Error("The window's own engine wasn't made.");
+    return ownEngine;
+  });
   services.provide(
     ModelsFilesService,
     new WorkspaceModelsFiles({
@@ -192,7 +199,7 @@ export function provideFolderServices(
       itemPath,
       listener,
     );
-  provideWorkspaceRuns(services, { ipc, files, window, remoteEngine, transport, trust }, location);
+  provideWorkspaceRuns(services, { ipc, files, window, engine, transport, trust }, location);
   // One service for both ends: the run page saves a person's trust, and the engine checks it.
   const instructionTrust = new InstructionTrustService({
     store: new TauriInstructionTrustStore(ipc),
@@ -210,23 +217,21 @@ export function provideFolderServices(
     scope,
   });
   const refusals = new RefusalsFeed();
-  const engine =
-    remoteEngine ??
-    services.provide(
-      engineServiceKey,
-      folderEngine(services, {
-        ipc,
-        files,
-        trust,
-        location,
-        name,
-        instructionTrust,
-        transport,
-        refusals,
-        onEngineLockLost,
-      }),
-    );
-  provideEngineAutoOpen(services, { ipc, files, trust, location, scope, remoteEngine, window });
+  ownEngine = services.provide(
+    engineServiceKey,
+    folderEngine(services, {
+      ipc,
+      files,
+      trust,
+      location,
+      name,
+      instructionTrust,
+      transport,
+      refusals,
+      onEngineLockLost,
+    }),
+  );
+  provideEngineAutoOpen(services, { ipc, files, trust, location, scope, engine, window });
   provideAgentMessaging(services, transport, location, window);
   provideAllRuns(services, name);
   provideAgentConnections(services, transport, location, trust);
@@ -470,5 +475,5 @@ export function provideFolderServices(
     onFocus: (listener) => focusOf(window, listener),
   });
   // Last: Check this computer reads the runs, the keys and the Google setups provided above.
-  provideCheckComputer(services, { files, location, name, platform, transport, remoteEngine });
+  provideCheckComputer(services, { files, location, name, platform, transport, engine });
 }

@@ -79,7 +79,9 @@ export const noStorage: RecentStorage = {
  * folder open in it. In the shell, it is checked for trust before it opens, as the CLI checks it
  * (`studio.workspace-trust`): its name is the one in `workspace.yaml`, else the folder's, and the
  * assistant may write more than Halonic items only once a person has trusted what the folder
- * holds. Its host settings are the window's, loaded once (`settings.ai-agent-prefs`). Outside the
+ * holds. Its host settings are the window's, loaded once (`settings.ai-agent-prefs`). It shows
+ * before the shell's background engine answers: the workspace's `engineStarting` says so until
+ * then, and runs wait for it (`studio.open-folder-before-engine`). Outside the
  * shell there are no files to open, so the scope has only the services above.
  */
 export async function openFolder(
@@ -135,7 +137,10 @@ export async function openFolder(
     provideLoginItem(services, ipc, device.platform ?? "linux");
   }
   const assistant = provideAssistant(services, files, location, name, scope);
+  let backgroundEngine: ReturnType<typeof openShellEngine> | undefined;
   if (ipc !== undefined && files !== undefined && trust !== undefined && scope !== undefined) {
+    // Not waited for: the workspace shows from its files, and only what runs waits for the engine.
+    backgroundEngine = openShellEngine(ipc, location);
     provideFolderServices(services, {
       ipc,
       files,
@@ -146,7 +151,7 @@ export async function openFolder(
       platform,
       name,
       scope,
-      remoteEngine: await openShellEngine(ipc, location),
+      backgroundEngine,
       engineConnection: shell.engine,
       // Run waits through the workspace's own save, which is made below, once the workspace is.
       settle: async () => {
@@ -180,7 +185,12 @@ export async function openFolder(
   }
   shell.services.instantiate(services);
   const testModel = demoModelWatch(services, () => device.recent.isSample(location));
-  const workspace = new StudioWorkspace({ toasts: shell.toasts, services, name });
+  const workspace = new StudioWorkspace({
+    toasts: shell.toasts,
+    services,
+    name,
+    engineReady: backgroundEngine,
+  });
   const outside = showFilesOutside(services, shell.toasts, workspace);
   const saving = scope === undefined ? undefined : savingOf(scope, workspace, name, outside.onHeld);
   return {

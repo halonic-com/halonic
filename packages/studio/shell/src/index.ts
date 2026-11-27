@@ -83,6 +83,7 @@ export {
   engineRestartDelayMs,
   engineRestartWindowMs,
 } from "./engine/engine-start.ts";
+export { EngineStarting } from "./engine/engine-starting.ts";
 export {
   type EngineWords,
   engineWords,

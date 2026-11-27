@@ -22,8 +22,7 @@ import {
   RunsSourceService,
 } from "@halonicjs/studio-feature-runs/api";
 import type { TauriIpc } from "@halonicjs/studio-services";
-import { engineServiceKey } from "../engine/engine-service.ts";
-import type { RemoteEngine } from "../engine/remote-engine.ts";
+import type { LateEngine } from "../engine/late-engine.ts";
 import { WorkspaceNotices } from "../inbox/workspace-notices.ts";
 import { WorkspaceSandboxRefusals } from "../inbox/workspace-sandbox-refusals.ts";
 import {
@@ -46,35 +45,35 @@ export function provideWorkspaceRuns(
     ipc,
     files,
     window,
-    remoteEngine,
+    engine,
     transport,
     trust,
   }: {
     ipc: TauriIpc;
     files: TauriFileShell;
     window: object;
-    remoteEngine?: RemoteEngine | undefined;
+    /** The engine that runs the folder, once the shell said which. */
+    engine: LateEngine;
     transport: AgentHostTransport | undefined;
     trust: WorkspaceTrust;
   },
   location: string,
 ): void {
   const trusted = () => trust.mayStartNow();
+  const store = new TauriRunStore(ipc, location);
   const runs = new WorkspaceRuns({
-    runs: new TauriRunStore(ipc, location),
+    runs: store,
     definitions: new TauriDefinitionStore(files, location),
     folder: location,
     onFocus: (listener) => focusOf(window, listener),
-    // Looked up on the first answer: the page's engine is provided after the runs.
-    send: (...answer) => (remoteEngine ?? services.get(engineServiceKey)).send(...answer),
-    ...(remoteEngine === undefined
-      ? {}
-      : {
-          waiting: () => remoteEngine.waiting(),
-          // The engine says when a run changed, so the runs aren't read every 10 s.
-          followRuns: (listener) => remoteEngine.followRuns(listener),
-          reportError: (error) => console.error("The background engine's run changes", error),
-        }),
+    send: (...answer) => engine.send(...answer),
+    // From the background engine when one runs the folder, else from the run logs.
+    waiting: async () =>
+      (await engine.background())?.waiting() ?? store.list({ status: ["waiting"] }),
+    // The background engine says when a run changed, so the runs aren't read every 10 s; without
+    // one the feed ends at once, and the runs are read every 10 s.
+    followRuns: (listener) => engine.followRuns(listener),
+    reportError: (error) => console.error("The background engine's run changes", error),
     // Run proposals live in the agent host's records (HAL-10916); without the host there are none,
     // and an untrusted folder asks the host nothing.
     ...(transport === undefined

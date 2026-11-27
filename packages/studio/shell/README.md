@@ -40,7 +40,7 @@ first, as for `needs`, but nobody providing it is no error.
 | `shell.closeStack` | close the right layer on Esc and Android's Back | `shell.close-stack` |
 | `TitleBarBrand`, `HistoryButtons` | Studio's logo (`AppLogo`, the ring with its point of light), and Back and Forward, in the title bar | `shell.title-bar` |
 | `shell.engine` | send and announce when the engine is lost and back | `shell.engine-connection` |
-| `EngineLine` | the one line while the engine isn't answering | `shell.engine-line` |
+| `EngineLine` | the one line while the engine isn't answering, or the shown workspace's engine starts | `shell.engine-line`, `shell.engine-starting` |
 | `shell.engine.supervise` | start the engine process, restart it once, report why it failed; unused in 0.1 | `shell.engine-start` (parked), `shell.engine-report-interrupted-runs` |
 | `watchEngineRestart`, `stoppedRunsText` | toast when the engine started again, with the runs it stopped | `shell.engine-restarted-toast` |
 | `saveFailureFor` | turn a write error into a save reason | `shell.save-reasons` |
@@ -1115,7 +1115,12 @@ desktop app's `watchStart` calls `engine_ready` once and polls `start_status` un
 ready, and reads it as ready after two failed calls in a row (`studio.start-watch`).
 
 `StudioWorkspace` is the window's state for one workspace: its `tabs`, `recent` (Ctrl K's Recent),
-`saving` and `services`. Create one when the workspace opens and `dispose()` it when it closes.
+`saving`, `engineStarting` and `services`. Create one when the workspace opens and `dispose()` it
+when it closes. When the workspace shows before its own engine answers (HAL-19965), give it
+`engineReady`, the open of that engine: `engineStarting.starting` is `true` until it settles, and
+the frame's engine line says "Starting the engine…" while that workspace shows
+(`shell.engine-starting`). It never changes `shell.engine`, which is the window's: a second
+workspace's start neither makes the engine stale nor announces anything.
 Give it the workspace's `name`, once the app knows it, for the window's title: the window keeps
 `document.title` as "Home · Acme · Halonic", the page shown (the active tab's, or on a phone the
 phone place's page), the workspace and the app, following switches, the desktop's renames and
@@ -1153,7 +1158,8 @@ The rest of `src/index.ts`, by area; the types are what the parts above take and
   `EngineConnectionListener`, `EngineStartEvent`, `EngineStartFailure`,
   `EngineStartFailureReason`, `EngineLauncher`, `EngineProcess`, `EngineProcessEvents`,
   `EngineSupervisor`, `watchEngineRestart`, `stoppedRunsText`, `engineAnswerTimeoutMs` (30 s), `engineRestartDelayMs` (2 s),
-  `engineRestartWindowMs` (60 s), `engineWords`, `EngineWords`, `StudioHost`, `EngineLineProps`.
+  `engineRestartWindowMs` (60 s), `engineWords`, `EngineWords`, `StudioHost`, `EngineLineProps`,
+  `EngineStarting`.
 - **Frame:** `ShellFrameProps`, `StatusBarItemsProps`, `StatusBarItemProps` (what an item's view
   gets: `context`), `HomeCardProps`, `FeatureDialogsProps`, `DialogHostProps`.
 - **Settings:** `SettingsDialogProps`, `SettingsSectionProps`, `SettingsGroup`,

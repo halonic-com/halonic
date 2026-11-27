@@ -258,9 +258,14 @@ verifies("studio.open-folder", () => {
     const shell = createShell({ features: [], host: "desktop-app", platform: "windows" });
     const opened = await openFolder(shell, webview.page, "/work/acme", displaySettings());
 
+    const before = webview.calls.length;
     await opened.workspace.services.get(secretsKey).get("openai");
     expect(opened.workspace.services.has(tokenStoreKey)).toBe(true);
-    expect(webview.calls.at(-1)?.args).toEqual({ name: "openai" });
+    // The engine's answer may come in between: the folder no longer waits for it (HAL-19965).
+    expect(webview.calls.slice(before)).toContainEqual({
+      command: "secret_get",
+      args: { name: "openai" },
+    });
     expect(opened.name).toBe("acme");
     await opened.dispose();
   });

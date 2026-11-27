@@ -16,7 +16,9 @@ export const probeMessage = "Click test: are you there?";
  * own canned line, not the message (run 45675354530), so the step passes once
  * the chat announces "Writer replied." and fails on an engine line. The desktop
  * Studio registers no Assistant panel (run 45654461077), so the Try it chat is
- * where a person meets "The engine isn't answering".
+ * where a person meets "The engine isn't answering". The workspace shows before its engine
+ * answers and the message waits for it, so once Writer replied, the line "Starting the engine…"
+ * must be gone (HAL-19965).
  */
 export const engineAnswers: Step = {
   id: "engine-answers",
@@ -27,6 +29,8 @@ export const engineAnswers: Step = {
     "agents.chat.try-it",
     "agents.chat.engine-quiet",
     "studio.workspace-agents-chat",
+    "studio.open-folder-before-engine",
+    "shell.engine-starting",
   ],
   shortCheck: true,
   run: async (context) => {
@@ -73,9 +77,19 @@ async function sendAndWaitForReply(context: StepContext): Promise<StepOutcome> {
     if (code !== undefined) return code;
     return text.includes(replied) ? "replied" : undefined;
   });
-  if (reply.value === "replied") return { passed: true };
+  if (reply.value === "replied") return startingLineGone(context);
   if (reply.value !== undefined) return failure(reply.value, "", reply.text);
   return failure("NO_REPLY", "No reply.", reply.text);
+}
+
+/** The engine answered, so the workspace's "Starting the engine…" line has gone. */
+async function startingLineGone(context: StepContext): Promise<StepOutcome> {
+  const starting = screenText.engineStarting.text;
+  const gone = await waitForText(context, 10_000, (text) =>
+    text.includes(starting) ? undefined : true,
+  );
+  if (gone.value === true) return { passed: true };
+  return failure("STILL_STARTING", `"${starting}" stayed after the reply.`, gone.text);
 }
 
 function failure(code: string, note: string, text: string): StepOutcome {
