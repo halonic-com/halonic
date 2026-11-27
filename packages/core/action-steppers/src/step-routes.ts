@@ -97,6 +97,10 @@ function routeOf(
       return route;
     }
     case "check":
+      assert(
+        step.changedAfterStart === undefined || step.keep.includes(step.changedAfterStart),
+        `${where}: changedAfterStart "${step.changedAfterStart}" isn't a kept field`,
+      );
       // A read runs without the native dialog, whatever the definition's risk (ToolScript ADR, S9).
       return {
         ...base,

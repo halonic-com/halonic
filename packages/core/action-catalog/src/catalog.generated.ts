@@ -6,6 +6,9 @@ import { definition as deviceCheckPhonePairing } from "./device/check-phone-pair
 import { definition as deviceCheckWindowsBuild } from "./device/check-windows-build.ts";
 import { definition as githubChangeBranchProtection } from "./github/change-branch-protection.ts";
 import { definition as githubChangeRuleset } from "./github/change-ruleset.ts";
+import { definition as githubCreateActionsVariable } from "./github/create-actions-variable.ts";
+import { definition as githubSetActionsSecret } from "./github/set-actions-secret.ts";
+import { definition as githubSetActionsVariable } from "./github/set-actions-variable.ts";
 import { definition as githubUploadSocialPreview } from "./github/upload-social-preview.ts";
 import { definition as googleConfigureOauthConsent } from "./google/configure-oauth-consent.ts";
 import { definition as googleCreateCloudProject } from "./google/create-cloud-project.ts";
@@ -44,6 +47,18 @@ export const catalogEntries = {
   "github/change-ruleset": {
     definition: githubChangeRuleset,
     sourceHash: "ec543dcfb7588f1755323ab67e7eb6ee85d6ed32cd613d3af5198d79dc2cf39b",
+  },
+  "github/create-actions-variable": {
+    definition: githubCreateActionsVariable,
+    sourceHash: "b354aa3555f21c4d2154940a890c4f422cc660d035fd84148acbe6e350667ef4",
+  },
+  "github/set-actions-secret": {
+    definition: githubSetActionsSecret,
+    sourceHash: "13936f707d7cd5eb6da6abf2621454d5055106c8e30a2f7b7244048d17fd8874",
+  },
+  "github/set-actions-variable": {
+    definition: githubSetActionsVariable,
+    sourceHash: "1f703d5990649fc388f269740368b777d03b3aa0a57135ef4a4d638c7cfd53cb",
   },
   "github/upload-social-preview": {
     definition: githubUploadSocialPreview,

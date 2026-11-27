@@ -96,6 +96,12 @@ export interface CheckStep {
   path: string;
   /** The top-level fields of the answer to keep, each a plain value. */
   keep: readonly string[];
+  /**
+   * A kept field holding a time that must be later than when the stepper
+   * opened, such as a secret's `updated_at` after a guided step where the
+   * user set it (see `checkChangedAfterStart`). It must be one of `keep`.
+   */
+  changedAfterStart?: string;
   manual: ManualForm;
 }
 
