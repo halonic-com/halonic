@@ -32,7 +32,14 @@ import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
 export interface HostApi {
   readonly issues: Pick<
     PluginIssuesClient,
-    "list" | "get" | "listComments" | "createComment" | "update" | "requestWakeup" | "monitors"
+    | "list"
+    | "get"
+    | "listComments"
+    | "createComment"
+    | "update"
+    | "requestWakeup"
+    | "monitors"
+    | "listInteractions"
   > & { readonly relations: Pick<PluginIssuesClient["relations"], "get" | "removeBlockers"> };
   readonly agents: Pick<PluginAgentsClient, "list">;
 }
@@ -144,6 +151,18 @@ export async function blockedToTodo(
   await issues.update(taskId, todoOnly({ status: "todo" }), companyId);
 }
 
+/**
+ * The PR watcher's done-task pass's only task change (`done-open-host.ts`,
+ * HAL-18284): a done task back to `todo`, and no other field.
+ */
+export async function doneToTodo(
+  issues: Pick<PluginIssuesClient, "update">,
+  taskId: string,
+  companyId: string,
+): Promise<void> {
+  await issues.update(taskId, todoOnly({ status: "todo" }), companyId);
+}
+
 /** A review task merge control makes (HAL-20636). */
 export interface ReviewTask {
   readonly parent: { readonly id: string; readonly projectId: string | null };
@@ -226,6 +245,7 @@ export function paperclipHost(
             parked: parkedStatuses.has(issue.status),
             priority: issue.priority,
             blocked: issue.status === "blocked",
+            description: issue.description,
           }),
         );
     },
@@ -335,7 +355,8 @@ export function paperclipHost(
 /** The host's refusal to wake a task that is done or cancelled. */
 const notWakeablePattern = /not wakeable in status/i;
 
-async function wakeAssignee(
+/** Wakes the task's assignee once per `key`; `closed` when the task is done or cancelled meanwhile. */
+export async function wakeAssignee(
   host: HostApi,
   taskId: string,
   companyId: string,

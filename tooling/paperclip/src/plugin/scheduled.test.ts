@@ -31,7 +31,8 @@ function setUp(configured: readonly string[] = ["acme"]) {
   ]);
   const job = fakeJobContext({
     host,
-    configs: { acme: { githubToken: token, dryRun: false } },
+    // The fixture merged 39 hours before the pinned clock: past the default 12-hour window (HAL-18284).
+    configs: { acme: { githubToken: token, dryRun: false, mergeWindowHours: 72 } },
     answers: mergedGreenOnGitHub,
   });
   const scoped = withScopeRule(job.ctx, configured);

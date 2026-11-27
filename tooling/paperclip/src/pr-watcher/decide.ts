@@ -122,6 +122,10 @@ export interface Memory {
   readonly authorLastAt?: string | undefined;
   /** The pull requests and heads the queue manager's wakes on the task name (HAL-18722). */
   readonly queueRequests?: readonly { readonly number: number; readonly head: string }[];
+  /** The newest comments by anyone but the watcher, newest first, at most 3 (HAL-18284). */
+  readonly recentComments?: readonly string[];
+  /** The task the author's newest comment says its pull request moved to (HAL-18284). */
+  readonly movedTo?: string;
 }
 
 /** The outcome for one task. */

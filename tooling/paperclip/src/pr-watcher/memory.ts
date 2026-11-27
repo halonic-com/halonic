@@ -1,3 +1,4 @@
+import { recentCommentCount } from "./close-guards.ts";
 import type { Memory } from "./decide.ts";
 import type { CommentRow } from "./paperclip.ts";
 import { queueRequestsOf } from "./unneeded-rebase.ts";
@@ -23,6 +24,9 @@ const holdPattern = /^[ \t]*PR watcher: more PRs to come[ \t.]*$/im;
 
 /** The line an author of a security or release pull request puts in a task comment: its review has a task of its own. */
 const ownReviewPattern = /^[ \t]*PR watcher: own review task[ \t.]*$/im;
+
+/** The line an author puts in a task comment when its pull request moved to another task (HAL-18284). */
+const movedPattern = /^[ \t]*PR watcher: moved to (HAL-\d+)[ \t.]*$/im;
 
 /**
  * A comment the watcher wrote. The host stores no plugin id on a plugin's
@@ -69,15 +73,30 @@ export function readMemory(comments: readonly CommentRow[], ownerId: string): Me
         newest === undefined || comment.createdAt > newest.createdAt ? comment : newest,
       undefined,
     );
+  const others = comments.filter((comment) => !isSelf(comment));
   return {
     reported,
     seenUntil,
     heldAt: holdPattern.test(authorLast?.body ?? "") ? authorLast?.createdAt : undefined,
     ownReview: ownReviewPattern.test(authorLast?.body ?? ""),
     authorLastAt: newestAt(comments.filter((comment) => comment.authorAgentId === ownerId)),
-    lastCommentAt: newestAt(comments.filter((comment) => !isSelf(comment))),
-    queueRequests: queueRequestsOf(
-      comments.filter((comment) => !isSelf(comment)).map(({ body }) => body),
-    ),
+    lastCommentAt: newestAt(others),
+    queueRequests: queueRequestsOf(others.map(({ body }) => body)),
+    ...textGuards(others, authorLast),
+  };
+}
+
+/** The newest comments for the text guard, and the task the author's newest comment moved the work to (HAL-18284). */
+function textGuards(
+  others: readonly CommentRow[],
+  authorLast: CommentRow | undefined,
+): Pick<Memory, "recentComments" | "movedTo"> {
+  const moved = movedPattern.exec(authorLast?.body ?? "")?.[1];
+  return {
+    recentComments: others
+      .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, recentCommentCount)
+      .map(({ body }) => body),
+    ...(moved === undefined ? {} : { movedTo: moved.toUpperCase() }),
   };
 }
