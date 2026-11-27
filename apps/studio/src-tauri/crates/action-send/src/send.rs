@@ -13,7 +13,7 @@ use serde_json::{Map, Value};
 use url::Url;
 
 use crate::account::Account;
-use crate::answer::{error_text, kept_fields, redirect_text};
+use crate::answer::{MORE_THAN_ONE, error_text, kept_fields, redirect_text};
 use crate::call::{Refusal, SendRequest, prepare};
 use crate::routes::{Risk, RouteList};
 use crate::wipe::{Wiped, wipe_bytes, wipe_text};
@@ -206,14 +206,25 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
                 error: Some(redirect_text()),
             };
         }
+        let shape = call.route.service.answers;
         if (200..300).contains(&status) {
-            return SendResult::Answered {
-                status,
-                kept: kept_fields(&answer, &call.route.keep, token.as_str()),
-                error: None,
+            return match kept_fields(&answer, shape, &call.route.keep, token.as_str()) {
+                Ok(kept) => SendResult::Answered {
+                    status,
+                    kept,
+                    error: None,
+                },
+                Err(_) => {
+                    (self.log)(format!("action_send {step}: more than one match"));
+                    SendResult::Answered {
+                        status,
+                        kept: Map::new(),
+                        error: Some(MORE_THAN_ONE.to_owned()),
+                    }
+                }
             };
         }
-        let error = crate::answer::failure_text(&answer, token.as_str());
+        let error = crate::answer::failure_text(&answer, shape, token.as_str());
         SendResult::Answered {
             status,
             kept: Map::new(),

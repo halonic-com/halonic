@@ -14,7 +14,10 @@ use serde_json::Value;
 pub use crate::kinds::{Method, Risk};
 use crate::pattern::Pattern;
 use crate::services::{Service, service};
-use crate::template::{Segment, is_name, parse_path, placeholder_names};
+use crate::template::{
+    QueryPair, Segment, call_placeholder_names, is_name, parse_call_path, parse_path,
+    placeholder_names,
+};
 use crate::web::{WebOrigin, parse_web_origin};
 
 /// The format the list's file names.
@@ -56,6 +59,8 @@ pub struct CallRoute {
     pub placeholders: BTreeMap<String, Pattern>,
     pub method: Method,
     pub path: Vec<Segment>,
+    /// The query's fixed keys and their placeholders, in order.
+    pub query: Vec<QueryPair>,
     pub body: Vec<BodyField>,
     pub keep: Vec<String>,
 }
@@ -166,8 +171,7 @@ impl RouteList {
     }
 }
 
-fn placeholders(route: &RouteFile, path: &[Segment]) -> Result<BTreeMap<String, Pattern>, String> {
-    let used = placeholder_names(path)?;
+fn placeholders(route: &RouteFile, used: &[&str]) -> Result<BTreeMap<String, Pattern>, String> {
     let declared: Vec<&str> = route.placeholders.keys().map(String::as_str).collect();
     if used.len() != declared.len() || !used.iter().all(|name| declared.contains(name)) {
         return Err("the placeholders don't match the template's".to_owned());
@@ -186,8 +190,8 @@ fn call_route(route: RouteFile) -> Result<CallRoute, String> {
     let service = service(&route.service)
         .ok_or_else(|| format!("the shell doesn't send to the service `{}`", route.service))?;
     let method = route.method.ok_or("a call needs a method")?;
-    let path = parse_path(route.path.as_deref().ok_or("a call needs a path")?)?;
-    let placeholders = placeholders(&route, &path)?;
+    let (path, query) = parse_call_path(route.path.as_deref().ok_or("a call needs a path")?)?;
+    let placeholders = placeholders(&route, &call_placeholder_names(&path, &query)?)?;
     let body = route
         .body
         .unwrap_or_default()
@@ -213,6 +217,7 @@ fn call_route(route: RouteFile) -> Result<CallRoute, String> {
         placeholders,
         method,
         path,
+        query,
         body,
         keep,
     })
@@ -270,7 +275,7 @@ fn guided_route(route: RouteFile, origins: &[WebOrigin]) -> Result<GuidedRoute, 
         ));
     }
     let path = parse_path(path)?;
-    let placeholders = placeholders(&route, &path)?;
+    let placeholders = placeholders(&route, &placeholder_names(&path)?)?;
     Ok(GuidedRoute {
         service: route.service,
         placeholders,

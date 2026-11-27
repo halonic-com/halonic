@@ -29,12 +29,12 @@ mod template;
 mod web;
 mod wipe;
 
-pub use answer::{MAX_ERROR_CHARS, error_text};
+pub use answer::{MAX_ERROR_CHARS, MORE_THAN_ONE, error_text};
 pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};
 pub use device_flow::{DEVICE_PAGE, DeviceFlow, NEVER_EXPIRES, is_client_id};
 pub use opens::{ANY_PAGE_GAP_MS, OpenLimiter, SAME_PAGE_GAP_MS, open_guided, open_page};
 pub use pattern::{MAX_VALUE_CHARS, Pattern};
 pub use routes::{FORMAT, Risk, RouteList};
 pub use send::{Answer, ConfirmSheet, Dialogs, Outgoing, SendResult, Sender, Tokens, Transport};
-pub use services::{GITHUB, SERVICES, Service, service};
+pub use services::{AnswerShape, CLOUDFLARE, GITHUB, SERVICES, Service, service};
 pub use sign_in::{Clock, CodeScreen, Keychain, SignInCancel, SignInResult, UserCode};
