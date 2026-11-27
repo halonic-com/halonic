@@ -141,9 +141,13 @@ function focusedAppLabels(): string[] {
     .filter((label) => !isAskBoxWindow(webviewLabelled(label, [])));
 }
 
+/** Halonic Inbox, Halonic Messenger and any later focused app, built once for every case below. */
+const appLabels = focusedAppLabels();
+
 /**
  * The webview of the window labelled `label` on a shell whose agent host lists Acme's one Paperclip
- * connection as online, so the folder services the window opens count it connected.
+ * connection as online, so the folder services the window opens count it connected. The shell keeps
+ * Acme as Studio's window content, so Studio's main window reopens it.
  */
 function connectedWebviewLabelled(label: string, called: string[]) {
   return pageWindowLabelled(label, called, (command, args) => {
@@ -152,6 +156,7 @@ function connectedWebviewLabelled(label: string, called: string[]) {
       return { status: 200, body: acmeConnections };
     }
     if (command === "plugin:feedback|start") return { width: 4, height: 4 };
+    if (command === "window_content_get") return JSON.stringify({ workspace: "/work/acme" });
     return null;
   });
 }
@@ -172,11 +177,12 @@ const acmeConnections = {
 
 verifies("studio.feedback-window", () => {
   it("names a focused app's window for every window that may capture, and no other", () => {
-    expect(focusedAppLabels().length).toBeGreaterThan(0);
-    expect([...captureCapability.windows].sort()).toEqual(["main", ...focusedAppLabels()].sort());
+    expect(appLabels.length).toBeGreaterThan(0);
+    expect([...captureCapability.windows].sort()).toEqual(["main", ...appLabels].sort());
   });
 
-  it.each(focusedAppLabels())(
+  // Studio's own window first: it starts through `startDesktopApp`, the focused apps through theirs.
+  it.each(["main", ...appLabels])(
     "asks the shell for a capture when Ctrl Shift F is pressed in the %s window, through the folder services it opened",
     async (label) => {
       const called: string[] = [];
@@ -206,7 +212,7 @@ verifies("studio.feedback-window", () => {
     20_000,
   );
 
-  it.each(focusedAppLabels())(
+  it.each(appLabels)(
     "asks the shell for a capture when Ctrl Shift F is pressed in the %s window that opened Acme",
     async (label) => {
       const called: string[] = [];
@@ -248,7 +254,7 @@ verifies("studio.feedback-window", () => {
     },
   );
 
-  it.each(focusedAppLabels())(
+  it.each(appLabels)(
     "starts no feedback shortcut in the %s window while it opened no folder",
     async (label) => {
       const called: string[] = [];
