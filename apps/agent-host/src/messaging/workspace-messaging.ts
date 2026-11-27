@@ -1,7 +1,11 @@
 import { rm } from "node:fs/promises";
 import type { ConnectionRowState } from "@halonicjs/adapter-agent-host-client";
 import { CachedAgentMessaging } from "@halonicjs/adapter-agent-messaging-cache";
-import { type PaperclipTeamStatus, paperclipSourceId } from "@halonicjs/adapter-paperclip-client";
+import {
+  LiveTaskChanges,
+  type PaperclipTeamStatus,
+  paperclipSourceId,
+} from "@halonicjs/adapter-paperclip-client";
 import type { PaperclipConnection } from "@halonicjs/format";
 import type { PaperclipConnectionNow, PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import { type MessagingFailure, MessagingHub } from "@halonicjs/host-agent-messaging-hub";
@@ -209,6 +213,8 @@ export class WorkspaceMessaging {
               const provider = paperclipSourceId(connection);
               this.#options.report({ provider, action: "read user", error });
             },
+            // One per provider: its events socket names the tasks whose cards it reads again.
+            liveTasks: new LiveTaskChanges(),
             ...this.#network(),
           };
     const provider = made === undefined ? undefined : paperclipProvider(made);

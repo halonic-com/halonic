@@ -31,7 +31,7 @@ import { PaperclipCommentThreads } from "./comment-threads.ts";
 import { PaperclipConversations, readChats } from "./conversations.ts";
 import { PaperclipFullAnswers } from "./full-answers.ts";
 import { PaperclipIds } from "./ids.ts";
-import { PaperclipInbox } from "./inbox.ts";
+import { type InboxOptions, PaperclipInbox } from "./inbox.ts";
 import { asRecords, type JsonRecord } from "./json.ts";
 import { agentNamesOf, type MapContext, newestFirst, toAgent, toMessage, workOf } from "./map.ts";
 import { PaperclipReactions } from "./reactions.ts";
@@ -48,7 +48,7 @@ import { PaperclipWebLinks } from "./web-links.ts";
 import { PaperclipWriter } from "./writer.ts";
 
 /** One Paperclip connection, as the engine hands it in. The key stays in memory only. */
-export interface PaperclipMessagingOptions extends TransportOptions {
+export interface PaperclipMessagingOptions extends TransportOptions, InboxOptions {
   /** The connection's name, from `connections/paperclip/<name>.yaml`; part of every ID. */
   connection: string;
   /** The Paperclip company the connection reads. */

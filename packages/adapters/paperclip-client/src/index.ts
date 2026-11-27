@@ -25,6 +25,7 @@ export {
   liveFrameMaxBytes,
 } from "./live-events.ts";
 export type { LiveEvent } from "./live-messages.ts";
+export { LiveTaskChanges } from "./live-task-changes.ts";
 export { type SyncCollectionName, touchedBy } from "./live-touches.ts";
 export { PaperclipReactions, type ReactionsContext } from "./reactions.ts";
 export {

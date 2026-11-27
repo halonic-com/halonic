@@ -9,6 +9,7 @@ import { readChats } from "./conversations.ts";
 import { decisionPage, decisionToItem } from "./decisions.ts";
 import { EndedItems } from "./ended-items.ts";
 import { asRecord, asRecords, type JsonRecord, text } from "./json.ts";
+import type { LiveTaskChanges } from "./live-task-changes.ts";
 import { type MapContext, newestFirst } from "./map.ts";
 import type { PaperclipReader } from "./reader.ts";
 import type { PaperclipSteppers } from "./steppers.ts";
@@ -34,6 +35,12 @@ interface TaskCards {
   /** The task's identifier, such as `ACME-7`, for its page in Paperclip. */
   identifier: string | undefined;
   items: readonly InboxItem[];
+}
+
+/** What the Inbox hears from outside its own reads. */
+export interface InboxOptions {
+  /** The tasks live events named, whose cards the next list reads again whatever their `updatedAt` says. */
+  liveTasks?: LiveTaskChanges | undefined;
 }
 
 /** Looks up a Paperclip project ID in the projects read for this list. */
@@ -79,6 +86,7 @@ export class PaperclipInbox {
   readonly #webLinks: PaperclipWebLinks;
   readonly #mentions: PaperclipBoardMentions;
   readonly #now: () => Date;
+  readonly #liveTasks: LiveTaskChanges | undefined;
   /** Approvals and decisions that ended since they were listed, kept a day with their final state. */
   readonly #ended = new EndedItems();
   /** Whether the last read of open decisions filled Paperclip's page, so more may wait past it. */
@@ -95,11 +103,11 @@ export class PaperclipInbox {
    * `webLinks` gives cards and approvals their page in Paperclip, and `now` the time an ended
    * item was missed. With `steppers`, a card that pins a stepper request is served as a stepper
    * item. The comments that mention the person are items too; `connection.warn` hears when they
-   * can't be read.
+   * can't be read. `connection.liveTasks` names the tasks whose cards to read again.
    */
   constructor(
     reader: PaperclipReader,
-    connection: { company: string; warn?: ((message: string) => void) | undefined },
+    connection: { company: string; warn?: ((message: string) => void) | undefined } & InboxOptions,
     webLinks: PaperclipWebLinks,
     now: () => Date,
     steppers?: PaperclipSteppers,
@@ -110,6 +118,7 @@ export class PaperclipInbox {
     this.#webLinks = webLinks;
     this.#now = now;
     this.#steppers = steppers;
+    this.#liveTasks = connection.liveTasks;
     this.#mentions = new PaperclipBoardMentions(reader, webLinks, connection, now);
     this.#boardRequests = new PaperclipBoardRequests(reader, company);
     // A channel's members line and a person's task's text are in the description, which the task
@@ -370,10 +379,30 @@ export class PaperclipInbox {
     return tasks[0];
   }
 
+  /**
+   * The cards on every task in `tasks`, read again for a task that changed or that a live event
+   * named since the last list (`paperclip-client.event-card-reads`). A list that fails names those
+   * tasks again, so the next one still reads them.
+   */
   async #allCards(
     context: MapContext,
     projectOf: ProjectOf,
     tasks: readonly JsonRecord[],
+    filesOf: FilesOf,
+  ): Promise<InboxItem[]> {
+    const named = this.#liveTasks?.take() ?? new Set<string>();
+    try {
+      return await this.#cardsOf(context, projectOf, { tasks, named }, filesOf);
+    } catch (error) {
+      this.#liveTasks?.restore(named);
+      throw error;
+    }
+  }
+
+  async #cardsOf(
+    context: MapContext,
+    projectOf: ProjectOf,
+    { tasks, named }: { tasks: readonly JsonRecord[]; named: ReadonlySet<string> },
     filesOf: FilesOf,
   ): Promise<InboxItem[]> {
     const next = new Map<string, TaskCards>();
@@ -386,7 +415,8 @@ export class PaperclipInbox {
       if (id === undefined) {
         continue;
       }
-      const known = this.#cards.get(id);
+      // Paperclip sends a new card's event before it moves the task's `updatedAt` (HAL-20614).
+      const known = named.has(id) ? undefined : this.#cards.get(id);
       if (known !== undefined && updatedAt !== undefined && known.updatedAt === updatedAt) {
         next.set(id, { ...known, projectId, identifier });
       } else {

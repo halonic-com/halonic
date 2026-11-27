@@ -1,10 +1,11 @@
 import { once } from "node:events";
 import { type AddressInfo, createServer } from "node:net";
+import { LiveTaskChanges } from "@halonicjs/adapter-paperclip-client";
 import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import type { EventsSignal } from "@halonicjs/host-paperclip-sync";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { paperclipEvents } from "./paperclip-provider.ts";
+import { liveSignalHandler, paperclipEvents } from "./paperclip-provider.ts";
 
 // A fake key only these tests use.
 const testKey = "pcp_board_fake-key-for-events-tests-only";
@@ -100,6 +101,32 @@ verifies("agent-host.paperclip-live-events", () => {
       // The server drops the socket before answering, so the attempt ends as a drop, not a refusal.
       expect(await firstSignal(open)).toEqual({ kind: "closed", refused: false });
       expect(server.connections()).toBe(1);
+    });
+  });
+});
+
+verifies("paperclip-client.event-card-reads", () => {
+  describe("liveSignalHandler", () => {
+    it("names an event's task to the provider before the sync hears the change (HAL-20614)", () => {
+      const liveTasks = new LiveTaskChanges();
+      const heard: string[][] = [];
+      const handle = liveSignalHandler(liveTasks, (signal) => {
+        heard.push([signal.kind, ...liveTasks.take()]);
+      });
+
+      handle({
+        kind: "event",
+        event: {
+          kind: "activity",
+          action: "issue.thread_interaction_created",
+          entityType: "issue",
+          entityId: "task-1",
+          createdAt: "2026-11-24T14:00:01.000Z",
+        },
+      });
+      handle({ kind: "resync" });
+
+      expect(heard).toEqual([["change", "task-1"], ["resync"]]);
     });
   });
 });

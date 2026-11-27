@@ -2,6 +2,7 @@ import { shippedCatalog } from "@halonicjs/action-catalog";
 import {
   LiveEventsConnection,
   type LiveSignal,
+  type LiveTaskChanges,
   type PaperclipAnswer,
   PaperclipFeedback,
   type PaperclipKeyGuard,
@@ -34,6 +35,8 @@ export interface PaperclipProviderOptions {
   now?: () => Date;
   /** Hears each Paperclip call's route template, status, time and size; never its address or body. */
   timing?: RouteTimingSink;
+  /** The tasks the connection's live events named, shared by its events socket and its provider. */
+  liveTasks?: LiveTaskChanges;
 }
 
 const signedOut: PaperclipAnswer = { kind: "failed", failure: "signed-out" };
@@ -57,6 +60,7 @@ export function paperclipProvider(
     label: `Paperclip · ${options.label}`,
     // A card pinned to a stepper request this Halonic ships becomes an action item.
     stepperCatalog: shippedCatalog,
+    liveTasks: options.liveTasks,
     ...network(options),
   });
 }
@@ -107,10 +111,12 @@ export function paperclipFeedback(
  * when the host holds no key for it. It sends through the same key guard as
  * {@link paperclipProvider}, so only to the address and company the key was made for, and tells
  * the sync only what it needs: that an event touched the local copy, never what the event said.
+ * The provider hears, through `liveTasks`, only which task an event named, so its next read reads
+ * that task's cards again (`paperclip-client.event-card-reads`).
  * A failure to open that the connection doesn't report as `closed` is reported, and counts as one.
  */
 export function paperclipEvents(
-  options: Pick<PaperclipProviderOptions, "binding" | "keys" | "readNow">,
+  options: Pick<PaperclipProviderOptions, "binding" | "keys" | "readNow" | "liveTasks">,
   report: (error: unknown) => void,
 ): OpenEvents | undefined {
   const guarded = guardedKey(options);
@@ -121,16 +127,28 @@ export function paperclipEvents(
       address,
       key,
       company,
-      onSignal: (signal) => {
-        const heard = eventsSignalOf(signal);
-        if (heard !== undefined) onSignal(heard);
-      },
+      onSignal: liveSignalHandler(options.liveTasks, onSignal),
     });
     connection.open().catch((error: unknown) => {
       report(error);
       onSignal({ kind: "closed", refused: false });
     });
     return connection;
+  };
+}
+
+/**
+ * Hears the socket's signals: `liveTasks` notes the task an event names, then the sync hears
+ * {@link eventsSignalOf} the signal, so the read it brings already reads that task's cards again.
+ */
+export function liveSignalHandler(
+  liveTasks: LiveTaskChanges | undefined,
+  onSignal: (signal: EventsSignal) => void,
+): (signal: LiveSignal) => void {
+  return (signal) => {
+    if (signal.kind === "event") liveTasks?.heard(signal.event);
+    const heard = eventsSignalOf(signal);
+    if (heard !== undefined) onSignal(heard);
   };
 }
 
