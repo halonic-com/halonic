@@ -107,6 +107,8 @@ verifies("inbox.final-state-open", () => {
       await settled();
 
       expect(document.activeElement?.textContent).toBe("Cancelled · 10:00");
+      // As wide as its chip, so the focus ring wraps the line rather than the whole bar.
+      expect(document.activeElement?.classList).toContain("w-fit");
     });
   });
 });
