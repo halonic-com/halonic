@@ -9,7 +9,7 @@ import { inboxItems, type WaitItem } from "../inbox-items.ts";
 import { runAtLimit } from "../plan-limit.test-helper.ts";
 import { waitingRun } from "../test-runs.test-helper.ts";
 import { renderWithUpdate, unmountAll } from "../test-support/render.tsx";
-import { rowFor, wholeLine } from "./inbox-row.tsx";
+import { rowFor } from "./inbox-row.tsx";
 import { PlanLimitCard, type PlanLimitCardProps } from "./plan-limit-card.tsx";
 import { button, press } from "./wait-card.test-helper.tsx";
 
@@ -63,7 +63,7 @@ verifies("inbox.plan-limit-card", () => {
     it("doesn't call it a person step in the row", () => {
       const facts = { workflow: "Support reply", hubId: "acme", startedBy: "you" };
       const row = rowFor(limitItem(), new Date("2026-11-10T10:43:00.000Z"), facts);
-      expect(wholeLine(row)).toMatch(/^Support reply · run r51 · Waiting 3\smin$/);
+      expect(row.meta).toBe("Support reply · run r51");
     });
 
     it("sends continue without naming a wait step", async () => {

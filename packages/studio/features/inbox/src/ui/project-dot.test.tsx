@@ -97,13 +97,18 @@ verifies("inbox.project-dot", () => {
       { question: "Send preview.98 to the phone?", project: studioApp },
     ]);
     const [row] = rows(root);
-    expect(rowLine(row).replace(/\s/g, " ")).toContain(
-      "Studio app · Paperclip · Acme · Chief · Waiting 2 min",
-    );
+    // The source stays out of the row, so who asks shows; the header names it (HAL-20395).
+    expect(rowLine(row).replace(/\s/g, " ")).toContain("Studio app · Chief");
+    expect(rowLine(row)).not.toContain("Paperclip");
+    expect(row?.querySelector('[data-part="wait-time"]')?.textContent).toBe("Waiting 2\u00a0min");
     const dot = row?.querySelector(`.${projectColour("p-studio")}`);
     expect(dot?.getAttribute("aria-hidden")).toBe("true");
     expect(dot?.className).toContain("forced-colors:bg-[CanvasText]");
     expect(dot?.nextElementSibling?.className).toContain("truncate");
+    const line = await openFirstRow(root);
+    expect(line?.textContent?.replace(/\s/g, " ")).toBe(
+      "Studio app · Paperclip · Acme · Chief · Waiting 2 min",
+    );
   });
 
   it("shows the whole name in the open item's header, uncut", async () => {
@@ -166,14 +171,14 @@ verifies("inbox.project-dot", () => {
     expect(first?.querySelector(colour)).not.toBeNull();
     expect(second?.querySelector(colour)).not.toBeNull();
     expect(third?.querySelector('[class*="bg-series-"]')).toBeNull();
-    expect(rowLine(third)).toContain("Paperclip · Acme · Chief");
+    expect(rowLine(third)).toContain("Send the weekly digest?Chief");
   });
 
   it("marks a hidden character in the project's name, in the row and in the header", async () => {
     const rightToLeft = String.fromCodePoint(0x202e);
     const tricky = { id: "p-tricky", name: `Studio${rightToLeft}app` };
     const root = await inboxWith([{ question: "Send preview.98 to the phone?", project: tricky }]);
-    expect(rowLine(rows(root)[0])).toContain("Studio⟦U+202E⟧app · Paperclip · Acme");
+    expect(rowLine(rows(root)[0]).replace(/\s/g, " ")).toContain("Studio⟦U+202E⟧app · Chief");
     expect(rowLine(rows(root)[0])).not.toContain(rightToLeft);
     const line = await openFirstRow(root);
     expect(line?.textContent).toMatch(/^Studio⟦U\+202E⟧app · /);
@@ -185,23 +190,24 @@ verifies("inbox.project-dot", () => {
     const [row] = rows(root);
     expect(rows(root)).toHaveLength(1);
     expect(rowLine(row)).toContain("2 cards from Chief");
-    expect(rowLine(row).replace(/\s/g, " ")).toContain("Studio app · Paperclip · Acme");
+    expect(rowLine(row).replace(/\s/g, " ")).toContain("Studio app · Chief");
     const colour = `.${projectColour("p-studio")}`;
     expect(row?.querySelector(colour)?.nextElementSibling?.className).toContain("truncate");
 
     const line = await openFirstRow(root);
-    expect(line?.textContent).toMatch(/^Studio app · /);
+    expect(line?.textContent).toMatch(/^Studio app · Paperclip · Acme · Chief · /);
     expect(line?.querySelector(colour)).not.toBeNull();
     expect(line?.querySelector(".truncate")).toBeNull();
   });
 });
 
 describe("projectColour", () => {
-  it("picks one of four fixed colours from the ID alone, none violet, amber, azure or rose", () => {
+  it("picks one of three fixed colours from the ID alone, none violet, amber, azure, rose or the unread blue", () => {
     const ids = Array.from({ length: 60 }, (_, index) => `project-${index}`);
     const picked = new Set(ids.map(projectColour));
-    expect(picked.size).toBe(4);
+    expect(picked.size).toBe(3);
     expect(picked).not.toContain("bg-series-2");
+    expect(picked).not.toContain("bg-series-1");
     expect(projectColour("p-studio")).toBe(projectColour("p-studio"));
     for (const colour of picked) expect(colour).not.toMatch(/warning|attention|running/);
   });

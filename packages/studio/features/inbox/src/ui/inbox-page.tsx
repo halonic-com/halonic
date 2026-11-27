@@ -51,7 +51,7 @@ import {
   openRow,
   placeOf,
 } from "./inbox-page-parts.tsx";
-import { countDetail, inboxRow, lateCount } from "./inbox-row.tsx";
+import { countDetail, inboxRow, lateCount, withActionRoom } from "./inbox-row.tsx";
 import { ItemHeader, openHeading } from "./item-header.tsx";
 import { type InboxMotion, kitMotion, useGlidingState } from "./list-motion.ts";
 import { failureReason, isSignedOut, loadFailed, openItemWords, StaleLine } from "./load-lines.tsx";
@@ -63,6 +63,7 @@ import { ProposalsElsewhere } from "./proposals-elsewhere.tsx";
 import { itemMark } from "./row-marks.tsx";
 import type { RunFactsOf } from "./run-facts.ts";
 import { useAgentItems } from "./use-agent-items.tsx";
+import { useItemSteps } from "./use-item-steps.ts";
 import { useOpenItem } from "./use-open-item.ts";
 import { useProjectFilter } from "./use-project-filter.tsx";
 import { readRow, useReadMarks } from "./use-read-marks.ts";
@@ -311,6 +312,7 @@ export function InboxView({
     announce,
   });
   const place = placeOf(openKey, waitingOrder);
+  const steps = useItemSteps(waitingOrder, openKey, (key) => openRow(key, agent, listed, openItem));
   const heading = openHeading(open, place !== null, agent.heading, now(), runFacts);
   const request = useRequestPane({
     inbox,
@@ -358,20 +360,22 @@ export function InboxView({
                 headingRef: needsYouHeading,
                 ...countDetail(
                   needsYouCount(waitingOrder),
-                  lateCount(state.items, now()),
+                  lateCount(state.items, agent.waitingItems, now()),
                   reading.newCount(waitingOrder),
                 ),
               }}
-              rows={reading.mark(
-                [
-                  ...project
-                    .own(listed)
-                    .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
-                  ...agent.rows(now(), project.filter),
-                ],
-                [...waitingOrder, ...listed.map(readRow)],
-                openKey,
-              )}
+              rows={reading
+                .mark(
+                  [
+                    ...project
+                      .own(listed)
+                      .map((item) => ({ ...inboxRow(item, now(), runFacts), ...itemMark(item) })),
+                    ...agent.rows(now(), project.filter),
+                  ],
+                  [...waitingOrder, ...listed.map(readRow)],
+                  openKey,
+                )
+                .map(withActionRoom)}
               onOpen={(key) =>
                 paneMotion(
                   itemPane.current,
@@ -427,6 +431,7 @@ export function InboxView({
             heading={heading}
             back={onePane}
             place={place}
+            steps={steps}
             close={close}
             markUnread={() => reading.markUnread(close, openWaiting)}
           />

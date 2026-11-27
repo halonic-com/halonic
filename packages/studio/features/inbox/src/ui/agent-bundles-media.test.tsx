@@ -90,7 +90,7 @@ verifies("inbox.agent-item-bundles", () => {
     expect(rows(root)).toHaveLength(1);
     expect(rows(root)[0]?.textContent).toContain("2 cards from Chief");
     // The oldest asked at 10:00, so the bundle has waited 3 h, not the newest's 1 h.
-    expect(rows(root)[0]?.textContent).toContain("Paperclip · Acme · Chief · Waiting 3 h");
+    expect(rows(root)[0]?.textContent).toContain("2 cards from ChiefChiefWaiting 3 h");
     expect(root.textContent).toContain("2 waiting");
   });
 
@@ -132,7 +132,7 @@ verifies("inbox.agent-item-bundles", () => {
       expect.stringContaining("Hire Ana?"),
       expect.stringContaining("2 cards on ACME-12 · Fix the login"),
     ]);
-    expect(rows(root)[1]?.textContent).toContain("Paperclip · Acme · Chief, Ravi · Waiting 3 h");
+    expect(rows(root)[1]?.textContent).toContain("Chief, RaviWaiting 3 h");
   });
 
   it("names no single agent on a bundle of several agents' cards whose work it can't find", async () => {

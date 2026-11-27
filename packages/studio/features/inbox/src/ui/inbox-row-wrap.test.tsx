@@ -5,11 +5,11 @@ import { act } from "react";
 import { afterEach, expect, it } from "vitest";
 import { fakeRuns } from "../fake-runs.test-helper.ts";
 import { Inbox } from "../inbox.ts";
-import { inboxItems, type SetupItem } from "../inbox-items.ts";
+import { inboxItems, isRunItem, type SetupItem } from "../inbox-items.ts";
 import { waitingRun } from "../test-runs.test-helper.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { InboxView } from "./inbox-page.tsx";
-import { inboxRow, wholeLine } from "./inbox-row.tsx";
+import { inboxRow, waitingLine } from "./inbox-row.tsx";
 
 afterEach(unmountAll);
 
@@ -51,24 +51,26 @@ function spanWith(root: HTMLElement, text: string): Element | undefined {
 }
 
 verifies("inbox.row-meta-wraps", () => {
-  it("keeps the Inbox row's line on one line, with Waiting 1 h whole at its end", async () => {
+  it("keeps the Inbox row's line on one line, with Waiting 1 h whole at its top right", async () => {
     const root = await inboxWith("Approve this reply?");
-    const line = spanWith(root, "Support reply · run 891b5a · a person step · Waiting 1\u00a0h");
+    const line = spanWith(root, "Support reply · run 891b5a · a person step");
     expect(line?.className).not.toContain("line-clamp-2");
-    const [before, end] = Array.from(line?.children ?? []);
-    expect(before?.textContent).toBe("Support reply · run 891b5a · a person step");
-    expect(before?.className).toContain("truncate");
-    expect(end?.textContent).toBe(" · Waiting 1\u00a0h");
-    expect(end?.className).toContain("shrink-0");
+    expect(line?.className).toContain("truncate");
+    const time = line?.closest('[role="gridcell"]')?.querySelector('[data-part="wait-time"]');
+    expect(time?.textContent).toBe("Waiting 1\u00a0h");
+    expect(time?.closest('[data-part="end-column"]')).not.toBeNull();
   });
 
-  it("splits the wait off the line, which reads the same whole", () => {
+  it("keeps the wait off the line, and the open item's header has the line whole", () => {
     const now = new Date(2026, 10, 8, 10, 0);
     const [item] = inboxItems([waitingRun("run_mfx3k9z7_891b5a", { lastWaitingAt: at(9, 0) })]);
-    if (item === undefined) throw new Error("no item");
+    if (item === undefined || !isRunItem(item)) throw new Error("no run item");
     const row = inboxRow(item, now, () => facts);
-    expect(row.metaEnd).toBe(" · Waiting 1\u00a0h");
-    expect(wholeLine(row)).toBe("Support reply · run 891b5a · a person step · Waiting 1\u00a0h");
+    expect(row.metaEnd).toBeUndefined();
+    expect(row.meta).toBe("Support reply · run 891b5a · a person step");
+    expect(waitingLine(item, now, facts)).toBe(
+      "Support reply · run 891b5a · a person step · Waiting 1\u00a0h",
+    );
   });
 
   it("sets it on every row, as Home's Needs you shows them too", () => {

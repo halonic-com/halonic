@@ -101,14 +101,17 @@ function withoutChanges(fake: FakeAgentMessaging): AgentMessaging {
 
 verifies("inbox.agent-inbox-items", () => {
   describe("the list", () => {
-    it("lists an open item with its source's label and how long it has waited", async () => {
+    it("lists an open item with how long it has waited, and its header names its source", async () => {
       const { messaging } = acme();
       const root = await openInbox(messaging);
       const [row] = rows(root);
       expect(row?.textContent).toContain("Ship the release today?");
       // A no-break space joins the number and its unit (inbox.waiting-time).
-      expect(row?.textContent).toContain("Paperclip · Acme · Chief · Waiting 3\u00a0h");
+      expect(row?.querySelector('[data-part="wait-time"]')?.textContent).toBe("Waiting 3\u00a0h");
       expect(root.textContent).toContain("1 waiting");
+      await openFirstRow(root);
+      const header = root.querySelector('[data-pane="item"] header h2 + p');
+      expect(header?.textContent).toBe("Paperclip · Acme · Chief · Waiting 3\u00a0h");
     });
 
     it("reads again when a source changes, with no polling of its own", async () => {

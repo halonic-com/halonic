@@ -96,8 +96,11 @@ export async function type(field: HTMLTextAreaElement, text: string) {
   });
 }
 
+/** The button whose words, or an icon button's name, start with `name`. */
 export function button(root: HTMLElement, name: string): HTMLButtonElement {
-  const found = [...root.querySelectorAll("button")].find((b) => b.textContent?.startsWith(name));
+  const found = [...root.querySelectorAll("button")].find(
+    (b) => b.textContent?.startsWith(name) || b.getAttribute("aria-label")?.startsWith(name),
+  );
   if (found === undefined) throw new Error(`no button "${name}"`);
   return found;
 }
