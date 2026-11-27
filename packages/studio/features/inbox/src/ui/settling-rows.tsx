@@ -56,6 +56,8 @@ export function useSettlingRows(
   const endedOf = useCallback((left: AgentBundle) => endedBundle(left, items), [items]);
   const { settling, gone } = useSettling(open, bundleKey, endedOf);
   const groups = useGroups(settling);
+  // Written while the page renders its rows, and read only by the next render: it never decides
+  // what an effect does, so a render React throws away at worst puts a row back one place off.
   const shownOrder = useRef<readonly string[]>([]);
   const inPlace = (open: readonly AgentBundle[]) => {
     const rows = withEnded(open, settling, shownOrder.current);
@@ -153,6 +155,8 @@ interface SettlingGroup {
 
 /** Puts each settling row in the group of the render it started settling in. */
 function useGroups(settling: readonly AgentBundle[]): readonly SettlingGroup[] {
+  // Written during render, which is safe here: the same rows always get the same group, so a
+  // render React throws away or repeats (Strict Mode) leaves the groups as a kept render would.
   const groupOf = useRef(new Map<string, number>());
   const next = useRef(0);
   const fresh = settling.filter((bundle) => !groupOf.current.has(bundle.key));

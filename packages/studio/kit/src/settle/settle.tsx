@@ -121,7 +121,8 @@ export function useSettleAway(
  * Holds several settling elements as one (`kit.settle-together`), as {@link useSettleAway} holds
  * one: cards that ended in the same read wait together, pausing while the pointer is over any of
  * them or the focus is in one, then all go at once and `onGone` is called once. `elements` is read
- * once, after the first render; with none, nothing happens.
+ * once, after the first render. With none, such as rows a filter hides, there is nothing to hold or
+ * see go, so `onGone` is called at once: otherwise they would wait for good, and show again later.
  */
 export function useSettleAwayTogether(
   elements: () => readonly HTMLElement[],
@@ -134,7 +135,10 @@ export function useSettleAwayTogether(
 
   useEffect(() => {
     const targets = elements();
-    if (targets.length === 0) return;
+    if (targets.length === 0) {
+      goneRef.current();
+      return;
+    }
     let left = hold;
     let startedAt = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;

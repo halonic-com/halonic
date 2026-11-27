@@ -80,6 +80,14 @@ function rows(root: HTMLElement): HTMLTableRowElement[] {
 
 const texts = (root: HTMLElement) => rows(root).map((row) => row.textContent ?? "");
 
+async function pickProject(root: HTMLElement, label: string): Promise<void> {
+  const chips = [...root.querySelectorAll<HTMLElement>('[role="radiogroup"] label')];
+  const chip = chips.find((each) => each.textContent?.endsWith(label));
+  if (chip === undefined) throw new Error(`no chip "${label}"`);
+  await act(async () => chip.querySelector("input")?.click());
+  await settled();
+}
+
 const heading = (root: HTMLElement) => root.querySelector('[role="grid"]')?.parentElement;
 
 verifies("inbox.final-state", () => {
@@ -173,6 +181,33 @@ verifies("inbox.final-state", () => {
       await pass(settleHoldMs);
 
       expect(announce.mock.calls).toEqual([["Ship the release?: Expired · 10:00"]]);
+    });
+
+    it("doesn't hold while the project filter hides it, so it doesn't come back when the filter shows it", async () => {
+      const messaging = new FakeAgentMessaging({ now: () => asked });
+      const source = messaging.addSource({ label: "Paperclip · Acme", provider: "paperclip" });
+      const ada = { kind: "person", name: "Ada" } as const;
+      const website = { id: "p-web", name: "Website" };
+      const billing = { id: "p-billing", name: "Billing" };
+      messaging.addInboxItem(source.id, {
+        question: "Ship the home page?",
+        from: ada,
+        project: website,
+      });
+      const invoices = messaging.addInboxItem(source.id, {
+        question: "Send the invoices?",
+        from: ada,
+        project: billing,
+      });
+      const { root, motion } = await openInbox(messaging);
+      await pickProject(root, "Website");
+
+      await act(async () => messaging.closeElsewhere(invoices.id, "cancelled"));
+      await settled();
+      await pickProject(root, "All projects");
+
+      expect(texts(root)).toEqual([expect.stringContaining("Ship the home page?")]);
+      expect(motion.leave).not.toHaveBeenCalled();
     });
   });
 

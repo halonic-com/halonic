@@ -101,5 +101,24 @@ verifies("kit.settle-together", () => {
       await pass(settleHoldMs);
       expect(gone).toHaveBeenCalledOnce();
     });
+
+    it("says they are gone at once when none of them shows, so nothing waits for good", async () => {
+      const gone = vi.fn();
+      function NoneShown() {
+        useSettleAwayTogether(noElements, gone);
+        return null;
+      }
+      render(
+        <SettleMotionProvider out={() => Promise.resolve()}>
+          <NoneShown />
+        </SettleMotionProvider>,
+      );
+
+      expect(gone).toHaveBeenCalledOnce();
+      await pass(settleHoldMs);
+      expect(gone).toHaveBeenCalledOnce();
+    });
   });
 });
+
+const noElements = () => [];
