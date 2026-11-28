@@ -4,11 +4,29 @@ import { TickIcon } from "../icons/tick-icon.tsx";
 import { Menu, type MenuEntry, type MenuTriggerProps } from "../menu/menu.tsx";
 import { PickerSheet } from "../picker-sheet/picker-sheet.tsx";
 import { usePresentation } from "../presentation/presentation.tsx";
+import { StatusChip } from "../status-chip/status-chip.tsx";
 
 /** One chip of a one-of row: the hub filter's "All", "acme", "beta". */
 export interface FilterOption<Value extends string = string> {
   readonly value: Value;
   readonly label: string;
+}
+
+/**
+ * A chip of a one-of row, which may carry a count after its label: Library's "Connectors 1"
+ * (`kit.filter-chip-count`). Picker options take no count: their list is a menu.
+ */
+export interface FilterOneOfOption<Value extends string = string> extends FilterOption<Value> {
+  readonly count?: FilterCount;
+}
+
+/** The count on a chip: the number it shows, its tone, and what the number means in words. */
+export interface FilterCount {
+  readonly value: number;
+  /** `danger` when it counts problems; `accent` by default. */
+  readonly tone?: "accent" | "danger";
+  /** Read after the chip's label: "1 problem" makes "Connectors, 1 problem". */
+  readonly name: string;
 }
 
 /** An on/off chip in a row of filters: Runs' "Test runs". */
@@ -53,7 +71,7 @@ interface RowLabel {
 
 /** One-of: a radio group, where exactly one chip is on and the arrow keys move it. */
 export interface FilterChipsOneOf<Value extends string = string> extends RowLabel {
-  readonly options: readonly FilterOption<Value>[];
+  readonly options: readonly FilterOneOfOption<Value>[];
   readonly value: Value;
   readonly onChange: (value: Value) => void;
   readonly toggles?: never;
@@ -170,8 +188,15 @@ function OneOfChips<Value extends string>(props: FilterChipsOneOf<Value>) {
         return (
           // The radio itself is the pill, with its fill, edge and focus ring; the words sit above
           // it and let presses through. On a phone the label's 48px hit area lies over the
-          // radio, so hover and press fill the pill through the label.
-          <label key={option.value} className={`group ${chipSize} ${on ? textOn : textOff}`}>
+          // radio, so hover and press fill the pill through the label. A count's soft fill is
+          // see-through, so on the on chip's accent-soft or the hover fill it takes the opaque
+          // over-surface fill, as a counter on a muted tab does, and keeps its 4.5:1.
+          <label
+            key={option.value}
+            data-fill={on ? "muted" : undefined}
+            data-hover-fill={on ? undefined : "muted"}
+            className={`group ${chipSize} ${on ? textOn : textOff}`}
+          >
             <input
               type="radio"
               name={name}
@@ -183,11 +208,21 @@ function OneOfChips<Value extends string>(props: FilterChipsOneOf<Value>) {
             <span className="pointer-events-none relative inline-flex items-center gap-1">
               {on ? <ChipCheck /> : null}
               {option.label}
+              {option.count === undefined ? null : <ChipCount count={option.count} />}
             </span>
           </label>
         );
       })}
     </div>
+  );
+}
+
+/** The kit's count chip, its number hidden from screen readers, who hear its name instead. */
+function ChipCount({ count }: { readonly count: FilterCount }) {
+  return (
+    <StatusChip tone={count.tone ?? "accent"} shape="count" name={count.name}>
+      {count.value}
+    </StatusChip>
   );
 }
 
