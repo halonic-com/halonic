@@ -12,6 +12,7 @@
       "style": "./src/theme-font.css"
     },
     "./app-glyphs": "./src/app-logo/app-glyphs.ts",
+    "./list-column": "./src/list-column/list-column.ts",
     "./settle": "./src/settle/settle.tsx"
   },
   "scripts": {
