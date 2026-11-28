@@ -331,17 +331,19 @@ changes. An `xs` button stays on one line, so the status bar keeps its height.
 
 **At the edge of a scrolling box**, the box clips a ring drawn outside the button, so the button
 takes `ring="inset"` and draws the same ring inside itself (`focus-ring-inset`,
-`kit.button-ring-inset`). Two buttons use it today: one in the last column of a scrolling
-grid (a collection record's ⋮), and a button pulled out to the box's edge so its label starts where
-the text above it starts (the Library's Try again under its stale-list line, pulled 13px into the
-16px padding of the scrolling list column, which leaves 3px where the outer ring needs 4px). Every
-other button keeps the outer ring.
+`kit.button-ring-inset`). Three buttons use it today: one in the last column of a scrolling
+grid (a collection record's ⋮), and two pulled out to the box's edge so their labels start where
+the text above them starts: the Library's Try again under its stale-list line, pulled 13px into the
+16px padding of the scrolling list column, which leaves 3px where the outer ring needs 4px, and
+Home's Try again under its failure line, whose start padding is the pull itself (13px, 17px on
+touch), so the button's edge sits on the column's edge. Every other button keeps the outer ring.
 
 One limit: in Windows high-contrast mode the ring is the `Highlight` outline, 2px wide at a -2px
 offset. It starts at the button's very edge, where the ring otherwise starts inside the button's
 1px border. A button whose edge sits past the box's edge still loses that part of the outline: on a
 touch screen, or in a window under 600px wide, the Library's Try again is pulled 17px against the
-16px of padding, so 1px of it is cut on that side.
+16px of padding, so 1px of it is cut on that side. Home's Try again keeps its whole outline, as
+its edge never passes the column's.
 
 **On a tinted fill**, wrap a ghost button in `<OnTintContext value={true}>`: its label turns
 `accent-text` and its hover fill `surface`, so it stands out from the tint instead of greying it.
