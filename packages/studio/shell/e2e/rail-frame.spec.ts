@@ -1,12 +1,16 @@
-import { expect, type Locator, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 /**
  * The rail is the window's first 64px, its 40px buttons 12px in and 4px apart, the first level
  * with the framed panel's top and Settings 10px above the window's bottom edge; the title bar's
- * mark sits on the rail's axis (the approved mockup, v26 on HAL-20617; HAL-20946). jsdom has no
- * layout, so a real browser measures the boxes.
+ * mark sits on the rail's axis with the words 8px after it, and in a narrow window the Places
+ * button does (the approved mockup, v26 on HAL-20617; HAL-20946, look check HAL-20960). jsdom has
+ * no layout, so a real browser measures the boxes.
  */
-const window1280 = { width: 1280, height: 800 };
+const wide = { width: 1280, height: 800 };
+const narrow = { width: 640, height: 800 };
+/** The rail's axis: the middle of its 64px. */
+const railAxis = 32;
 
 interface Box {
   readonly x: number;
@@ -23,19 +27,24 @@ async function box(locator: Locator): Promise<Box> {
   return found;
 }
 
+async function openWindow(page: Page, size: { width: number; height: number }) {
+  await page.setViewportSize(size);
+  await page.goto("/rail-frame.html");
+  const rail = page.locator("[data-icon-rail]");
+  await expect(rail.getByRole("button", { name: "Settings" })).toBeVisible();
+  return rail;
+}
+
 test("at 1280px the rail is the window's first 64px, its buttons 12px in and 4px apart", async ({
   page,
 }) => {
-  await page.setViewportSize(window1280);
-  await page.goto("/rail-frame.html");
-  const rail = page.locator("[data-icon-rail]");
-  await expect(rail.getByRole("button", { name: "Inbox" })).toBeVisible();
+  const rail = await openWindow(page, wide);
 
   const railBox = await box(rail);
   expect(railBox.x).toBe(0);
   expect(railBox.width).toBe(64);
 
-  const names = ["Home", "Library", "Inbox"];
+  const names = ["Home", "Library", "Inbox", "Settings"];
   const buttons = await Promise.all(
     names.map((name) => box(rail.getByRole("button", { name, exact: true }))),
   );
@@ -43,21 +52,36 @@ test("at 1280px the rail is the window's first 64px, its buttons 12px in and 4px
     expect(button.x).toBe(12);
     expect(button.width).toBe(40);
   }
-  for (const [index, button] of buttons.slice(1).entries()) {
-    expect(button.y - (buttons[index]?.y ?? Number.NaN)).toBe(44);
+  const apps = buttons.slice(0, -1);
+  for (const [index, button] of apps.slice(1).entries()) {
+    expect(button.y - (apps[index]?.y ?? Number.NaN)).toBe(44);
   }
   const panel = await box(page.locator("[data-framed-panel]"));
-  expect(buttons[0]?.y).toBe(panel.y);
-
-  // Settings, the rail's last button, ends where the rail's padding starts: 10px above the edge.
-  const paddingBottom = await rail.evaluate((nav) => getComputedStyle(nav).paddingBottom);
-  const railBottom = railBox.y + railBox.height - Number.parseFloat(paddingBottom);
-  expect(railBottom).toBe(window1280.height - 10);
+  expect(apps[0]?.y).toBe(panel.y);
+  const settings = buttons.at(-1);
+  expect((settings?.y ?? 0) + (settings?.height ?? 0)).toBe(wide.height - 10);
 });
 
-test("at 1280px the title bar's mark sits on the rail's axis", async ({ page }) => {
-  await page.setViewportSize(window1280);
-  await page.goto("/rail-frame.html");
-  const mark = await box(page.locator("[data-brand-mark] svg").first());
-  expect(mark.x + mark.width / 2).toBe(32);
+test("at 1280px the title bar's mark sits on the rail's axis, the words 8px after it", async ({
+  page,
+}) => {
+  await openWindow(page, wide);
+  const brand = page.locator("[data-title-bar-brand]");
+  const mark = await box(brand.locator("svg").first());
+  expect(mark.x + mark.width / 2).toBe(railAxis);
+  const words = await box(brand.getByText("Halonic Studio"));
+  expect(words.x).toBe(mark.x + mark.width + 8);
+});
+
+test("at 1280px the active tab starts where the framed panel does", async ({ page }) => {
+  await openWindow(page, wide);
+  const panel = await box(page.locator("[data-framed-panel]"));
+  const tab = await box(page.getByRole("tab", { selected: true }));
+  expect(tab.x).toBe(panel.x);
+});
+
+test("at 640px the Places button sits on the rail's axis", async ({ page }) => {
+  await openWindow(page, narrow);
+  const places = await box(page.locator("header").getByRole("button", { name: "Places" }));
+  expect(places.x + places.width / 2).toBe(railAxis);
 });

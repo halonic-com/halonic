@@ -187,6 +187,8 @@ function desktopPanelClass(desktop: boolean, besideSidebar: boolean): string {
 /**
  * The desktop's frame: 8px on the right and at the bottom. The rail is the window's first 64px
  * (the approved mockup, v26 on HAL-20617), so the frame's 8px on the left is there only without it.
+ * The title bar starts 16px in only in a narrow window, so its 32px Places button sits on the
+ * rail's axis (HAL-20960); in a wide one the mark places itself (`TitleBarBrand`).
  */
 function desktopFrameClass(desktop: boolean, hasRail: boolean): string {
   if (!desktop) return "bg-surface";
@@ -222,7 +224,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
     >
       {desktop ? (
         <header
-          className={`flex h-titlebar shrink-0 items-end gap-0.5 ${drawer.narrow ? "ps-1" : ""}`}
+          className={`flex h-titlebar shrink-0 items-end gap-0.5 ${drawer.narrow ? "ps-4" : ""}`}
         >
           {drawer.narrow ? (
             <span className="self-center">
