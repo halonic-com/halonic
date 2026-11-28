@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20730 (Chief, 28 Nov 11:46 CET: pinned chats in Messenger's list column, per Sofia's flows on HAL-20673); Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nrXN4QWA2H1z2LwM8VQG+jjE8NDJXf02rZr2DBXz7CkyWOXafJTXaLKb99EeCeIRAo73gkvj/bM5G85/7By/CQ==
 - Task: HAL-20730
 
 ## What changes
