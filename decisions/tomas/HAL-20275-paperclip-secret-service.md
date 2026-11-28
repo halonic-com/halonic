@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20275 (plan approved by Liam on HAL-21110; 6.8 decided on HAL-20274)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5AIJrj0qUpBBY3mQsBNpVtJT8RQwjq5PwrbfDNz8VhOvyfpDX+6ThwVZxxoJP2H2MApxo54J/az0doNnYtMSCQ==
 
 The shell's `paperclip.set-secret` is a fixed Rust operation, not a route of
 method and path, as Liam's plan answer on HAL-21110 asks. `core/ports` names
