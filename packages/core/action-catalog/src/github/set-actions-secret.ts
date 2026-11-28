@@ -1,10 +1,42 @@
-import { type StepperDefinition, strictParameters } from "@halonicjs/action-steppers";
+import {
+  type CheckStep,
+  type GuidedStep,
+  type StepperDefinition,
+  strictParameters,
+} from "@halonicjs/action-steppers";
 import { actionsName } from "../github-actions-parameters.ts";
 import { githubOwner, githubRepo } from "../github-parameters.ts";
 
 type Parameters = Record<string, string | number>;
 
 const secretsPage = "https://github.com/{owner}/{repo}/settings/secrets/actions";
+
+/** The guided step where the user types the secret {name} on GitHub's page; `github.create-repository` reuses it. */
+export const secretGuided: GuidedStep = {
+  kind: "guided",
+  address: secretsPage,
+  instructions: [
+    "On the **Secrets** tab, under **Repository secrets**, find {name} and click its pencil icon. If it isn't listed, click **New repository secret** and set **Name** to {name}.",
+    "Paste or type the value into **Secret** (or **Value**). Type it only there, never in a chat or a request.",
+    "Click **Update secret** (or **Add secret**).",
+  ],
+  // Checked against GitHub's documentation for the page; the live smoke test walks it.
+  checkedOn: "2026-11-27",
+};
+
+/** The check that the secret {name} was saved after the stepper opened; `github.create-repository` reuses it. */
+export const secretSavedCheck: CheckStep = {
+  kind: "check",
+  path: "/repos/{owner}/{repo}/actions/secrets/{name}",
+  keep: ["name", "updated_at"],
+  changedAfterStart: "updated_at",
+  manual: {
+    url: secretsPage,
+    instructions: [
+      "Check that {name} is listed under **Repository secrets** and was updated just now.",
+    ],
+  },
+};
 
 /**
  * Sets a GitHub Actions repository secret by hand (inventory row 2). The user
@@ -24,31 +56,7 @@ export const definition: StepperDefinition<Parameters> = {
   // Workflows use it, often to deploy or publish.
   risk: "admin",
   parameters: strictParameters({ owner: githubOwner, repo: githubRepo, name: actionsName }),
-  steps: [
-    {
-      kind: "guided",
-      address: secretsPage,
-      instructions: [
-        "On the **Secrets** tab, under **Repository secrets**, find {name} and click its pencil icon. If it isn't listed, click **New repository secret** and set **Name** to {name}.",
-        "Paste or type the value into **Secret** (or **Value**). Type it only there, never in a chat or a request.",
-        "Click **Update secret** (or **Add secret**).",
-      ],
-      // Checked against GitHub's documentation for the page; the live smoke test walks it.
-      checkedOn: "2026-11-27",
-    },
-    {
-      kind: "check",
-      path: "/repos/{owner}/{repo}/actions/secrets/{name}",
-      keep: ["name", "updated_at"],
-      changedAfterStart: "updated_at",
-      manual: {
-        url: secretsPage,
-        instructions: [
-          "Check that {name} is listed under **Repository secrets** and was updated just now.",
-        ],
-      },
-    },
-  ],
+  steps: [secretGuided, secretSavedCheck],
   targets: (parameters) => [
     {
       service: "github",

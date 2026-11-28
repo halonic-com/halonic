@@ -11,6 +11,7 @@ import { definition as githubChangeBranchProtection } from "./github/change-bran
 import { definition as githubChangeRuleset } from "./github/change-ruleset.ts";
 import { definition as githubConfigureEnvironment } from "./github/configure-environment.ts";
 import { definition as githubCreateActionsVariable } from "./github/create-actions-variable.ts";
+import { definition as githubCreateRepository } from "./github/create-repository.ts";
 import { definition as githubMergeReleasePr } from "./github/merge-release-pr.ts";
 import { definition as githubRemoveRunner } from "./github/remove-runner.ts";
 import { definition as githubSetActionsSecret } from "./github/set-actions-secret.ts";
@@ -28,6 +29,7 @@ import { definition as npmRenewTrustedPublisher } from "./npm/renew-trusted-publ
 import { definition as npmSetTrustedPublisher } from "./npm/set-trusted-publisher.ts";
 import { definition as openrouterAddCredit } from "./openrouter/add-credit.ts";
 import { definition as openrouterCreateKey } from "./openrouter/create-key.ts";
+import { definition as paperclipAddProjectRepository } from "./paperclip/add-project-repository.ts";
 import { definition as paperclipBindSecret } from "./paperclip/bind-secret.ts";
 import { definition as paperclipConnectAndTest } from "./paperclip/connect-and-test.ts";
 import { definition as paperclipSetSecret } from "./paperclip/set-secret.ts";
@@ -51,63 +53,67 @@ export const catalogEntries = {
   },
   "device/check-android-build": {
     definition: deviceCheckAndroidBuild,
-    sourceHash: "1d64b778fd92c6262595b222151f904790b921dafd526d2c95fbbf04de22effa",
+    sourceHash: "7efd8b3b2e6911b1a935cec726ab76afa78e11a5fcefdaa351bef8a5868e6b3a",
   },
   "device/check-phone-pairing": {
     definition: deviceCheckPhonePairing,
-    sourceHash: "24490ce3ed85b95a750ea2828b9cfa3c08a15fcf44b61a7a567a9f667e0b9486",
+    sourceHash: "d1298f290bd9b526d746e02ebe156f9e9c309af3a84b70a93a59fc28280d33b8",
   },
   "device/check-windows-build": {
     definition: deviceCheckWindowsBuild,
-    sourceHash: "05abd4bf8afb20c21cc723a4c7b80b128906f33af7dfd39d987557e528e8aecd",
+    sourceHash: "92c261c1b9309a2f8140d7c89fa4a0f867c1861964f84108be2146bbd75956bd",
   },
   "github/approve-deployment": {
     definition: githubApproveDeployment,
-    sourceHash: "09eba1ad6e46b48a572727e26b7eb7ed3012de8406131ccd2b12f694f7d0b064",
+    sourceHash: "65a8f527581fc9365aca95808d637bf835bc8d7468ddb17ac002fa76e511d801",
   },
   "github/change-branch-protection": {
     definition: githubChangeBranchProtection,
-    sourceHash: "550859c92d4a843122817d78068dbe34203f14fa9bb2fa4d333cad7c793ca36a",
+    sourceHash: "0d51ec0e5f00064d2279b94279f2a3ae95dc7025910437901b3e4f2f89453509",
   },
   "github/change-ruleset": {
     definition: githubChangeRuleset,
-    sourceHash: "ec543dcfb7588f1755323ab67e7eb6ee85d6ed32cd613d3af5198d79dc2cf39b",
+    sourceHash: "728fc39baf7375565ce2a4405923190a24d099b68f52d1bfb334e2bfdcf03442",
   },
   "github/configure-environment": {
     definition: githubConfigureEnvironment,
-    sourceHash: "956e545684fb07ab1cfdf628e996e33997f420225ee00d4ee13b8297f442c89c",
+    sourceHash: "0cd66e59618ffc8521f662442d26b55b0acb8af2f1030fce1f24ac00a340bdaf",
   },
   "github/create-actions-variable": {
     definition: githubCreateActionsVariable,
-    sourceHash: "b354aa3555f21c4d2154940a890c4f422cc660d035fd84148acbe6e350667ef4",
+    sourceHash: "aeee332b2d4fa293e6b067119176652fbfce9bfeeb7b6e3957803d33b362510c",
+  },
+  "github/create-repository": {
+    definition: githubCreateRepository,
+    sourceHash: "275930ec42a7a671cbe22af8e094d9b448c76ba1ba6ed2fb8fcc095f9faff31c",
   },
   "github/merge-release-pr": {
     definition: githubMergeReleasePr,
-    sourceHash: "aa63a777c7a98109e2eeb54b131b6c01965b2ebf4dd401149e016968852324be",
+    sourceHash: "70249813f3b73a2f93ca9aa676fbf6af2831522837297b6a353768ab777625ba",
   },
   "github/remove-runner": {
     definition: githubRemoveRunner,
-    sourceHash: "854e0f4e520e6ba7e282c280ef448f3ae24c59d70e52696338d51403962e1500",
+    sourceHash: "97e97c4cbd29e5e3e17d416a125baf0153dd6c9966716f1af9e3748e7ad56e7c",
   },
   "github/set-actions-secret": {
     definition: githubSetActionsSecret,
-    sourceHash: "13936f707d7cd5eb6da6abf2621454d5055106c8e30a2f7b7244048d17fd8874",
+    sourceHash: "dd4af5683fd0e0283aabec33bd648ee828aa228873c25775e1dc48f9e72dee16",
   },
   "github/set-actions-variable": {
     definition: githubSetActionsVariable,
-    sourceHash: "1f703d5990649fc388f269740368b777d03b3aa0a57135ef4a4d638c7cfd53cb",
+    sourceHash: "8bc777fc7e13a3929eba38c7220679679435d68246bb697868548f7c40fba772",
   },
   "github/set-repo-merge-options": {
     definition: githubSetRepoMergeOptions,
-    sourceHash: "7ff05bd16407a718a8ca0e9c8a821ef9c210b0fa24adc5bd96bf148b20148c07",
+    sourceHash: "80ad46a866e74ce8b646b24136ebe00b61eb93b51ed7da3b9e8a979d0f5ea500",
   },
   "github/set-repo-visibility": {
     definition: githubSetRepoVisibility,
-    sourceHash: "1ecdc137a8f64e137ec8afd2d30fea9f50614e2cdd4e1b52cba5a5f61eb515c0",
+    sourceHash: "04876a31e75e607fd58a8ef9b53d960fdcb3a600dbece7a7ea4d26163958d162",
   },
   "github/upload-social-preview": {
     definition: githubUploadSocialPreview,
-    sourceHash: "be05f69e3d28ebcdbdae53622dd2cafdd173688b0524b06c999135e8262eb24b",
+    sourceHash: "c5372b153abdb1b78df2728f5ba8c4de5c5242beba7b1eb293ef7c5b24a2c2b8",
   },
   "google/configure-oauth-consent": {
     definition: googleConfigureOauthConsent,
@@ -135,11 +141,11 @@ export const catalogEntries = {
   },
   "npm/renew-trusted-publisher": {
     definition: npmRenewTrustedPublisher,
-    sourceHash: "cbfed91f0114c9e6377bd6a54268e39cfc01d33582e75c0bb1a02152e2b0948c",
+    sourceHash: "b932d8418c6e2823f4b9fcfebf4836d98d3e3500bbb0b93bbb29e2ac5f1f30cd",
   },
   "npm/set-trusted-publisher": {
     definition: npmSetTrustedPublisher,
-    sourceHash: "dc7c9c790731e5b33aa8f79a506b153746651033d4babde70ee8873846f71d10",
+    sourceHash: "d8fc28089cf0ab00a7f146bf72efd4c005ab39909bf792a2dfd9fd0dea1b718a",
   },
   "openrouter/add-credit": {
     definition: openrouterAddCredit,
@@ -148,6 +154,10 @@ export const catalogEntries = {
   "openrouter/create-key": {
     definition: openrouterCreateKey,
     sourceHash: "b4b216fc772c96dacdf52ff3ef6e6f9cf75df8f1ec7d0639706b3ac793322d09",
+  },
+  "paperclip/add-project-repository": {
+    definition: paperclipAddProjectRepository,
+    sourceHash: "af82f33be855aad09ebd9dcefeec5f7b6953adf3677b2a9abb3cc51d0ce047ba",
   },
   "paperclip/bind-secret": {
     definition: paperclipBindSecret,
