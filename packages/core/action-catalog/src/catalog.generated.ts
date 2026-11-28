@@ -11,6 +11,7 @@ import { definition as githubChangeBranchProtection } from "./github/change-bran
 import { definition as githubChangeRuleset } from "./github/change-ruleset.ts";
 import { definition as githubConfigureEnvironment } from "./github/configure-environment.ts";
 import { definition as githubCreateActionsVariable } from "./github/create-actions-variable.ts";
+import { definition as githubMergeReleasePr } from "./github/merge-release-pr.ts";
 import { definition as githubRemoveRunner } from "./github/remove-runner.ts";
 import { definition as githubSetActionsSecret } from "./github/set-actions-secret.ts";
 import { definition as githubSetActionsVariable } from "./github/set-actions-variable.ts";
@@ -21,6 +22,7 @@ import { definition as googleConfigureOauthConsent } from "./google/configure-oa
 import { definition as googleCreateCloudProject } from "./google/create-cloud-project.ts";
 import { definition as googleCreateCredential } from "./google/create-credential.ts";
 import { definition as googleCreateTestAccount } from "./google/create-test-account.ts";
+import { definition as npmApproveStagedVersion } from "./npm/approve-staged-version.ts";
 import { definition as npmClaimPlaceholder } from "./npm/claim-placeholder.ts";
 import { definition as npmRenewTrustedPublisher } from "./npm/renew-trusted-publisher.ts";
 import { definition as npmSetTrustedPublisher } from "./npm/set-trusted-publisher.ts";
@@ -79,6 +81,10 @@ export const catalogEntries = {
     definition: githubCreateActionsVariable,
     sourceHash: "b354aa3555f21c4d2154940a890c4f422cc660d035fd84148acbe6e350667ef4",
   },
+  "github/merge-release-pr": {
+    definition: githubMergeReleasePr,
+    sourceHash: "aa63a777c7a98109e2eeb54b131b6c01965b2ebf4dd401149e016968852324be",
+  },
   "github/remove-runner": {
     definition: githubRemoveRunner,
     sourceHash: "854e0f4e520e6ba7e282c280ef448f3ae24c59d70e52696338d51403962e1500",
@@ -118,6 +124,10 @@ export const catalogEntries = {
   "google/create-test-account": {
     definition: googleCreateTestAccount,
     sourceHash: "bd7491a8c12e6c71e862b6a86481a3104d0241421453af505126a28372309d73",
+  },
+  "npm/approve-staged-version": {
+    definition: npmApproveStagedVersion,
+    sourceHash: "8bea620119726b4477f6dee1c1de489c921c132847efa3c2148f902cffc5d853",
   },
   "npm/claim-placeholder": {
     definition: npmClaimPlaceholder,
