@@ -19,6 +19,7 @@ import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
+import { RAIL_WIDTH, useWindowRailParts } from "../rail/window-rail.tsx";
 import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import { useAvailableSections } from "../settings/available-sections.ts";
@@ -272,12 +273,13 @@ function StudioWindowBody(props: StudioWindowProps) {
   const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
   useClosingGoneItemTabs(tabs, kinds, contextFor, phone.retitle);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
-  useOpenPageAcrossLayouts({
-    desktop,
+  const placeOfKind = (kind: string) => contributions.itemKinds.get(kind)?.place;
+  useOpenPageAcrossLayouts({ desktop, tabs, phone, placeOfKind, showSettings: showSettingsDialog });
+  const rail = useWindowRailParts({
+    rail: contributions.rail,
+    source: workspace.folderFacts,
     tabs,
-    phone,
-    placeOfKind: (kind) => contributions.itemKinds.get(kind)?.place,
-    showSettings: showSettingsDialog,
+    placeOfKind,
   });
   // Read on every phone move and signal change, so the bottom bar's counts follow (HAL-13371).
   const shown = useShownPlaces(places, contextFor);
@@ -327,7 +329,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       language={props.language}
       titleBar={
         <>
-          <TitleBarStart sidebarWidth={sidebarWidth.width}>
+          <TitleBarStart sidebarWidth={sidebarWidth.width + RAIL_WIDTH}>
             <TitleBarBrand />
             <HistoryButtons tabs={tabs} />
           </TitleBarStart>
@@ -342,6 +344,7 @@ function StudioWindowBody(props: StudioWindowProps) {
       dialogs={props.dialogs}
       panel={panel.slot}
       strips={<Strips strips={contributions.strips.list()} contextFor={contextFor} />}
+      rail={rail.element}
       sidebar={
         <StudioSidebar
           places={places}
