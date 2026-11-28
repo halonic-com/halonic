@@ -13,8 +13,10 @@
 # called on real runs only: it is the APK Play signed, checked against Play's
 # app signing key. Dry runs ship a placeholder so the file name and checksum
 # path are tested. On a real run its three `release` jobs (sign, play-upload,
-# play-apk) each wait for an approval, one after another, besides the one for
-# sign-windows.
+# play-apk) run one after another, like sign-windows without waiting for an
+# approval: the `release` environment has no required reviewer (the board's
+# decision for releases below 0.9, AGENTS.md) and admits only `main` and
+# `v0.[0-8].*` tags.
 #
 # The installer is built in two steps (build-installer.ps1 -Step build, then
 # -Step pack), because the sandbox helper inside it must be signed before
@@ -45,14 +47,15 @@
 # latest.json (signature inside, no .sig file) and SHA256SUMS, with the
 # updater-manifest action (HAL-7222). Dry runs use a throwaway key made in
 # the job; real runs use the updater key, a secret of the `release`
-# environment. It is the same job as the Authenticode signing, so a release
-# needs one approval, not two.
+# environment. It is the same job as the Authenticode signing, so the
+# updater key and the Azure details sit behind one environment, not two.
 #
 # The CLI goes to npm as `halonic` (HAL-16209). On a real run, once the
 # draft release exists, the npm-cli job stages the exact `cli-package`
 # tarball the build job checked, with `--tag latest`, so the tag doesn't
 # depend on the 1.0.0 placeholder staying deprecated (tooling/publish/README.md). It runs in the
-# `npm-publish-cli` environment, which allows `v*` tags only, and npm trusts
+# `npm-publish-cli` environment, which has no required reviewer and allows
+# `v0.[0-8].*` tags only, and npm trusts
 # this workflow's identity (OIDC) for `halonic`: no npm token exists. The
 # trusted publisher allows `npm stage publish` only, so the version is not
 # public until a person approves it on npmjs.com (2FA). Dry runs skip the job.
@@ -604,8 +607,8 @@ jobs:
     if: needs.build.outputs.dry_run != 'true'
     runs-on: windows-2025
     timeout-minutes: 30
-    # The only job that can reach the signing identity. Required reviewers
-    # and the branch and tag rule are set on this environment, not here.
+    # The only job that can reach the signing identity. The branch and tag
+    # rule is set on this environment, not here; it has no required reviewer.
     environment: release
     permissions:
       contents: read

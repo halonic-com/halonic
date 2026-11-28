@@ -135,7 +135,8 @@ Chief, and merge or run only once the user has approved.
 
 The CLI goes the same way from [`release.yml`](../../.github/workflows/release.yml), not from
 `publish-kit.yml`: a real run on a `v*` tag stages `halonic` in its `npm-cli` job, after the draft release
-exists. That job runs in the `npm-publish-cli` environment, which allows `v*` tags only, and npm's
+exists. That job runs in the `npm-publish-cli` environment, which has no required reviewer and allows
+`v0.[0-8].*` tags only, and npm's
 trusted publisher for `halonic` names `release.yml` and that environment, with staged publishing only.
 Both are set up once by the board before the first release that ships the CLI (HAL-16209).
 
