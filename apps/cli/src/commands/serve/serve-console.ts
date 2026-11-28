@@ -10,6 +10,7 @@ import { createDeviceConsole } from "@halonicjs/host-server";
 import { profileFolder, workspaceFolders } from "@halonicjs/profile";
 import { KindedError } from "@halonicjs/std";
 import {
+  ConsoleNoReplyError,
   ConsoleNotRunningError,
   ConsoleSocketError,
   callConsoleSocket,
@@ -134,7 +135,8 @@ export type ServeAnswer = { readonly ok: boolean } & Readonly<Record<string, unk
  * the errors the person reads.
  *
  * @throws KindedError `unavailable` when no `serve` runs for the workspace, or the console can't
- *   be used here; `invalid_input` when no `serve-password` is set
+ *   be used here, with a `ConsoleNoReplyError` cause when a `serve` took the request but gave no
+ *   answer; `invalid_input` when no `serve-password` is set
  */
 export async function askServe(
   setup: ConsoleSetup,
@@ -147,6 +149,15 @@ export async function askServe(
   } catch (error) {
     // A call can't open the socket here: on Windows, or with a path too long for one.
     if (error instanceof ConsoleSocketError) throw failure("unavailable", reasonOf(error));
+    // Kept as the cause: a `serve` that took the request may still carry it out (`run`).
+    if (error instanceof ConsoleNoReplyError) {
+      throw failure(
+        "unavailable",
+        serveDevicesMessages.notServing(),
+        serveDevicesMessages.notServingFix(),
+        error,
+      );
+    }
     if (!(error instanceof ConsoleNotRunningError)) throw error;
     reply = null;
   }
@@ -180,10 +191,10 @@ function failure(
   kind: "unavailable" | "invalid_input",
   reason: Message,
   fix?: Message,
+  cause?: unknown,
 ): KindedError {
-  return new KindedError(
-    kind,
-    plainText(reason.phrase),
-    fix === undefined ? {} : { fix: plainText(fix.phrase) },
-  );
+  return new KindedError(kind, plainText(reason.phrase), {
+    ...(fix === undefined ? {} : { fix: plainText(fix.phrase) }),
+    ...(cause === undefined ? {} : { cause }),
+  });
 }

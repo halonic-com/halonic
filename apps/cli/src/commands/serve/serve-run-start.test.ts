@@ -61,6 +61,22 @@ verifies("cli.local-engine-lock", () => {
     expect(served.started).toEqual([]);
   });
 
+  it("answers not-started and logs why when the trust check itself fails", async () => {
+    const failure = new Error("EACCES: permission denied, open 'trust/acme.json'");
+    const served: ServedRunStarts & { readonly started: unknown[] } = {
+      ...starts(startedRun),
+      trust: {
+        check: async () => {
+          throw failure;
+        },
+      },
+    };
+
+    expect(await answer(served, request)).toEqual({ ok: false, reason: "not-started" });
+    expect(logged).toEqual([failure]);
+    expect(served.started).toEqual([]);
+  });
+
   it("answers not-found for a workflow serve doesn't have", async () => {
     const served = starts(async () => {
       throw new RunTargetNotFound("workflow", "support-reply", "No workflow support-reply.");

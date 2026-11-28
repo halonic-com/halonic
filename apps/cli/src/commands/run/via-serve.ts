@@ -6,6 +6,7 @@
 import { EngineLockHeldError } from "@halonicjs/adapter-workspace-engine-node";
 import { shortRunId } from "@halonicjs/app";
 import { KindedError } from "@halonicjs/std";
+import { ConsoleNoReplyError } from "@halonicjs/target-node-runtime";
 import { type CommandInput, type CommandResult, OwnLineError } from "../../command.ts";
 import { engineHolders } from "../../engine-lock.ts";
 import { exitCode } from "../../exit-code.ts";
@@ -43,7 +44,7 @@ export interface HandedToServe {
 const followedHereOnly = ["event", "harness", "follow"] as const;
 
 /**
- * The most bytes one console request may have, its line end included, as the console socket
+ * The most bytes one console request may have, its line end not counted, as the console socket
  * reads it (`runtime.console-socket`); a longer one is dropped without an answer.
  */
 export const consoleRequestLimit = 4096;
@@ -58,6 +59,8 @@ export const consoleRequestLimit = 4096;
  * @throws OwnLineError `conflict` when the input is too big to hand over; nothing ran
  * @throws OwnLineError `conflict` when `serve` refused the start, `unavailable` when it failed to
  *   start it; nothing ran
+ * @throws OwnLineError `unavailable` when `serve` took the start but didn't answer in time; the
+ *   run may have started
  */
 export async function startInServe(
   refusal: unknown,
@@ -72,6 +75,14 @@ export async function startInServe(
   if (!heldByServe(refusal) || followedHere) throw refusal;
   const warnings = await run.warnings();
   const answer = await askToStart(setup, dir, run).catch((error: unknown) => {
+    // `serve` took the start and may have started the run: the refusal's fix would run it twice.
+    if (error instanceof KindedError && error.cause instanceof ConsoleNoReplyError) {
+      throw new OwnLineError(
+        "unavailable",
+        runViaServeMessages.noAnswer(),
+        runViaServeMessages.noAnswerFix(run.typedDir),
+      );
+    }
     // No console to reach, as on Windows: the lock's refusal says what to do.
     if (error instanceof KindedError && !(error instanceof OwnLineError)) throw refusal;
     throw error;
@@ -114,8 +125,8 @@ async function askToStart(
 ): Promise<ServeAnswer> {
   const { hubId, workflowId } = run.workflow;
   const request = { op: "start-run", hubId, workflowId, input: run.input };
-  // The line end counts too, as the socket reads it.
-  const bytes = new TextEncoder().encode(`${JSON.stringify(request)}\n`).length;
+  // Without the line end, as the socket reads it.
+  const bytes = new TextEncoder().encode(JSON.stringify(request)).length;
   if (bytes > consoleRequestLimit) {
     throw new OwnLineError(
       "conflict",

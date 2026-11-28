@@ -9,7 +9,7 @@ import { suggestedCommand } from "./suggested-command.ts";
 export const runViaServeMessages = defineMessages("runViaServe", {
   /** The run started in the running `serve`; it goes on there, not in this terminal. */
   started: (runId: string) =>
-    phrase`${markPart("done")} Started in the running Studio as run ${runId}. Approve it on your phone when it asks.`,
+    phrase`${markPart("done")} Started in the running Studio as run ${runId}.`,
   /** Under {@link started}: where to see how far it got. */
   seeIt: (runId: string, dir?: string) =>
     phrase`See where it is: ${suggestedCommand("runs show", dir, runId)}`,
@@ -22,6 +22,14 @@ export const runViaServeMessages = defineMessages("runViaServe", {
   startFailed: () => phrase`halonic serve couldn't start the run.`,
   /** The fix under {@link startFailed}. */
   startFailedFix: () => phrase`Start halonic serve with --debug to see why, then run again.`,
+  /**
+   * `serve` took the start but didn't answer in time: it may still have started the run, so
+   * running it again could run it twice.
+   */
+  noAnswer: () => phrase`halonic serve didn't answer in time, so the run may have started there.`,
+  /** The fix under {@link noAnswer}. */
+  noAnswerFix: (dir?: string) =>
+    phrase`See whether it did before you run it again: ${suggestedCommand("runs list", dir)}`,
   /** The input is longer than the console channel takes, in KB. */
   inputTooBig: (limitKb: number) =>
     phrase`The input is too big to hand to the running Studio (over ${String(limitKb)} KB). Nothing ran.`,
