@@ -17,8 +17,9 @@ import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
  * The PR watcher's Paperclip, on top of the plugin host's API. This is the
  * only file that changes a task through the SDK: `doneOnly` lets the watcher
  * set `done`, `handoffOnly` lets it give a task to one agent with status
- * `todo` (its reviewer, HAL-17675, or back to its author, HAL-21150), `todoOnly` lets its unblock sweep set `todo`
- * on a blocked task (HAL-17692), a wake pick up a parked task Paperclip
+ * `todo` (its reviewer, HAL-17675, or back to its author, HAL-21150),
+ * `todoOnly` lets its unblock sweep set `todo` on a blocked task
+ * (HAL-17692), a wake pick up a parked task Paperclip
  * won't wake as it is (HAL-17869) and a held head's task in any status
  * (HAL-18147), `highOnly` lets a long review wait raise
  * a task to `high` (HAL-17920), and nothing else; `setTaskLabels` lets the difficulty tagger

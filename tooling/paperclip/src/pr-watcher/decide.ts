@@ -256,6 +256,16 @@ function heldAfterMerge(pulls: readonly PullFacts[], memory: Memory): boolean {
   );
 }
 
+/** The pull request that merged last, which keys a task's merge markers. */
+export function newestMerge(pulls: readonly PullFacts[]): PullFacts | undefined {
+  return pulls
+    .filter((pull) => pull.mergedAt !== undefined)
+    .reduce<PullFacts | undefined>(
+      (last, pull) => (last === undefined || `${pull.mergedAt}` > `${last.mergedAt}` ? pull : last),
+      undefined,
+    );
+}
+
 /**
  * A task whose pull requests all landed but which got a comment after the
  * last one merged: someone may have added work that isn't a pull request (a
@@ -263,12 +273,7 @@ function heldAfterMerge(pulls: readonly PullFacts[], memory: Memory): boolean {
  * woken once for the newest merge.
  */
 function commentedSinceMerge(pulls: readonly PullFacts[], memory: Memory): Reason | undefined {
-  const newest = pulls
-    .filter((pull) => pull.mergedAt !== undefined)
-    .reduce<PullFacts | undefined>(
-      (last, pull) => (last === undefined || `${pull.mergedAt}` > `${last.mergedAt}` ? pull : last),
-      undefined,
-    );
+  const newest = newestMerge(pulls);
   if (newest?.mergedAt === undefined || memory.lastCommentAt === undefined) {
     return undefined;
   }

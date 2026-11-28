@@ -1,4 +1,4 @@
-import { closedOutcome, marker, type PullFacts, short } from "./decide.ts";
+import { closedOutcome, marker, newestMerge, type PullFacts, short } from "./decide.ts";
 
 /**
  * The hand-back of a task its reviewer holds to the author of its pull
@@ -20,7 +20,8 @@ export interface HandBack {
 
 /**
  * Whether the reviewer's newest finding still stands on the head: by
- * `answered.ts`'s rule, only a head committed after it answers it.
+ * `answered.ts`'s rule, only a head the author committed after it answers
+ * it, not one GitHub committed (a merge of the base branch).
  */
 function findingOnHead(pull: PullFacts, reviewer: string): boolean {
   const review = pull.latestReview;
@@ -28,7 +29,11 @@ function findingOnHead(pull: PullFacts, reviewer: string): boolean {
     return false;
   }
   const committed = pull.headCommittedAt;
-  return !(committed !== undefined && Date.parse(committed) > Date.parse(review.at));
+  const answered =
+    committed !== undefined &&
+    Date.parse(committed) > Date.parse(review.at) &&
+    pull.headCommittedByGitHub !== true;
+  return !answered;
 }
 
 function verdictOf(pull: PullFacts, reviewer: string): HandBack | undefined {
@@ -51,17 +56,24 @@ function verdictOf(pull: PullFacts, reviewer: string): HandBack | undefined {
 /**
  * Why the task goes back to its author: a merge that landed, or the
  * holder's verdict (a signed approval or a finding) on an open pull
- * request's head; undefined while the review is still due.
+ * request's head that wasn't `reported` yet; undefined while the review is
+ * still due. A merge is keyed by the newest one, so a second merge on the
+ * task gets its own key; it comes back even when reported, since the task
+ * may be done by now.
  */
-export function handBackOf(reviewer: string, pulls: readonly PullFacts[]): HandBack | undefined {
+export function handBackOf(
+  reviewer: string,
+  pulls: readonly PullFacts[],
+  reported: ReadonlySet<string>,
+): HandBack | undefined {
   const closed = closedOutcome(pulls);
   if (closed?.kind === "done") {
-    const [pull] = closed.pulls;
+    const pull = newestMerge(closed.pulls);
     return pull === undefined ? undefined : keyed(pull, "merged", "merged");
   }
   for (const pull of pulls.filter((each) => each.state === "open")) {
     const back = verdictOf(pull, reviewer);
-    if (back !== undefined) {
+    if (back !== undefined && !reported.has(back.key)) {
       return back;
     }
   }
