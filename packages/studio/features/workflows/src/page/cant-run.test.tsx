@@ -131,7 +131,7 @@ verifies("workflows.page.cant-run", () => {
       document.getElementById(start().getAttribute("aria-describedby") ?? "")?.textContent;
     await edit(reply());
     expect(start().getAttribute("aria-disabled")).toBe("true");
-    expect(describedBy()).toBe("Agent host is still starting");
+    expect(describedBy()).toBe("The agent host is still starting…");
     await act(async () => answer(bubblewrapMissing));
     expect(page.textContent).toContain("START A RUN");
     expect(start().getAttribute("aria-disabled")).toBe("true");
@@ -151,11 +151,11 @@ verifies("workflows.page.cant-run", () => {
     const run = runOf(page) as HTMLButtonElement;
     expect(run.getAttribute("aria-disabled")).toBe("true");
     expect(document.getElementById(run.getAttribute("aria-describedby") ?? "")?.textContent).toBe(
-      "Agent host is still starting",
+      "The agent host is still starting…",
     );
     await act(async () => answer({ ok: true }));
     expect(runOf(page)?.hasAttribute("aria-disabled")).toBe(false);
-    expect(page.textContent).not.toContain("Agent host is still starting");
+    expect(page.textContent).not.toContain("The agent host is still starting…");
   });
 
   it("ends with the step, its program and the agent's settings, which open the agent", async () => {

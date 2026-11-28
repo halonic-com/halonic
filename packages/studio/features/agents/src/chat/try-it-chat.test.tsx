@@ -377,10 +377,10 @@ verifies("agents.chat.sandbox", () => {
     const send = buttonNamed(page, "Send") as HTMLButtonElement;
     expect(send.getAttribute("aria-disabled")).toBe("true");
     const reason = page.querySelector(`[id="${send.getAttribute("aria-describedby")}"]`);
-    expect(reason?.textContent).toBe("Agent host is still starting");
+    expect(reason?.textContent).toBe("The agent host is still starting…");
     expect(announce).not.toHaveBeenCalled();
     await act(async () => answer({ ok: true }));
-    expect(page.textContent).not.toContain("Agent host is still starting");
+    expect(page.textContent).not.toContain("The agent host is still starting…");
     expect(buttonNamed(page, "Send")?.hasAttribute("aria-disabled")).toBe(false);
   });
 
