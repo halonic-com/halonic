@@ -42,16 +42,20 @@ export function CodeListColumn({ context, open, setOpen, renames }: CodeListColu
     () => treeContext(context, paneOf(open, setOpen)),
     [context, open, setOpen],
   );
+  // Flush inside 20px sides, so the chips start in line with the title and the search field.
   const chips = (
-    <FilterChips<TreeFilter>
-      label={filesWords.chipsLabel}
-      options={[
-        { value: "all", label: filesWords.allChip },
-        { value: "problems", label: filesWords.problemsChip },
-      ]}
-      value={filter}
-      onChange={setFilter}
-    />
+    <div className="px-5">
+      <FilterChips<TreeFilter>
+        label={filesWords.chipsLabel}
+        options={[
+          { value: "all", label: filesWords.allChip },
+          { value: "problems", label: filesWords.problemsChip },
+        ]}
+        value={filter}
+        onChange={setFilter}
+        flush
+      />
+    </div>
   );
   return (
     <FilesSidebarView

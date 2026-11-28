@@ -413,12 +413,12 @@ export function FilesSidebarView({
           }}
         />
       </div>
+      {chips}
       <TreeSearchStatus
         searching={search.searching}
         typed={search.typed}
         matches={search.matches}
       />
-      {chips}
       {body}
       {adding && (
         <NewFileDialog

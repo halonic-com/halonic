@@ -307,7 +307,7 @@ export function FilesTree({
               onContextMenu={(event) => rightClicked(node, event)}
             >
               <span
-                className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full"
+                className="inline-grid size-icon-sm shrink-0 place-items-center text-fg-subtle *:size-full"
                 aria-hidden="true"
               >
                 {node.kind === "folder" && (open ? <ChevronDownIcon /> : <ChevronRightIcon />)}
