@@ -22,6 +22,15 @@ export interface PlacePage {
 const placeNames = "packages/studio/shell/src/points/frame.ts";
 const changesWords = "packages/studio/features/source-control/src/changes-words.ts";
 
+/** The Inbox's New request, which opens its request form; step 33 clicks it too. */
+export const newRequestText: TextInFile = {
+  text: "New request",
+  file: "packages/studio/features/inbox/src/ui/use-request-pane.tsx",
+};
+
+/** The desktop Runs place's name in the Places list; step 32 opens it with the keyboard. */
+export const runsPlaceText: TextInFile = { text: "Runs", file: placeNames };
+
 /**
  * The places step 16 opens, in its order, with the text that tells their pages apart. No words
  * entry point exports these, so `places-open.test.ts` checks each is still in its file.
@@ -30,9 +39,7 @@ export const placePages: readonly PlacePage[] = [
   {
     // The demo has a workflow with a `start:` block, so the Inbox offers its request form.
     place: { text: "Inbox", file: placeNames },
-    shows: [
-      { text: "New request", file: "packages/studio/features/inbox/src/ui/use-request-pane.tsx" },
-    ],
+    shows: [newRequestText],
     failed: {
       code: "INBOX_LOAD_FAILED",
       text: "Couldn't load the Inbox",
@@ -45,7 +52,7 @@ export const placePages: readonly PlacePage[] = [
     // earlier step lists its runs, so the line counts them instead (HAL-20945); `summaryWords`
     // builds that line from pieces, so its test holds the prefix whole. In a wide window, its
     // content pane shows the runs table beside the list (`runs.runs-table`).
-    place: { text: "Runs", file: placeNames },
+    place: runsPlaceText,
     shows: [
       { text: "No runs yet today.", file: "packages/studio/features/runs/src/app/app-run.ts" },
       { text: "Today: ", file: "packages/studio/features/runs/src/app/app-run.test.ts" },

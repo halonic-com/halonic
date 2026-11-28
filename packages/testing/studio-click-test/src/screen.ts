@@ -92,6 +92,22 @@ export async function waitForText<T>(
   return { value: undefined, text };
 }
 
+/**
+ * Whether `xpath` finds an element within `waitMs`. Found isn't shown: a hidden element counts
+ * too, so the XPath itself has to leave out what isn't drawn.
+ */
+export async function foundWithin(
+  context: StepContext,
+  xpath: string,
+  waitMs: number,
+): Promise<boolean> {
+  for (let waited = 0; waited <= waitMs; waited += pollEveryMs) {
+    if ((await context.driver.count(xpath)) > 0) return true;
+    await context.sleep(pollEveryMs);
+  }
+  return false;
+}
+
 /** Clicks the button with this text once it shows and is enabled, waiting at most `waitMs`. */
 export async function clickWhenShown(
   context: StepContext,

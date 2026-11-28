@@ -1,7 +1,7 @@
 import type { CardRecord } from "./card-seed.ts";
 import type { StepContext } from "./runner.ts";
 import type { TestPaperclip } from "./test-paperclip.ts";
-import type { Driver, WindowSize } from "./webdriver.ts";
+import type { Driver, Focused, Rect, WindowSize } from "./webdriver.ts";
 
 /** A window of the fake Studio: its text, and what each button click does to it. */
 export interface FakeWindow {
@@ -14,6 +14,8 @@ export interface FakeStudio {
   readonly windows: Map<string, FakeWindow>;
   readonly clicks: string[];
   readonly typed: string[];
+  /** What typing into each XPath's element does, such as Enter on a place opening its page. */
+  readonly onType: Map<string, () => void>;
   readonly shortcuts: string[];
   /** The page root's attributes, such as `data-theme`. */
   readonly rootAttributes: Map<string, string>;
@@ -33,6 +35,10 @@ export interface FakeStudio {
    * reaches the shown one only through the XPath scope named here, and otherwise isn't interactable.
    */
   readonly shownWithin: Map<string, string>;
+  /** Where each XPath's element is drawn; one it doesn't name isn't found. */
+  readonly rects: Map<string, Rect>;
+  /** The element that has focus; undefined when the page itself has it. */
+  focused: Focused | undefined;
   approval: string | undefined;
   /** What the fake test Paperclip answers: the card's status, the chat's comments, the key. */
   readonly paperclip: { status: string; comments: string[]; keyWorks: boolean | undefined };
@@ -53,6 +59,7 @@ export function fakeStudio(text = ""): FakeStudio {
     windows: new Map([["main", { text, buttons: new Map() }]]),
     clicks: [],
     typed: [],
+    onType: new Map(),
     shortcuts: [],
     rootAttributes: new Map(),
     current: "main",
@@ -62,6 +69,8 @@ export function fakeStudio(text = ""): FakeStudio {
     heights: new Map(),
     styles: new Map(),
     shownWithin: new Map(),
+    rects: new Map(),
+    focused: undefined,
     approval: undefined,
     paperclip: { status: "pending", comments: [], keyWorks: true },
     cards: new Map(),
@@ -83,8 +92,9 @@ export function fakeStudio(text = ""): FakeStudio {
       studio.clicks.push(name);
       press();
     },
-    type: async (_xpath, text) => {
+    type: async (xpath, text) => {
       studio.typed.push(text);
+      studio.onType.get(xpath)?.();
     },
     // A shortcut works like a button named after its keys, joined with "+".
     pressKeys: async (keys) => {
@@ -99,6 +109,12 @@ export function fakeStudio(text = ""): FakeStudio {
       studio.styles.get(`${xpath} ${property}`) ??
       (property === "height" ? studio.heights : studio.backgrounds).get(xpath) ??
       "",
+    rect: async (xpath) => {
+      const rect = studio.rects.get(xpath);
+      if (rect === undefined) throw new Error(`no such element: ${xpath}`);
+      return rect;
+    },
+    focused: async () => studio.focused,
     pageText: async () => window().text,
     title: async () => studio.title,
     // The fake names each window by its label, as Tauri does.

@@ -63,6 +63,7 @@ verifies("studio-click-test.affected-steps", () => {
         "inbox-answer",
         ...cardSteps,
         "places-open",
+        "wait-card",
       ]);
       expect(idsRun(["packages/adapters/paperclip-client/src/cards.ts"])).toEqual(
         expect.arrayContaining([...needs, "card-one-question"]),

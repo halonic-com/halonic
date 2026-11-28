@@ -99,6 +99,7 @@ export const basicsText = {
 /** Settings' × button: the kit's Dialog names it "Close" and the dialog's title. */
 export const closeSettingsLabel = `Close ${basicsText.settingsTitle.text}`;
 
+const supportReplyFile = "examples/acme/hubs/support/workflows/support-reply.workflow.yaml";
 const tryItFile = "packages/studio/features/agents/src/chat/try-it-words.ts";
 
 /**
@@ -171,6 +172,10 @@ export const screenText = {
     text: "This looks like an API key. Keys go in the key field, so they stay out of chats and files.",
     file: "packages/studio/shell/src/secret-hold/secret-hold.ts",
   },
+  // The demo's Support reply waits at its `review` step, with its own answer labels (HAL-20621).
+  waitTitle: { text: "Approve this reply?", file: supportReplyFile },
+  waitApprove: { text: "Approve", file: supportReplyFile },
+  waitReject: { text: "Reject", file: supportReplyFile },
 } as const;
 
 const configurationFile =

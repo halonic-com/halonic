@@ -1,5 +1,5 @@
 import type { Step, StepContext, StepOutcome } from "../runner.ts";
-import { clickRow, lastWords, pollEveryMs } from "../screen.ts";
+import { clickRow, foundWithin, lastWords } from "../screen.ts";
 import { seedNames } from "../test-paperclip.ts";
 import { keys } from "../webdriver.ts";
 import { words } from "../words.ts";
@@ -141,10 +141,6 @@ async function sendProbe(context: StepContext): Promise<StepOutcome> {
 }
 
 /** Whether a drawn picture shows at `xpath` within {@link pictureWaitMs}. */
-async function pictureShows(context: StepContext, xpath: string): Promise<boolean> {
-  for (let waited = 0; waited <= pictureWaitMs; waited += pollEveryMs) {
-    if ((await context.driver.count(xpath)) > 0) return true;
-    await context.sleep(pollEveryMs);
-  }
-  return false;
+function pictureShows(context: StepContext, xpath: string): Promise<boolean> {
+  return foundWithin(context, xpath, pictureWaitMs);
 }
