@@ -1,5 +1,5 @@
 import type { LibraryItemKind } from "@halonicjs/app";
-import { EmptyState, usePresentation } from "@halonicjs/studio-kit";
+import { EmptyState, PlaceIcon, usePresentation } from "@halonicjs/studio-kit";
 import { listColumnClass } from "@halonicjs/studio-kit/list-column";
 import type { ReactNode } from "react";
 import { tabLabel, tabSentence } from "../library-words.ts";
@@ -38,6 +38,7 @@ export function LibraryColumns({ kind, children }: LibraryColumnsProps) {
         <EmptyState
           align="center"
           headingLevel={2}
+          icon={<PlaceIcon name="library" />}
           title={tabLabel(kind)}
           description={tabSentence(kind)}
         />

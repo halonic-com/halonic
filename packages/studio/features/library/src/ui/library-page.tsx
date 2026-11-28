@@ -1,6 +1,12 @@
 import type { LibraryItemKind } from "@halonicjs/app";
 import { type BrokenFileActions, brokenFileMenu } from "@halonicjs/studio-feature-files/api";
-import { Button, FilterChips, usePresentation, useToastStore } from "@halonicjs/studio-kit";
+import {
+  Button,
+  FilterChips,
+  PlusIcon,
+  usePresentation,
+  useToastStore,
+} from "@halonicjs/studio-kit";
 import {
   brokenFileWords,
   errorMessageFor,
@@ -166,6 +172,56 @@ function libraryChips(brokenConnectors: number) {
   }));
 }
 
+/** The kind's New button; none for a kind without one (Knowledge) or without `onNew`. */
+function newButtonOf(
+  kind: LibraryItemKind,
+  onNew: ((kind: LibraryItemKind) => void) | undefined,
+): { readonly label: string; readonly onClick: () => void } | undefined {
+  const label = newLabel(kind);
+  if (onNew === undefined || label === undefined) return undefined;
+  return { label, onClick: () => onNew(kind) };
+}
+
+/**
+ * Whether the overview shows its search and New: not on a failed read, nor for an empty list,
+ * whose New is its empty state's own button.
+ */
+function showsListHead(load: Load, overview: ReturnType<typeof libraryOverview>): boolean {
+  if (load.state === "failed") return false;
+  if (load.state === "loading") return true;
+  return (
+    overview.hubs.some((hub) => hub.items.length > 0) || (overview.shared?.items.length ?? 0) > 0
+  );
+}
+
+/**
+ * The page's title. On the desktop the list column is narrow, so New sits on the title's line and
+ * the search keeps the full width; on a phone the top bar names the kind's list, so the heading
+ * says the same, for screen readers only. Margin, not padding: the shell focuses the heading, and
+ * its focus ring must fit inside the scrolling page.
+ */
+function LibraryTitle({
+  phone,
+  kind,
+  newButton,
+}: {
+  readonly phone: boolean;
+  readonly kind: LibraryItemKind;
+  readonly newButton: { readonly label: string; readonly onClick: () => void } | undefined;
+}) {
+  if (phone) return <h1 className="sr-only">{tabLabel(kind)}</h1>;
+  return (
+    <div className="mx-4 mt-4 flex items-center justify-between gap-2">
+      <h1 className="text-title">Library</h1>
+      {newButton && (
+        <Button variant="primary" icon={<PlusIcon />} onClick={newButton.onClick}>
+          {newButton.label}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 /**
  * The Library's list: on the desktop, four kind chips (Skills, Knowledge, Collections,
  * Connectors) and, under them, the shell's overview page with that kind's items and their "Used
@@ -196,7 +252,8 @@ export function LibraryPage({
     () => (load.state === "loaded" ? libraryOverview(load.listing, broken) : { hubs: [] }),
     [load, broken],
   );
-  const label = newLabel(kind);
+  const newButton = newButtonOf(kind, onNew);
+  const newInTitle = !phone && showsListHead(load, overview);
   const toasts = useToastStore();
   const page = useRef<HTMLDivElement>(null);
   const emptyTitle = useRef<HTMLHeadingElement>(null);
@@ -288,11 +345,7 @@ export function LibraryPage({
 
   return (
     <div ref={page}>
-      {/* On a phone the top bar names the kind's list, so the heading says the same. Margin, not
-          padding: the shell focuses it, and its focus ring must fit inside the scrolling page. */}
-      <h1 className={phone ? "sr-only" : "mx-4 mt-4 text-title"}>
-        {phone ? tabLabel(kind) : "Library"}
-      </h1>
+      <LibraryTitle phone={phone} kind={kind} newButton={newInTitle ? newButton : undefined} />
       {/* On the desktop the content pane beside the list column says what the kind is. */}
       {phone && <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>}
       {/* A phone shows one kind's list on its own page, so it has no chips. */}
@@ -319,7 +372,7 @@ export function LibraryPage({
         words={overviewWords(kind, {
           phone,
           ...(onOpenDocsFolder === undefined ? {} : { onOpenDocsFolder }),
-          ...(onNew !== undefined && label !== undefined ? { onNew: () => onNew(kind) } : {}),
+          ...(newButton === undefined ? {} : { onNew: newButton.onClick }),
         })}
         quietWhenEmpty
         emptyTitleRef={emptyTitle}
@@ -339,9 +392,7 @@ export function LibraryPage({
         }}
         onOpen={(row) => open(row, false)}
         onOpenInNewTab={(row) => open(row, true)}
-        {...(onNew !== undefined && label !== undefined
-          ? { newButton: { label, onClick: () => onNew(kind) } }
-          : {})}
+        {...(newButton === undefined || newInTitle ? {} : { newButton })}
       />
     </div>
   );

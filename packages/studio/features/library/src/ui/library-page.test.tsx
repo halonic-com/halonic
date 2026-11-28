@@ -305,3 +305,17 @@ verifies("library.library-page", () => {
     expect(page.textContent).toContain("Couldn't load skills");
   });
 });
+
+verifies("library.list-column", () => {
+  it("puts New on the title's line, so the search field has the column to itself", async () => {
+    const page = await show(hostWith({ skill: skills }), { onNew: () => undefined });
+    const title = page.querySelector("h1");
+    expect(title?.textContent).toBe("Library");
+    expect(title?.parentElement?.contains(button(page, "New skill") ?? null)).toBe(true);
+    expect(page.querySelector('input[type="search"]')).not.toBeNull();
+    // The one New button is the title's, none beside the search.
+    expect(
+      [...page.querySelectorAll("button")].filter((each) => each.textContent === "New skill"),
+    ).toHaveLength(1);
+  });
+});
