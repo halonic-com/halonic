@@ -41,11 +41,14 @@ export const placePages: readonly PlacePage[] = [
   },
   {
     // The desktop Runs place is the Runs app (HAL-18725). A fresh install's demo has no run yet,
-    // so its summary line says so (run 45705698354). In a wide window, its content pane shows
-    // beside the list with no run open (`runs.list-column`).
+    // so its summary line says so (run 45705698354). A Paperclip account still connected from an
+    // earlier step lists its runs, so the line counts them instead (HAL-20945); `summaryWords`
+    // builds that line from pieces, so its test holds the prefix whole. In a wide window, its
+    // content pane shows beside the list with no run open (`runs.list-column`).
     place: { text: "Runs", file: placeNames },
     shows: [
       { text: "No runs yet today.", file: "packages/studio/features/runs/src/app/app-run.ts" },
+      { text: "Today: ", file: "packages/studio/features/runs/src/app/app-run.test.ts" },
     ],
     wide: { text: "No run open", file: "packages/studio/features/runs/src/ui/runs-app-view.tsx" },
   },
