@@ -22,7 +22,11 @@ const SCREEN_AT_150: Rect = Rect {
 
 #[test]
 fn at_150_percent_the_command_line_is_in_device_independent_pixels() {
-    let url = sign_in_url("https://paperclip.acme.test/cli-auth/challenge-1").expect("an address");
+    let url = sign_in_url(
+        "https://paperclip.acme.test/cli-auth/challenge-1",
+        "https://paperclip.acme.test",
+    )
+    .expect("an address");
     let rect = popup_rect(STUDIO_AT_150, SCREEN_AT_150);
     assert_eq!(
         rect,

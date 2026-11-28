@@ -163,10 +163,7 @@ pub fn browser_rect(rect: Rect, scale_factor: f64) -> Rect {
     }
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "a physical i32 or u32 divided by a scale of at least the smallest positive f64 rounds back into range; `as` saturates otherwise"
-)]
+/// `as` saturates, so a scale far below 1 can't wrap the result around.
 fn to_dip(physical: f64, scale: f64) -> i32 {
     (physical / scale).round() as i32
 }
