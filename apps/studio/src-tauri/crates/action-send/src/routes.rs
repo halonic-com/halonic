@@ -6,7 +6,7 @@
 //! [`RouteList::parse`] checks all of it and refuses the whole list on any
 //! problem, so a list the shell loaded holds only routes it can check.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Deserialize;
 use serde_json::Value;
@@ -197,18 +197,20 @@ fn call_route(route: RouteFile) -> Result<CallRoute, String> {
     let method = route.method.ok_or("a call needs a method")?;
     let (path, query) = parse_call_path(route.path.as_deref().ok_or("a call needs a path")?)?;
     let placeholders = placeholders(&route, &call_placeholder_names(&path, &query)?)?;
-    let target = match (route.risk, route.target.as_deref()) {
-        (Risk::Irreversible, Some(template)) => Some(parse_target(template, &placeholders)?),
-        (Risk::Irreversible, None) => return Err("an irreversible call needs a target".to_owned()),
-        (_, Some(_)) => return Err("only an irreversible call has a target".to_owned()),
-        (_, None) => None,
-    };
     let body = route
         .body
         .unwrap_or_default()
         .into_iter()
         .map(body_field)
         .collect::<Result<Vec<_>, _>>()?;
+    let target = match (route.risk, route.target.as_deref()) {
+        (Risk::Irreversible, Some(template)) => {
+            Some(parse_target(template, &target_names(&placeholders, &body))?)
+        }
+        (Risk::Irreversible, None) => return Err("an irreversible call needs a target".to_owned()),
+        (_, Some(_)) => return Err("only an irreversible call has a target".to_owned()),
+        (_, None) => None,
+    };
     let mut names: Vec<&str> = body.iter().map(|field| field.name.as_str()).collect();
     names.sort_unstable();
     names.dedup();
@@ -233,6 +235,24 @@ fn call_route(route: RouteFile) -> Result<CallRoute, String> {
         keep,
         target,
     })
+}
+
+/// The names a target may use: the placeholders, and the text body fields,
+/// whose values the page sends and the shell checks against their patterns
+/// like a placeholder's. A constant, number or secret is never one.
+fn target_names<'a>(
+    placeholders: &'a BTreeMap<String, Pattern>,
+    body: &'a [BodyField],
+) -> BTreeSet<&'a str> {
+    let text_fields = body
+        .iter()
+        .filter(|field| matches!(field.kind, BodyKind::Text(_)))
+        .map(|field| field.name.as_str());
+    placeholders
+        .keys()
+        .map(String::as_str)
+        .chain(text_fields)
+        .collect()
 }
 
 /// The most object keys a kept field's dotted name may walk through.

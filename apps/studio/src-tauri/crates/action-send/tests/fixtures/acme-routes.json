@@ -94,6 +94,23 @@
       "keep": ["id", "title", "key"]
     },
     {
+      "kind": "call",
+      "definition": "acme.create-repo",
+      "version": 1,
+      "step": 1,
+      "service": "github",
+      "risk": "irreversible",
+      "placeholders": { "owner": "^[A-Za-z0-9-]{1,39}$" },
+      "method": "POST",
+      "path": "/orgs/{owner}/repos",
+      "body": [
+        { "name": "name", "kind": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,99}$" },
+        { "name": "auto_init", "kind": "constant", "value": true }
+      ],
+      "keep": ["id"],
+      "target": "{owner}/{name}"
+    },
+    {
       "kind": "guided",
       "definition": "acme.set-variable",
       "version": 1,

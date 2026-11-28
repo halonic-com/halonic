@@ -7,6 +7,7 @@
 //! The token goes into one header and a typed secret into the body, and
 //! neither anywhere else: not into the result, an error or a log line.
 
+use std::collections::BTreeMap;
 use std::future::Future;
 
 use halonic_secrets::SecretError;
@@ -18,7 +19,7 @@ use crate::account::Account;
 use crate::answer::{MORE_THAN_ONE, cleaned_text, kept_fields, redirect_text};
 use crate::ask::{AskSheet, Mismatch, Typed, TypedText, body_bytes, checked, secret_fields};
 use crate::call::{PreparedCall, Refusal, SendRequest, prepare};
-use crate::routes::{Risk, RouteList};
+use crate::routes::{BodyKind, Risk, RouteList};
 use crate::target::fill_target;
 use crate::wipe::{Wiped, wipe_bytes, wipe_text};
 
@@ -255,7 +256,7 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
                 .collect(),
         };
         let target = match &call.route.target {
-            Some(parts) => Some(fill_target(parts, &request.placeholders).ok_or(
+            Some(parts) => Some(fill_target(parts, &target_values(call, request)).ok_or(
                 SendResult::Refused {
                     reason: Refusal::BadValue,
                 },
@@ -291,6 +292,25 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
             SendResult::Cancelled
         })
     }
+}
+
+/// The checked values a target may name: the placeholders, then the body's
+/// text fields, as `prepare` checked them against their patterns.
+fn target_values(call: &PreparedCall<'_>, request: &SendRequest) -> BTreeMap<String, String> {
+    let mut values = request.placeholders.clone();
+    let text_fields = call.body.iter().flatten().filter_map(|(name, value)| {
+        let text = value.as_str()?;
+        let is_text_field = call
+            .route
+            .body
+            .iter()
+            .any(|field| field.name == *name && matches!(field.kind, BodyKind::Text(_)));
+        is_text_field.then(|| (name.clone(), text.to_owned()))
+    });
+    for (name, text) in text_fields {
+        values.entry(name).or_insert(text);
+    }
+    values
 }
 
 fn refusal_name(reason: Refusal) -> &'static str {
