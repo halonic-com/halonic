@@ -173,10 +173,6 @@ export const screenText = {
     file: "packages/studio/shell/src/secret-hold/secret-hold.ts",
   },
   // The demo's Support reply waits at its `review` step, with its own answer labels (HAL-20621).
-  newRequest: {
-    text: "New request",
-    file: "packages/studio/features/inbox/src/ui/use-request-pane.tsx",
-  },
   waitTitle: { text: "Approve this reply?", file: supportReplyFile },
   waitApprove: { text: "Approve", file: supportReplyFile },
   waitReject: { text: "Reject", file: supportReplyFile },

@@ -14,6 +14,8 @@ export interface FakeStudio {
   readonly windows: Map<string, FakeWindow>;
   readonly clicks: string[];
   readonly typed: string[];
+  /** What typing into each XPath's element does, such as Enter on a place opening its page. */
+  readonly onType: Map<string, () => void>;
   readonly shortcuts: string[];
   /** The page root's attributes, such as `data-theme`. */
   readonly rootAttributes: Map<string, string>;
@@ -57,6 +59,7 @@ export function fakeStudio(text = ""): FakeStudio {
     windows: new Map([["main", { text, buttons: new Map() }]]),
     clicks: [],
     typed: [],
+    onType: new Map(),
     shortcuts: [],
     rootAttributes: new Map(),
     current: "main",
@@ -89,8 +92,9 @@ export function fakeStudio(text = ""): FakeStudio {
       studio.clicks.push(name);
       press();
     },
-    type: async (_xpath, text) => {
+    type: async (xpath, text) => {
       studio.typed.push(text);
+      studio.onType.get(xpath)?.();
     },
     // A shortcut works like a button named after its keys, joined with "+".
     pressKeys: async (keys) => {

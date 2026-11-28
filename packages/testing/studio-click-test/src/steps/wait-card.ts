@@ -1,11 +1,12 @@
+import { newRequestText } from "../place-words.ts";
 import type { Step, StepContext, StepOutcome } from "../runner.ts";
 import {
   buttonNamed,
   clickRow,
   clickWhenShown,
   clickXPathWhenShown,
+  foundWithin,
   lastWords,
-  pollEveryMs,
   waitForText,
   xpathString,
 } from "../screen.ts";
@@ -21,8 +22,13 @@ const cardWaitMs = 3 * 60_000;
 const customerMail = "Hi, my order #1042 arrived damaged. Can I get a refund? — Sam (invented)";
 
 const requestForm = "//form[@data-request-form]";
-const messageBox = `${requestForm}//textarea`;
-const sendButton = `${requestForm}//button[@type='submit']`;
+
+/** The Inbox's request form: the box the email goes in, and its Send. */
+export const requestParts = {
+  messageBox: `${requestForm}//textarea`,
+  send: `${requestForm}//button[@type='submit']`,
+} as const;
+const { messageBox, send: sendButton } = requestParts;
 
 /** The wait card is a region named by its title, the step's first line (`inbox.wait-card`). */
 const waitCard = `//section[@aria-labelledby=//*[normalize-space()=${xpathString(screenText.waitTitle.text)}]/@id]`;
@@ -31,11 +37,13 @@ const waitCard = `//section[@aria-labelledby=//*[normalize-space()=${xpathString
 export const answerParts = {
   first: `${waitCard}${buttonNamed(screenText.waitApprove.text)}`,
   other: `${waitCard}${buttonNamed(screenText.waitReject.text)}`,
-  row: `${waitCard}${buttonNamed(screenText.waitApprove.text)}/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' justify-end ')][1]`,
+  // The nearest box holding both, found by what it holds, not by a class: a row that loses its
+  // right alignment then fails as WAIT_ANSWERS_LAYOUT with the boxes, not as a missing element.
+  row: `${waitCard}${buttonNamed(screenText.waitApprove.text)}/ancestor::div[.${buttonNamed(screenText.waitReject.text)}][1]`,
 } as const;
 
 /**
- * Step 29 (HAL-20621): in a wide window, the demo's Support reply, started from the Inbox's New
+ * Step 33 (HAL-20621): in a wide window, the demo's Support reply, started from the Inbox's New
  * request with an invented email, waits at its review step, and that card's answers sit in one
  * right-aligned row at their natural width, the first, Approve, at the right end
  * (`inbox.wait-card`). It leaves the step waiting: no later step reads the Inbox.
@@ -72,7 +80,7 @@ async function requestReply(context: StepContext): Promise<StepOutcome> {
     return { passed: false, code: "NO_INBOX", note: "No Inbox in Places." };
   }
   const formShown =
-    (await clickWhenShown(context, screenText.newRequest.text, 30_000)) &&
+    (await clickWhenShown(context, newRequestText.text, 30_000)) &&
     (await clickXPathWhenShown(context, messageBox, 10_000));
   if (!formShown) {
     const { text } = await waitForText(context, 0, () => undefined);
@@ -93,20 +101,11 @@ async function openWaitCard(context: StepContext): Promise<StepOutcome> {
   if (listed.value !== true) {
     return { passed: false, code: "NO_WAIT_CARD", note: lastWords(listed.text) };
   }
-  if (await isShown(context, answerParts.first, 10_000)) return { passed: true };
+  if (await foundWithin(context, answerParts.first, 10_000)) return { passed: true };
   await clickRow(context, screenText.waitTitle.text, 10_000);
-  if (await isShown(context, answerParts.first, 20_000)) return { passed: true };
+  if (await foundWithin(context, answerParts.first, 20_000)) return { passed: true };
   const { text } = await waitForText(context, 0, () => undefined);
   return { passed: false, code: "NO_WAIT_ANSWERS", note: lastWords(text) };
-}
-
-async function isShown(context: StepContext, xpath: string, waitMs: number): Promise<boolean> {
-  const reads = Math.max(1, Math.ceil(waitMs / pollEveryMs));
-  for (let read = 0; read < reads; read += 1) {
-    if ((await context.driver.count(xpath).catch(() => 0)) > 0) return true;
-    await context.sleep(pollEveryMs);
-  }
-  return false;
 }
 
 /** How far apart two edges may be, in CSS pixels, and still count as the same. */
