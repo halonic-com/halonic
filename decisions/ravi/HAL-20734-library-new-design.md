@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20617 (the approved build plan, P3 and P5; part recipes on HAL-20672); Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:vwtA2Ma+ojcwEL1w+ut7yHCmTmazFCqt7uuhURVdwLwiCA9/sFQnPbzab/C5E2BvTgidpDw78fMPWgnRZgDWCQ==
 - Task: HAL-20734
 
 ## What changes
