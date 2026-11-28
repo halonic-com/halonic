@@ -9,9 +9,9 @@ import { codeRailEntry } from "./rail-entry.ts";
 
 /**
  * The Files feature. Its file tree is the view behind the sidebar's Files switch and the list
- * column of Code's page, and a file opens beside it, or in a tab with the code editor; the dialogs and the strips follow. The workspace's problem count,
- * in the status bar or a phone's strip, and Home's Problems open the files with errors at their
- * first problem.
+ * column of Code's page, and a file opens beside it, or in a tab with the code editor; the
+ * dialogs and the strips follow. The workspace's problem count, in the status bar or a phone's
+ * strip, and Home's Problems open the files with errors at their first problem.
  */
 export const filesFeature = defineFeature({
   id: "files",

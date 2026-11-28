@@ -3,7 +3,7 @@
 // are tested without drawing the page.
 
 import type { ItemRef, WorkspaceContext } from "@halonicjs/studio-shell";
-import { FILE_HUB, FILE_KIND, FILES_VIEW, fileItem } from "./file-item.ts";
+import { FILE_HUB, FILE_KIND, fileItem } from "./file-item.ts";
 
 /** What the tree reads as the active tab's item. */
 type ActiveItemSource = NonNullable<WorkspaceContext["activeItem"]>;
@@ -64,15 +64,12 @@ function paneAsActiveItem(pane: PaneFile): ActiveItemSource {
  * rename, shows in the content pane, so Code stays in its tab; a file asked for at a line, and
  * every other item, opens as the shell opens it. The tree marks the pane's file as the open one.
  * A Ctrl-click still opens the file in a new tab, through the window's own `openItemInNewTab`.
- * The content pane's file gets the same context: the tree it would show for a rename is in view.
+ * The content pane's file gets the same context, so a file it opens shows in the pane too.
  */
 export function treeContext(context: WorkspaceContext, pane: PaneFile): WorkspaceContext {
-  const { openItem, showSidebarView } = context;
+  const { openItem } = context;
   return {
     ...context,
-    showSidebarView: (viewId) => {
-      if (viewId !== FILES_VIEW) showSidebarView?.(viewId);
-    },
     activeItem: paneAsActiveItem(pane),
     openItem: (item, options) => {
       if (item.kind === FILE_KIND && options === undefined) {

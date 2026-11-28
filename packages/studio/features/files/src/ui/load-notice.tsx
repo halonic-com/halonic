@@ -9,11 +9,15 @@ export type Loaded =
   | { readonly kind: "not-text"; readonly size: string }
   | { readonly kind: "ready"; readonly text: string; readonly readOnly: boolean };
 
-/** Moves focus to the Files tree's Tab stop, where the user picks another file. */
-function goToFiles(): void {
-  document
-    .querySelector<HTMLElement>('[role="tree"][aria-label="Files"] [data-path][tabindex="0"]')
-    ?.focus();
+/**
+ * Moves focus to the Files tree's Tab stop, where the user picks another file: the first tree the
+ * person can reach, as a Code page in a tab behind is hidden and inert.
+ */
+export function goToFiles(): void {
+  const stops = document.querySelectorAll<HTMLElement>(
+    '[role="tree"][aria-label="Files"] [data-path][tabindex="0"]',
+  );
+  [...stops].find((stop) => stop.closest("[inert]") === null)?.focus();
 }
 
 /**
@@ -24,10 +28,13 @@ export function LoadNotice({
   loaded,
   missing,
   onRetry,
+  onGoToFiles = goToFiles,
 }: {
   loaded: Loaded;
   missing: boolean;
   onRetry: () => void;
+  /** Where **Go to Files** takes the focus; Code's pane gives its own list column's tree. */
+  onGoToFiles?: () => void;
 }) {
   return (
     <>
@@ -41,7 +48,7 @@ export function LoadNotice({
         <EmptyState
           plain
           title={filesWords.missingTitle}
-          action={{ label: filesWords.goToFiles, onClick: goToFiles }}
+          action={{ label: filesWords.goToFiles, onClick: onGoToFiles }}
         />
       )}
       {loaded.kind === "not-text" && (

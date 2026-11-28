@@ -8,9 +8,8 @@ import { codeRailEntry } from "./rail-entry.ts";
 /** A window's context with spies for the ways the tree reaches out. */
 function windowContext() {
   const openItem = vi.fn<(item: ItemRef, options?: { step?: string }) => void>();
-  const showSidebarView = vi.fn<(viewId: string) => void>();
-  const context = { openItem, showSidebarView } as unknown as WorkspaceContext;
-  return { context, openItem, showSidebarView };
+  const context = { openItem } as unknown as WorkspaceContext;
+  return { context, openItem };
 }
 
 verifies("files.code-page", () => {
@@ -58,14 +57,5 @@ verifies("files.code-page", () => {
       [fileItem("models.yaml"), { step: "4" }],
     ]);
     expect(pane.get()).toBeUndefined();
-  });
-
-  it("keeps the sidebar as it is when the pane's file asks for the tree, which is in view", () => {
-    const { context, showSidebarView } = windowContext();
-    const tree = treeContext(context, paneFile());
-    tree.showSidebarView?.("files");
-    tree.showSidebarView?.("outline");
-
-    expect(showSidebarView.mock.calls).toEqual([["outline"]]);
   });
 });

@@ -292,7 +292,8 @@ export function FilesTree({
               className={treeRowClasses}
               style={{ paddingLeft: `${row.depth * 16 + 8}px` }}
               // A Ctrl-click, Cmd-click or middle click opens a file in a new tab, as a run row's
-              // does (`files.code-page`); on a folder it opens or closes the folder as a click does.
+              // does (`files.ui.file-tab`). A Ctrl-click on a folder opens or closes it as a click
+              // does; a middle click leaves a folder as it is.
               onClick={(event) => {
                 event.stopPropagation();
                 activate(row, event.ctrlKey || event.metaKey);

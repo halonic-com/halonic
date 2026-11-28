@@ -13,7 +13,8 @@ export const codeRailEntry: RailEntryContribution = {
   order: 10,
   // Files have no place, so the Code entry holds their kind, and its page's, itself.
   holds: [CODE_KIND, FILE_KIND],
-  // Code's page: the file tree in the list column, the file in the content pane (`files.code-page`).
+  // Code's page: the file tree in the list column, the file in the content pane
+  // (`files.code-page`).
   opens: codePageKey,
   shows: (facts) => facts.kind === "code-folder" || facts.hasCodeFolderInside,
 };
