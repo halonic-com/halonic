@@ -86,7 +86,13 @@ function FailureLine({
   return (
     <p className="flex flex-wrap items-center gap-2 px-3 text-small text-fg-muted">
       {`${homeWords.chatsFailed} ${reason}`}
-      <Button ref={tryAgain} variant="ghost" busy={retrying} onClick={onTryAgain}>
+      <Button
+        ref={tryAgain}
+        variant="ghost"
+        busy={retrying}
+        busyLabel={homeWords.tryingAgain}
+        onClick={onTryAgain}
+      >
         {homeWords.tryAgain}
       </Button>
     </p>

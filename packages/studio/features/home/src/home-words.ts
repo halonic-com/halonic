@@ -18,4 +18,6 @@ export const homeWords = {
   chatsFailed: "Couldn't load the chats.",
   /** After a failed read's reason: reads the chats again. The Library's word for its retry line. */
   tryAgain: "Try again",
+  /** On Try again while it reads the chats again. The Library's words for its busy retry line. */
+  tryingAgain: "Trying again…",
 } as const;
