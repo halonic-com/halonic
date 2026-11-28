@@ -4,12 +4,14 @@ import {
   planCard,
   suggestedTasksCard,
   verdictsCard,
+  wrappingOption,
   yesNoCard,
 } from "../card-fixtures.ts";
 import { type AnswerClicks, answeredAs, cardStep } from "../card-step.ts";
 import type { StepContext, StepOutcome } from "../runner.ts";
 import { buttonNamed, clickXPathWhenShown, lastWords, radioNamed, xpathString } from "../screen.ts";
 import { buttonLabels, screenText, words } from "../words.ts";
+import { lookingAtCheckboxWords } from "./checkbox-words.ts";
 
 /** The reason the plan card's Reject is sent with, which Paperclip must keep. */
 export const rejectReason = "Click test: the Acme plan needs a date.";
@@ -130,15 +132,22 @@ const listCardRequirements = [
   "paperclip-client.card-kinds",
 ];
 
-/** A checkbox confirmation: two picks in the Inbox, one in the Messenger, each sent with Submit. */
+/**
+ * A checkbox confirmation: two picks in the Inbox, one in the Messenger, each sent with Submit.
+ * Before the picks, each surface's box of the option whose words wrap must sit beside their first
+ * line (`kit.checkbox-words`).
+ */
 export const cardCheckbox = cardStep({
   id: "card-checkbox",
   title: "Cards: a checkbox confirmation is answered with its picks in the Inbox and the Messenger",
-  requirements: listCardRequirements,
+  requirements: [...listCardRequirements, "kit.checkbox-words"],
   fixture: checkboxCard,
   clicks: {
-    Inbox: pickThenSubmit([checkboxNamed("Email"), checkboxNamed("Blog")]),
-    Messenger: pickThenSubmit([checkboxNamed("Social")]),
+    Inbox: lookingAtCheckboxWords(
+      wrappingOption,
+      pickThenSubmit([checkboxNamed("Email"), checkboxNamed("Blog")]),
+    ),
+    Messenger: lookingAtCheckboxWords(wrappingOption, pickThenSubmit([checkboxNamed("Social")])),
   },
   answered: {
     Inbox: answeredAs("accepted", { selectedOptionIds: ["email", "blog"] }),

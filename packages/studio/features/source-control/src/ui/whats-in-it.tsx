@@ -55,6 +55,13 @@ export function WhatsInIt({ items, first = false, ticked, onTick }: WhatsInItPro
 }
 
 /**
+ * Where the row's first line starts beside the Checkbox. The Checkbox keeps its box and its words
+ * on their first line (`kit.checkbox-words`), which on a phone or a touch screen starts 12px down
+ * in its 48px target, so what continues that line starts 12px down too.
+ */
+const besideCheckbox = "phone:mt-3 touch:mt-3";
+
+/**
  * One item of the version. Its checkbox is named by the item and described by what changed in
  * it, "Deleted" or the list of its changes, so a screen reader says both (a11y C4).
  */
@@ -77,7 +84,8 @@ function ItemRow({
   const inline = lines.length === 1 && only?.line.important !== true;
   return (
     <li className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
+      {/* From the top, not centred: the row is its first line, as the Checkbox's own words are. */}
+      <div className="flex items-start gap-2">
         <ItemCheckbox
           item={item}
           ticked={ticked}
@@ -89,7 +97,11 @@ function ItemRow({
         ) : null}
         <span className="flex-1" />
         {item.files.some(hasImportant) ? (
-          <span className="text-small shrink-0 rounded-full border border-border px-2 text-fg-muted">
+          // The chip is 22px high: 1px up puts it mid-way on a 20px first line, 1px down on a
+          // phone's 24px one.
+          <span
+            className={`text-small shrink-0 -translate-y-px rounded-full border border-border px-2 text-fg-muted phone:translate-y-px ${besideCheckbox}`}
+          >
             {versionWords.important}
           </span>
         ) : null}
@@ -132,7 +144,8 @@ function ItemCheckbox({
 }) {
   return (
     <Checkbox checked={ticked} onChange={onTick} describedBy={describedBy}>
-      <span className="inline-flex items-center gap-2">
+      {/* One line of the Checkbox high, so the box sits mid-way beside the icon, name and kind. */}
+      <span className="inline-flex min-h-lh items-center gap-2">
         <span className="inline-grid size-icon-md shrink-0 text-fg-muted *:size-full">
           <ItemIcon kind={item.kind} />
         </span>
@@ -157,7 +170,9 @@ function InlineSentence({
 }) {
   if (sentence === "") return null;
   return (
-    <span id={id} className="text-body text-fg-muted">
+    // On a phone the Checkbox's line is 24px high: 2px above and below these 20px lines keeps the
+    // first of them mid-way on it, also when the sentence wraps.
+    <span id={id} className={`text-body text-fg-muted phone:py-0.5 ${besideCheckbox}`}>
       {item.kind === undefined ? sentence : itemWords.sentenceAfterKind(sentence)}
     </span>
   );
