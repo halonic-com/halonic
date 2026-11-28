@@ -260,7 +260,12 @@ try {
   }
   # The new version's first start reads the install record and clears it,
   # then proves it starts, and the installer kept for 0.1.0 goes.
-  Wait-Until { $saved = Get-Record; $saved -and -not $saved.install } 60 "0.1.1 clearing the install record"
+  try {
+    Wait-Until { $saved = Get-Record; $saved -and -not $saved.install } 60 "0.1.1 clearing the install record"
+  } catch {
+    Write-InstallReport 'install record not cleared within 60 s of 0.1.1 reopening'
+    throw
+  }
   $updates = Join-Path $profileFolder 'updates'
   Wait-Until { Test-Path (Join-Path $updates 'started-0.1.1') } 120 '0.1.1 proving it starts'
   if (Test-Path (Join-Path $updates 'installers\Halonic-0.1.0-windows-x64-setup.exe')) { throw "0.1.0's kept installer wasn't removed" }
