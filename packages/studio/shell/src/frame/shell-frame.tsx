@@ -53,6 +53,11 @@ export interface ShellFrameProps {
    * (`useNarrowWindow`) it fills the 264px Places drawer the title bar's Places button opens.
    */
   readonly sidebar?: ReactNode;
+  /**
+   * The icon rail on the desktop, `IconRail`: on the frame at the window's left edge, before the
+   * sidebar, at every desktop width (`shell.rail-frame`). Left out, the sidebar starts the row.
+   */
+  readonly rail?: ReactNode;
   /** The status bar's content on the desktop. */
   readonly statusBar?: ReactNode;
   /**
@@ -224,6 +229,7 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
       <div className={`flex min-h-0 flex-1 flex-col ${desktop ? "" : phoneColumn}`}>
         <TopLines props={props} desktop={desktop} phonePanel={phonePanel} />
         <div className={`relative flex min-h-0 flex-1 ${desktop ? "" : phoneContent}`}>
+          {desktop ? props.rail : null}
           {desktop ? (
             <SidebarSlot
               narrow={drawer.narrow}

@@ -11,6 +11,7 @@ import type { Registered } from "../points/point-store.ts";
 import type { RailEntry } from "../points/rail.ts";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import { currentLocation, type TabSet } from "../tabs/tab-set.ts";
+import type { RailColumn } from "./rail-column.ts";
 import { type PlaceOfKind, selectedRailEntry } from "./rail-selection.ts";
 
 /** Props for {@link IconRail}. */
@@ -26,6 +27,12 @@ export interface IconRailProps {
   readonly placeOfKind: PlaceOfKind;
   /** Opens the Settings dialog: the window's `openSettings`. Without it, Settings isn't shown. */
   readonly onSettings?: (() => void) | undefined;
+  /**
+   * The window's selection, `useRailColumn`, when the list column follows the rail too: a click
+   * picks the entry, so one with no page yet still shows as selected. Left out, the active tab
+   * alone says which entry is selected.
+   */
+  readonly column?: RailColumn | undefined;
 }
 
 /**
@@ -43,15 +50,17 @@ export interface IconRailProps {
  * <IconRail entries={shell.contributions.rail.shown(facts)} tabs={workspace.tabs}
  *   placeOfKind={(kind) => contributions.itemKinds.get(kind)?.place} onSettings={openSettings} />
  */
-export function IconRail({ entries, tabs, placeOfKind, onSettings }: IconRailProps) {
+export function IconRail({ entries, tabs, placeOfKind, onSettings, column }: IconRailProps) {
   const subscribe = useCallback((listener: () => void) => tabs.subscribe(listener), [tabs]);
   useSyncExternalStore(subscribe, () => tabs.state);
   const focusNewPage = usePageHeadingFocus();
-  const selected = selectedRailEntry(entries, currentLocation(tabs.active), placeOfKind);
+  const tabEntry = selectedRailEntry(entries, currentLocation(tabs.active), placeOfKind);
+  const selected = column === undefined ? tabEntry : column.selected;
   const apps = entries.filter((entry) => entry.id !== "settings");
   const settings = entries.find((entry) => entry.id === "settings");
 
   const open = (entry: RailEntry) => {
+    column?.pick(entry);
     // On an item the entry holds, the tab stays on it (HAL-20673 rail flows, line 32).
     if (entry.opens === undefined || entry.id === selected) return;
     tabs.openHere({ key: entry.opens, title: entry.label });
