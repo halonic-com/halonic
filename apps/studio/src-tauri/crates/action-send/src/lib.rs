@@ -14,6 +14,8 @@
 //! - [`account`]: where the token and the signed-in account are kept.
 //! - [`paperclip_admin`]: the separate Paperclip admin key of rows C1 and
 //!   C5, kept against the origin and company of the connection's entry.
+//! - [`PaperclipSignIn`]: the admin key's sign-in through Paperclip's own
+//!   CLI challenge, and its sign-out, which revokes the key.
 //! - [`DeviceFlow::sign_in`]: GitHub's device-flow sign-in, which runs
 //!   only while its stepper is open and stores the token with [`account`].
 //! - [`RecordFiles`]: each request's record, one user-only file per
@@ -28,6 +30,7 @@ mod device_flow;
 mod kinds;
 mod opens;
 pub mod paperclip_admin;
+mod paperclip_sign_in;
 mod pattern;
 mod private_file;
 mod record_check;
@@ -46,6 +49,7 @@ pub use ask::{AskSheet, Typed, TypedText};
 pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};
 pub use device_flow::{DEVICE_PAGE, DeviceFlow, NEVER_EXPIRES, is_client_id};
 pub use opens::{ANY_PAGE_GAP_MS, OpenLimiter, SAME_PAGE_GAP_MS, open_guided, open_page};
+pub use paperclip_sign_in::{ApprovalScreen, PAPERCLIP, PaperclipSignIn};
 pub use pattern::{MAX_VALUE_CHARS, Pattern};
 pub use record_check::{
     MAX_ID_CHARS, MAX_KEPT_FIELDS, MAX_KEPT_VALUE_CHARS, check_record_event, check_request_id,
