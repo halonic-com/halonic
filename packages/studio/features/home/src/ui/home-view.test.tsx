@@ -107,7 +107,14 @@ async function show(context: WorkspaceContext, toasts?: ToastStore): Promise<HTM
 }
 
 function button(page: HTMLElement, name: string): HTMLButtonElement | undefined {
-  return [...page.querySelectorAll("button")].find((each) => each.textContent?.trim() === name);
+  return [...page.querySelectorAll("button")].find((each) => label(each) === name);
+}
+
+/** The words a button shows: a button with a busy label keeps the copy not in use, `invisible`. */
+function label(element: HTMLElement): string {
+  const shown = element.cloneNode(true) as HTMLElement;
+  for (const hidden of shown.querySelectorAll(".invisible")) hidden.remove();
+  return shown.textContent?.trim() ?? "";
 }
 
 function rowTitles(page: HTMLElement): string[] {
@@ -249,6 +256,21 @@ verifies("home.list-column", () => {
     expect(page.textContent).not.toContain("Couldn't load the chats.");
     expect(button(page, "Try again")).toBeUndefined();
     expect(document.activeElement).toBe(button(page, "New chat"));
+  });
+
+  it('says "Trying again…" on Try again while its read runs, as the Library does', async () => {
+    const { service } = fakeChats([summary("triage", "Triage")]);
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    let fail = (_error: Error) => {};
+    service.list = () => new Promise((_resolve, reject) => (fail = reject));
+    const tryAgain = button(page, "Try again");
+    await act(async () => tryAgain?.click());
+    expect(tryAgain?.getAttribute("aria-busy")).toBe("true");
+    expect(label(tryAgain as HTMLElement)).toBe("Trying again…");
+    await act(async () => fail(new EngineNotAnswering()));
+    expect(button(page, "Try again")).toBe(tryAgain);
+    expect(label(tryAgain as HTMLElement)).toBe("Try again");
   });
 
   it("leaves the focus where it is when a list change clears a failure", async () => {
