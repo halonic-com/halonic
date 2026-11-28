@@ -1,6 +1,7 @@
 import { isActionKeptName } from "@halonicjs/events";
 import type { ActionBodyField, ActionCallRoute, ActionRoute } from "@halonicjs/ports";
 import { assert } from "@halonicjs/std";
+import { callTargetOf } from "./call-target.ts";
 import type { CallBodyField, CheckStep, Step, StepperDefinition } from "./stepper-types.ts";
 import { type ParameterField, parameterFieldsOf } from "./strict-parameters.ts";
 
@@ -115,6 +116,7 @@ function routeOf(
     case "call": {
       const placeholders = placeholdersOf(step.path, fields, where);
       const body = step.body.map((field) => bodyFieldOf(field, fields, where));
+      const target = callTargetOf(step.target, definition.risk, placeholders, where);
       const route: ActionCallRoute = {
         ...base,
         kind: "call",
@@ -125,6 +127,7 @@ function routeOf(
         body,
         keep: keptOf(step.keep, where),
         placeholders,
+        ...(target === undefined ? {} : { target }),
       };
       return route;
     }
@@ -156,14 +159,16 @@ function routeOf(
 /**
  * The routes of a definition's steps, as the shell's generated route list
  * holds them (architecture note, 2.4): a `guided` step's address, a `call`
- * step's method, path, body and kept fields, and a `check` as a `GET` with no
+ * step's method, path, body, kept fields and, for an `irreversible` call, its
+ * target, and a `check` as a `GET` with no
  * body that runs without the native dialog. Each placeholder and body field
  * takes its pattern from the parameter of the same name; a `parameter-list`
  * field is an `integer-list`. An `input`,
  * `script` or `sign-in` step has no route.
  *
  * @throws Error when a step names a placeholder or body field that isn't a
- *   parameter, keeps a field under a name `isActionKeptName` refuses (more
+ *   parameter, has a target the shell's route list would refuse (see
+ *   `callTargetOf`), keeps a field under a name `isActionKeptName` refuses (more
  *   than 3 dotted keys, or a list index), a list field whose parameter isn't an
  *   integer, a `requires` rule or `requiredExpect` name a field its check doesn't
  *   keep or a parameter that doesn't exist, a dotted `requiredExpect` name, or the parameters weren't built with

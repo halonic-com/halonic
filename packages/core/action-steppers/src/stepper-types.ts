@@ -85,6 +85,11 @@ export interface CallStep {
   body: readonly CallBodyField[];
   /** The fields of a successful answer to keep, each a plain value; a dotted name such as `triggering_actor.login` reads inside objects. */
   keep: readonly string[];
+  /**
+   * Required when the definition is `irreversible`, and only then: the name the user types in the native dialog,
+   * over the path's own placeholders, at least one, such as `{owner}/{repo} run {runId}`.
+   */
+  target?: string;
   manual: ManualForm;
 }
 
