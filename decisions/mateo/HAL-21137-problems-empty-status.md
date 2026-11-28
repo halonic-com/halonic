@@ -3,6 +3,7 @@
 - Task: HAL-21137
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-21137 (the post-merge words and accessibility check of #6938 asked for it from HAL-21130; Nora reviews it and Liam signs this note as the CTO)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:wBuYh50YD9Uy7xETgTPvrBZKsvfu0lFShRoykxGpdAR2yMmp2G1K328BwbESsFa1isFaRqQ8Kh40TrSoDeJICQ==
 
 ## What changes
 
