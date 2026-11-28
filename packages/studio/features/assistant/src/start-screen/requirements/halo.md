@@ -9,6 +9,6 @@ Where the start screen shows a Build chat not about one item, it shall draw the 
 ## Examples
 
 - Given a new Build chat in a tab,
-  then the start screen has one `aria-hidden` element with `bg-halo-spot` and the box sits in a `rounded-lg shadow-halo-glow` wrapper.
+  then the start screen has one `aria-hidden` element with `bg-halo-spot` and the box sits in a `rounded-composer shadow-halo-glow` wrapper.
 - Given the same chat in the panel,
   then it has neither.

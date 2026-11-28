@@ -31,7 +31,8 @@ export interface ContentHeaderProps {
  */
 export function ContentHeader({ picture, title, line, actions }: ContentHeaderProps) {
   return (
-    // 64px tall with a soft shadow instead of a line, the new design's chat header (HAL-20728).
+    // 64px tall over a soft shadow, the new design's chat header (HAL-20728), with a line in dark,
+    // where the shadow doesn't show (HAL-20776).
     <header className="relative z-(--layer-sticky) flex h-16 shrink-0 items-center gap-4 phone:gap-3 bg-surface px-4 shadow-header">
       {picture}
       {/* 16px apart like the actions, less 1px: the recipe's 15px from picture to name. On a phone

@@ -124,7 +124,7 @@ export function fieldBoxClasses(
  */
 export type FieldLook = "field" | "prompt";
 
-// Its edge is see-through, so under More contrast it takes the 3:1 edge every other edge has.
+// Its edge is see-through in light and faint in dark, so under More contrast it takes the 3:1 edge every other edge has.
 const composerEdge = "border-border-composer contrast-more:border-border-control";
 
 const promptStateClasses: Record<FieldBoxState, string> = {
