@@ -106,7 +106,7 @@ const rows: readonly AllRunsRow[] = [
     line: "Waiting for you · Send the reply?",
     where: "Acme Ops",
     by: { kind: "workflow" },
-    chip: { word: "Needs you", tone: "warning" },
+    chip: { word: "Needs you", tone: "warning", dot: true },
     label: "Support reply, needs you.",
     item: { kind: "run", hub: "acme", id: runId },
   }),

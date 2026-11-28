@@ -28,6 +28,11 @@ export interface RowNotice {
 export interface AllRunsRow extends AppRun {
   readonly item?: { readonly kind: "run"; readonly hub: string; readonly id: string };
   readonly notice: RowNotice;
+  /**
+   * The runs table's Started by (`runs.runs-table`), in the Runs page's words, with the routine's
+   * name for its tooltip; none for a team's run, as Paperclip doesn't say who started it.
+   */
+  readonly startedBy?: { readonly words: string; readonly tooltip?: string };
 }
 
 /**
@@ -62,9 +67,13 @@ export function workflowAppRun(
     line: row.line,
     where,
     by: { kind: "workflow" },
-    chip: { word: row.chip.word, tone: row.chip.tone },
+    chip: { word: row.chip.word, tone: row.chip.tone, dot: row.chip.dot },
     label: row.label,
     item: { kind: "run", hub: summary.hubId, id: summary.id },
+    startedBy: {
+      words: row.startedBy,
+      ...(row.startedByTooltip === undefined ? {} : { tooltip: row.startedByTooltip }),
+    },
     notice: {
       startedByMe: startedByYou(summary),
       ...tookOf(summary.startedAt, summary.endedAt ?? undefined),
@@ -160,7 +169,7 @@ export function teamAppRun(run: TeamRunFields, context: TeamRowContext): AllRuns
       context.agent === undefined
         ? { kind: "agent", name: teamRowWords.unknownAgent }
         : { kind: "agent", name: context.agent.name, id: run.agent },
-    chip: { word: look.word, tone: look.tone },
+    chip: { word: look.word, tone: look.tone, dot: run.state === "running" },
     label: teamRowWords.label(look.word, title, line, context.where),
     notice: {
       startedByMe: false,

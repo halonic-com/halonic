@@ -33,7 +33,10 @@ export interface GroupedRun {
 export interface RunGroup<Run extends GroupedRun> {
   /** `needs-you`, `failed`, `running`, or `day` for a day of ended runs. */
   readonly kind: "needs-you" | "failed" | "running" | "day";
-  /** "Needs you", "Failed", "Running", "Earlier today", "Yesterday", then "Fri 6 Nov". */
+  /**
+   * "Needs you", "Failed", "Running", "Earlier today", "Yesterday", then "Fri 6 Nov"; in the runs
+   * table, "Today" in place of "Earlier today".
+   */
   readonly heading: string;
   /** Newest first. */
   readonly runs: readonly Run[];
@@ -54,6 +57,8 @@ export const groupWords = {
   failed: "Failed",
   running: "Running",
   today: "Earlier today",
+  /** Today's heading where no Needs you or Running group sits above it, as in the runs table. */
+  todayAlone: "Today",
   yesterday: "Yesterday",
 } as const;
 
@@ -113,6 +118,18 @@ export function runGroups<Run extends GroupedRun>(
   return groups.filter((group) => group.runs.length > 0);
 }
 
+/**
+ * Every run, newest first, one group per day it started in the user's zone, whatever its phase:
+ * the runs table's groups (`runs.runs-table`). Its first day is "Today", as nothing sits above it.
+ */
+export function runsByDay<Run extends GroupedRun>(
+  runs: readonly Run[],
+  context: Omit<RunGroupsContext, "opened">,
+): RunGroup<Run>[] {
+  const newestFirst = [...runs].sort((left, right) => startOf(right) - startOf(left));
+  return dayGroups(newestFirst, { ...context, opened: new Set() }, groupWords.todayAlone);
+}
+
 /** A failure nobody has opened, and that no later run of the same lineage has made good. */
 function isUnseenFailure(
   run: GroupedRun,
@@ -128,12 +145,13 @@ function isUnseenFailure(
   );
 }
 
-/** Ended runs, one group per day they started in the user's zone, in the order given. */
+/** The runs given, one group per day they started in the user's zone, in the order given. */
 function dayGroups<Run extends GroupedRun>(
   runs: readonly Run[],
   context: RunGroupsContext,
+  todayHeading: string = groupWords.today,
 ): RunGroup<Run>[] {
-  const headingOf = dayHeadings(context);
+  const headingOf = dayHeadings(context, todayHeading);
   const groups: { kind: "day"; heading: string; runs: Run[] }[] = [];
   for (const run of runs) {
     const heading = headingOf(dayStart(new Date(startOf(run)), context.timeZone).getTime());
@@ -148,11 +166,11 @@ function dayGroups<Run extends GroupedRun>(
 }
 
 /**
- * Heads a day by its first instant: "Earlier today", "Yesterday", then "Fri 6 Nov", with the
- * year when it isn't this one. The formatters are made once, and each day is worked out once,
- * however many runs it holds.
+ * Heads a day by its first instant: `todayHeading` ("Earlier today" or "Today"), "Yesterday",
+ * then "Fri 6 Nov", with the year when it isn't this one. The formatters are made once, and each
+ * day is worked out once, however many runs it holds.
  */
-function dayHeadings(context: RunGroupsContext): (day: number) => string {
+function dayHeadings(context: RunGroupsContext, todayHeading: string): (day: number) => string {
   const today = dayStart(context.now, context.timeZone).getTime();
   const yesterday = dayStart(new Date(today - 1), context.timeZone).getTime();
   const yearOf = new Intl.DateTimeFormat("en-GB", { timeZone: context.timeZone, year: "numeric" });
@@ -164,7 +182,7 @@ function dayHeadings(context: RunGroupsContext): (day: number) => string {
   });
   const thisYear = yearOf.format(context.now);
   const known = new Map<number, string>([
-    [today, groupWords.today],
+    [today, todayHeading],
     [yesterday, groupWords.yesterday],
   ]);
   return (day) => {

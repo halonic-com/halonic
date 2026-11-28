@@ -76,7 +76,7 @@ export function rowActions(rows: readonly AllRunsRow[], ways: RowWays): RowActio
 export interface PaneWays {
   /** Shows another run in the pane. */
   readonly show: (item: RunItem) => void;
-  /** Closes the run, leaving the pane empty, or the list alone in one pane. */
+  /** Closes the run, leaving the runs table in the pane, or the list alone in one pane. */
   readonly close: () => void;
 }
 
