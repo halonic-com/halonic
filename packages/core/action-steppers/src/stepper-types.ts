@@ -1,5 +1,5 @@
 import type { ActionKeptValue } from "@halonicjs/events";
-import type { ActionMethod, ActionRoute, ActionValue } from "@halonicjs/ports";
+import type { ActionMethod, ActionOperation, ActionRoute, ActionValue } from "@halonicjs/ports";
 import type { Schema } from "@halonicjs/schema-kit";
 import type { StepperRisk } from "./stepper-risk.ts";
 
@@ -145,8 +145,21 @@ export interface CheckStep {
   manual: ManualForm;
 }
 
-/** A step that calls the service's API: a reviewed `call` or `check`, or a ToolScript's `script`. */
-export type ApiStep = CallStep | CheckStep | ScriptStep;
+/**
+ * An API step the sender runs as one of its own operations (`actionOperations` of
+ * `@halonicjs/ports`), for a service whose API needs more than one fixed call for it, such as
+ * `paperclip.set-secret` (architecture note, row C1). The definition's parameters are exactly the
+ * operation's placeholders and its risk is `admin`; the operation's secret fields are typed into
+ * the sender's native dialog, so their values never reach the page, the request or a record.
+ */
+export interface OperationStep {
+  kind: "operation";
+  operation: ActionOperation;
+  manual: ManualForm;
+}
+
+/** A step that calls the service's API: a reviewed `call`, `check` or `operation`, or a ToolScript's `script`. */
+export type ApiStep = CallStep | CheckStep | OperationStep | ScriptStep;
 
 /**
  * The parts of a service's own sign-in, one step each (architecture note,

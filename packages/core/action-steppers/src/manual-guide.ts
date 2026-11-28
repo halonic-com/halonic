@@ -108,6 +108,7 @@ function stepLines(step: Step, values: Values): string[] {
       return inputLines(step, values);
     case "call":
     case "check":
+    case "operation":
     case "script":
     case "sign-in":
       return [
@@ -216,8 +217,8 @@ export function renderManualGuide(
 }
 
 /**
- * Why a definition can't be done by hand: every API step (`call`, `check` or
- * `script`) and every `sign-in` step needs a manual form with an `https` page
+ * Why a definition can't be done by hand: every API step (`call`, `check`,
+ * `operation` or `script`) and every `sign-in` step needs a manual form with an `https` page
  * and at least one instruction, and every `guided`
  * step at least one instruction. The catalog's tests call it for each
  * definition, so one without a manual form fails before it ships.

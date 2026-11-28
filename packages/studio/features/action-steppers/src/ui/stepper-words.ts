@@ -70,7 +70,7 @@ export function expiresText(at: Date): string {
 
 /**
  * A step as "Show the request" writes the steps that aren't a call: the page a browser step opens,
- * the reviewed script an API step runs, or the value the user gives.
+ * the reviewed script an API step runs, the desktop app's own operation, or the value the user gives.
  */
 export function actionLine(action: Exclude<StepAction, { readonly kind: "call" }>): string {
   switch (action.kind) {
@@ -78,6 +78,8 @@ export function actionLine(action: Exclude<StepAction, { readonly kind: "call" }
       return touchText({ kind: "page", address: action.address });
     case "script":
       return `Runs the reviewed script ${action.script}`;
+    case "operation":
+      return `Runs the desktop app's own step ${action.operation}; you type the value into its secure field`;
     case "sign-in":
       return signInLines[action.phase];
     case "input":

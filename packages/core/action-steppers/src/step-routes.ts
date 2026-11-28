@@ -1,8 +1,21 @@
 import { isActionKeptName } from "@halonicjs/events";
-import type { ActionBodyField, ActionCallRoute, ActionRoute } from "@halonicjs/ports";
+import {
+  type ActionBodyField,
+  type ActionCallRoute,
+  type ActionOperationRoute,
+  type ActionRoute,
+  actionOperationFields,
+  actionOperations,
+} from "@halonicjs/ports";
 import { assert } from "@halonicjs/std";
 import { callTargetOf } from "./call-target.ts";
-import type { CallBodyField, CheckStep, Step, StepperDefinition } from "./stepper-types.ts";
+import type {
+  CallBodyField,
+  CheckStep,
+  OperationStep,
+  Step,
+  StepperDefinition,
+} from "./stepper-types.ts";
 import { type ParameterField, parameterFieldsOf } from "./strict-parameters.ts";
 
 type Fields = Readonly<Record<string, ParameterField>>;
@@ -92,6 +105,53 @@ function keptOf(keep: readonly string[], where: string): readonly string[] {
   return keep;
 }
 
+/**
+ * An operation step's route: the operation's own placeholders and `secret-input` fields, nothing
+ * kept, and `admin` risk, as the shell's operation routes must be (its `operation_route.rs`). The
+ * definition's parameters must be exactly the operation's placeholders, so no request value is left
+ * that the shell would refuse or the preview would show without the operation using it.
+ */
+function operationRouteOf(
+  definition: StepperDefinition,
+  step: OperationStep,
+  base: { definition: string; version: number; step: number },
+  fields: Fields,
+  where: string,
+): ActionOperationRoute {
+  const { operation } = step;
+  const service = actionOperations[operation];
+  assert(
+    definition.service === service,
+    `${where}: the operation ${operation} belongs to ${service}, not ${definition.service}`,
+  );
+  assert(definition.risk === "admin", `${where}: an operation step's definition must be admin`);
+  const expected = [...actionOperationFields[operation].placeholders].sort();
+  const parameters = Object.keys(fields).sort();
+  assert(
+    expected.join(",") === parameters.join(","),
+    `${where}: the parameters must be exactly ${operation}'s placeholders (${expected.join(", ")}), not ${parameters.join(", ")}`,
+  );
+  const placeholders: Record<string, string> = {};
+  for (const name of expected) {
+    const field = fieldOf(fields, name, where);
+    assert(field.optional !== true, `${where}: {${name}} can't be an optional parameter`);
+    placeholders[name] = patternOf(name, field);
+  }
+  const body = actionOperationFields[operation].secrets.map(
+    (name): ActionBodyField => ({ name, kind: "secret-input" }),
+  );
+  return {
+    ...base,
+    kind: "operation",
+    operation,
+    service,
+    risk: "admin",
+    placeholders,
+    body,
+    keep: [],
+  };
+}
+
 function routeOf(
   definition: StepperDefinition,
   step: Step,
@@ -151,6 +211,8 @@ function routeOf(
         keep: keptOf(step.keep, where),
         placeholders: placeholdersOf(step.path, fields, where),
       };
+    case "operation":
+      return operationRouteOf(definition, step, base, fields, where);
     case "input":
     case "script":
     case "sign-in":
@@ -163,7 +225,8 @@ function routeOf(
  * holds them (architecture note, 2.4): a `guided` step's address, a `call`
  * step's method, path, body, kept fields and, for an `irreversible` call, its
  * target over its placeholders and text body fields, and a `check` as a `GET` with no
- * body that runs without the native dialog. Each placeholder and body field
+ * body that runs without the native dialog, and an `operation` as the
+ * operation's own placeholders and `secret-input` fields. Each placeholder and body field
  * takes its pattern from the parameter of the same name; a `parameter-list`
  * field is an `integer-list`. An `input`,
  * `script` or `sign-in` step has no route.
@@ -173,7 +236,9 @@ function routeOf(
  *   `callTargetOf`), keeps a field under a name `isActionKeptName` refuses (more
  *   than 3 dotted keys, or a list index), a list field whose parameter isn't an
  *   integer, a `requires` rule or `requiredExpect` name a field its check doesn't
- *   keep or a parameter that doesn't exist, a dotted `requiredExpect` name, or the parameters weren't built with
+ *   keep or a parameter that doesn't exist, a dotted `requiredExpect` name, an operation step whose
+ *   definition isn't `admin`, isn't the operation's service or has parameters other than exactly the
+ *   operation's placeholders, or the parameters weren't built with
  *   `strictParameters`: a bug in the reviewed definition, which the catalog's tests catch
  *
  * @example

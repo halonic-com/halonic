@@ -8,6 +8,7 @@ export {
   type ActionMethod,
   type ActionOpenResult,
   type ActionOperation,
+  type ActionOperationFields,
   type ActionOperationRoute,
   type ActionRefusal,
   type ActionRisk,
@@ -19,6 +20,7 @@ export {
   type ActionSignInResult,
   type ActionStepRef,
   type ActionValue,
+  actionOperationFields,
   actionOperations,
   actionSenderVersion,
 } from "./action-sender.ts";

@@ -69,6 +69,11 @@ export type InstructionsSource =
 export type StepAction =
   | { readonly kind: "call"; readonly call: StepCall }
   | { readonly kind: "script"; readonly script: string }
+  /**
+   * One of the desktop app's own operations, such as `paperclip.set-secret`: its calls are in the
+   * app's code, and the secret value is typed into its native dialog (HAL-17491 row C1).
+   */
+  | { readonly kind: "operation"; readonly operation: string }
   /** A part of the service's own sign-in, run in the desktop app (HAL-17491 row 15). */
   | { readonly kind: "sign-in"; readonly phase: "start" | "approve" | "keep" | "test" }
   | {

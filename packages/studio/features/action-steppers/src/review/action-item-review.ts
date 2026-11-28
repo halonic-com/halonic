@@ -190,6 +190,8 @@ function stepAction(
     }
     case "sign-in":
       return { kind: "sign-in", phase: step.phase };
+    case "operation":
+      return { kind: "operation", operation: step.operation };
     case "script":
       // A script step runs once the catalog has its call route; until then the review names it.
       return route?.kind === "call"
