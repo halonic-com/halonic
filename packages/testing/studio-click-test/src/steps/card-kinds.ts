@@ -7,15 +7,21 @@ import {
   yesNoCard,
 } from "../card-fixtures.ts";
 import { type AnswerClicks, answeredAs, cardStep } from "../card-step.ts";
-import type { StepContext, StepOutcome } from "../runner.ts";
-import { buttonNamed, clickXPathWhenShown, lastWords, radioNamed, xpathString } from "../screen.ts";
+import {
+  buttonNamed,
+  clickXPathWhenShown,
+  lastWords,
+  radioNamed,
+  waitForText,
+  xpathString,
+} from "../screen.ts";
 import { buttonLabels, screenText, words } from "../words.ts";
 
 /** The reason the plan card's Reject is sent with, which Paperclip must keep. */
 export const rejectReason = "Click test: the Acme plan needs a date.";
 
 /** Clicks the button named `label` in the card, or fails as `NO_BUTTON`. */
-function press(label: string): AnswerClicks {
+export function press(label: string): AnswerClicks {
   return async (context, card) => {
     if (await clickXPathWhenShown(context, `${card}${buttonNamed(label)}`, 10_000)) {
       return { passed: true };
@@ -52,36 +58,50 @@ function pickThenSubmit(controls: readonly string[]): AnswerClicks {
 }
 
 /**
- * Reject on a card that needs a reason: it must open the reason field rather than send, and the
- * field's own Reject sends what was written (`inbox.option-note`).
+ * An option that takes a note: pressing it must open its field, labelled `field`, rather than
+ * send, or the surface fails as `missing`; the field's own button sends what was written
+ * (`inbox.option-note`).
  */
-async function rejectWithReason(context: StepContext, card: string): Promise<StepOutcome> {
-  const opened = await press(buttonLabels.reject.text)(context, card);
-  if (!opened.passed) return opened;
-  const text = await context.driver.pageText();
-  if (!text.includes(screenText.rejectReason.text)) {
-    return { passed: false, code: "NO_REASON_FIELD", note: lastWords(text) };
-  }
-  await context.driver.type(`${card}//textarea`, rejectReason);
-  return press(buttonLabels.reject.text)(context, card);
+export function pressWithNote(
+  label: string,
+  note: { readonly field: string; readonly text: string; readonly missing: string },
+): AnswerClicks {
+  return async (context, card) => {
+    const opened = await press(label)(context, card);
+    if (!opened.passed) return opened;
+    const shown = await waitForText(context, 10_000, (text) =>
+      text.includes(note.field) ? true : undefined,
+    );
+    if (shown.value !== true) {
+      return { passed: false, code: note.missing, note: lastWords(shown.text) };
+    }
+    await context.driver.type(`${card}//textarea`, note.text);
+    return press(label)(context, card);
+  };
 }
 
+/** Reject on a card that needs a reason. */
+const rejectWithReason = pressWithNote(buttonLabels.reject.text, {
+  field: screenText.rejectReason.text,
+  text: rejectReason,
+  missing: "NO_REASON_FIELD",
+});
+
 /**
- * In a chat, Reject needs a note the chat has no field for: the card leaves it out and says to
- * choose it in the Inbox (`messenger.option-note`), and Accept answers it.
+ * In a chat, an option that needs a note, `leftOut`, has no field: the card leaves it out and
+ * says to choose it in the Inbox (`messenger.option-note`), and `answer` answers the card.
  */
-async function acceptWithoutReject(context: StepContext, card: string): Promise<StepOutcome> {
-  const text = await context.driver.pageText();
-  const line = words.messengerNeedsNote([buttonLabels.reject.text]);
-  if (!text.includes(line)) return { passed: false, code: "NO_NOTE_LINE", note: lastWords(text) };
-  if ((await context.driver.count(`${card}${buttonNamed(buttonLabels.reject.text)}`)) > 0) {
-    return {
-      passed: false,
-      code: "REJECT_IN_CHAT",
-      note: "The chat offers Reject without a note.",
-    };
-  }
-  return press(buttonLabels.accept.text)(context, card);
+export function pressLeavingNoteToInbox(answer: string, leftOut: string): AnswerClicks {
+  return async (context, card) => {
+    const text = await context.driver.pageText();
+    const line = words.messengerNeedsNote([leftOut]);
+    if (!text.includes(line)) return { passed: false, code: "NO_NOTE_LINE", note: lastWords(text) };
+    if ((await context.driver.count(`${card}${buttonNamed(leftOut)}`)) > 0) {
+      const note = `The chat offers ${leftOut} without a note.`;
+      return { passed: false, code: "NOTE_OPTION_IN_CHAT", note };
+    }
+    return press(answer)(context, card);
+  };
 }
 
 /** A plain yes/no card: Accept in the Inbox, Reject in the Messenger. */
@@ -100,7 +120,10 @@ export const cardPlan = cardStep({
   title: "Cards: a plan approval's Reject asks for a reason, and a chat leaves it to the Inbox",
   requirements: ["inbox.option-note", "messenger.option-note"],
   fixture: planCard,
-  clicks: { Inbox: rejectWithReason, Messenger: acceptWithoutReject },
+  clicks: {
+    Inbox: rejectWithReason,
+    Messenger: pressLeavingNoteToInbox(buttonLabels.accept.text, buttonLabels.reject.text),
+  },
   answered: {
     Inbox: answeredAs("rejected", { reason: rejectReason }),
     Messenger: answeredAs("accepted"),

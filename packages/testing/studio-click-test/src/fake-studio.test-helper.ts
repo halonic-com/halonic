@@ -142,6 +142,7 @@ export function fakeStudio(text = ""): FakeStudio {
     seeded: {
       companyId: "company-1",
       approvalId: "approval-1",
+      agentId: "agent-1",
       chatId: "chat-1",
       cardsFile: "cards.json",
     },

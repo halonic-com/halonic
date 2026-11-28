@@ -12,6 +12,8 @@ export const surfaces: readonly Surface[] = ["Inbox", "Messenger"];
 export interface CardFixture {
   /** A short name, used in the cards' idempotency keys and the Inbox copy's task. */
   readonly key: string;
+  /** A card on a task (`interactions`), the default; see {@link ApprovalFixture} and {@link DecisionFixture}. */
+  readonly record?: "interaction";
   readonly kind:
     | "request_confirmation"
     | "ask_user_questions"
@@ -28,8 +30,42 @@ export interface CardFixture {
   readonly document?: { readonly key: string; readonly body: string };
 }
 
+/**
+ * An approval the board seeds twice (HAL-19002): the Messenger's copy names the seeded agent as
+ * the one who asks, which Paperclip takes from the board, so neither copy needs an agent's run.
+ */
+export interface ApprovalFixture {
+  readonly key: string;
+  readonly record: "approval";
+  readonly type: "hire_agent" | "approve_ceo_strategy";
+  /** The approval's title without its surface; the card shows it under the type. */
+  readonly prompt: string;
+  /**
+   * What the Inbox row says: the type in words, never the agent's title
+   * (`paperclip-client.approval-fields`), so the step opens rows until one shows the prompt.
+   */
+  readonly inboxRow: string;
+  /** The approval's payload for one copy's title. */
+  readonly payload: (prompt: string) => Readonly<Record<string, unknown>>;
+}
+
+/**
+ * A standalone decision the seeded agent posts twice in one run (HAL-19002): Paperclip takes a
+ * decision only from an agent's run. Its options change nothing on any task.
+ */
+export interface DecisionFixture {
+  readonly key: string;
+  readonly record: "decision";
+  /** The decision's title without its surface. */
+  readonly prompt: string;
+  readonly options: readonly { readonly id: string; readonly label: string }[];
+}
+
+/** Anything a card step seeds: a card on a task, an approval or a decision. */
+export type SeedFixture = CardFixture | ApprovalFixture | DecisionFixture;
+
 /** One copy's prompt, which names its surface, so each copy has a row and a card of its own. */
-export function promptOn(fixture: CardFixture, surface: Surface): string {
+export function promptOn(fixture: SeedFixture, surface: Surface): string {
   return `${fixture.prompt} (${surface})`;
 }
 
@@ -127,4 +163,38 @@ export const suggestedTasksCard: CardFixture = {
       { clientKey: "survey", title: "Acme: send the launch survey" },
     ],
   }),
+};
+
+/**
+ * A hire approval with no agent behind it: Approve makes the agent from the payload, a `process`
+ * agent with no command, and Reject makes nothing.
+ */
+export const hireCard: ApprovalFixture = {
+  key: "hire",
+  record: "approval",
+  type: "hire_agent",
+  prompt: "Hire the Acme copywriter",
+  inboxRow: "Hire an agent",
+  payload: (prompt) => ({ title: prompt, name: "Acme Copywriter", role: "general" }),
+};
+
+/** A strategy approval, which Request changes sends back to the agent with a note. */
+export const strategyCard: ApprovalFixture = {
+  key: "strategy",
+  record: "approval",
+  type: "approve_ceo_strategy",
+  prompt: "The Acme spring strategy",
+  inboxRow: "Strategy approval",
+  payload: (prompt) => ({ title: prompt, plan: "Grow the Acme newsletter to 5,000 readers." }),
+};
+
+/** A decision with two options and no effects. */
+export const decisionCard: DecisionFixture = {
+  key: "decision",
+  record: "decision",
+  prompt: "Pick the Acme banner colour",
+  options: [
+    { id: "blue", label: "Blue" },
+    { id: "green", label: "Green" },
+  ],
 };

@@ -62,6 +62,11 @@ export const buttonLabels = {
   // A yes/no card's buttons, Paperclip's own words when the card names none (HAL-19002).
   accept: { text: "Accept", file: "packages/adapters/paperclip-client/src/cards.ts" },
   reject: { text: "Reject", file: "packages/adapters/paperclip-client/src/approval-words.ts" },
+  // An approval's third button, which sends the approval back with a note (HAL-19002).
+  requestChanges: {
+    text: "Request changes",
+    file: "packages/adapters/paperclip-client/src/approval-words.ts",
+  },
   // A card of questions, checkboxes, item verdicts or suggested tasks sends with this.
   submit: { text: "Submit", file: "packages/studio/kit/src/question-form/question-form.tsx" },
 } as const;
@@ -149,6 +154,10 @@ export const screenText = {
   // The field a card's Reject opens when the card needs a reason (HAL-19002).
   rejectReason: {
     text: "Why are you rejecting this?",
+    file: "packages/adapters/paperclip-client/src/approval-words.ts",
+  },
+  whatShouldChange: {
+    text: "What should change?",
     file: "packages/adapters/paperclip-client/src/approval-words.ts",
   },
   search: { text: "Search", file: "packages/studio/shell/src/palette/command-palette.tsx" },

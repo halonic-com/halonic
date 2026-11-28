@@ -1,6 +1,7 @@
-import { type CardFixture, promptOn } from "./card-fixtures.ts";
+import { promptOn, type SeedFixture } from "./card-fixtures.ts";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
 import { messengerWindowLabel } from "./main-window.ts";
+import { rowsContaining } from "./screen.ts";
 import { seedNames } from "./test-paperclip.ts";
 import { buttonLabels, screenText } from "./words.ts";
 
@@ -11,13 +12,14 @@ export type Answers = Record<string, { status: string; result?: unknown; shows?:
  * A connected Studio whose Inbox lists the Inbox copy of `fixture` and whose Messenger chat shows
  * its Messenger copy; each copy's buttons answer it on the fake Paperclip as `inbox` and
  * `messenger` say. `chatText` is added to the chat, such as the line a card says under it. With
- * `leftOpen`, the Inbox opens on an answered card that hides the list until Back to Inbox.
+ * `leftOpen`, the Inbox opens on an answered card that hides the list until Back to Inbox. An
+ * approval's row says its type, and with `otherRowFirst` the row tried first opens another title.
  */
 export function cardStudio(
-  fixture: CardFixture,
+  fixture: SeedFixture,
   inbox: Answers,
   messenger: Answers,
-  { chatText = "", leftOpen = false } = {},
+  { chatText = "", leftOpen = false, otherRowFirst = false } = {},
 ) {
   const studio = fakeStudio("Acme");
   const inboxPrompt = promptOn(fixture, "Inbox");
@@ -30,9 +32,19 @@ export function cardStudio(
       });
     }
   };
+  const row = rowOf(fixture);
+  let otherFirst = otherRowFirst;
   const showList = () => {
-    main().text = `Needs you ${inboxPrompt}`;
-    button(studio, "main", inboxPrompt, () => {
+    main().text = `Needs you ${fixture.record === "decision" ? `2 cards from ${row}` : row}`;
+    if (fixture.record === "approval") studio.elements.set(rowsContaining(row), 2);
+    if (fixture.record === "decision") studio.elements.set(rowsContaining(row), 1);
+    button(studio, "main", row, () => {
+      if (otherFirst) {
+        otherFirst = false;
+        main().text = `${row} Another title`;
+        button(studio, "main", screenText.backToInbox.text, showList);
+        return;
+      }
       main().text = `${inboxPrompt} ${buttonLabels.accept.text}`;
       answer("inbox", main, inbox);
     });
@@ -56,6 +68,17 @@ export function cardStudio(
     },
   });
   return studio;
+}
+
+/**
+ * What the Inbox copy's row holds, as the app shows it: an approval's type; for a decision the
+ * agent's name, as the Inbox bundles both copies into "2 cards from Acme Clicky" (run
+ * 46154356446); else the prompt.
+ */
+function rowOf(fixture: SeedFixture): string {
+  if (fixture.record === "approval") return fixture.inboxRow;
+  if (fixture.record === "decision") return seedNames.agent;
+  return promptOn(fixture, "Inbox");
 }
 
 /** The status the fake Paperclip has for the copy `id`, such as `inbox-yes-no`. */

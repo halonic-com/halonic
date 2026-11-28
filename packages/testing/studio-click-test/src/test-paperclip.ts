@@ -1,15 +1,17 @@
 import { writeFile } from "node:fs/promises";
 import { setTimeout as wait } from "node:timers/promises";
-import type { CardFixture } from "./card-fixtures.ts";
+import type { SeedFixture } from "./card-fixtures.ts";
 import {
   type CardRecord,
   type CardRef,
+  type CardSetup,
   cardAgentConfig,
   readCard,
   type SeededCard,
   seedCard,
 } from "./card-seed.ts";
-import { api, idOf, stringField } from "./paperclip-api.ts";
+import { api, type Call, idOf, stringField } from "./paperclip-api.ts";
+import { readRecord, seedApproval, seedDecision } from "./record-seed.ts";
 
 /** The names the seed gives the throwaway Paperclip's records, which the steps look for. */
 export const seedNames = {
@@ -24,6 +26,8 @@ export const seedNames = {
 export interface Seeded {
   readonly companyId: string;
   readonly approvalId: string;
+  /** The seeded agent, whose chat the Messenger's copies are in. */
+  readonly agentId: string;
   readonly chatId: string;
   /** The file the seeded agent reads the cards it posts on its chat from (`card-agent.ts`). */
   readonly cardsFile: string;
@@ -38,8 +42,8 @@ export interface TestPaperclip {
   chatComments(): Promise<readonly string[]>;
   /** Whether the key Studio signed in with still works; undefined when Studio sent none. */
   studioKeyWorks(): Promise<boolean | undefined>;
-  /** Seeds a card kind's Inbox and Messenger copies (HAL-19002). */
-  seedCard(fixture: CardFixture): Promise<SeededCard>;
+  /** Seeds a card kind's Inbox and Messenger copies (HAL-19002): a card, approval or decision. */
+  seedCard(fixture: SeedFixture): Promise<SeededCard>;
   /** One seeded copy as Paperclip has it now. */
   card(ref: CardRef): Promise<CardRecord>;
 }
@@ -71,7 +75,13 @@ export async function seedPaperclip(target: string, cardsFile: string): Promise<
     issueIds: [idOf(task)],
   });
   const chat = await call("POST", `${companyPath}/chats/${idOf(agent)}`);
-  return { companyId, approvalId: idOf(approval), chatId: idOf(chat), cardsFile };
+  return {
+    companyId,
+    approvalId: idOf(approval),
+    agentId: idOf(agent),
+    chatId: idOf(chat),
+    cardsFile,
+  };
 }
 
 /** The checks on the seeded records, with the key Studio last sent through the proxy. */
@@ -103,7 +113,15 @@ export function testPaperclip(
       // answers 200, as the implicit local board. Only `board_key` says the key itself worked.
       return stringField(await answer.json(), "source") === "board_key";
     },
-    seedCard: (fixture) => seedCard(call, seeded, fixture, (ms) => wait(ms)),
-    card: (ref) => readCard(call, ref),
+    seedCard: (fixture) => seedAny(call, seeded, fixture),
+    card: (ref) => ("record" in ref ? readRecord(call, ref) : readCard(call, ref)),
   };
+}
+
+/** Seeds `fixture` the way its record needs: a card on a task, an approval or a decision. */
+function seedAny(call: Call, setup: CardSetup, fixture: SeedFixture): Promise<SeededCard> {
+  const pause = (milliseconds: number) => wait(milliseconds);
+  if (fixture.record === "approval") return seedApproval(call, setup, fixture);
+  if (fixture.record === "decision") return seedDecision(call, setup, fixture, pause);
+  return seedCard(call, setup, fixture, pause);
 }

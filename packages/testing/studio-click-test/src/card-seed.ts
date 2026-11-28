@@ -1,13 +1,15 @@
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { type CardFixture, promptOn, type Surface } from "./card-fixtures.ts";
+import { type CardFixture, promptOn, type SeedFixture, type Surface } from "./card-fixtures.ts";
 import { type Call, fieldOf, idOf, stringField } from "./paperclip-api.ts";
 
-/** Where one seeded copy of a card lives: its task and its own id. */
-export interface CardRef {
-  readonly issueId: string;
-  readonly id: string;
-}
+/**
+ * Where one seeded copy lives: a card's task and its own id, or an approval's or a decision's
+ * own id, which Paperclip reads on its own.
+ */
+export type CardRef =
+  | { readonly issueId: string; readonly id: string }
+  | { readonly record: "approval" | "decision"; readonly id: string };
 
 /** A card kind's two copies, one per surface. */
 export type SeededCard = Readonly<Record<Surface, CardRef>>;
@@ -18,11 +20,18 @@ export interface CardRecord {
   readonly result: unknown;
 }
 
-/** What seeding a card needs: the company, the agent's chat, and the file its agent reads. */
+/** What seeding a card needs: the company, the agent and its chat, and the file the agent reads. */
 export interface CardSetup {
   readonly companyId: string;
+  readonly agentId: string;
   readonly chatId: string;
   readonly cardsFile: string;
+}
+
+/** One write the agent makes in its run (`card-agent.ts`): a POST of `body` to `path`. */
+export interface AgentPost {
+  readonly path: string;
+  readonly body: unknown;
 }
 
 /** How long the agent gets to post a Messenger copy, and when it is woken a second time. */
@@ -58,20 +67,57 @@ export async function seedCard(
   });
   const inboxBody = await cardBody(call, idOf(task), fixture, "Inbox");
   const inbox = await call("POST", `/api/issues/${idOf(task)}/interactions`, inboxBody);
-  // The file holds only the card awaited: a later wake, such as step 10's message, posts nothing,
-  // since Paperclip refuses a key it has from another run.
   const messengerBody = await cardBody(call, setup.chatId, fixture, "Messenger");
-  await writeFile(
-    setup.cardsFile,
-    JSON.stringify([{ issueId: setup.chatId, body: messengerBody }]),
-  );
-  const messenger = await agentCard(call, setup.chatId, fixture, wait).finally(() =>
-    writeFile(setup.cardsFile, "[]"),
+  const key = keyOf(fixture, "Messenger");
+  const chatCards = `/api/issues/${setup.chatId}/interactions`;
+  const messenger = await askAgent(
+    call,
+    setup,
+    { label: fixture.key, posts: [{ path: chatCards, body: messengerBody }] },
+    async () => {
+      const cards = await call("GET", chatCards);
+      return Array.isArray(cards)
+        ? cards.find((each) => fieldOf(each, "idempotencyKey") === key)
+        : undefined;
+    },
+    wait,
   );
   return {
     Inbox: { issueId: idOf(task), id: idOf(inbox) },
-    Messenger: { issueId: setup.chatId, id: messenger },
+    Messenger: { issueId: setup.chatId, id: idOf(messenger) },
   };
+}
+
+/**
+ * Has the agent make `ask.posts` in a run: writes them to its cards file, wakes it with a message
+ * on its chat, and waits until `found` gives what they made, which it returns. The file holds
+ * only what is awaited and is emptied after: a later wake, such as step 10's message, posts
+ * nothing, since Paperclip refuses a key it has from another run. Throws when it never came.
+ */
+export async function askAgent<T>(
+  call: Call,
+  setup: CardSetup,
+  ask: { readonly label: string; readonly posts: readonly AgentPost[] },
+  found: () => Promise<T | undefined>,
+  wait: (milliseconds: number) => Promise<void>,
+): Promise<T> {
+  await writeFile(setup.cardsFile, JSON.stringify(ask.posts));
+  try {
+    for (let poll = 0; poll < agentPolls; poll += 1) {
+      if (poll % wakeAgainAt === 0) {
+        await call("POST", `/api/issues/${setup.chatId}/comments`, {
+          body: `Click test: post the ${ask.label} card.`,
+          clientRequestId: crypto.randomUUID(),
+        });
+      }
+      const made = await found();
+      if (made !== undefined) return made;
+      await wait(pollMs);
+    }
+  } finally {
+    await writeFile(setup.cardsFile, "[]");
+  }
+  throw new Error(`the agent never posted the ${ask.label} card on its chat`);
 }
 
 /** A copy's `interactions` body, with its document written and bound first when it has one. */
@@ -96,38 +142,16 @@ async function cardBody(
   return { ...body, payload: { ...payload, target: { type: "issue_document", key, revisionId } } };
 }
 
-/** Wakes the agent with a message on its chat and waits for its copy there; its id. */
-async function agentCard(
-  call: Call,
-  chatId: string,
-  fixture: CardFixture,
-  wait: (milliseconds: number) => Promise<void>,
-): Promise<string> {
-  const key = keyOf(fixture, "Messenger");
-  for (let poll = 0; poll < agentPolls; poll += 1) {
-    if (poll % wakeAgainAt === 0) {
-      await call("POST", `/api/issues/${chatId}/comments`, {
-        body: `Click test: post the ${fixture.key} card.`,
-        clientRequestId: crypto.randomUUID(),
-      });
-    }
-    const cards = await call("GET", `/api/issues/${chatId}/interactions`);
-    const card = Array.isArray(cards)
-      ? cards.find((each) => fieldOf(each, "idempotencyKey") === key)
-      : undefined;
-    if (card !== undefined) return idOf(card);
-    await wait(pollMs);
-  }
-  throw new Error(`the agent never posted the ${fixture.key} card on its chat`);
-}
-
 /** A copy's idempotency key, so a later wake of the agent posts no second one. */
-function keyOf(fixture: CardFixture, surface: Surface): string {
+export function keyOf(fixture: SeedFixture, surface: Surface): string {
   return `click-test-${fixture.key}-${surface.toLowerCase()}`;
 }
 
-/** A seeded copy as Paperclip has it now. */
-export async function readCard(call: Call, card: CardRef): Promise<CardRecord> {
+/** A seeded card on a task as Paperclip has it now. */
+export async function readCard(
+  call: Call,
+  card: { readonly issueId: string; readonly id: string },
+): Promise<CardRecord> {
   const cards = await call("GET", `/api/issues/${card.issueId}/interactions`);
   const record = Array.isArray(cards) ? cards.find((each) => idOf(each) === card.id) : undefined;
   if (record === undefined) throw new Error(`Paperclip has no card ${card.id}`);

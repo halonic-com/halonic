@@ -41,8 +41,8 @@ function studioWithTabs(counts: { newTab: number; close: number; reopen: number 
 
 verifies("studio-click-test.basics-steps", () => {
   it("come after the phase 1 steps, with Close workspace last", () => {
-    // Steps 22 to 24, after the Connections steps (HAL-18868), the Paperclip steps (HAL-18354), quick ask's box (HAL-20826) and the card steps (HAL-19002); the Settings steps (HAL-18867) come after them.
-    expect(clickTestSteps.slice(21, 24).map((step) => step.id)).toEqual([
+    // Steps 25 to 27, after the Connections steps (HAL-18868), the Paperclip steps (HAL-18354), quick ask's box (HAL-20826) and the card steps (HAL-19002); the Settings steps (HAL-18867) come after them.
+    expect(clickTestSteps.slice(24, 27).map((step) => step.id)).toEqual([
       "demo-workspace",
       "window-tabs",
       "close-workspace",
