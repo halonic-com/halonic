@@ -41,10 +41,12 @@ out of draft carries the holder's signed approval on its head or a finding
 of theirs with no head committed after it, the watcher comments "PR watcher:
 back to <author> after review, head `abc1234` (HAL-21150)." and gives the
 task to its author with status `todo`, once per verdict (a new finding on
-the same head gives it back again). It works on every runner, so a reviewer on the native runner only has
-to post the verdict. When every pull request landed, the watcher closes the
-task as if the author held it, or gives it back when the author's rules keep
-it open. A task in `backlog` or `blocked` is only closed.
+the same head gives it back again). It works on every runner, so a reviewer
+on the native runner only has to post the verdict. When every pull request
+landed, the watcher closes the task as if the author held it, or gives it
+back when the author's rules keep it open, once per newest merge; a task it
+gave back that way still closes once nothing keeps it open. A task in
+`backlog` or `blocked` is only closed.
 
 | What it sees | What it does |
 | --- | --- |

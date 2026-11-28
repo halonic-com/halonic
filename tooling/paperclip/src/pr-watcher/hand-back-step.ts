@@ -1,7 +1,7 @@
 import { reviewerName } from "../reviewer-paths-who.ts";
 import { type CloseGuards, guardDone } from "./close-guards.ts";
 import { branchesOwner, type Decision, decide, type Memory, type PullFacts } from "./decide.ts";
-import { type HandBack, handBackMessage, handBackOf } from "./hand-back.ts";
+import { type HandBack, handBackMessage, handBackOf, standingVerdicts } from "./hand-back.ts";
 import { readMemory } from "./memory.ts";
 import { doneMessage } from "./messages.ts";
 import type { Paperclip, TaskRow } from "./paperclip.ts";
@@ -33,16 +33,27 @@ export async function handBackStep(
   owners: ReadonlyMap<string, string>,
 ): Promise<HandBackStep> {
   const who = partiesOf(task, pulls, owners);
-  const back = who === undefined ? undefined : handBackOf(reviewerName(who.holderKey), pulls);
-  if (who === undefined || back === undefined) {
+  if (who === undefined) {
+    return "none";
+  }
+  const reviewer = reviewerName(who.holderKey);
+  // Comments are read only for a task with a verdict or a merge at all.
+  if (handBackOf(reviewer, pulls, new Set()) === undefined) {
     return "none";
   }
   const memory = readMemory(await options.paperclip.comments(task.id), who.author);
-  if (memory.reported.has(back.key)) {
+  const back = handBackOf(reviewer, pulls, memory.reported);
+  if (back === undefined) {
     return "none";
   }
-  let also: readonly string[] = [];
+  // The other pull requests' standing verdicts are marked with this one, so
+  // none of them hands the task back again later.
+  let also = standingVerdicts(reviewer, pulls).filter(
+    (key) => key !== back.key && !memory.reported.has(key),
+  );
   if (back.why === "merged") {
+    // Before the reported check: a merge handed back earlier still closes
+    // once nothing keeps it open.
     const decision = await decideAsAuthor(options, task, who.author, pulls, memory);
     if (decision.kind === "done") {
       return closeTask(options, task, decision);
@@ -50,7 +61,10 @@ export async function handBackStep(
     // The comment after the merge is the author's to read now: one wake for it, not two.
     also = decision.kind === "wake" ? decision.reasons.map((reason) => reason.key) : [];
   }
-  return task.parked === true ? "none" : giveBack(options, task, who, { back, also });
+  if (task.parked === true || memory.reported.has(back.key)) {
+    return "none";
+  }
+  return giveBack(options, task, who, { back, also });
 }
 
 /** The reviewer who holds the task and the author its branches name, by short name and id. */

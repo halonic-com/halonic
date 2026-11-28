@@ -2,7 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { expect, test } from "vitest";
 import type { PullFacts } from "./decide.ts";
 import { agentComment, agents, type FakeTask, task } from "./fakes.test-helper.ts";
-import { mateoBranch, oldHead, open, setup } from "./handoff.test-helper.ts";
+import { mateoBranch, oldHead, open, repo, setup } from "./handoff.test-helper.ts";
 import type { CommentRow } from "./paperclip.ts";
 
 /** The hand-back of a reviewer-held task to its author (HAL-21150). The pass runs at 17:00 UTC. */
@@ -126,4 +126,72 @@ verifies("paperclip.pr-watcher-hand-back", () => {
     // The author's later pass reads the merge as reported: one wake for that comment, not two.
     expect(body).toContain("<!-- pr-watcher: halonic-com/halonic#5701 5701aaa merged -->");
   });
+
+  test("closes a landed task it gave back after the merge once nothing keeps it open", async () => {
+    const earlier = watcherComment("halonic-com/halonic#5701 5701aaa back to author merged");
+    const run = watcher(merged, undefined, { "task-5701": [earlier] });
+    expect(await run.run()).toMatchObject({ done: 1, handedBack: 0, failed: [] });
+    expect(run.done).toEqual(["task-5701"]);
+  });
+
+  test("gives a task back for its second merge after the first one's hand-back", async () => {
+    const second = { ...merged, head: oldHead, mergedAt: "2026-11-24T16:20:00Z" };
+    const earlier = watcherComment("halonic-com/halonic#5701 5701aaa back to author merged");
+    const after = agentComment(agents.priya, "2026-11-24T16:30:00Z", "One more deploy step.");
+    const run = twoPulls(merged, second, [earlier, after]);
+    expect(await run.run()).toMatchObject({ done: 0, handedBack: 1, failed: [] });
+    expect(run.handoffs.map(({ to, key }) => [to, key])).toEqual([
+      [agents.mateo, "halonic-com/halonic#5702 4999bbb back to author merged"],
+    ]);
+  });
+
+  test("gives a task back for a finding on its second pull request after the first one's approval", async () => {
+    const earlier = watcherComment("halonic-com/halonic#5701 5701aaa back to author approved");
+    const finding = { id: "i3", at: "2026-11-24T16:50:00Z", by: "Julian" };
+    const run = twoPulls(
+      { approvals: [{ by: "Julian", head: "5701aaa" }] },
+      { head: oldHead, latestReview: finding },
+      [earlier],
+    );
+    expect(await run.run()).toMatchObject({ handedBack: 1, failed: [] });
+    expect(run.handoffs.map(({ to, key }) => [to, key])).toEqual([
+      [agents.mateo, "halonic-com/halonic#5702 4999bbb back to author i3"],
+    ]);
+  });
+
+  test("leaves a landed task it gave back after the merge with Julian while a child task is open", async () => {
+    const earlier = watcherComment("halonic-com/halonic#5701 5701aaa back to author merged");
+    const held = task(5701, agents.julian, { branch: mateoBranch, openChildren: true });
+    const run = watcher(merged, held, { "task-5701": [earlier] });
+    expect(await run.run()).toMatchObject({ done: 0, handedBack: 0, failed: [] });
+    expect(run.handoffs).toEqual([]);
+  });
+
+  test("marks every pull request's verdict in one hand-back, so a later pass doesn't give it back again", async () => {
+    const approved = { approvals: [{ by: "Julian", head: "5701aaa" }] };
+    const finding = {
+      head: oldHead,
+      latestReview: { id: "i3", at: "2026-11-24T16:30:00Z", by: "Julian" },
+    };
+    const first = twoPulls(approved, finding, []);
+    expect(await first.run()).toMatchObject({ handedBack: 1, failed: [] });
+    // Julian picks the task up again without a new verdict: it stays with him.
+    const later = twoPulls(approved, finding, first.comments["task-5701"] ?? []);
+    expect(await later.run()).toMatchObject({ handedBack: 0, failed: [] });
+    expect(later.handoffs).toEqual([]);
+  });
 });
+
+/** Julian holds HAL-5701 with Mateo's pull requests #5701 and #5702. */
+function twoPulls(first: Partial<PullFacts>, second: Partial<PullFacts>, comments: CommentRow[]) {
+  const held = task(5701, agents.julian, { branch: mateoBranch });
+  const refs = [5701, 5702].map((number) => ({ repo, number, branch: mateoBranch }));
+  return setup({
+    tasks: [{ ...held, pulls: refs }],
+    pulls: [
+      open(5701, mateoBranch, { headCommittedAt: committedAt, ...first }),
+      open(5702, mateoBranch, { headCommittedAt: committedAt, ...second }),
+    ],
+    comments: { "task-5701": comments },
+  });
+}
