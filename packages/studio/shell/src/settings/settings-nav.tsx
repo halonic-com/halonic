@@ -161,7 +161,8 @@ export function rowAfterKey(
 
 // The list column of the two-column layout (`shell.settings-two-columns`, HAL-20617): the kit's one
 // list-column size (`kit.list-column`), on the panel colour as the part recipe's list (HAL-20672),
-// past a 1px line from the content pane. The theme's tokens carry light and dark.
+// past a 1px line from the content pane. The theme's tokens carry light and dark. Noah checked the
+// look (HAL-20766) and kept the 32px rows with no search field (HAL-20793).
 const settingsListColumnClass = `${listColumnClass} shrink-0 overflow-y-auto border-e border-border bg-app-panel p-2`;
 
 // A divided group (HAL-19539): a 1px hairline in the border token above every group but the
