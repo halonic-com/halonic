@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20294 (follow-up agreed in Julian's security review of #6725 on HAL-20289, under Liam's plan approval on HAL-17522, 27 Nov 01:03 UTC, point 2)
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:FD+qbH3CyY2WN8l03Rbhg5MiJKD0ml7KFITBSVMIXRdCDH/vEASaQmFmWRFWDL3ydva9F3eZ+ok+udtlL2d/Bw==
 
 ## What changes
 
