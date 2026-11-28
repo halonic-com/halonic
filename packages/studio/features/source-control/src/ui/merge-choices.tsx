@@ -137,7 +137,7 @@ export function MergeChoices({
   }
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-3">
-      <h2 id={titleId} ref={heading} tabIndex={-1} className="text-heading focus-ring">
+      <h2 id={titleId} ref={heading} tabIndex={-1} className="text-title focus-ring">
         {mergeWords.heading}
       </h2>
       {body}

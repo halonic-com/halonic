@@ -79,9 +79,9 @@ export interface ChangesViewProps {
 
 /**
  * The Changes page on the desktop (checklist part 2, 2.2 and 2.10), in a list column beside a
- * content pane (`source-control.list-column`): "Changes" over what the folder's history says: a
- * first read's skeleton, why it couldn't load, "Keep a history of your work", "Halonic needs git to
- * keep versions.", or "Nothing has changed since your last version.".
+ * content pane for a repository it read (`source-control.list-column`): "Changes" over what the
+ * folder's history says: a first read's skeleton, why it couldn't load, "Keep a history of your
+ * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
  *
  * On a phone (2.12) it is the same page in one column with a 16px inset: the top bar says
@@ -127,9 +127,7 @@ export function ChangesView({
           {pageWords.title}
         </h1>
         {state.hasRemote ? (
-          <span className="ml-auto">
-            <GetUpdates list={list} phone={phone} onLeftToGit={setLeftToGit} />
-          </span>
+          <GetUpdates list={list} phone={phone} onLeftToGit={setLeftToGit} />
         ) : null}
       </header>
       <LeftToGitCallout shown={state.hasRemote && leftToGit} />
@@ -171,6 +169,13 @@ export function ChangesView({
       </div>
     );
   }
+  if (!showsColumns(state)) {
+    return (
+      <div ref={page} className="flex w-full flex-col gap-4 px-6 py-5">
+        {content}
+      </div>
+    );
+  }
   return (
     <ChangesColumns
       listRef={page}
@@ -190,6 +195,17 @@ export function ChangesView({
       {content}
     </ChangesColumns>
   );
+}
+
+/**
+ * Whether the desktop draws the list column beside the content pane: for a repository it read, and
+ * for a first read's skeleton. A folder without history, a computer without git, a folder inside a
+ * larger repository and a first read that failed get one page over the whole place, as nothing
+ * could open in the pane (`source-control.list-column`).
+ */
+function showsColumns(state: ChangesListState): boolean {
+  if (state.read === undefined) return state.error === undefined;
+  return state.read.kind === "ready";
 }
 
 /**

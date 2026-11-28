@@ -28,12 +28,29 @@ verifies("source-control.list-column", () => {
   describe("Changes in a list column beside a content pane", () => {
     it("puts the list in the kit's list column, beside a pane that takes the rest", async () => {
       const { root } = await openColumnsPage({ changes: [agentChange, readmeChange] });
-      expect(classesOf(listColumn(root))).toEqual(
-        expect.arrayContaining([...listColumnClass.split(" "), "overflow-y-auto", "shrink-0"]),
-      );
-      expect(classesOf(pane(root))).toEqual(
-        expect.arrayContaining(["flex-1", "min-w-0", "overflow-y-auto"]),
-      );
+      // The whole class: the column has a fixed height, so without `*:shrink-0` a strip with only a
+      // minimum height shrinks to it and its text runs over the next part (look check HAL-20951).
+      expect(classesOf(listColumn(root))).toEqual([
+        ...listColumnClass.split(" "),
+        "flex",
+        "shrink-0",
+        "flex-col",
+        "gap-4",
+        "overflow-y-auto",
+        "border-e",
+        "border-border",
+        "px-4",
+        "py-5",
+        "*:shrink-0",
+      ]);
+      // No padding of its own, so the empty pane's wash runs edge to edge.
+      expect(classesOf(pane(root))).toEqual([
+        "flex",
+        "min-w-0",
+        "flex-1",
+        "flex-col",
+        "overflow-y-auto",
+      ]);
       expect(listColumn(root)?.textContent).toContain("Since your last version");
       // The header lets Get updates drop under "Changes" in a narrow column.
       expect(classesOf(listColumn(root)?.querySelector("header"))).toContain("flex-wrap");
@@ -50,10 +67,27 @@ verifies("source-control.list-column", () => {
       expect(pane(root)?.textContent).toBe("ChangesNothing has changed since your last version.");
     });
 
-    it("says only Changes in the pane for a folder without history", async () => {
+    it("fills the pane with the empty state's wash, and pads what opens in it", async () => {
+      const { root } = await openColumnsPage({ changes: [agentChange] });
+      expect(classesOf(pane(root)?.firstElementChild)).toEqual(["grid", "flex-1"]);
+      openItem(root, "Triage");
+      expect(classesOf(pane(root)?.firstElementChild)).toEqual(
+        expect.arrayContaining(["px-6", "py-5"]),
+      );
+    });
+
+    it("draws one page with no column and no pane for a folder without history", async () => {
       const { root } = await openColumnsPage({ read: { kind: "not-a-repository" } });
-      expect(listColumn(root)?.textContent).toContain("Keep a history of your work");
-      expect(pane(root)?.textContent).toBe("Changes");
+      expect(listColumn(root)).toBeNull();
+      expect(pane(root)).toBeNull();
+      expect(root.textContent).toContain("Keep a history of your work");
+    });
+
+    it("draws one page with no column and no pane on a computer without git", async () => {
+      const { root } = await openColumnsPage({ read: { kind: "no-git" } });
+      expect(listColumn(root)).toBeNull();
+      expect(pane(root)).toBeNull();
+      expect(root.textContent).toContain("Halonic needs git to keep versions.");
     });
 
     it("opens a row's What changed in the pane, keeps the list and marks the row current", async () => {

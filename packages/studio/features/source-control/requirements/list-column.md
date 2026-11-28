@@ -10,7 +10,10 @@ Where the Studio shows the desktop layout, the Changes place shall show the Chan
 - Picking a version in History shall show its details in the content pane (`source-control.history-page`), with its name as the pane's `h2` and focus on it. Escape there shall put focus back on the version's row.
 - While the person chooses item by item in Get updates, the choices shall show in the content pane, in place of an open item or version, which closes. Opening a row or a version while the choices show shall put them aside with the merge still started, as a phone's Back does: the list then says "You're in the middle of getting Sam's updates." with Continue, which brings the choices back to the pane.
 - When the open item has no changes left, the content pane shall go back to what it shows with nothing open. Focus shall move only if it fell to the page with What changed, as after Undo these changes in the pane: then to the row that took the item's place, or to the page's heading when no item is left. Focus elsewhere, as on Get updates when a read nobody asked for finds the item gone, shall stay where it is.
-- With nothing open, the content pane shall show the Changes place's icon and "Changes" as its `h2`. Under it, for a repository it read, the number of changed items as the list counts them ("3 items"), or "Nothing has changed since your last version." when none changed. Before a read worked, and for a folder without history, a computer without git or a folder inside a larger repository, "Changes" shall stand alone.
+- With nothing open, the content pane shall show the Changes place's icon and "Changes" as its `h2`, on a wash that fills the pane. Under it, for a repository it read, the number of changed items as the list counts them ("3 items"), or "Nothing has changed since your last version." when none changed. Under a first read's skeleton, "Changes" shall stand alone.
+- While Get updates waits for the choices, its reason ("Finish getting updates first.") shall take a line of its own under the button, the column's whole width.
+
+For a folder without history, a computer without git, a folder inside a larger repository, or when the first read failed, the Changes place shall show one page over its whole width, with no list column and no content pane.
 
 Where the Studio shows the phone layout, Changes shall show its list alone, and What changed, a version and the choices open as pages of their own (`source-control.changes-phone`).
 
@@ -29,6 +32,6 @@ Where the Studio shows the phone layout, Changes shall show its list alone, and 
 - Given Get updates' choices show and the person opens the row "Triage",
   then the pane shows Triage, and the list says "You're in the middle of getting Sam's updates." with Continue.
 - Given a folder without history,
-  then the content pane reads "Changes" alone.
+  then Changes shows "Keep a history of your work" on one page, with no list column and no content pane.
 - Given Changes on a phone,
   then the list fills the page, with no content pane.

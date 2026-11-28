@@ -72,6 +72,18 @@ verifies("source-control.list-column", () => {
       expect(listColumn(root)?.querySelector('[aria-current="true"]')).toBeNull();
     });
 
+    it("titles the choices as the pane titles an item, and puts Get updates' reason under it", async () => {
+      const { root } = await openColumnsPage({ changes: [agentChange], left });
+      await press(root, "Continue");
+      const title = pane(root)?.querySelector("h2");
+      expect(title?.textContent).toBe("Getting updates");
+      expect(title?.classList.contains("text-title")).toBe(true);
+      const reason = [...(listColumn(root)?.querySelectorAll("header span") ?? [])].find(
+        (span) => span.textContent === "Finish getting updates first.",
+      );
+      expect(reason?.classList.contains("basis-full")).toBe(true);
+    });
+
     it("puts the choices aside, with Continue, when a row is opened while they show", async () => {
       const { root } = await openColumnsPage({ changes: [agentChange], left });
       await press(root, "Continue");

@@ -12,12 +12,21 @@ import { WhatChangedPage } from "./whats-changed-page.tsx";
 
 /**
  * The list column: the kit's one list-column size (`kit.list-column`), scrolling on its own so the
- * content pane stays put (`source-control.list-column`).
+ * content pane stays put (`source-control.list-column`). Its parts keep their height (`*:shrink-0`):
+ * the column has a fixed height, so a part with only a minimum height, as the Get updates strip,
+ * would shrink to it and its text would run over the next part.
  */
-export const changesListColumnClass = `${listColumnClass} flex shrink-0 flex-col gap-4 overflow-y-auto border-e border-border px-4 py-5`;
+export const changesListColumnClass = `${listColumnClass} flex shrink-0 flex-col gap-4 overflow-y-auto border-e border-border px-4 py-5 *:shrink-0`;
 
-/** The content pane: the rest of the width, scrolling on its own. */
-export const changesContentPaneClass = "flex min-w-0 flex-1 flex-col overflow-y-auto px-6 py-5";
+/**
+ * The content pane: the rest of the width, scrolling on its own. It has no padding, so the empty
+ * pane's wash runs edge to edge, as the Library's does; an item, a version and the choices draw
+ * theirs ({@link paneContentClass}).
+ */
+export const changesContentPaneClass = "flex min-w-0 flex-1 flex-col overflow-y-auto";
+
+/** The padding round what the pane shows when something is open in it. */
+const paneContentClass = "flex flex-col px-6 py-5";
 
 /** The props of {@link ChangesColumns}. */
 export interface ChangesColumnsProps {
@@ -76,32 +85,30 @@ export function ChangesPane({
   developer,
   openItem,
 }: ChangesPaneProps) {
-  if (state.merge !== undefined && state.choosing)
-    return <MergeChoices list={list} phone={false} />;
+  if (state.merge !== undefined && state.choosing) {
+    return (
+      <div className={paneContentClass}>
+        <MergeChoices list={list} phone={false} />
+      </div>
+    );
+  }
   if (open !== undefined) {
     return (
-      <WhatChangedPage
-        key={open.id}
-        list={list}
-        item={open}
-        developer={developer}
-        openItem={openItem}
-        inPane
-      />
+      <div key={open.id} className={paneContentClass}>
+        <WhatChangedPage list={list} item={open} developer={developer} openItem={openItem} inPane />
+      </div>
     );
   }
   if (version !== undefined) {
     return (
-      <PaneVersion
-        key={version.id}
-        version={version}
-        list={list}
-        onEscape={() => onVersionEscape(version.id)}
-      />
+      <div key={version.id} className={paneContentClass}>
+        <PaneVersion version={version} list={list} onEscape={() => onVersionEscape(version.id)} />
+      </div>
     );
   }
+  // A grid item stretches, so the empty state's wash fills the pane.
   return (
-    <div className="flex flex-1 items-center justify-center">
+    <div className="grid flex-1">
       <EmptyState
         align="center"
         headingLevel={2}
@@ -115,8 +122,8 @@ export function ChangesPane({
 
 /**
  * Under "Changes" in the empty pane: "3 items", as the list counts them, or that nothing changed.
- * Nothing before a read worked, or in a folder without history, without git or in a larger
- * repository.
+ * Nothing under a first read's skeleton: the columns show only for a read that worked or one still
+ * on its way.
  */
 function paneSentence(state: ChangesListState, items: readonly ChangeItem[]): string | undefined {
   if (state.read?.kind !== "ready") return undefined;
