@@ -260,17 +260,17 @@ verifies("home.list-column", () => {
 
   it('says "Trying again…" on Try again while its read runs, as the Library does', async () => {
     const { service } = fakeChats([summary("triage", "Triage")]);
-    const list = service.list;
     service.list = async () => Promise.reject(new EngineNotAnswering());
     const page = await show(contextWith(service));
-    let answer = (_chats: readonly ChatSummary[]) => {};
-    service.list = () => new Promise((resolve) => (answer = resolve));
+    let fail = (_error: Error) => {};
+    service.list = () => new Promise((_resolve, reject) => (fail = reject));
     const tryAgain = button(page, "Try again");
     await act(async () => tryAgain?.click());
     expect(tryAgain?.getAttribute("aria-busy")).toBe("true");
     expect(label(tryAgain as HTMLElement)).toBe("Trying again…");
-    await act(async () => answer(await list(contextWith(service))));
-    expect(button(page, "Trying again…")).toBeUndefined();
+    await act(async () => fail(new EngineNotAnswering()));
+    expect(button(page, "Try again")).toBe(tryAgain);
+    expect(label(tryAgain as HTMLElement)).toBe("Try again");
   });
 
   it("leaves the focus where it is when a list change clears a failure", async () => {
