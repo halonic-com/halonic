@@ -7,7 +7,7 @@ import { inboxRowFit } from "./inbox-row-fit.ts";
 const parts = { title: "//li[1]//b", meta: "//li[1]//i", badge: "//li[1]//s" } as const;
 
 verifies("studio-click-test.inbox-row-fit", () => {
-  it("passes a title clamped to two 20px lines, a meta line cut on one and a 20px badge", async () => {
+  it("passes a title clamped to two 20px lines, a cut meta line and a 20px badge", async () => {
     const studio = fakeStudio("Acme");
     drawRowFit(studio, parts);
     await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
@@ -15,23 +15,24 @@ verifies("studio-click-test.inbox-row-fit", () => {
     });
   });
 
-  it("fails as PLAIN_ROW_FIT when the title isn't clamped, however short it is", async () => {
+  it.each([
+    [{ titleClamp: "none" }, "the title is clamped to none lines of 20px, not 2 of 20px"],
+    [{ titleLineHeight: "24px" }, "the title is clamped to 2 lines of 24px, not 2 of 20px"],
+    [
+      { metaWhiteSpace: "normal" },
+      "the meta line has white-space normal and text-overflow ellipsis, not nowrap and ellipsis",
+    ],
+    [
+      { metaOverflow: "clip" },
+      "the meta line has white-space nowrap and text-overflow clip, not nowrap and ellipsis",
+    ],
+  ] as const)("fails as PLAIN_ROW_FIT when only %o breaks the fit", async (styles, fault) => {
     const studio = fakeStudio("Acme");
-    drawRowFit(studio, parts, { titleClamp: "none", titleLineHeight: "24px" });
+    drawRowFit(studio, parts, styles);
     await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
       passed: false,
       code: "PLAIN_ROW_FIT",
-      note: "Acme's row: the title is clamped to none lines of 24px, not 2 of 20px.",
-    });
-  });
-
-  it("fails as PLAIN_ROW_FIT when the meta line may wrap", async () => {
-    const studio = fakeStudio("Acme");
-    drawRowFit(studio, parts, { metaWhiteSpace: "normal", metaOverflow: "clip" });
-    await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
-      passed: false,
-      code: "PLAIN_ROW_FIT",
-      note: "Acme's row: the meta line has white-space normal and text-overflow clip, not nowrap and ellipsis.",
+      note: `Acme's row: ${fault}.`,
     });
   });
 

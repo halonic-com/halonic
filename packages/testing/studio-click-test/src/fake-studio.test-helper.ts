@@ -198,7 +198,8 @@ export interface RowFitStyles {
 
 /**
  * Draws an Inbox row's title, meta line and avatar badge at `parts` with the computed values
- * given, the kit's by default: the title clamped to two 20px lines, the meta line cut on one, a 20px badge.
+ * given, the kit's by default: the title clamped to two 20px lines, the meta line cut on one,
+ * and a 20px badge.
  */
 export function drawRowFit(
   studio: FakeStudio,
