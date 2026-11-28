@@ -15,6 +15,7 @@
 Tests changed to follow:
 - `settings-window.test.tsx` clicks the rail's Settings button, and also checks the sidebar has no Settings row;
 - `settings-open-page.test.tsx` opens Settings from the rail in a 640px window and checks the focus comes back to the rail's button, or goes to the page's `h1`;
+- the browser test `e2e/settings-open-page.spec.ts` opens Settings from the rail at 640px and 1280px; its Escape test, which checked the focus landed on Places in the narrow window, now checks it comes back to the rail's Settings button at both widths;
 - `studio-window.test.tsx`'s two focus tests (a wide window, the narrow drawer) become one test run at 1280px and 700px, both checking the focus comes back to the rail's Settings button.
 
 The app's tests that reached the Inbox through the sidebar's link now use the rail's Inbox, because with Home selected the column leaves the Inbox out:
