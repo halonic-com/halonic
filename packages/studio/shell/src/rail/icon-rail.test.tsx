@@ -263,3 +263,16 @@ verifies("shell.rail-dot-seat", () => {
     });
   });
 });
+
+verifies("shell.rail-inner-mark", () => {
+  describe("the selected drawing's marks", () => {
+    it("lays the outline over the selected drawing, drawn only in dark", () => {
+      const rail = renderRail();
+      act(() => rail.button("Inbox").click());
+      const marks = rail.button("Inbox").querySelector("[data-rail-glass] [data-rail-marks]");
+      expect(marks?.className).toContain("stroke-[color:light-dark(transparent,currentColor)]");
+      expect(marks?.querySelector('[data-place-icon="inbox"]')).not.toBeNull();
+      expect(rail.button("Home").querySelector("[data-rail-marks]")).toBeNull();
+    });
+  });
+});

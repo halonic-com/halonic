@@ -107,8 +107,10 @@ export function IconRail({ entries, tabs, placeOfKind, onSettings, column }: Ico
  * An entry's drawing: a place's own icon, filled while selected. The selected fill is the dark
  * glass in both themes, not the text colour, so the rail's white dot reads on it in dark too; the
  * edge stays in the text colour, so in dark the drawing still stands out from the dark circle
- * (`shell.rail-dot-seat`). Code and Messenger have no drawing in the kit yet (the new icons,
- * HAL-20465), so they show the dashed ring until then.
+ * (`shell.rail-dot-seat`). The filled drawing's inner marks are cut-outs that show the circle,
+ * which in dark is as dark as the glass, so in dark the outline lies over it and the marks read
+ * in the text colour (`shell.rail-inner-mark`). Code and Messenger have no drawing in the kit yet
+ * (the new icons, HAL-20465), so they show the dashed ring until then.
  */
 function RailIcon({ name, selected }: { readonly name: string; readonly selected: boolean }) {
   if (!isPlaceIconName(name)) return <DashedRingIcon />;
@@ -116,12 +118,22 @@ function RailIcon({ name, selected }: { readonly name: string; readonly selected
   return (
     <span data-rail-glass="" className={glassFill}>
       <PlaceIcon name={name} filled />
+      <span data-rail-marks="" className={darkMarks}>
+        <PlaceIcon name={name} />
+      </span>
     </span>
   );
 }
 
-/** Only the drawing's solid fill turns to glass; its edge keeps the text colour. */
-const glassFill = "grid *:size-full [&_[fill=currentColor]]:fill-rail-glass";
+/**
+ * Only the drawing's solid fill turns to glass; its edge keeps the text colour. The marks' layer
+ * lies on the same cell, over the drawing.
+ */
+const glassFill =
+  "grid *:col-start-1 *:row-start-1 *:size-full [&_[fill=currentColor]]:fill-rail-glass";
+
+/** In light the cut-outs already read on the glass, so there the outline over them is clear. */
+const darkMarks = "grid *:size-full [&_path]:stroke-[color:light-dark(transparent,currentColor)]";
 
 function isPlaceIconName(name: string): name is PlaceIconName {
   return (placeIconNames as readonly string[]).includes(name);
