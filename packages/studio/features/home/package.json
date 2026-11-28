@@ -1,0 +1,39 @@
+{
+  "name": "@halonicjs/studio-feature-home",
+  "private": true,
+  "type": "module",
+  "description": "The Home feature of the Studio: the AI chats in Home's list column and Home's sections in its content pane.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./api": "./src/api.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",
+    "lint": "biome check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@halonicjs/studio-feature-assistant": "workspace:*",
+    "@halonicjs/studio-kit": "workspace:*",
+    "@halonicjs/studio-shell": "workspace:*",
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@halonicjs/testing-spec": "workspace:*",
+    "@halonicjs/tooling-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "halonic": {
+    "layer": "studio",
+    "owner": "mateo",
+    "coverage": {
+      "lines": 85
+    }
+  }
+}
