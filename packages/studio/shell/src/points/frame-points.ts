@@ -13,7 +13,12 @@ import type {
   StripContribution,
 } from "./frame.ts";
 import { focusedAppIds, sidebarPlaces } from "./frame.ts";
-import { type HomeCardContribution, type HomePoint, homeSections } from "./home.ts";
+import {
+  type HomeCardContribution,
+  type HomePoint,
+  type HomeViewContribution,
+  homeSections,
+} from "./home.ts";
 import {
   byOrder,
   type Point,
@@ -97,7 +102,11 @@ export interface FrameContributions {
   /** The icon rail's entries a folder shows. */
   readonly rail: RailContributions;
   /** The cards features added to Home, in Home's fixed order. */
-  readonly home: { cards(): readonly Registered<HomeCardContribution>[] };
+  readonly home: {
+    cards(): readonly Registered<HomeCardContribution>[];
+    /** Home's list column and content pane, or `undefined` while no feature set them. */
+    view(): Registered<HomeViewContribution> | undefined;
+  };
   /** The views features added next to the Studio's places, by `order`, then `id`; none while no feature adds one. */
   readonly sidebarViews: { list(): readonly Registered<SidebarViewContribution>[] };
   /** The focused apps features added; a focused app's window shows the one its label names. */
@@ -135,6 +144,7 @@ export class FrameStores {
   ]);
   private readonly homeCards = new PointStore<HomeCardContribution>("home.addCard", ["id"]);
   private readonly focusedApps = new PointStore<FocusedAppContribution>("focusedApps.add", ["id"]);
+  private homeView: Registered<HomeViewContribution> | undefined;
 
   constructor() {
     this.places.add(shellContributorId, homePlace);
@@ -200,6 +210,11 @@ export class FrameStores {
           this.rejectTakenSection(card, featureId);
           this.homeCards.add(featureId, card);
         },
+        setView: (view) => {
+          guard("home.setView");
+          this.rejectTakenView(featureId);
+          this.homeView = Object.freeze({ ...view, featureId });
+        },
       },
     };
   }
@@ -233,6 +248,7 @@ export class FrameStores {
           [...this.homeCards.all()].sort(
             (left, right) => homeSections.indexOf(left.id) - homeSections.indexOf(right.id),
           ),
+        view: () => this.homeView,
       },
     };
   }
@@ -258,6 +274,15 @@ export class FrameStores {
     if (existing !== undefined) {
       throw new ShellError(
         `sidebarFooter.add: the sidebar's footer has room for one item, and "${existing.featureId}" already set it, so "${featureId}" can't. Put the item in that feature's view, or in the title bar with titleBar.add.`,
+      );
+    }
+  }
+
+  /** Home has one view, so a second is an error rather than a quiet pick. */
+  private rejectTakenView(featureId: string): void {
+    if (this.homeView !== undefined) {
+      throw new ShellError(
+        `home.setView: Home's view is set by both "${this.homeView.featureId}" and "${featureId}". Home has one view; add a card with home.addCard instead.`,
       );
     }
   }

@@ -24,6 +24,7 @@ import {
   serviceKey,
   type WorkspaceContext,
 } from "@halonicjs/studio-shell";
+import type { ReactNode } from "react";
 
 /**
  * Who a chat talks to (flow 5.3): `build`, the Build assistant with its authoring tools, or
@@ -329,3 +330,34 @@ export interface ItemChat {
 
 /** The chat on an item's page, provided by the Assistant feature while the app gives it a host. */
 export const ItemChatService: ServiceKey<ItemChat> = serviceKey<ItemChat>("assistant.item-chat");
+
+/**
+ * The AI chats for the Home feature (`assistant.home.chats`): Build chats only, since an agent's
+ * chat shows only in Messenger. Home is a place of its own, apart from the side panel and the tabs;
+ * the Assistant alone decides where a chat is, and a chat is in one place at a time. Home uses the
+ * Assistant only through this service.
+ */
+export interface AiChats {
+  /** The Build chats with a message, the newest message first. A draft isn't listed. */
+  list(context: WorkspaceContext): Promise<readonly ChatSummary[]>;
+  /** Calls `listener` after each change to the list of chats. Returns the function that stops it. */
+  subscribe(context: WorkspaceContext, listener: () => void): () => void;
+  /** Starts a new Build chat, or takes the empty draft there is, and resolves to its id. */
+  newChat(context: WorkspaceContext): Promise<string>;
+  /**
+   * Holds the chat in Home: the side panel and its tab let go of it. Returns the function that
+   * gives it back, after which it is an ordinary panel chat again; Home's pane calls it when it
+   * shows something else or goes.
+   */
+  open(chatId: string, context: WorkspaceContext): () => void;
+  /** Opens the chat as its tab, next to the active one: a Ctrl-click, Cmd-click or middle click. */
+  openInTab(chatId: string, context: WorkspaceContext): void;
+  /**
+   * Draws the chat for Home's pane: its title, which renames it, ⋮ with Delete chat…, and the
+   * chat. `onLeave` is called when the chat leaves Home: deleted, or shown in the panel or a tab.
+   */
+  render(chatId: string, context: WorkspaceContext, onLeave: () => void): ReactNode;
+}
+
+/** Home's AI chats, provided by the Assistant feature while the app gives it a host. */
+export const AiChatsService: ServiceKey<AiChats> = serviceKey<AiChats>("assistant.ai-chats");

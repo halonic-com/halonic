@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { ViewRef } from "../view.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import type { PlaceSignal } from "./frame.ts";
@@ -61,7 +62,39 @@ export interface HomeCardContribution extends ViewRef {
   subscribeSignal?(context: WorkspaceContext, listener: () => void): () => void;
 }
 
-/** Adds a card to Home. */
+/**
+ * Home's page as one feature draws it (`shell.home-view`): two slots, which the shell places in
+ * its list column and content pane. The list column's view gets {@link HomeListColumnProps}; the
+ * content pane's gets {@link HomeContentPaneProps}.
+ */
+export interface HomeViewContribution {
+  readonly listColumn: ViewRef;
+  readonly contentPane: ViewRef;
+}
+
+/**
+ * What both of Home's slots get. The shell keeps which item is open, so a row picked in the list
+ * column shows in the content pane.
+ */
+export interface HomeSlotProps {
+  /** The context of the feature that set Home's view. */
+  readonly context: WorkspaceContext;
+  /** The id of the item open in the content pane, such as a chat's, or `undefined` for none. */
+  readonly open: string | undefined;
+  /** Opens an item in the content pane, or none with `undefined`. */
+  readonly setOpen: (id: string | undefined) => void;
+}
+
+/** What Home's list column view gets. */
+export type HomeListColumnProps = HomeSlotProps;
+
+/** What Home's content pane view gets. */
+export interface HomeContentPaneProps extends HomeSlotProps {
+  /** Home's sections as the shell draws them, for the pane while no item is open. */
+  readonly sections: ReactNode;
+}
+
+/** Adds a card to Home, or sets Home's view. */
 export interface HomePoint {
   /**
    * Adds the card for one of Home's sections; the shell sets their order.
@@ -69,4 +102,10 @@ export interface HomePoint {
    * @throws ShellError for an unknown section or one another feature added
    */
   addCard(card: HomeCardContribution): void;
+  /**
+   * Sets Home's list column and content pane. Without them, Home shows its sections alone.
+   *
+   * @throws ShellError when another feature already set them
+   */
+  setView(view: HomeViewContribution): void;
 }

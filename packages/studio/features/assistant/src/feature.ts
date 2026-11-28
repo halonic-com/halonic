@@ -1,9 +1,10 @@
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
-import { AssistantHostService, ItemChatService, ShowInChatService } from "./api.ts";
+import { AiChatsService, AssistantHostService, ItemChatService, ShowInChatService } from "./api.ts";
 import { buildChatWords } from "./chat/build-chat-words.ts";
 import { buildChatsOf } from "./chat/build-chats.ts";
 import { chatTabKind } from "./chat/chat-tab-item.ts";
 import { showInChatOf } from "./chat/show-in-chat.ts";
+import { aiChatsOf } from "./home/ai-chats.tsx";
 import { itemChatOf } from "./item/item-chat.tsx";
 
 /** Shows or hides the panel, from Ctrl+Alt+I and Ctrl K's "Assistant". */
@@ -20,11 +21,12 @@ export const assistantFeature = defineFeature({
   id: "assistant",
   title: "Assistant",
   needs: [AssistantHostService],
-  provides: [ShowInChatService, ItemChatService],
+  provides: [ShowInChatService, ItemChatService, AiChatsService],
   register(studio) {
-    // Both keep the Assistant's own lookup: the features that call them can't reach the host.
+    // They keep the Assistant's own lookup: the features that call them can't reach the host.
     studio.services.provide(ShowInChatService, (services) => showInChatOf(services));
     studio.services.provide(ItemChatService, (services) => itemChatOf(services));
+    studio.services.provide(AiChatsService, (services) => aiChatsOf(services));
     studio.panelWindows.add({
       id: "assistant.panel",
       title: "Assistant",
