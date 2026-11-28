@@ -129,6 +129,8 @@ function withBench(make: MakeToolScriptHost, body: (bench: Bench) => Promise<voi
           version: 1,
           audience: options.audience ?? host.audience,
           uses: options.uses ?? allUses,
+          // A user header must declare `touches` for any write (S14); empty entries allow any target.
+          touches: Object.fromEntries(allUses.map((id) => [id, {}])),
           ...(options.limits === undefined ? {} : { limits: options.limits }),
         },
         code: fixture.code,

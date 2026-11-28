@@ -2485,6 +2485,9 @@ importers:
       '@halonicjs/ports':
         specifier: workspace:*
         version: link:../../core/ports
+      '@halonicjs/toolscript-host':
+        specifier: workspace:*
+        version: link:../../core/toolscript-host
       quickjs-emscripten-core:
         specifier: 'catalog:'
         version: 0.32.0
@@ -2495,6 +2498,9 @@ importers:
       '@halonicjs/engine':
         specifier: workspace:*
         version: link:../../core/engine
+      '@halonicjs/testing-contracts':
+        specifier: workspace:*
+        version: link:../../testing/contracts
       '@halonicjs/testing-spec':
         specifier: workspace:*
         version: link:../../testing/spec
