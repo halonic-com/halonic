@@ -432,6 +432,16 @@
       "reason": "Tables, task lists, strikethrough and autolinks for remark. Approved by the user on 8 Nov 2026 (HAL-10).",
       "useInstead": "the Markdown view from @halonicjs/studio-kit"
     },
+    "sharp": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/target-cloudflare-testing"
+      ],
+      "layers": [
+        "testing"
+      ],
+      "reason": "Not a dependency of ours: miniflare brings it (see miniflare). Listed so the catalog can hold the patched version that the miniflare>sharp security override in overrides-allowed.json needs (HAL-20858). No package imports it. Leaves with that override."
+    },
     "tailwindcss": {
       "category": "dev-tooling",
       "allowedIn": [
@@ -470,6 +480,16 @@
         "tooling"
       ],
       "reason": "Type-checking with TypeScript 7 (D9)."
+    },
+    "undici": {
+      "category": "dev-tooling",
+      "allowedIn": [
+        "@halonicjs/target-cloudflare-testing"
+      ],
+      "layers": [
+        "testing"
+      ],
+      "reason": "Not a dependency of ours: miniflare brings it (see miniflare). Listed so the catalog can hold the patched version that the miniflare>undici security override in overrides-allowed.json needs (HAL-20858). No package imports it. Leaves with that override."
     },
     "vite": {
       "category": "dev-tooling",

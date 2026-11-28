@@ -263,8 +263,11 @@ function checkOverrides(
   for (const { message, line } of found.problems) {
     report.error(workspaceFile, message, line);
   }
+  // A warning, like an unused entry in dependencies.json: the entry lands on
+  // main in its own pull request before the override that uses it, because
+  // CI checks the override against the base commit's list (HAL-20858).
   for (const message of found.stale) {
-    report.error(overridesAllowedPath, `${message} ${guide}`);
+    report.warning(overridesAllowedPath, `${message} ${guide}`);
   }
 }
 
