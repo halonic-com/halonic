@@ -3,6 +3,7 @@
 - Task: HAL-21150
 - Approval: Liam decided the rule on HAL-21148 and routed it on HAL-21150; Liam reviews and signs this note. A team decision with no board card.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:QF0biTH3l/4ofWY1qnm0xL3BCeLzi5QLrVrq3J6BX39/OdXmF7Bu3ppw8Xodlt7jJeOoqUR/mRz6DZ34UskDAA==
 
 ## What changes
 
