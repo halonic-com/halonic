@@ -1,5 +1,0 @@
----
-"@halonicjs/app-studio": patch
----
-
-Code in the rail now opens Code's page: the file tree sits in a column of 34% of the width, at least 208px and at most 380px, and the file you pick opens beside it in place of the last one, with no file tabs. Ctrl-click (Cmd-click on a Mac) or middle-click a file, in Code or in the sidebar's tree, to open it in a new tab.

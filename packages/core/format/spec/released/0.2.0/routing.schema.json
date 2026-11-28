@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://halonic.com/spec/format/routing/v1.schema.json",
+  "type": "object",
+  "properties": {
+    "roles": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "code-reviewer": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        },
+        "second-reviewer": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        },
+        "routine-reviewer": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        },
+        "clarifier": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        },
+        "merge-captain": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,39}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "areas": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]{0,39}$"
+      }
+    }
+  },
+  "additionalProperties": false
+}
