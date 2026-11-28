@@ -11,7 +11,7 @@ import { closeDialogs, onWorkspace, openConnections, openDialog } from "./open-d
  * Messenger shortcuts each show their window. The single-instance plugin
  * hands the second start's arguments to the running app, so the windows show
  * up in this session. No step opened the Inbox window before, so it must be a
- * new one, showing Needs you empty after step 9's answer; Messenger's, open
+ * new one, showing Needs you (empty after step 9's answer); Messenger's, open
  * since step 9, must show the seeded chat. The test never closes the app's
  * windows: WebDriver's close left a shortcut with no window (run 45730163649).
  * Each page must sit in its app's frame (HAL-20480): one top-level window of
@@ -26,15 +26,23 @@ export const startMenuShortcuts: Step = {
   run: async (context) => {
     const workspace = await onWorkspace(context);
     if (!workspace.passed) return workspace;
+    // The Inbox shows Needs you either empty or still holding the seeded card, so a failed
+    // step 9 doesn't keep the frame checks below from running (run 46170466401).
     const shortcuts = [
-      { name: "Halonic Inbox", shows: screenText.nothingWaiting.text, onlyNew: true },
-      { name: "Halonic Messenger", shows: seedNames.agent, onlyNew: false },
+      {
+        name: "Halonic Inbox",
+        shows: [screenText.nothingWaiting.text, screenText.strategyApproval.text],
+        onlyNew: true,
+      },
+      { name: "Halonic Messenger", shows: [seedNames.agent], onlyNew: false },
     ];
     for (const { name, shows, onlyNew } of shortcuts) {
       const halonicWindows = (await context.topLevelWindows(halonicExe)).length;
-      const window = await openAppWindow(context, name, (text) => text.includes(shows), onlyNew);
+      const showsAny = (text: string) => shows.some((words) => text.includes(words));
+      const window = await openAppWindow(context, name, showsAny, onlyNew);
       if (!window.opened) {
-        const note = `${name} opened no window showing ${shows}. Last: ${lastWords(window.text)}`;
+        const expected = shows.join(" or ");
+        const note = `${name} opened no window showing ${expected}. Last: ${lastWords(window.text)}`;
         return { passed: false, code: "NO_WINDOW", note };
       }
       const frame = await inItsFrame(context, name, halonicWindows);

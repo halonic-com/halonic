@@ -18,7 +18,9 @@ remove them.
 `studio.installer-focused-apps` changes its wording to say so; its template test checks the new
 target, and gains checks for the hard links, the wait and the uninstall. `studio.app-icons`'s template test
 checks the same icon on the shortcut's new target. No test was weakened or skipped. `studio-click-test.paperclip-steps` gains the frame checks of step 13 (one top-level
-window of the frame's exe, none new of `Halonic.exe`, no second frame on a second start).
+window of the frame's exe, none new of `Halonic.exe`, no second frame on a second start). Its
+Inbox window now passes on Needs you holding the seeded card as well as empty, so a failed step 9
+no longer stops the frame checks; step 9 still checks the answer itself.
 
 `.github/workflows/ci.yml` and `tooling/check/src/test/ci-pr-areas.test.ts` add the frames'
 crate and `src/app_frames.rs` to the installer area, so a change to the frames runs the
