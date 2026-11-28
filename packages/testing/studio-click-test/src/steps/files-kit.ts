@@ -10,7 +10,7 @@ import {
 } from "../screen.ts";
 import { keys } from "../webdriver.ts";
 import { kitText } from "../words.ts";
-import { sidebarSwitch, sidebarSwitchList } from "./files-tree-parts.ts";
+import { filesTreeParts, sidebarSwitch, sidebarSwitchList } from "./files-tree-parts.ts";
 import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 import { inWideWindow } from "./wide-window.ts";
 
@@ -25,10 +25,8 @@ export function sidebarTab(name: string): string {
   return `${sidebarSwitchList}${tabNamed(name)}`;
 }
 
-const filesTree = `${sidebarSwitchList}/following::*[@role='tree'][1]`;
-
-/** The first file row of the sidebar's Files tree: a folder's row says whether it is open. */
-export const firstFileRow = `(${filesTree}//*[@role='treeitem' and not(@aria-expanded)])[1]`;
+/** The first file row of the sidebar's Files tree, inside the switch's own panel (step 35's parts). */
+export const firstFileRow = `(${filesTreeParts.fileRows})[1]`;
 
 const moreActions = `starts-with(@aria-label, ${xpathString(kitText.moreActions.text)})`;
 
@@ -46,11 +44,17 @@ export function menuOf(triggerId: string): string {
 /** The toast region, a `section` named "Notifications" while it holds a toast. */
 const toastRegion = `//section[@aria-label=${xpathString(kitText.notifications.text)}]`;
 
-/** A toast card in the region: `role="alert"` for a danger toast, `role="status"` for the rest. */
-export const toastCard = `${toastRegion}//*[@role='status' or @role='alert']`;
+/** Whether a card holds the Copy path toast's words, so a toast an earlier step left up is not counted. */
+const saysCopyPath = `(contains(., ${xpathString(kitText.pathCopied.text)}) or contains(., ${xpathString(kitText.pathNotCopied.text)}))`;
 
-/** A toast's close button, named "Close" and the toast's title. */
-export const toastClose = `(${toastRegion}//button[starts-with(@aria-label, ${xpathString(kitText.closeToast.text)})])[1]`;
+/**
+ * The Copy path toast's card in the region: `role="alert"` for a danger toast, `role="status"`
+ * for the rest.
+ */
+export const toastCard = `${toastRegion}//*[(@role='status' or @role='alert') and ${saysCopyPath}]`;
+
+/** The Copy path toast's close button, named "Close" and the toast's title. */
+export const toastClose = `(${toastCard}//button[starts-with(@aria-label, ${xpathString(kitText.closeToast.text)})])[1]`;
 
 /** The New file dialog: the kit's Dialog is a native `<dialog>`, named by its `h2` title. */
 export const newFileDialogXpath = `//dialog[@open][.//h2[normalize-space()=${xpathString(kitText.newFile.text)}]]`;
