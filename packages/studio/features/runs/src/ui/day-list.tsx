@@ -112,7 +112,7 @@ function tagOf(row: RunRow, sample: boolean): string | undefined {
  * `inline-flex` wrapper can't be cut, so a long schedule on a phone's row would show as "…" alone.
  * As plain inline text it's cut like any other (HAL-12829).
  */
-function StartedByWithTooltip({
+export function StartedByWithTooltip({
   words,
   tooltip,
 }: {

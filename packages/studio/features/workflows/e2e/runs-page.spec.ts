@@ -14,9 +14,10 @@ for (const scheme of schemes) {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto("/runs-page.html");
-    await expect(page.getByText("No run open")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "All runs" })).toBeVisible();
     await page.screenshot({ path: `test-results/screenshots/runs-page-empty-${scheme}.png` });
-    await page.getByText("Support reply", { exact: true }).click();
+    // The run is a row of the list column and of the runs table; the list's comes first.
+    await page.getByText("Support reply", { exact: true }).first().click();
     await expect(page.getByRole("heading", { level: 1, name: "Run 7f3a2b" })).toBeVisible();
     await page.screenshot({ path: `test-results/screenshots/runs-page-open-${scheme}.png` });
   });
@@ -25,7 +26,8 @@ for (const scheme of schemes) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto("/runs-page.html?narrow=1");
-    await page.getByText("Support reply", { exact: true }).click();
+    // The run is a row of the list column and of the runs table; the list's comes first.
+    await page.getByText("Support reply", { exact: true }).first().click();
     await expect(page.getByRole("button", { name: "Back to Runs" })).toBeFocused();
     await expect(page.getByRole("heading", { level: 1, name: "Run 7f3a2b" })).toBeVisible();
     await page.screenshot({ path: `test-results/screenshots/runs-page-one-pane-${scheme}.png` });

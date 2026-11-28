@@ -75,6 +75,11 @@ function paneText(root: HTMLElement): string | null | undefined {
   return root.querySelector('[data-part="run-pane"]')?.textContent;
 }
 
+/** Whether the content pane shows the runs table, which it does while no run is open. */
+function paneShowsTable(root: HTMLElement): boolean {
+  return root.querySelector('[data-part="run-pane"] #runs-table-title') !== null;
+}
+
 verifies("runs.app-sources", () => {
   describe("RunsAppView", () => {
     it("lists a team's runs next to the workspace's", () => {
@@ -111,7 +116,7 @@ verifies("runs.app-sources", () => {
     it("shows a workspace run in the pane, and nothing yet for an agent's run", () => {
       const { root } = show(feedOf({ rows: [teamRow, workspaceRow] }));
       clickRow(root, "a1");
-      expect(paneText(root)).toContain("No run open");
+      expect(paneShowsTable(root)).toBe(true);
       clickRow(root, "w1");
       expect(paneText(root)).toBe("Run page w1");
     });
@@ -120,10 +125,10 @@ verifies("runs.app-sources", () => {
 
 verifies("runs.list-column", () => {
   describe("RunsAppView's two columns", () => {
-    it("shows the list column and an empty content pane while no run is open", () => {
+    it("shows the list column and the runs table in the content pane while no run is open", () => {
       const { root } = show(feedOf({ rows: [workspaceRow] }));
       expect(root.querySelector('[data-part="list-column"]')?.className).toContain("max-w-[380px]");
-      expect(paneText(root)).toBe("No run openPick a run in the list to see its steps.");
+      expect(paneShowsTable(root)).toBe(true);
     });
 
     it("marks the open run's row as the current one", () => {
@@ -136,12 +141,12 @@ verifies("runs.list-column", () => {
       expect(new Set(current)).toEqual(new Set(["w1"]));
     });
 
-    it("opens a run in a new tab on a Ctrl-click and leaves the pane empty", () => {
+    it("opens a run in a new tab on a Ctrl-click and leaves the table in the pane", () => {
       const { root, openInNewTab } = show(feedOf({ rows: [workspaceRow] }));
       const cell = root.querySelector<HTMLElement>('[data-row-id="w1"] td');
       act(() => cell?.dispatchEvent(new MouseEvent("click", { bubbles: true, ctrlKey: true })));
       expect(openInNewTab).toHaveBeenCalledWith({ kind: "run", hub: "acme", id: "w1" });
-      expect(paneText(root)).toContain("No run open");
+      expect(paneShowsTable(root)).toBe(true);
     });
 
     it("takes an agent's failed run out of Failed on a click, though nothing opens", () => {
@@ -150,7 +155,7 @@ verifies("runs.list-column", () => {
       expect(headings()).toContain("Failed");
       clickRow(root, "a1");
       expect(headings()).not.toContain("Failed");
-      expect(paneText(root)).toContain("No run open");
+      expect(paneShowsTable(root)).toBe(true);
     });
 
     it("shows the list, then the run alone with Back to Runs, moving the focus, in one pane", () => {
@@ -224,7 +229,7 @@ verifies("runs.list-column", () => {
       act(() => goToRuns.focus());
       act(() => goToRuns.click());
       expect(openPlace).not.toHaveBeenCalled();
-      expect(paneText(root)).toContain("No run open");
+      expect(paneShowsTable(root)).toBe(true);
       expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
         "w1",
       );
