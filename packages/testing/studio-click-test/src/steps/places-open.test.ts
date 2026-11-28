@@ -55,6 +55,13 @@ verifies("studio-click-test.places-open", () => {
       }
     });
 
+    it("passes Runs on its summary line when a connected account lists runs", async () => {
+      const studio = studioWithPlaces((name) =>
+        name === "Runs" ? "Runs Today: 1 run · 0 failed Costs No run open" : shownPage(name),
+      );
+      await expect(placesOpen.run(studio.context)).resolves.toEqual({ passed: true });
+    });
+
     it("checks every place after a failure, with the first failure's code", async () => {
       const studio = studioWithPlaces((name) => {
         if (name === "Inbox") return "Couldn't load the Inbox";
