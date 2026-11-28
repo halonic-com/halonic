@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-20278 (plan approved by Liam, PR 4; 6.8 decided on HAL-20274, Julian's additions on HAL-20278; stack B on HAL-20441)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uktKrFhgAUP8OD8cxdgAn+nPZHy/eMGg058BhJ6PNb2g7zQisO3dczVGYPJHYaqfOFt8b1nXLN6UucEebkDeCA==
 
 Condition 2 of section 6.8 of the HAL-17491 note: a page script can't
 approve a hire, a secret or any other risky item without the person's
