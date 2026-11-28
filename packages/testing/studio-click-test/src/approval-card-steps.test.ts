@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { decisionCard, hireCard, strategyCard } from "./card-fixtures.ts";
 import { cardStudio, statusOf } from "./card-studio.test-helper.ts";
 import { cardDecision, cardHire, cardStrategy, changesNote } from "./steps/approval-cards.ts";
+import { seedNames } from "./test-paperclip.ts";
 import { buttonLabels, screenText, words } from "./words.ts";
 
 /** The line a chat card says under it when it leaves Request changes to the Inbox. */
@@ -98,13 +99,15 @@ verifies("studio-click-test.approval-card-steps", () => {
   });
 
   describe("the decision step", () => {
-    it("picks an option on each surface and checks Paperclip decided it so", async () => {
+    it("opens the Inbox row bundling the agent's decisions and picks an option on each surface", async () => {
       const studio = cardStudio(
         decisionCard,
         { Blue: { status: "decided", result: { chosenOptionId: "blue" } } },
         { Green: { status: "decided", result: { chosenOptionId: "green" } } },
       );
       await expect(cardDecision.run(studio.context)).resolves.toEqual({ passed: true });
+      expect(studio.clicks).toContain(seedNames.agent);
+      expect(statusOf(studio, "inbox-decision")).toBe("decided");
     });
 
     it("fails as WRONG_ANSWER, naming the Messenger, when Paperclip has the other option", async () => {

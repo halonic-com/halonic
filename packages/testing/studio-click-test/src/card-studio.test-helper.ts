@@ -32,11 +32,12 @@ export function cardStudio(
       });
     }
   };
-  const row = fixture.record === "approval" ? fixture.inboxRow : inboxPrompt;
+  const row = rowOf(fixture);
   let otherFirst = otherRowFirst;
   const showList = () => {
-    main().text = `Needs you ${row}`;
+    main().text = `Needs you ${fixture.record === "decision" ? `2 cards from ${row}` : row}`;
     if (fixture.record === "approval") studio.elements.set(rowsContaining(row), 2);
+    if (fixture.record === "decision") studio.elements.set(rowsContaining(row), 1);
     button(studio, "main", row, () => {
       if (otherFirst) {
         otherFirst = false;
@@ -67,6 +68,17 @@ export function cardStudio(
     },
   });
   return studio;
+}
+
+/**
+ * What the Inbox copy's row holds, as the app shows it: an approval's type; for a decision the
+ * agent's name, as the Inbox bundles both copies into "2 cards from Acme Clicky" (run
+ * 46154356446); else the prompt.
+ */
+function rowOf(fixture: SeedFixture): string {
+  if (fixture.record === "approval") return fixture.inboxRow;
+  if (fixture.record === "decision") return seedNames.agent;
+  return promptOn(fixture, "Inbox");
 }
 
 /** The status the fake Paperclip has for the copy `id`, such as `inbox-yes-no`. */

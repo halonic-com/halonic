@@ -120,15 +120,28 @@ async function openInInbox(context: StepContext, fixture: SeedFixture): Promise<
     return { passed: false, code: "NO_INBOX", note: "No Inbox in Places." };
   }
   await clickWhenShown(context, screenText.backToInbox.text, backWaitMs);
+  const rowText = inboxRowOf(fixture);
   const opened =
-    fixture.record === "approval"
-      ? await openRowShowing(context, fixture.inboxRow, prompt)
-      : await clickRow(context, prompt, cardWaitMs);
+    rowText === undefined
+      ? await clickRow(context, prompt, cardWaitMs)
+      : await openRowShowing(context, rowText, prompt);
   if (opened) return { passed: true };
   const { text } = await waitForText(context, 0, () => undefined);
   // The shell log has the engine's lines up to the failure, for whoever looks into it next.
   const log = await context.shellLog();
   return { passed: false, code: "NO_ROW", note: `${lastWords(text)}\nshell.log:\n${log}` };
+}
+
+/**
+ * What the Inbox rows that may hold the copy say, when its row doesn't show its prompt. An
+ * approval's row says its type. A decision has no task, so the Inbox bundles an agent's open
+ * decisions into one row, "2 cards from Acme Clicky" (run 46154356446), and a lone one's row
+ * names the agent as the one asking too.
+ */
+export function inboxRowOf(fixture: SeedFixture): string | undefined {
+  if (fixture.record === "approval") return fixture.inboxRow;
+  if (fixture.record === "decision") return seedNames.agent;
+  return undefined;
 }
 
 /**
