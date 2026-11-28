@@ -214,6 +214,7 @@ const aboutFile = `${settingsFolder}/src/updater/about-text.ts`;
  */
 export const settingsText = {
   appearance: { text: "Appearance", file: `${settingsFolder}/src/feature.ts` },
+  themeLight: { text: "Light", file: appearanceFile },
   themeDark: { text: "Dark", file: appearanceFile },
   themeSystem: { text: "System", file: appearanceFile },
   formats: { text: "Formats", file: `${settingsFolder}/src/feature.ts` },

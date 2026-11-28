@@ -43,7 +43,7 @@ export const answerParts = {
 } as const;
 
 /**
- * Step 33 (HAL-20621): in a wide window, the demo's Support reply, started from the Inbox's New
+ * Step 34 (HAL-20621): in a wide window, the demo's Support reply, started from the Inbox's New
  * request with an invented email, waits at its review step, and that card's answers sit in one
  * right-aligned row at their natural width, the first, Approve, at the right end
  * (`inbox.wait-card`). It leaves the step waiting: no later step reads the Inbox.

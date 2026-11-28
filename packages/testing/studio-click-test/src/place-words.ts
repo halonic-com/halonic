@@ -22,13 +22,13 @@ export interface PlacePage {
 const placeNames = "packages/studio/shell/src/points/frame.ts";
 const changesWords = "packages/studio/features/source-control/src/changes-words.ts";
 
-/** The Inbox's New request, which opens its request form; step 33 clicks it too. */
+/** The Inbox's New request, which opens its request form; step 34 clicks it too. */
 export const newRequestText: TextInFile = {
   text: "New request",
   file: "packages/studio/features/inbox/src/ui/use-request-pane.tsx",
 };
 
-/** The desktop Runs place's name in the Places list; step 32 opens it with the keyboard. */
+/** The desktop Runs place's name in the Places list; step 33 opens it with the keyboard. */
 export const runsPlaceText: TextInFile = { text: "Runs", file: placeNames };
 
 /**

@@ -10,13 +10,16 @@ const noFill = "rgba(0, 0, 0, 0)";
 
 interface DrawnDialog {
   readonly listWidth?: string;
+  readonly holderWidth?: string;
+  readonly rows?: "both" | "current only";
   readonly otherFill?: string;
   readonly darkFill?: string;
 }
 
 /**
  * Settings on Appearance, with the list 34% of an 800px row and the current row filled, and its
- * Theme options setting the root's `data-theme` and the current row's fill for that theme.
+ * Theme options setting the root's `data-theme` and the current row's fill for that theme. System
+ * follows a computer set to dark.
  */
 function studioWithColumns(drawn: DrawnDialog = {}): FakeStudio {
   const studio = fakeStudio("Acme");
@@ -24,18 +27,24 @@ function studioWithColumns(drawn: DrawnDialog = {}): FakeStudio {
   button(studio, "main", screenText.places.text, () => {
     button(studio, "main", buttonLabels.settings.text, () => {
       button(studio, "main", settingsText.appearance.text, () => {
-        for (const part of [list, current, other]) studio.elements.set(part, 1);
+        const rows = drawn.rows === "current only" ? [current] : [current, other];
+        for (const part of [list, ...rows]) studio.elements.set(part, 1);
         studio.styles.set(`${list} width`, drawn.listWidth ?? "272px");
-        studio.styles.set(`${holder} width`, "800px");
+        studio.styles.set(`${holder} width`, drawn.holderWidth ?? "800px");
         studio.backgrounds.set(current, lightFill);
         studio.backgrounds.set(other, drawn.otherFill ?? noFill);
+        button(studio, "main", settingsText.themeLight.text, () => {
+          studio.rootAttributes.set("data-theme", "light");
+          studio.backgrounds.set(current, lightFill);
+        });
         button(studio, "main", settingsText.themeDark.text, () => {
           studio.rootAttributes.set("data-theme", "dark");
           studio.backgrounds.set(current, drawn.darkFill ?? darkFill);
         });
         button(studio, "main", settingsText.themeSystem.text, () => {
+          // The computer's theme, dark here, so the step can't read System as Light.
           studio.rootAttributes.delete("data-theme");
-          studio.backgrounds.set(current, lightFill);
+          studio.backgrounds.set(current, darkFill);
         });
       });
     });
@@ -45,10 +54,11 @@ function studioWithColumns(drawn: DrawnDialog = {}): FakeStudio {
 
 verifies("studio-click-test.settings-two-columns-look", () => {
   describe("the Settings two-columns step", () => {
-    it("passes on a 34% list and a filled current row in light and Dark, then picks System", async () => {
+    it("passes on a 34% list and a filled current row in Light and Dark, then picks System", async () => {
       const studio = studioWithColumns();
       await expect(settingsTwoColumns.run(studio.context)).resolves.toEqual({ passed: true });
-      expect(studio.clicks.slice(-2)).toEqual([
+      expect(studio.clicks.slice(-3)).toEqual([
+        settingsText.themeLight.text,
         settingsText.themeDark.text,
         settingsText.themeSystem.text,
       ]);
@@ -61,6 +71,16 @@ verifies("studio-click-test.settings-two-columns-look", () => {
       );
       expect(outcome).toMatchObject({ passed: false, code: "LIST_COLUMN_WIDTH" });
       expect(outcome.passed ? "" : outcome.note).toContain("160px of 800px");
+    });
+
+    it("passes on a 208px list in a 500px row, where 34% would be less", async () => {
+      const studio = studioWithColumns({ listWidth: "208px", holderWidth: "500px" });
+      await expect(settingsTwoColumns.run(studio.context)).resolves.toEqual({ passed: true });
+    });
+
+    it("passes on a 380px list in a 1200px row, where 34% would be more", async () => {
+      const studio = studioWithColumns({ listWidth: "380px", holderWidth: "1200px" });
+      await expect(settingsTwoColumns.run(studio.context)).resolves.toEqual({ passed: true });
     });
 
     it("fails as ROW_FILL, naming both colours, when another row is filled too", async () => {
@@ -85,6 +105,15 @@ verifies("studio-click-test.settings-two-columns-look", () => {
       button(studio, "main", settingsText.appearance.text);
       const outcome = await settingsTwoColumns.run(studio.context);
       expect(outcome).toMatchObject({ passed: false, code: "NO_LIST_COLUMN" });
+      expect(outcome.passed ? "" : outcome.note).toContain("Screen: Acme");
+    });
+
+    it("fails as NO_SECTION_ROWS, with the screen's text, when the list has only the current row", async () => {
+      const outcome = await settingsTwoColumns.run(
+        studioWithColumns({ rows: "current only" }).context,
+      );
+      expect(outcome).toMatchObject({ passed: false, code: "NO_SECTION_ROWS" });
+      expect(outcome.passed ? "" : outcome.note).toContain("Screen: Acme");
     });
   });
 });
