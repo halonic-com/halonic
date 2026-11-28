@@ -18,6 +18,7 @@ import { inboxAnswer } from "./steps/inbox-answer.ts";
 import { messengerEmpty } from "./steps/messenger-empty.ts";
 import { messengerSend } from "./steps/messenger-send.ts";
 import { placesOpen } from "./steps/places-open.ts";
+import { quickAskBoxLook } from "./steps/quick-ask-look.ts";
 import { restartKeepsSignIn } from "./steps/restart-sign-in.ts";
 import { overviewRecap, searchTask } from "./steps/search-overview.ts";
 import { settingsFormats, settingsTheme } from "./steps/settings-display.ts";
@@ -30,7 +31,8 @@ import { windowTabs } from "./steps/window-tabs.ts";
  * The click test's steps, in the order a person takes them: HAL-17897's phase 1 list up to
  * Connect Paperclip, then Connections (HAL-18868), with a full restart that must keep the
  * sign-in after the connection row (HAL-19839), and the rest of the phase 1 list on the
- * connected Paperclip (HAL-18354), with the card kinds after the Start menu shortcuts, which want
+ * connected Paperclip (HAL-18354), with quick ask's box after the Start menu shortcuts, as it needs
+ * the connected agents for its chip (HAL-20826), and the card kinds after them, which want
  * the Inbox empty, each seeding its own cards (HAL-19002), and Disconnect last of them, then the
  * Studio basics (HAL-18866), with Close workspace last of them because it leaves the window on
  * Welcome, then Settings (HAL-18867), whose steps open the demo again first, then the Try it steps (HAL-18869),
@@ -54,6 +56,7 @@ export const clickTestSteps: readonly Step[] = [
   searchTask,
   overviewRecap,
   startMenuShortcuts,
+  quickAskBoxLook,
   cardYesNo,
   cardPlan,
   cardOneQuestion,

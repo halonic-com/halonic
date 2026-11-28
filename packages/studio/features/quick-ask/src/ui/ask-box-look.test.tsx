@@ -40,6 +40,20 @@ verifies("quick-ask.box-look", () => {
       }
     });
 
+    // Light keeps the shadow's own edge; dark draws the message box's edge as a ring (HAL-20825).
+    it("rings the box in the message box's edge colour in dark only, keeping its corner", async () => {
+      const { page } = await openBox(new FakeMessenger([chat(chief)]));
+      const classes = page.querySelector('[role="dialog"]')?.className.split(" ") ?? [];
+
+      expect(classes).toEqual(
+        expect.arrayContaining([
+          "rounded-panel",
+          "ring-1",
+          "ring-[color:light-dark(transparent,var(--color-border-prompt))]",
+        ]),
+      );
+    });
+
     it("puts the question in the kit's message box, with the chip and Ask inside and the focus in the text", async () => {
       const { page } = await openBox(new FakeMessenger([chat(chief)]));
       const messageBox = textBox(page).closest(".rounded-composer");
@@ -51,6 +65,28 @@ verifies("quick-ask.box-look", () => {
       ).not.toBeNull();
       expect(messageBox?.contains(askButton(page))).toBe(true);
       expect(document.activeElement).toBe(textBox(page));
+    });
+
+    // The chip is drawn first only because the kit puts `trailing` straight into the message
+    // box's flex row and `leading={null}` leaves its start padding off (Nora on #6888).
+    it("draws the agent chip before the text, straight in the message box's row", async () => {
+      const { page } = await openBox(new FakeMessenger([chat(chief)]));
+      const messageBox = textBox(page).closest(".rounded-composer");
+      const chip = page.querySelector('button[aria-label="Ask Chief. Change agent."]');
+
+      expect(chip?.parentElement).toBe(messageBox);
+      expect(chip?.classList.contains("order-first")).toBe(true);
+      expect(messageBox?.classList.contains("ps-4")).toBe(false);
+    });
+
+    it("keeps the chip by a long question's first line and Ask by its last", async () => {
+      const { page } = await openBox(new FakeMessenger([chat(chief)]));
+      await typeIn(textBox(page), "Where are we?\nAnd what's next?\nWho checks it?");
+      const chip = page.querySelector('button[aria-label="Ask Chief. Change agent."]');
+
+      expect(chip?.classList.contains("self-start")).toBe(true);
+      expect(chip?.classList.contains("mt-0.5")).toBe(true);
+      expect(askButton(page).classList.contains("self-start")).toBe(false);
     });
   });
 });

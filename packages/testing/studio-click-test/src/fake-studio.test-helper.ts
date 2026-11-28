@@ -151,8 +151,9 @@ export function fakeStudio(text = ""): FakeStudio {
       paperclipUrl: "http://127.0.0.1:3199",
       sleep: async () => undefined,
       shellLog: async () => "engine: crashed 3 times in 5 minutes",
-      openShortcut: async (name: string) => {
-        studio.shortcuts.push(name);
+      // A start with arguments is kept as the name and its arguments, such as "Halonic --app ask".
+      openShortcut: async (name: string, args: readonly string[] = []) => {
+        studio.shortcuts.push([name, ...args].join(" "));
       },
       mainWindow: "main",
       approveSignIn: async () => studio.approval,

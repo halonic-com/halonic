@@ -37,22 +37,23 @@ export interface AskBoxProps {
 
 /**
  * The 640 px box on the new design's panel: the theme's 8 px panel corner on the raised surface,
- * with the dialogs' shadow and its 1 px edge, because it floats over any app (HAL-20746). On a
- * screen narrower than the box and its 32 px margin, the margin is 16 px. It never grows past its
- * window, so a long answer scrolls the exchanges instead of pushing the footer out of sight
- * (HAL-19213).
+ * with the dialogs' shadow and its 1 px edge, because it floats over any app (HAL-20746). In dark
+ * that edge is the message box's, as a ring so the corner stays, since the shadow's own edge is
+ * lost on a dark desktop (HAL-20825); light keeps the shadow's. On a screen narrower than the box
+ * and its 32 px margin, the margin is 16 px. It never grows past its window, so a long answer
+ * scrolls the exchanges instead of pushing the footer out of sight (HAL-19213).
  */
 const boxClasses =
-  "flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-panel bg-surface-raised text-fg shadow-3";
+  "flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-panel bg-surface-raised text-fg shadow-3 ring-1 ring-[color:light-dark(transparent,var(--color-border-prompt))]";
 
 /**
- * The agent chip's outline: a 32 px pill drawn before the text box, 2 px up from the message box's
- * last line so it centres on the 36 px round Ask. The loading skeleton takes it too, so when the
- * agents arrive the text box moves only by the name's width minus the skeleton's 64 px name bar
- * (HAL-20415).
+ * The agent chip's outline: a 32 px pill drawn before the text box, 2 px down from the message
+ * box's top so it centres on the first line, as a long question grows down from there (HAL-20825).
+ * The loading skeleton takes it too, so when the agents arrive the text box moves only by the
+ * name's width minus the skeleton's 64 px name bar (HAL-20415).
  */
 const agentChipShape =
-  "order-first mb-0.5 flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border py-0.5 ps-0.5 pe-2";
+  "order-first self-start mt-0.5 flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border py-0.5 ps-0.5 pe-2";
 
 /** The agent chip: the outline with the agent's picture, its name and a chevron (design section 4). */
 const agentChipClasses = `${agentChipShape} text-body text-fg hover:bg-surface-muted focus-ring`;
