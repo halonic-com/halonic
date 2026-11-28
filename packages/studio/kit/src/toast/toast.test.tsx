@@ -210,7 +210,9 @@ verifies("kit.toast", () => {
     const group = first.parentElement;
     expect(second.parentElement).toBe(group);
     expect(group?.firstElementChild).toBe(first);
-    expect(group?.className).toContain("flex basis-full flex-wrap gap-x-2 gap-y-3.5");
+    // Both pills carry the 6px pull, so 20px of row gap less 12px leaves 8px between wrapped rows,
+    // and on touch their hit areas meet in that gap instead of the second covering the first.
+    expect(group?.className).toContain("flex basis-full flex-wrap gap-x-2 gap-y-5");
     expect(group?.parentElement?.className).toContain("flex-wrap items-start");
     // The pills keep their 6px pull, so the outer row gap still leaves 8px under the text.
     expect(first.className).toContain("-my-1.5");

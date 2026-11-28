@@ -149,7 +149,7 @@ function Actions({
   if (shown.length < 2) {
     return buttons;
   }
-  return <div className="flex basis-full flex-wrap gap-x-2 gap-y-3.5">{buttons}</div>;
+  return <div className="flex basis-full flex-wrap gap-x-2 gap-y-5">{buttons}</div>;
 }
 
 function lifetime(toast: Toast): number | null {
