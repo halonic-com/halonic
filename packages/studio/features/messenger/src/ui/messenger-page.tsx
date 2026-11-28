@@ -7,6 +7,7 @@ import {
   type EngineWords,
   engineWords,
   engineWordsOf,
+  focusedPanelClass,
   NoConnections,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
@@ -122,7 +123,7 @@ export function MessengerPage({
     back();
   };
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 bg-app-panel">
+    <div className={pageClass}>
       {/* The page's heading and status come first, so they read before the list, and stay while
           one pane shows the chat; both are out of the flow, so they take no room. */}
       <h1 className="sr-only">{messengerWords.title}</h1>
@@ -194,6 +195,12 @@ export function MessengerPage({
  * list-column size (`kit.list-column`), past a 1px line from the chat.
  */
 const desktopListColumnClass = `${listColumnClass} flex shrink-0 flex-col border-e border-border`;
+
+/**
+ * The page: the window's one framed panel, 12px corners and a 1px line on the frame, that holds
+ * the list column and the chat (`messenger.framed-list`, `shell.focused-apps`).
+ */
+const pageClass = `flex h-full min-h-0 min-w-0 flex-1 ${focusedPanelClass}`;
 
 /** The content pane that holds the open chat: the rest of the width, on the panel colour. */
 const contentPaneClass = "flex min-h-0 min-w-0 flex-1 flex-col bg-app-panel";
@@ -305,7 +312,7 @@ function useOnePane(
 
 /**
  * The Messenger's focused app, Halonic Messenger (`shell.focused-apps`): the open workspace's
- * Messenger, with its list on the window's frame and the open chat as the one panel.
+ * Messenger, with its list column and the open chat on the window's one framed panel.
  */
 export function MessengerWindow({ context }: PlaceViewProps) {
   const onConnect = connectFrom(context);

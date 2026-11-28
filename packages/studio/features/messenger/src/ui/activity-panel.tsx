@@ -41,7 +41,8 @@ const placeClass: Record<PanelPlace, string> = {
   // Beside the chat past a 1px line, as the list column is (`messenger.framed-list`).
   beside: "w-80 shrink-0 border-s border-border bg-app-panel",
   sheet: `absolute inset-y-0 end-0 z-10 w-80 shadow-2 ${focusedPanelClass}`,
-  place: `min-w-0 flex-1 ${focusedPanelClass}`,
+  // Instead of the chat, inside the page's framed panel, so no second edge.
+  place: "min-w-0 flex-1 bg-app-panel",
 };
 
 /**

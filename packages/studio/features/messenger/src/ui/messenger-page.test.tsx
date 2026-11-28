@@ -264,7 +264,7 @@ verifies("messenger.conversations", () => {
 });
 
 verifies("messenger.framed-list", () => {
-  it("shows the list column at the kit's size and the open chat beside it past a 1px line", async () => {
+  it("shows one framed page with the list column at the kit's size and the chat past a 1px line", async () => {
     const { messaging } = twoChiefs();
     const page = await openMessenger(messaging);
     await openAcmeChat(page);
@@ -275,8 +275,12 @@ verifies("messenger.framed-list", () => {
     expect(list.className.split(" ")).toEqual(
       expect.arrayContaining([...listColumnClass.split(" "), "border-e", "border-border"]),
     );
-    expect(pageClasses).toContain("bg-app-panel");
+    expect(pageClasses).toEqual(
+      expect.arrayContaining(["rounded-lg", "border", "border-border", "bg-app-panel"]),
+    );
     expect(pageClasses).not.toContain("gap-2");
+    const rows = list.querySelector("[data-chats-scroll]") as HTMLElement;
+    expect(rows.className.split(" ")).toContain("px-2");
     const chatClasses = chat.className.split(" ");
     expect(chatClasses).toContain("bg-app-panel");
     expect(chatClasses).not.toContain("rounded-lg");

@@ -118,7 +118,7 @@ export function ChatsColumn({
       )}
       {/* Only the rows scroll, inside the sidebar; the search and Needs you stay put
           (`messenger.chats-scroll`). */}
-      <div data-chats-scroll="" className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-2">
+      <div data-chats-scroll="" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pt-2">
         <ChatsLoad loaded={rows !== undefined} error={failure} words={words} onRetry={onRetry}>
           <ConversationList
             rows={found === undefined ? rows : found.map((each) => each.row)}

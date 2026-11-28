@@ -1,7 +1,7 @@
 import { createElement, type ReactNode, type Ref } from "react";
 
 /**
- * The window a {@link FramedPanel} sits in: a focused app's (Messenger, Inbox), white or slate-900
+ * The window a {@link FramedPanel} sits in: a focused app's (Inbox), white or slate-900
  * on the slate frame, or Studio's, the page's `surface` on the halo.
  */
 export type FramedPanelTone = "app" | "studio";
@@ -34,7 +34,7 @@ export interface SidebarFrameProps {
 }
 
 /**
- * The framed sidebar the Messenger, the Inbox and Studio share (`kit.framed-sidebar`, HAL-19923):
+ * The framed sidebar the Inbox and Studio share (`kit.framed-sidebar`, HAL-19923):
  * the sidebar on the window's frame and, 8px beside it, the content on its own framed panel.
  *
  * @example
