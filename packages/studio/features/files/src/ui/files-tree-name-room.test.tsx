@@ -164,6 +164,28 @@ verifies("files.ui.tree-view", () => {
   });
 });
 
+verifies("files.ui.tree-search", () => {
+  it("doesn't measure the names again when only the focus moves during a search", async () => {
+    const page = await showRoutines();
+    const input = page.querySelector<HTMLInputElement>('input[type="search"]');
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      set?.call(input, "routine");
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await settled();
+    const measured = vi.mocked(HTMLElement.prototype.getBoundingClientRect).mock.calls.length;
+    const stop = () => page.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+    const before = stop();
+    act(() => {
+      before?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    });
+    await settled();
+    expect(stop()).not.toBe(before);
+    expect(vi.mocked(HTMLElement.prototype.getBoundingClientRect).mock.calls.length).toBe(measured);
+  });
+});
+
 verifies("files.ui.tree-rows", () => {
   it("cuts the open file's name at its medium weight's widths, so its end stays in sight", async () => {
     vi.spyOn(window, "getComputedStyle").mockImplementation(fakeStyle);

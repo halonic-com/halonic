@@ -17,6 +17,8 @@ export interface TreeSearch {
   readonly searching: boolean;
   /** How many files match; 0 while nothing is searched. */
   readonly matches: number;
+  /** Whether the search leaves a file out of the tree; false while nothing is searched. */
+  readonly hides: (path: string) => boolean;
   /** The rows to draw: the matching files under their folders, or the whole tree. */
   readonly roots: readonly TreeNode[];
   /** The whole tree, whatever is searched: where a path another feature asks for is looked up. */
@@ -58,8 +60,13 @@ export function useTreeSearch(
     setClosed(noFolders);
   }, []);
 
+  const hides = useCallback(
+    (path: string) => text !== "" && matchingFiles([path], text).length === 0,
+    [text],
+  );
+
   // The open folders are kept the same while only the focus moves, so the tree doesn't work out
-  // and measure its rows again on every arrow key.
+  // and measure its rows again on every arrow key: see `onStateChange`.
   const searchedExpanded = useMemo(
     () => (found === undefined ? undefined : foldersWithout(found.folders, closed)),
     [found, closed],
@@ -75,10 +82,12 @@ export function useTreeSearch(
         setState(next);
         return;
       }
-      setClosed(foldersWithout(found.folders, next.expanded));
+      // A move of the focus hands back the set the tree was given: no folder opened or closed.
+      if (next.expanded !== searchedExpanded)
+        setClosed(foldersWithout(found.folders, next.expanded));
       setState({ ...next, expanded: kept });
     },
-    [found, kept, setState],
+    [found, kept, searchedExpanded, setState],
   );
 
   return {
@@ -86,6 +95,7 @@ export function useTreeSearch(
     type,
     searching: found !== undefined,
     matches: found?.files ?? 0,
+    hides,
     roots: found?.roots ?? allRoots,
     allRoots,
     state: shownState,

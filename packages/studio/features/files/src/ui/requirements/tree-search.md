@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-20744 (P5 of the HAL-20617 build plan, the Code screen); the search field of the two-column layout, `kit.search-field`
 
-The Files view shall show a search field named "Search files" above the file tree. While the field holds text, the view shall show only the files whose path holds that text, whatever the case, each under its folders with those folders open, and shall say how many files match in a status line, such as "3 files". When the person closes a folder while the field holds text, the folder shall stay closed until the text changes. If no file matches, then the view shall show "No files match “*text*”." and "Check the spelling, or search for part of the name." in place of the tree. When the field is emptied, or the person presses Escape in it, the view shall show the whole tree again with the folders the person had opened before. When another feature asks the view to show a path, the view shall empty the field first. When a file's tab asks to rename the file (`files.ui.file-tab-header`), the view shall empty the field and open the folders above that file, so the file's row shows its name field.
+The Files view shall show a search field named "Search files" above the file tree. While the field holds text, the view shall show only the files whose path holds that text, whatever the case, each under its folders with those folders open, and shall say how many files match in a status line, such as "3 files". When the person closes a folder while the field holds text, the folder shall stay closed until the text changes. If no file matches, then the view shall show "No files match “*text*”." and "Check the spelling, or search for part of the name." in place of the tree. When the field is emptied, or the person presses Escape in it, the view shall show the whole tree again with the folders the person had opened before. When another feature asks the view to show a path, the view shall empty the field first. When a file's tab asks to rename the file (`files.ui.file-tab-header`), the view shall empty the field and open the folders above that file, so the file's row shows its name field. When a rename, its Undo or the Undo of a delete gives the focus to a file whose path the text doesn't hold, the view shall empty the field and open the folders above that file, so the focus lands on its row (`files.ui.rename-file`, `files.ui.delete-file`).
 
 ## Examples
 
@@ -29,3 +29,11 @@ The Files view shall show a search field named "Search files" above the file tre
   then the field is empty and the row `guide.md` shows.
 - Given no folder is open, "total" is typed and the tab of `src/checkout/totals.ts` asks to rename it,
   then the field is empty, `src` and `checkout` are open and the row `totals.ts` shows its name field.
+- Given "total" is typed and the person renames `src/checkout/totals.ts` to `sum.ts` with Enter,
+  then the field is empty, `src` and `checkout` are open and the focus is on the row `sum.ts`; when they then type "c" in the field, the focus stays in the field.
+- Given "total" is typed and the person renames `src/checkout/totals.ts` to `totals-2.ts` with Enter,
+  then the field still holds "total" and the focus is on the row `totals-2.ts`.
+- Given "total" is typed, the person deletes `src/checkout/totals.ts`, types "cart" and picks Undo,
+  then the field is empty and the focus is on the row `totals.ts`.
+- Given "total" is typed, the person renames `totals.ts` to `totals-2.ts`, types "s-2" and picks Undo,
+  then the field is empty and the focus is on the row `totals.ts`.

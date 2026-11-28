@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
+import { type ToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import type { FilesHost } from "../files-host.ts";
 import { askRename, takeRenameAsked } from "../rename-request.ts";
 import { requestFilesReveal, takeFilesRevealRequests } from "../reveal-request.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { contextHost, contextOf, listing, rowNamed, settled } from "../test-support/sidebar.ts";
+import { forgetAllTrashed } from "../trash.ts";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
 afterEach(() => {
@@ -14,6 +16,7 @@ afterEach(() => {
   // A request no view took must not reach the next test's view.
   takeFilesRevealRequests(() => "shown")();
   takeRenameAsked();
+  forgetAllTrashed();
 });
 
 const acme = [
@@ -39,12 +42,68 @@ function field(page: HTMLElement): HTMLInputElement {
   return input;
 }
 
-async function type(page: HTMLElement, value: string): Promise<void> {
+async function typeInto(input: HTMLInputElement | null, value: string): Promise<void> {
   const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
   await act(async () => {
-    set?.call(field(page), value);
-    field(page).dispatchEvent(new Event("input", { bubbles: true }));
+    set?.call(input, value);
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
   });
+}
+
+const type = (page: HTMLElement, value: string) => typeInto(field(page), value);
+
+async function key(target: Element | null, name: string): Promise<void> {
+  await act(async () => {
+    target?.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true }));
+  });
+  await settled();
+}
+
+/** The view over a folder that changes: a rename or a delete is listed again, and Undo puts it back. */
+async function showLive(toasts?: ToastStore): Promise<{ page: HTMLElement }> {
+  let paths = acme;
+  let notify = () => {};
+  const change = (next: string[]) => {
+    const before = paths;
+    paths = next;
+    notify();
+    return async () => {
+      paths = before;
+      notify();
+    };
+  };
+  const host: FilesHost = {
+    ...contextHost(),
+    list: async () => listing(paths),
+    subscribe: (listener) => {
+      notify = listener;
+      return () => {};
+    },
+    rename: async (from, to) => {
+      const undo = change(paths.map((path) => (path === from ? to : path)));
+      return { places: 0, owners: [], undo };
+    },
+    remove: async (path) => {
+      const undo = change(paths.filter((other) => other !== path));
+      return { places: 0, undo };
+    },
+  };
+  const view = <FilesSidebarView context={contextOf(host)} />;
+  const page = render(
+    toasts === undefined ? view : <ToastStoreProvider store={toasts}>{view}</ToastStoreProvider>,
+  );
+  await settled();
+  return { page };
+}
+
+/** Renames the search result `totals.ts` in its row, with Enter. */
+async function renameTotals(page: HTMLElement, name: string): Promise<void> {
+  const row = rowNamed(page, "src/checkout/totals.ts");
+  act(() => row.click());
+  await key(row, "F2");
+  const input = row.querySelector<HTMLInputElement>('input:not([type="search"])');
+  await typeInto(input, name);
+  await key(input, "Enter");
 }
 
 function pressEscape(page: HTMLElement): KeyboardEvent {
@@ -162,32 +221,64 @@ verifies("files.ui.tree-search", () => {
   });
 
   it("moves focus to the next row the search shows after Delete on a result", async () => {
-    let paths = acme;
-    let notify = () => {};
-    const host: FilesHost = {
-      ...contextHost(),
-      list: async () => listing(paths),
-      subscribe: (listener) => {
-        notify = listener;
-        return () => {};
-      },
-      remove: async (path) => {
-        paths = paths.filter((other) => other !== path);
-        notify();
-        return { places: 0, undo: async () => {} };
-      },
-    };
-    const page = render(<FilesSidebarView context={contextOf(host)} />);
-    await settled();
+    const { page } = await showLive();
     await type(page, "total");
     const row = rowNamed(page, "src/checkout/totals.ts");
     act(() => row.click());
-    await act(async () => {
-      row.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
-    });
-    await settled();
+    await key(row, "Delete");
     expect(shownPaths(page)).toEqual(["tests", "tests/subtotal.test.ts"]);
     expect(document.activeElement).toBe(rowNamed(page, "tests"));
+  });
+
+  it("ends the search when a result is renamed to a name the search doesn't hold", async () => {
+    const { page } = await showLive();
+    await type(page, "total");
+    await renameTotals(page, "sum.ts");
+    expect(field(page).value).toBe("");
+    expect(document.activeElement).toBe(rowNamed(page, "src/checkout/sum.ts"));
+    // The focus was given once: typing in the field later doesn't lose the caret to the row.
+    act(() => field(page).focus());
+    await type(page, "c");
+    await settled();
+    expect(document.activeElement).toBe(field(page));
+  });
+
+  it("keeps the search when a renamed result still matches it", async () => {
+    const { page } = await showLive();
+    await type(page, "total");
+    await renameTotals(page, "totals-2.ts");
+    expect(field(page).value).toBe("total");
+    expect(document.activeElement).toBe(rowNamed(page, "src/checkout/totals-2.ts"));
+  });
+
+  it("ends the search when Undo gives a renamed file back a name the search doesn't hold", async () => {
+    const toasts = { show: vi.fn() };
+    const { page } = await showLive(toasts as unknown as ToastStore);
+    await type(page, "total");
+    await renameTotals(page, "totals-2.ts");
+    await type(page, "s-2");
+    await act(async () => {
+      toasts.show.mock.calls[0]?.[0].action.onClick();
+    });
+    await settled();
+    expect(field(page).value).toBe("");
+    expect(document.activeElement).toBe(rowNamed(page, "src/checkout/totals.ts"));
+  });
+
+  it("ends the search when Undo brings back a deleted file the search doesn't show", async () => {
+    const toasts = { show: vi.fn() };
+    const { page } = await showLive(toasts as unknown as ToastStore);
+    await type(page, "total");
+    const row = rowNamed(page, "src/checkout/totals.ts");
+    act(() => row.click());
+    await key(row, "Delete");
+    await type(page, "cart");
+    await act(async () => {
+      toasts.show.mock.calls[0]?.[0].action.onClick();
+    });
+    await settled();
+    expect(field(page).value).toBe("");
+    expect(document.activeElement).toBe(rowNamed(page, "src/checkout/totals.ts"));
   });
 
   const nameField = (page: HTMLElement, path: string) =>

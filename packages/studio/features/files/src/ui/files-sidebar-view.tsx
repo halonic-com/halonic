@@ -131,6 +131,20 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     return subscribeRenameAsked(takeAsk);
   }, [typeSearch]);
 
+  // A renamed or restored file takes the focus at its row. Where the search would leave that row
+  // out, the search ends and the folders above the file open, so the focus has a row to land on
+  // and doesn't wait to jump out of the search field later (`files.ui.tree-search`).
+  const hidesNow = useRef(search.hides);
+  hidesNow.current = search.hides;
+  const showFile = useCallback(
+    (path: string) => {
+      if (!hidesNow.current(path)) return;
+      typeSearch("");
+      setState((was) => ({ ...was, expanded: revealFile(was.expanded, path) }));
+    },
+    [typeSearch],
+  );
+
   const focusRow = useCallback((path: string | undefined) => {
     if (path === undefined) return;
     pendingFocus.current = path;
@@ -181,17 +195,19 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         // A file that was open stays open under its new name; a closed one is not opened.
         moved: (to) => {
           setRenaming(undefined);
+          showFile(to);
           setReveal({ path: to, focus: !left() });
           if (activeNow.current === from) context.openItem?.(fileItem(to));
         },
         movedBack: (back) => {
+          showFile(back);
           setReveal({ path: back, focus: true });
           if (activeNow.current === renamedPath(from, name)) context.openItem?.(fileItem(back));
         },
       });
       return refused;
     },
-    [context, host, toasts],
+    [context, host, toasts, showFile],
   );
 
   // The refusal a row's focus can't reach: a toast that stays says it, and the row says what to try.
@@ -241,11 +257,14 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
         const target = (rows[index + 1] ?? rows[index - 1])?.node.path ?? rows[index]?.parent;
         void removeFile(host, toasts, intent.path, {
           removed: () => focusRow(target),
-          restored: () => focusRow(intent.path),
+          restored: () => {
+            showFile(intent.path);
+            focusRow(intent.path);
+          },
         });
       }
     },
-    [context, host, toasts, writeClipboard, roots, shownExpanded, focusRow],
+    [context, host, toasts, writeClipboard, roots, shownExpanded, focusRow, showFile],
   );
 
   if (loaded.kind === "loading") {
