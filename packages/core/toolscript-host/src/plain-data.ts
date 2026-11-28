@@ -1,4 +1,8 @@
-import { isToolScriptSecretHandle, type ToolScriptIsolateValue } from "@halonicjs/ports";
+import {
+  isToolScriptSecretHandle,
+  type ToolScriptData,
+  type ToolScriptIsolateValue,
+} from "@halonicjs/ports";
 
 /**
  * Freezes a value and everything inside it, in place, and returns it. The
@@ -10,6 +14,20 @@ export function deepFreeze<Value extends ToolScriptIsolateValue>(value: Value): 
   if (typeof value !== "object" || value === null || isToolScriptSecretHandle(value)) return value;
   for (const inner of Object.values(value)) deepFreeze(inner as ToolScriptIsolateValue);
   return Object.freeze(value);
+}
+
+/**
+ * A deep-frozen copy of plain data, so freezing never touches the original
+ * (such as the artifact header's own `ui.preview`).
+ */
+export function frozenCopy<Value extends ToolScriptData>(value: Value): Value {
+  return deepFreeze(copyPlain(value) as ToolScriptIsolateValue) as Value;
+}
+
+function copyPlain(value: ToolScriptData): ToolScriptData {
+  if (typeof value !== "object" || value === null) return value;
+  if (Array.isArray(value)) return value.map(copyPlain);
+  return Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, copyPlain(inner)]));
 }
 
 /**

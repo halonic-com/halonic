@@ -6,6 +6,29 @@ import { expandTemplate } from "./touches.ts";
 
 const setNote = (ctx: AcmeContext, args: unknown) => ctxCall(ctx, "acme.setNote", args);
 
+/** `acme.set-note@1`, recording each name it is sent. */
+function recordingNote() {
+  const sent: string[] = [];
+  const capability = acmeCapability("acme.set-note@1", {
+    call: async (args) => {
+      sent.push(String((args as { name: string }).name));
+      return null;
+    },
+  });
+  return { sent, capability };
+}
+
+/** Batch items that set one note per name. */
+const noteItems = (...names: string[]) =>
+  names.map((name) => ({ use: "acme.set-note@1", args: { name } }));
+
+/** Waits for every call, so the test sees all that was sent, then fails with the first refusal. */
+async function settleAll(calls: readonly Promise<unknown>[]): Promise<void> {
+  const results = await Promise.allSettled(calls);
+  const failed = results.find((result) => result.status === "rejected");
+  if (failed !== undefined) throw failed.reason;
+}
+
 describe("batches, touches and previews", () => {
   verifies("toolscript-host.batch", () => {
     it("confirms a batch once and sends its writes in order", async () => {
@@ -69,6 +92,36 @@ describe("batches, touches and previews", () => {
       expect(result).toMatchObject({ ok: false, reason: "limit.calls" });
       expect(confirmed).toHaveLength(2);
       expect(sent).toEqual(["a", "b", "c"]);
+    });
+
+    it("counts single calls started together after a batch, stopping at the call limit", async () => {
+      const { sent, capability } = recordingNote();
+      const { result, confirmed } = await runAcme(
+        async (ctx) => {
+          await ctxCall(ctx, "batch", noteItems("a", "b"));
+          await settleAll([setNote(ctx, { name: "c" }), setNote(ctx, { name: "d" })]);
+        },
+        { capabilities: [capability], header: { limits: { calls: 3 } } },
+      );
+      expect(result).toMatchObject({ ok: false, reason: "limit.calls" });
+      expect(confirmed).toHaveLength(2);
+      expect(sent).toEqual(["a", "b", "c"]);
+    });
+
+    it("counts batches started together, stopping at the call limit", async () => {
+      const { sent, capability } = recordingNote();
+      const { result, confirmed } = await runAcme(
+        async (ctx) => {
+          await settleAll([
+            ctxCall(ctx, "batch", noteItems("a", "b")),
+            ctxCall(ctx, "batch", noteItems("c", "d")),
+          ]);
+        },
+        { capabilities: [capability], header: { limits: { calls: 3 } } },
+      );
+      expect(result).toMatchObject({ ok: false, reason: "limit.calls" });
+      expect(confirmed).toHaveLength(1);
+      expect(sent).toEqual(["a", "b"]);
     });
 
     it("refuses an irreversible write in a batch before confirm", async () => {
@@ -166,6 +219,19 @@ describe("batches, touches and previews", () => {
         fromHeader: [card],
         fromCapability: ["Set note b"],
       });
+    });
+
+    it("hands confirm a deep-frozen copy of the header's preview", async () => {
+      const card = { component: "card", body: "Sets a note" };
+      const { confirmed } = await runAcme((ctx) => setNote(ctx, { name: "b" }), {
+        capabilities: [acmeCapability("acme.set-note@1")],
+        header: { ui: { preview: [card] } },
+      });
+      const [write] = confirmed[0] ?? [];
+      const fromHeader = (write as ToolScriptHostWrite).preview?.fromHeader ?? [];
+      expect(Object.isFrozen(fromHeader)).toBe(true);
+      expect(Object.isFrozen(fromHeader[0])).toBe(true);
+      expect(fromHeader[0]).not.toBe(card);
     });
   });
 });

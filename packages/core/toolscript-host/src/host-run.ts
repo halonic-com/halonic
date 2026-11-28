@@ -11,7 +11,7 @@ import {
 } from "@halonicjs/ports";
 import type { ToolScriptHostCapability, ToolScriptHostWrite } from "./capability.ts";
 import type { HeaderView } from "./header-view.ts";
-import { deepFreeze, isPlainAnswer } from "./plain-data.ts";
+import { deepFreeze, frozenCopy, isPlainAnswer } from "./plain-data.ts";
 import { handlesInPlace, type SecretTable, secretInputsOf } from "./secrets.ts";
 import { withinTouches } from "./touches.ts";
 
@@ -41,6 +41,10 @@ export class HostRun {
   readonly #table: SecretTable;
   readonly #now: () => string;
   readonly #callLimit: number;
+  /** Calls counted against `#callLimit`: sent, or checked and on their way (see `#reserve`). */
+  #reserved = 0;
+  /** `ui.preview`, copied and deep-frozen once, so `confirm` can't change it for later writes. */
+  readonly #headerPreview: readonly ToolScriptData[];
 
   constructor(
     request: ToolScriptRunRequest,
@@ -54,6 +58,7 @@ export class HostRun {
     this.#table = table;
     this.#now = now;
     this.#callLimit = callLimit;
+    this.#headerPreview = frozenCopy([...view.preview]);
   }
 
   /**
@@ -90,7 +95,7 @@ export class HostRun {
     context: ToolScriptCallContext,
   ): Promise<ToolScriptIsolateValue> {
     // A batch's items count one each, so the isolate's own count can fall short of ours.
-    if (this.calls.length + 1 > this.#callLimit) throw new ToolScriptStop("limit.calls");
+    this.#reserve(1);
     const prepared = this.#prepare(capability, args);
     if (capability.kind === "write") await this.#confirm([prepared], context);
     return this.#send(prepared, context);
@@ -108,12 +113,22 @@ export class HostRun {
     if (!Array.isArray(items) || items.length === 0)
       throw new ToolScriptStop("toolscript.bad-argument");
     // The isolate counts a batch as one call, so its items count here against the run's limit.
-    if (this.calls.length + items.length > this.#callLimit) throw new ToolScriptStop("limit.calls");
+    this.#reserve(items.length);
     const prepared = items.map((item: ToolScriptIsolateValue) => this.#batchItem(item));
     await this.#confirm(prepared, context);
     const answers: ToolScriptIsolateValue[] = [];
     for (const item of prepared) answers.push(await this.#send(item, context));
     return answers;
+  }
+
+  /**
+   * Counts `count` calls against the run's limit, or stops with `limit.calls`.
+   * It runs before any `await`, so calls started together (`Promise.all`)
+   * each see the ones before them, not only the calls already sent.
+   */
+  #reserve(count: number): void {
+    if (this.#reserved + count > this.#callLimit) throw new ToolScriptStop("limit.calls");
+    this.#reserved += count;
   }
 
   #batchItem(item: ToolScriptIsolateValue): Prepared {
@@ -169,15 +184,11 @@ export class HostRun {
       ...(Object.keys(secretInputs).length > 0 ? { secretInputs } : {}),
     };
     const fromCapability = capability.preview?.(frozen) ?? [];
-    const fromHeader = this.#view.preview;
+    const fromHeader = this.#headerPreview;
     if (fromHeader.length === 0 && fromCapability.length === 0) return write;
     return {
       ...write,
-      // A copy, so `confirm` can't change the artifact header's own list.
-      preview: {
-        fromHeader: Object.freeze([...fromHeader]),
-        fromCapability: Object.freeze([...fromCapability]),
-      },
+      preview: { fromHeader, fromCapability: Object.freeze([...fromCapability]) },
     };
   }
 
