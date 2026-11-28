@@ -85,6 +85,9 @@ The steps, in `src/steps/`:
 | 33 | The focus ring after a click | `shell.focus-ring-after-pointer` | from Welcome (the demo closed first), Open demo leaves the page's title focused with no ring and `<html data-input="pointer">`; Shift alone keeps that mark and Tab turns it to `keyboard`; then Enter on Runs in Places opens that page, whose title takes focus with the ring |
 | 34 | A wait step's answers | `inbox.wait-card` | in a 1280 × 800 window, the demo's Support reply, started from New request with an invented email, waits at its review step, and that card's Reject and Approve sit in one right-aligned row at their natural width, Approve at the right end |
 | 35 | The file tree's search and rows | `files.ui.tree-search`, `files.ui.tree-rows` | in a 1280 × 800 window the sidebar's Files tab shows the tree, read only in the sidebar's own panel; "writer" in Search files shows only file rows with it in their path and the count for them ("1 file" in a fresh demo), a row is at least 32px high with 8px corners, 10px inside the column, 13px in at the top and 16px further in one level down, Escape shows the tree as before, and the same holds for "agents/" ("3 files"); the sidebar goes back to Studio |
+| 36 | A file's menu opens and closes, and Copy path shows a toast | `kit.menu`, `kit.toast` | in a wide window, the sidebar's Files view opens its first file; the ⋮ in the file's header opens its menu (`aria-expanded="true"`, the menu shown) and Escape closes it; Copy path shows "Copied …" or "Couldn't copy the path." in the Notifications region, and the toast's close button removes it |
+| 37 | New file opens a dialog, and Escape closes it | `kit.dialog` | in a wide window, the sidebar's Files view's New file opens a `<dialog>` headed "New file", and Escape closes it |
+| 38 | A tab's tooltip shows on keyboard focus, and Escape hides it | `kit.tooltip` | in a wide window with a second tab from New tab, ArrowLeft from the clicked last tab shows the tooltip of the tab before it, Escape hides it, and Ctrl W closes a tab again |
 
 Steps 4 to 8 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
 They and steps 9 to 21 come straight after Connect Paperclip: the restart after a failing step used
@@ -105,8 +108,15 @@ has no step: the desktop app doesn't load the Assistant feature. Step 31 puts Wr
 for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 32
 opens the other places (HAL-18870), so its page visits come after Try it has read the chat.
 Steps 33 and 34 come after it (HAL-20621): step 33 closes and reopens the demo, and step 34 leaves
-its run waiting in the Inbox. Step 35 reads the file tree (HAL-20764) last, because it switches the
-sidebar from the places to Files; it switches back to Studio when it is done.
+its run waiting in the Inbox. Step 35 reads the file tree (HAL-20764): it switches the sidebar from
+the places to Files, and back to Studio when it is done.
+Steps 36 to 38 check the kit's Menu, Toast, Dialog and Tooltip on the installed app (HAL-20752,
+`requirements/kit-steps.md`). Steps 36 and 37 use the sidebar's Files view too: Code's own entry in
+the rail shows only for a workspace with a code folder, and the desktop app doesn't spot one yet.
+Not covered: a toast with two actions on one row (`action` and `secondAction`, HAL-21125). Studio
+shows one only after a failure the click test can't bring about on a real install (a save that
+failed, a routine that couldn't start, an update that didn't install), so the kit's own tests check
+that row.
 The app opens at 800 × 600, a narrow window
 where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step
 sizes the window to 1280 × 800 first and gives it its size back afterwards (HAL-19048).

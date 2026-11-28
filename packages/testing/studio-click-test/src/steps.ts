@@ -13,6 +13,7 @@ import { connectPaperclip } from "./steps/connect-paperclip.ts";
 import { accountSwitcher, connectionRow, httpsOnly } from "./steps/connections.ts";
 import { demoWorkspace } from "./steps/demo-workspace.ts";
 import { engineAnswers } from "./steps/engine-answers.ts";
+import { fileMenuToast, newFileDialog } from "./steps/files-kit.ts";
 import { filesTreeSearch } from "./steps/files-tree.ts";
 import { focusRingAfterPointer } from "./steps/focus-ring.ts";
 import { harnessModel } from "./steps/harness-model.ts";
@@ -27,6 +28,7 @@ import { settingsFormats, settingsTheme } from "./steps/settings-display.ts";
 import { settingsHostSections } from "./steps/settings-host.ts";
 import { settingsTwoColumns } from "./steps/settings-two-columns.ts";
 import { disconnect, startMenuShortcuts } from "./steps/shortcuts-disconnect.ts";
+import { tabTooltip } from "./steps/tab-tooltip.ts";
 import { chatComesBack, keyHeld } from "./steps/try-it.ts";
 import { waitCardAnswers } from "./steps/wait-card.ts";
 import { windowTabs } from "./steps/window-tabs.ts";
@@ -43,8 +45,9 @@ import { windowTabs } from "./steps/window-tabs.ts";
  * which read step 1's chat in the reopened demo, then Writer's Model page in Codex (HAL-18930),
  * on Writer's page as Try it leaves it, then the other places (HAL-18870), then the focus ring
  * after Open demo, which closes and reopens the demo, and the wait card's answers, which
- * leave their run waiting in the Inbox (HAL-20621), then the file tree (HAL-20764), last because
- * it switches the sidebar from the places to Files and back. The
+ * leave their run waiting in the Inbox (HAL-20621), then the file tree (HAL-20764), which
+ * switches the sidebar from the places to Files and back, then the kit's menu, toast and dialog in
+ * that Files view and its tooltip in the window tabs (HAL-20752). The
  * Paperclip steps come straight after Connect Paperclip because a restart after a failing step
  * signed step 3's connection out (runs 45722257989 to 45733391864, HAL-19027), so a failure in
  * between would fail them too; the restart step now checks that this no longer happens.
@@ -85,4 +88,7 @@ export const clickTestSteps: readonly Step[] = [
   focusRingAfterPointer,
   waitCardAnswers,
   filesTreeSearch,
+  fileMenuToast,
+  newFileDialog,
+  tabTooltip,
 ];

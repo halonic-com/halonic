@@ -11,6 +11,7 @@ export const keys = {
   escape: "\uE00C",
   shift: "\uE008",
   control: "\uE009",
+  arrowLeft: "\uE012",
 } as const;
 
 /** A window's outer size, in CSS pixels. */

@@ -96,6 +96,22 @@ export const basicsText = {
   },
 } as const;
 
+const filesWordsFile = "packages/studio/features/files/src/files-words.ts";
+
+/**
+ * The words of the kit steps (HAL-20752): an open file's ⋮ menu, its Copy path and the toasts
+ * that follow, and the New file dialog. `words.test.ts` checks each is still in its file.
+ */
+export const kitText = {
+  moreActions: { text: "More actions for ", file: filesWordsFile },
+  copyPath: { text: "Copy path", file: filesWordsFile },
+  pathCopied: { text: "Copied ", file: filesWordsFile },
+  pathNotCopied: { text: "Couldn't copy the path.", file: filesWordsFile },
+  newFile: { text: "New file", file: filesWordsFile },
+  notifications: { text: "Notifications", file: "packages/studio/kit/src/toast/toast-region.tsx" },
+  closeToast: { text: "Close ", file: "packages/studio/kit/src/toast/toast-card.tsx" },
+} as const;
+
 /** Settings' × button: the kit's Dialog names it "Close" and the dialog's title. */
 export const closeSettingsLabel = `Close ${basicsText.settingsTitle.text}`;
 
