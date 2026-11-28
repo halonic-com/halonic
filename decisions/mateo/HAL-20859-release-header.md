@@ -2,7 +2,7 @@
 
 - Approval: A0 0.2.0 finding [low] on HAL-20510, fixed by HAL-20859; Liam approves and signs this note in review
 - Kind: internal
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:/Rfa7Y4xKqIBHw54pNIpN5P6SUtdqDzJT4POIpInMMagKcJ7RD3pedM7L2fvRG+oPoqHYXeVpZJEfaZtsOoFDA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:+tpJrbEdXV7a/oTvk7HIY03WONwqPBxrj6aFuKaja5182HeOpz9PKGrMCFSPYc6La4zK5ZRfQO3F1xZxNWBAAg==
 
 ## What changes
 
