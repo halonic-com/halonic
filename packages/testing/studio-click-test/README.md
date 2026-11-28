@@ -63,40 +63,42 @@ The steps, in `src/steps/`:
 | 11 | Search | `studio.desktop-search-overview`, `search.palette` | Ctrl+K and the seeded task's title find the task |
 | 12 | Overview and recap | `studio.desktop-search-overview`, `overview.place` | Overview shows the recap and the blocked list |
 | 13 | Start menu shortcuts | `studio.installer-focused-apps`, `studio.focused-app-window` | with Halonic running, Halonic Inbox opens a new window in it, and Halonic Messenger shows the seeded chat |
-| 14 | A yes/no card, in the Inbox and the Messenger | `inbox.agent-inbox-items`, `messenger.inline-cards` | its seeded copies (the Inbox's from the board, the Messenger's from the agent's run) answer Accept in the Inbox and Reject in the chat, and the test Paperclip has each so |
-| 15 | A plan approval's Reject needs a reason | `inbox.option-note`, `messenger.option-note` | in the Inbox, Reject opens "Why are you rejecting this?" and sends the reason, which the test Paperclip keeps; the chat leaves Reject out, says so, and Accept answers it |
-| 16 | A one-question card | `inbox.agent-inbox-items`, `messenger.inline-cards`, `paperclip-client.question-cards` | an option's button answers each copy, and the test Paperclip has that option |
-| 17 | A checkbox confirmation | `inbox.agent-inbox-items`, `messenger.question-cards`, `paperclip-client.card-kinds` | ticking Email and Blog in the Inbox and Social in the chat, then Submit, leaves the test Paperclip with each copy accepted with those picks |
-| 18 | Item verdicts | `inbox.agent-inbox-items`, `messenger.question-cards`, `paperclip-client.card-kinds` | a verdict per item (Approve and Defer, the other way round in the chat), then Submit, leaves each copy answered with those verdicts |
-| 19 | Suggested tasks | `inbox.agent-inbox-items`, `messenger.question-cards`, `paperclip-client.card-kinds` | ticking one draft on each surface, then Submit, leaves each copy accepted, with that draft made and the other skipped |
-| 20 | Disconnect | `studio.src-tauri.paperclip-key-keep` | Disconnect says the key is revoked, and the test Paperclip refuses that key |
-| 21 | The demo is the shown workspace | `workspace.try-sample`, `studio.try-sample`, `workspace.workspace-window`, `workspace.workspace-menu`, `workspace.menu-sample-tag`, `workspace.recent-workspaces`, `shell.window-title` | the window title reads "*page* · *workspace* · Halonic", and the workspace switcher's menu lists `Acme demo` under Recent with the Demo tag, then Open a folder… |
-| 22 | The window tabs | `shell.window-tab-strip`, `shell.tab-set`, `shell.window-keys` | New tab adds a tab to the Open tabs strip, Ctrl W closes it and Ctrl Shift T brings it back |
-| 23 | Close workspace | `workspace.workspace-window`, `shell.welcome-open`, `shell.welcome-recent`, `shell.welcome-sample` | the workspace menu's Close workspace shows Welcome, with the demo under Recent with the Demo tag, and Open demo |
-| 24 | Theme | `settings.feature`, `settings.appearance-section`, `settings.appearance-theme` | Settings › Appearance › Theme Dark sets the window's `data-theme="dark"`, and System takes it off again |
-| 25 | Formats | `settings.formats-section`, `settings.formats-format` | Settings › Formats' example turns Dutch (`12.345,60`) after Dutch (Netherlands), and back after Follow this computer |
-| 26 | Agent sandbox and About Halonic | `settings.agent-sandbox-section`, `settings.agent-sandbox-state`, `settings.about-section` | Agent sandbox shows a state chip without a button pressed, and About Halonic shows Check now and Update Halonic automatically |
-| 27 | Writer's Try it chat comes back | `agents.chat.saved`, `agents.chat.first-load`, `kit.chat-message`, `kit.chat-message-corner` | in the demo the Settings steps opened again, Writer opened from the Agents list shows step 1's message, in a filled bubble with 7.5px corners (`studio-click-test.conversation-look`) |
-| 28 | A key in a Try it message is held | `agents.chat.box-lines` | a message with a made-up key stays out of the chat while the key line shows, and Send anyway sends it |
-| 29 | The Model page checks the harness | `agents.configuration.harness-model` | on Writer's page, Configuration (after the panel's button in the 800 px window) › Harness › Codex, then Model › `default` (the demo's test model) shows "This model can't be used with Codex. Choose another.", and Writer goes back to Halonic |
-| 30 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
+| 14 | Quick ask's box | `quick-ask.box-look`, `studio.src-tauri.focused-apps`, `studio.src-tauri.quick-ask-window` | a second start with `--app ask` shows the box in the `ask` window; once the agent chip shows (up to 30 s), the box has 8px corners and the dialogs' shadow, and its message box has 26px corners and holds the chip and Ask; Esc hides it again (`studio-click-test.quick-ask-look`) |
+| 15 | A yes/no card, in the Inbox and the Messenger | `inbox.agent-inbox-items`, `messenger.inline-cards` | its seeded copies (the Inbox's from the board, the Messenger's from the agent's run) answer Accept in the Inbox and Reject in the chat, and the test Paperclip has each so |
+| 16 | A plan approval's Reject needs a reason | `inbox.option-note`, `messenger.option-note` | in the Inbox, Reject opens "Why are you rejecting this?" and sends the reason, which the test Paperclip keeps; the chat leaves Reject out, says so, and Accept answers it |
+| 17 | A one-question card | `inbox.agent-inbox-items`, `messenger.inline-cards`, `paperclip-client.question-cards` | an option's button answers each copy, and the test Paperclip has that option |
+| 18 | A checkbox confirmation | `inbox.agent-inbox-items`, `messenger.question-cards`, `paperclip-client.card-kinds` | ticking Email and Blog in the Inbox and Social in the chat, then Submit, leaves the test Paperclip with each copy accepted with those picks |
+| 19 | Item verdicts | `inbox.agent-inbox-items`, `messenger.question-cards`, `paperclip-client.card-kinds` | a verdict per item (Approve and Defer, the other way round in the chat), then Submit, leaves each copy answered with those verdicts |
+| 20 | Suggested tasks | `inbox.agent-inbox-items`, `messenger.question-cards`, `paperclip-client.card-kinds` | ticking one draft on each surface, then Submit, leaves each copy accepted, with that draft made and the other skipped |
+| 21 | Disconnect | `studio.src-tauri.paperclip-key-keep` | Disconnect says the key is revoked, and the test Paperclip refuses that key |
+| 22 | The demo is the shown workspace | `workspace.try-sample`, `studio.try-sample`, `workspace.workspace-window`, `workspace.workspace-menu`, `workspace.menu-sample-tag`, `workspace.recent-workspaces`, `shell.window-title` | the window title reads "*page* · *workspace* · Halonic", and the workspace switcher's menu lists `Acme demo` under Recent with the Demo tag, then Open a folder… |
+| 23 | The window tabs | `shell.window-tab-strip`, `shell.tab-set`, `shell.window-keys` | New tab adds a tab to the Open tabs strip, Ctrl W closes it and Ctrl Shift T brings it back |
+| 24 | Close workspace | `workspace.workspace-window`, `shell.welcome-open`, `shell.welcome-recent`, `shell.welcome-sample` | the workspace menu's Close workspace shows Welcome, with the demo under Recent with the Demo tag, and Open demo |
+| 25 | Theme | `settings.feature`, `settings.appearance-section`, `settings.appearance-theme` | Settings › Appearance › Theme Dark sets the window's `data-theme="dark"`, and System takes it off again |
+| 26 | Formats | `settings.formats-section`, `settings.formats-format` | Settings › Formats' example turns Dutch (`12.345,60`) after Dutch (Netherlands), and back after Follow this computer |
+| 27 | Agent sandbox and About Halonic | `settings.agent-sandbox-section`, `settings.agent-sandbox-state`, `settings.about-section` | Agent sandbox shows a state chip without a button pressed, and About Halonic shows Check now and Update Halonic automatically |
+| 28 | Writer's Try it chat comes back | `agents.chat.saved`, `agents.chat.first-load`, `kit.chat-message`, `kit.chat-message-corner` | in the demo the Settings steps opened again, Writer opened from the Agents list shows step 1's message, in a filled bubble with 7.5px corners (`studio-click-test.conversation-look`) |
+| 29 | A key in a Try it message is held | `agents.chat.box-lines` | a message with a made-up key stays out of the chat while the key line shows, and Send anyway sends it |
+| 30 | The Model page checks the harness | `agents.configuration.harness-model` | on Writer's page, Configuration (after the panel's button in the 800 px window) › Harness › Codex, then Model › `default` (the demo's test model) shows "This model can't be used with Codex. Choose another.", and Writer goes back to Halonic |
+| 31 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
 
 Steps 4 to 8 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
-They and steps 9 to 20 come straight after Connect Paperclip: the restart after a failing step used
+They and steps 9 to 21 come straight after Connect Paperclip: the restart after a failing step used
 to sign step 3's connection out (HAL-19027), so a failure in between would fail them too. Step 6
 restarts the app on purpose, whatever the step before did, and checks the sign-in survives it: the
 board's acceptance for HAL-18910 on every preview build. Not covered, because the click test can't bring them about on a real install: the list
 failing (`connections.list-retry`), a signed-out or expiring key, and a keychain that refuses the key.
 
-Steps 9 to 20 are the rest of the phase 1 list on the connected Paperclip (HAL-18354), which the
-suite seeds itself, with the card kinds (steps 14 to 19, HAL-19002) after the Start menu shortcuts
-and Disconnect last. Steps 21 to 23 are the Studio basics (HAL-18866), steps 24 to 26 Settings
+Steps 9 to 21 are the rest of the phase 1 list on the connected Paperclip (HAL-18354), which the
+suite seeds itself, with quick ask's box (step 14, HAL-20826) and the card kinds (steps 15 to 20,
+HAL-19002) after the Start menu shortcuts, and Disconnect last. Steps 22 to 24 are the Studio basics
+(HAL-18866), steps 25 to 27 Settings
 (HAL-18867). Close workspace
 ends the basics because it leaves the window on Welcome; a later step that needs a workspace, such
-as each Settings step, opens the demo again from there. Steps 27 and 28 are Try it (HAL-18869);
+as each Settings step, opens the demo again from there. Steps 28 and 29 are Try it (HAL-18869);
 they come straight after Settings so they find step 1's chat in that reopened demo. The Build chat
-has no step: the desktop app doesn't load the Assistant feature. Step 29 puts Writer in Codex
-for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 30
+has no step: the desktop app doesn't load the Assistant feature. Step 30 puts Writer in Codex
+for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 31
 opens the other places (HAL-18870) last, so its page visits come after Try it has read the chat.
 The app opens at 800 × 600, a narrow window
 where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step
@@ -135,8 +137,8 @@ $env:CLICK_TEST_BUILD = '9115b95'
 pnpm --filter @halonicjs/testing-studio-click-test click-test
 ```
 
-Steps 4 to 20 need step 3. Steps 9, 10 and 14 to 20 also check their click through the test
-Paperclip's API, not only on screen. Step 20 checks that the test Paperclip refuses the key Studio signed in
+Steps 4 to 21 need step 3. Steps 9, 10 and 15 to 21 also check their click through the test
+Paperclip's API, not only on screen. Step 21 checks that the test Paperclip refuses the key Studio signed in
 with, which the suite reads from the recording proxy.
 
 Results: `click-test/results.json`, `click-test/results.md` and `click-test/screenshots/NN-step.png`.

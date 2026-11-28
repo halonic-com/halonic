@@ -17,8 +17,8 @@ export interface StepContext {
   /** The last `engine` and `agent host` lines of Studio's shell log, for evidence. */
   readonly shellLog: () => Promise<string>;
   /**
-   * Opens a Start menu shortcut, such as "Halonic Messenger", as a person would; with `args`, starts
-   * the shortcut's program with them instead, such as `--app ask`, which has no shortcut.
+   * Opens a Start menu shortcut, such as "Halonic Messenger", as a person would; with `args`,
+   * starts the shortcut's program with them instead, such as `--app ask`, which has no shortcut.
    */
   readonly openShortcut: (name: string, args?: readonly string[]) => Promise<void>;
   /** The handle of Studio's main window, which the session started on. */

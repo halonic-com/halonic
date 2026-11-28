@@ -1,17 +1,18 @@
-# Decision: the quick-ask box gets the message box's edge in dark, and the chip moves to the first line
+# Decision: the quick-ask box gets the prompt boxes' edge in dark, and the chip moves to the first line
 
 - Approval: the look check on HAL-20825 (Noah's [major] and [minor] on #6888); the maintainer approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ya77B4tyHFVsTwllQCPTlRGouxizu/t7VC7V18V+qKWZ90KzEX6pF6DcWAKIngM1JXrQVwwf7Awti8tzjbQVDA==
 
 ## What changes
 
 `quick-ask.box-look` said the box has "no edge of its own" in light and dark alike. In dark the box
-now draws a 1 px ring in the message box's edge colour (`--color-border-prompt`, `#353c4c`), so the
-example splits into a light one (no border of its own, as before) and a dark one (the ring, still no
-border). The requirement also says where the agent chip sits on a long question: by its first line,
-with **Ask** by its last, and gains an example for it. No example was removed or weakened: the light
-example keeps its words, and the dark one asks for more than before.
+now draws a 1 px ring in the prompt boxes' edge colour (`--color-border-prompt`, `#353c4c`), so the
+example splits into a light one and a dark one. The light example's words change from "no edge of
+its own" to "no border of its own": the ring is an edge too, so the example now names what stays
+absent in both themes, a CSS border, and the light box draws the same as before. The dark example
+asks for the ring and still no border. The requirement also says where the agent chip sits on a long
+question: by its first line, with **Ask** by its last, and gains an example for it. No example was
+removed, and none asks for less than it did.
 
 ## Why
 

@@ -38,7 +38,7 @@ export interface AskBoxProps {
 /**
  * The 640 px box on the new design's panel: the theme's 8 px panel corner on the raised surface,
  * with the dialogs' shadow and its 1 px edge, because it floats over any app (HAL-20746). In dark
- * that edge is the message box's, as a ring so the corner stays, since the shadow's own edge is
+ * that edge is the prompt boxes', as a ring so the corner stays, since the shadow's own edge is
  * lost on a dark desktop (HAL-20825); light keeps the shadow's. On a screen narrower than the box
  * and its 32 px margin, the margin is 16 px. It never grows past its window, so a long answer
  * scrolls the exchanges instead of pushing the footer out of sight (HAL-19213).

@@ -40,8 +40,8 @@ verifies("quick-ask.box-look", () => {
       }
     });
 
-    // Light keeps the shadow's own edge; dark draws the message box's edge as a ring (HAL-20825).
-    it("rings the box in the message box's edge colour in dark only, keeping its corner", async () => {
+    // Light keeps the shadow's own edge; dark draws the prompt boxes' edge as a ring (HAL-20825).
+    it("rings the box in the prompt boxes' edge colour in dark only, keeping its corner", async () => {
       const { page } = await openBox(new FakeMessenger([chat(chief)]));
       const classes = page.querySelector('[role="dialog"]')?.className.split(" ") ?? [];
 
