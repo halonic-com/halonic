@@ -52,6 +52,7 @@ export const deniedVariables = {
     "XDG_CONFIG_HOME",
     "CLAUDE_CONFIG_DIR",
     "CODEX_HOME",
+    "ZDOTDIR",
   ],
   prefixes: [
     "LD_",
@@ -62,8 +63,27 @@ export const deniedVariables = {
     "SSL_CERT_",
     "NPM_CONFIG_",
     "AWS_ENDPOINT_URL",
+    "CARGO_TARGET_",
   ],
-  suffixes: ["_PROXY", "_BASE_URL", "_API_URL", "_CA_BUNDLE", "_ENDPOINT", "_HOST"],
+  // The suffixes from `_INDEX` on catch package sources, run flags and folder pointers by kind,
+  // since a list of single names keeps trailing; no usual key or token name ends with one.
+  suffixes: [
+    "_PROXY",
+    "_BASE_URL",
+    "_API_URL",
+    "_CA_BUNDLE",
+    "_ENDPOINT",
+    "_HOST",
+    "_INDEX",
+    "_INDEX_URL",
+    "_FIND_LINKS",
+    "_REGISTRY",
+    "_SERVER",
+    "_OPTS",
+    "_OPTIONS",
+    "_HOME",
+    "_DIR",
+  ],
 } as const;
 
 /**
