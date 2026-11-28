@@ -79,7 +79,12 @@ export function planResume(
 }
 
 function isApiStep(step: Step): step is ApiStep {
-  return step.kind === "call" || step.kind === "check" || step.kind === "script";
+  return (
+    step.kind === "call" ||
+    step.kind === "check" ||
+    step.kind === "operation" ||
+    step.kind === "script"
+  );
 }
 
 /** An `input` step never counts as done on its own: it only matters for the steps after it. */

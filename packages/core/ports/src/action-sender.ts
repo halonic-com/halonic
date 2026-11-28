@@ -88,6 +88,24 @@ export const actionOperations = { "paperclip.set-secret": "paperclip" } as const
 /** An operation's name, such as `paperclip.set-secret`. */
 export type ActionOperation = keyof typeof actionOperations;
 
+/** The fields one operation takes, in the sender's order. */
+export interface ActionOperationFields {
+  /** Its placeholders, each a value the sender checks against the route's pattern. */
+  placeholders: readonly string[];
+  /** Its `secret-input` body fields, each typed into the sender's native dialog. */
+  secrets: readonly string[];
+}
+
+/**
+ * What each of {@link actionOperations} takes: an operation's route holds exactly these
+ * placeholders and these `secret-input` body fields, and nothing else, and a sender refuses one
+ * that doesn't (requirement `ports.action-operation-route`). For `paperclip.set-secret`, the
+ * Paperclip's host and company prefix the preview shows, the secret's name, and its value.
+ */
+export const actionOperationFields = {
+  "paperclip.set-secret": { placeholders: ["company", "host", "name"], secrets: ["value"] },
+} as const satisfies Record<ActionOperation, ActionOperationFields>;
+
 /**
  * A step the sender runs as one of its own {@link actionOperations}, never as a method and a path
  * (requirement `ports.action-operation-route`). Its `service` must be the one the operation belongs

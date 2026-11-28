@@ -11,9 +11,10 @@ import {
 } from "../stepper-view.ts";
 import { confirmWords, runWords } from "./stepper-words.ts";
 
-/** Whether the bar runs the step: an API call, or a part of the service's own sign-in. */
+/** Whether the bar runs the step: an API call, the desktop app's own operation, or a part of the service's own sign-in. */
 function runsFromBar(step: StepView): boolean {
-  return step.action.kind === "call" || step.action.kind === "sign-in";
+  const { kind } = step.action;
+  return kind === "call" || kind === "operation" || kind === "sign-in";
 }
 
 /** Props for {@link RunBar}. */
