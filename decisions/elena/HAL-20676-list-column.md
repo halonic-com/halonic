@@ -2,7 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20676 (P3 of the HAL-20617 build plan, approved by Liam on the task; the rail flows of HAL-20673, revision 2). Liam approves the change in review on HAL-20676.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:VavlPQgnKfmgCBZHI1uX91rI5wlV9bAlmUSFdNzlgsi4PU/iM1k60BStqwbN7tUlLPNOV6jHHhyvmfzrfwBdCQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:0qpT0J1K8I0bt+ohNNwxdS5eeO22dtw91nVW7PPW7cD/+nuG6WOxWIhNBCZpo8sjNRMjNvm5hdS8wwkFh3+/CQ==
 
 ## What changes
 
