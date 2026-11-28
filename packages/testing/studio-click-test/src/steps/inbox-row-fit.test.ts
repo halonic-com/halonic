@@ -7,36 +7,62 @@ import { inboxRowFit } from "./inbox-row-fit.ts";
 const parts = { title: "//li[1]//b", meta: "//li[1]//i", badge: "//li[1]//s" } as const;
 
 verifies("studio-click-test.inbox-row-fit", () => {
-  it("passes a two-line title, a one-line meta line and a 20px badge", async () => {
+  it("passes a title clamped to two 20px lines, a meta line cut on one and a 20px badge", async () => {
     const studio = fakeStudio("Acme");
-    drawRowFit(studio, parts, { title: "40px" });
+    drawRowFit(studio, parts);
     await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
       passed: true,
     });
   });
 
-  it("fails as PLAIN_ROW_FIT when the title takes three lines, naming both heights", async () => {
+  it("fails as PLAIN_ROW_FIT when the title isn't clamped, however short it is", async () => {
     const studio = fakeStudio("Acme");
-    drawRowFit(studio, parts, { title: "60px" });
+    drawRowFit(studio, parts, { titleClamp: "none", titleLineHeight: "24px" });
     await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
       passed: false,
       code: "PLAIN_ROW_FIT",
-      note: "Acme's row: the title takes 60px and the meta line 20px, not at most 40px and 20px.",
+      note: "Acme's row: the title is clamped to none lines of 24px, not 2 of 20px.",
     });
   });
 
-  it("fails as PLAIN_ROW_FIT when the meta line wraps onto a second line", async () => {
+  it("fails as PLAIN_ROW_FIT when the meta line may wrap", async () => {
     const studio = fakeStudio("Acme");
-    drawRowFit(studio, parts, { meta: "40px" });
-    await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toMatchObject({
+    drawRowFit(studio, parts, { metaWhiteSpace: "normal", metaOverflow: "clip" });
+    await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
       passed: false,
       code: "PLAIN_ROW_FIT",
+      note: "Acme's row: the meta line has white-space normal and text-overflow clip, not nowrap and ellipsis.",
+    });
+  });
+
+  it("reads the cut on the text before a meta line's whole end", async () => {
+    const studio = fakeStudio("Acme");
+    drawRowFit(studio, parts, { metaWhiteSpace: "normal", metaOverflow: "clip" });
+    studio.elements.set(`${parts.meta}/*[@data-part='meta-end']`, 1);
+    studio.styles.set(`${parts.meta}/*[1] white-space`, "nowrap");
+    studio.styles.set(`${parts.meta}/*[1] text-overflow`, "ellipsis");
+    await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
+      passed: true,
+    });
+  });
+
+  it.each([
+    ["title", parts.title],
+    ["meta line", parts.meta],
+  ])("fails as NO_ROW_PART when the row has no %s", async (name, xpath) => {
+    const studio = fakeStudio("Acme");
+    drawRowFit(studio, parts);
+    studio.elements.delete(xpath);
+    await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
+      passed: false,
+      code: "NO_ROW_PART",
+      note: `Acme's row: no ${name} at ${xpath}.`,
     });
   });
 
   it("fails as AVATAR_BADGE_SIZE when the badge is the 28px tile's 16px", async () => {
     const studio = fakeStudio("Acme");
-    drawRowFit(studio, parts, { badge: "16px" });
+    drawRowFit(studio, parts, { badgeHeight: "16px" });
     await expect(inboxRowFit(studio.context, "Acme's row", parts)).resolves.toEqual({
       passed: false,
       code: "AVATAR_BADGE_SIZE",

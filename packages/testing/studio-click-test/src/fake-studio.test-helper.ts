@@ -26,6 +26,8 @@ export interface FakeStudio {
   readonly backgrounds: Map<string, string>;
   /** The computed height each XPath's element has; one it doesn't name has none. */
   readonly heights: Map<string, string>;
+  /** Any other computed value, keyed `<xpath> <property>`, such as `//li white-space`. */
+  readonly styles: Map<string, string>;
   /**
    * Buttons that a hidden copy comes before in the page, such as a closed menu's row: a click
    * reaches the shown one only through the XPath scope named here, and otherwise isn't interactable.
@@ -58,6 +60,7 @@ export function fakeStudio(text = ""): FakeStudio {
     elements: new Map(),
     backgrounds: new Map(),
     heights: new Map(),
+    styles: new Map(),
     shownWithin: new Map(),
     approval: undefined,
     paperclip: { status: "pending", comments: [], keyWorks: true },
@@ -93,7 +96,9 @@ export function fakeStudio(text = ""): FakeStudio {
     },
     attribute: async (_xpath, name) => studio.rootAttributes.get(name) ?? null,
     cssValue: async (xpath, property) =>
-      (property === "height" ? studio.heights : studio.backgrounds).get(xpath) ?? "",
+      studio.styles.get(`${xpath} ${property}`) ??
+      (property === "height" ? studio.heights : studio.backgrounds).get(xpath) ??
+      "",
     pageText: async () => window().text,
     title: async () => studio.title,
     // The fake names each window by its label, as Tauri does.
@@ -182,17 +187,28 @@ export function drawRow(
   studio.heights.set(parts.picture, pictureHeight);
 }
 
+/** The computed values `drawRowFit` sets, the kit's for an Inbox row by default. */
+export interface RowFitStyles {
+  readonly titleClamp: string;
+  readonly titleLineHeight: string;
+  readonly metaWhiteSpace: string;
+  readonly metaOverflow: string;
+  readonly badgeHeight: string;
+}
+
 /**
- * Draws an Inbox row's title, meta line and avatar badge at `parts` with the heights given, the
- * kit's by default: one 20px title line, one 20px meta line and a 20px badge.
+ * Draws an Inbox row's title, meta line and avatar badge at `parts` with the computed values
+ * given, the kit's by default: the title clamped to two 20px lines, the meta line cut on one, a 20px badge.
  */
 export function drawRowFit(
   studio: FakeStudio,
   parts: { readonly title: string; readonly meta: string; readonly badge: string },
-  heights: { readonly title?: string; readonly meta?: string; readonly badge?: string } = {},
+  styles: Partial<RowFitStyles> = {},
 ): void {
-  for (const part of ["title", "meta", "badge"] as const) {
-    studio.elements.set(parts[part], 1);
-    studio.heights.set(parts[part], heights[part] ?? "20px");
-  }
+  for (const part of [parts.title, parts.meta, parts.badge]) studio.elements.set(part, 1);
+  studio.styles.set(`${parts.title} -webkit-line-clamp`, styles.titleClamp ?? "2");
+  studio.styles.set(`${parts.title} line-height`, styles.titleLineHeight ?? "20px");
+  studio.styles.set(`${parts.meta} white-space`, styles.metaWhiteSpace ?? "nowrap");
+  studio.styles.set(`${parts.meta} text-overflow`, styles.metaOverflow ?? "ellipsis");
+  studio.heights.set(parts.badge, styles.badgeHeight ?? "20px");
 }

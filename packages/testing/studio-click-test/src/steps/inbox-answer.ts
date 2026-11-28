@@ -39,8 +39,9 @@ function hasClass(name: string): string {
 }
 
 /**
- * The seeded card's row in the Inbox's plain List: its box, its avatar's 48px place, its title (the
- * plain row's 15px reading text), its meta line (the 14px body text under it) and its avatar's badge.
+ * The seeded card's row in the Inbox's plain List: its box, its avatar's 48px place, its title
+ * (the plain row's 15px reading text), its meta line (the 14px body text under it) and its
+ * avatar's badge.
  */
 const cardRow = rowContaining(screenText.strategyApproval.text);
 export const cardRowParts = {
@@ -69,9 +70,10 @@ async function backToList(
  * Step 9: the Inbox shows the seeded board card, and Approve answers it. The
  * row shows the card's type; the card shows its title, from a fresh read: no
  * line says the Inbox shows what it read last, over the card or over the list after the answer
- * (HAL-19190). The card's row is exactly 72px high with a 48px avatar (HAL-20558, HAL-20675), its
- * title within two lines, its meta line on one and its avatar's badge 20px (HAL-20759). The click must
- * reach the test Paperclip: its API says approved, and the card leaves Needs you.
+ * (HAL-19190). The card's row is exactly 72px high with a 48px avatar (HAL-20558, HAL-20675),
+ * its title clamped to two lines, its meta line cut on one and its avatar's badge 20px
+ * (HAL-20759). The click must reach the test Paperclip: its API says approved, and the card
+ * leaves Needs you.
  */
 export const inboxAnswer: Step = {
   id: "inbox-answer",

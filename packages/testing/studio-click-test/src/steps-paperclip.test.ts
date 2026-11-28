@@ -80,6 +80,15 @@ verifies("studio-click-test.paperclip-steps", () => {
       ]);
     });
 
+    it("fails as PLAIN_ROW_FIT before the click when the row's title isn't clamped", async () => {
+      const studio = studioWithCard();
+      drawRowFit(studio, cardRowParts, { titleClamp: "none" });
+      await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
+        code: "PLAIN_ROW_FIT",
+      });
+      expect(studio.clicks).not.toContain(screenText.strategyApproval.text);
+    });
+
     it("fails as NOT_ANSWERED_ON_PAPERCLIP when the click never reached Paperclip", async () => {
       const studio = studioWithCard(false);
       await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
