@@ -176,7 +176,8 @@ function Line({
   if (author.kind === "me") {
     return (
       <ChatMessage from="you">
-        {/* The box on the right says whose it is to the eye only; this says it to a screen reader. */}
+        {/* The box on the right says whose it is to the eye only; this says it to a screen
+            reader. */}
         <span className="sr-only">{words.you}</span>
         <MessageBody body={message.body} onOpenLink={onOpenLink} />
       </ChatMessage>
