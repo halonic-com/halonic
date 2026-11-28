@@ -178,6 +178,9 @@ verifies("action-catalog.github-approve-deployment", () => {
       expect(definition.preview(parameters, current)[0]).toBe(
         "Run 7001 of acme/app: commit `4f2c9e1` on `main`.",
       );
+      expect(definition.preview(parameters, current)[2]).toBe(
+        "Approves run 7001 of acme/app for the environment id 42. This starts the deployment and can't be undone.",
+      );
     });
 
     it("says so when GitHub names no repository for the commit, as for a deleted fork", () => {

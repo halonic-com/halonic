@@ -29,7 +29,9 @@ The stepper shall refuse the approval when the run's head commit differs from th
 - Given a recorded run 7001 of `acme/app` from a pull request of the fork `outsider/app`, on the fork's branch `main`, started by `outsider`,
   when the first check runs,
   then the preview reads "Run 7001 of acme/app: commit `4f2c9e1` on `main` of the fork `outsider/app`, started by `outsider`."
-  and the approval line reads "Approves run 7001 of acme/app, a commit of the fork `outsider/app`, for the environment `production`. This starts the deployment and can't be undone."
+- Given the same recorded fork run and the environment `production` with id 42,
+  when both checks run,
+  then the approval line reads "Approves run 7001 of acme/app, a commit of the fork `outsider/app`, for the environment `production`. This starts the deployment and can't be undone."
 - Given the same recorded fork run, but GitHub answers `head_branch: null`,
   when the first check runs,
   then the preview reads "Run 7001 of acme/app: commit `4f2c9e1` of the fork `outsider/app`, started by `outsider`."
