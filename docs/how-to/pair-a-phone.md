@@ -45,8 +45,9 @@ A paired phone can view your agents, answer approvals, send prompts and use
 Messenger. It also shows a read-only team status. It has no shell and can't read
 your files or secrets directly.
 
-For now every tool approval counts as **risky**, so with the default settings
-the phone answers no approvals: they wait for the computer. To let phones answer
+For now every tool approval counts as **risky**, and so do Paperclip's hiring,
+budget, CEO strategy, secret and join approvals. With the default settings these
+wait for the computer; the phone answers the rest. To let phones answer
 them, turn on **Let phones answer risky approvals** in **Settings › Remote**;
 the desktop app asks "Let phones answer risky approvals?" in a window of its own.
 The switch is off until you turn it on, and the phone asks its owner for a
