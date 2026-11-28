@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20468 (the board's fast-track request; this task is HAL-20480)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:lMkpgYRfCvqufC4sJv0gU7ZeSeKBrEGHzGHidE7oERO2J1ZHNs8G9EJM1JXreywYVwPlTOodJEHlMbKCaSSyAQ==
 
 The installer now makes the frames of PR #6799 next to `Halonic.exe` as `Halonic Inbox.exe` and
 `Halonic Messenger.exe`: hard links to `Halonic.exe`, which runs only the app's frame when started
