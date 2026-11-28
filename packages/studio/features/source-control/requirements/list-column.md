@@ -2,9 +2,11 @@
 
 - Status: active
 - Since: unreleased
-- Source: HAL-20732; `kit.list-column` (HAL-20769); build plan HAL-20617, phase P5; `library.list-column` (the same layout)
+- Source: HAL-20732; `kit.list-column` (HAL-20769); build plan HAL-20617, phase P5; `library.list-column` (the same layout); one list column per place, HAL-21050
 
 Where the Studio shows the desktop layout, the Changes place shall show the Changes page, with its heading, sharing, changed items and History, in a list column of the kit's list-column size (`kit.list-column`), which scrolls on its own and whose header lets Get updates go under "Changes" when both don't fit on one line, and beside it a content pane that takes the rest of the width and scrolls on its own. The content pane shall show one thing at a time, and the list shall mark the row of what it shows as the current one.
+
+Where the window draws the Changes list in its own list column (`shell.rail-frame`, from 900px), that list column shall hold the heading, as an `h2`, the sharing, the changed items and History, and the Changes page shall be the content pane alone, under the page's one `h1` "Changes", which only screen readers read. The list column and the content pane shall share what is open, which the window keeps for the tab.
 
 - Opening a changed item's row shall show that item's What changed in the content pane, with the item's name as the pane's `h2` under the page's one `h1` "Changes" and focus on it. What changed keeps its look there and has no Back to Changes.
 - Picking a version in History shall show its details in the content pane (`source-control.history-page`), with its name as the pane's `h2` and focus on it. Escape there shall put focus back on the version's row.
@@ -15,14 +17,16 @@ Where the Studio shows the desktop layout, the Changes place shall show the Chan
 - In the content pane, an item's choices (yours, the other person's, keep both) shall stand side by side only where the pane is wide enough for three, and otherwise one under another, by the pane's width rather than the window's.
 - While Get updates waits for the choices, its reason ("Finish getting updates first.") shall take a line of its own under the button, the column's whole width.
 
-For a folder without history, a computer without git, a folder inside a larger repository, or when the first read failed, the Changes place shall show one page over its whole width, with no list column and no content pane.
+For a folder without history, a computer without git, a folder inside a larger repository, or when the first read failed, the Changes place shall show one page over its whole width, with no list column and no content pane. Where the window draws the list in its own list column, that page shall show there, and the content pane shall show "Changes" alone.
 
 Where the Studio shows the phone layout, Changes shall show its list alone, and What changed, a version and the choices open as pages of their own (`source-control.changes-phone`).
 
 ## Examples
 
 - Given Changes in a 1280 × 800 window with 3 changed items,
-  then the list column takes the kit's list-column size (34%, at least 208px, at most 380px), and the content pane reads "Changes" and "3 items".
+  then the window's list column holds the Changes list, at most 380px wide, and the content pane reads "Changes" and "3 items".
+- Given Changes drawn without a window's list column, as under 900px,
+  then the page's own list column takes the kit's list-column size (34%, at least 208px, at most 380px).
 - Given the person opens the row "Triage",
   then the content pane reads "Triage" as an `h2` with focus on it, the list still shows "Since your last version", and the row "Triage" is the current one.
 - Given "Triage" is open and the person picks "Sorter replies in Dutch" in History,

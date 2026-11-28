@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
+import { type PaneState, usePaneState } from "./pane-state.ts";
 
 /**
  * Where focus goes when the list comes back, or, on the desktop, when the item open beside it goes:
@@ -21,7 +22,8 @@ export interface OpenItem {
   readonly returnFocus: ReturnFocus | undefined;
   /** Says the list has put focus where `returnFocus` asked, so a later redraw leaves focus alone. */
   readonly focusPlaced: () => void;
-  readonly show: (id: string) => void;
+  /** Opens an item; `pressed` says a click or Enter opened it, so its heading takes focus again. */
+  readonly show: (id: string, pressed?: boolean) => void;
   readonly back: () => void;
   /** Closes the open item without moving focus, as when the pane shows something else. */
   readonly close: () => void;
@@ -30,10 +32,18 @@ export interface OpenItem {
 /**
  * Which item's What changed is open. When the open item is gone, as after Undo these changes, What
  * changed closes and the list is told which row takes focus; when no item is left,
- * `onNothingLeft` is called instead, as there is no row to take it.
+ * `onNothingLeft` is called instead, as there is no row to take it. The open item is kept in `pane`,
+ * with the version open in its place, if any; without it, in the hook's own state.
  */
-export function useOpenItem(items: readonly ChangeItem[], onNothingLeft: () => void): OpenItem {
-  const [openId, setOpenId] = useState<string>();
+export function useOpenItem(
+  items: readonly ChangeItem[],
+  onNothingLeft: () => void,
+  shared?: PaneState,
+): OpenItem {
+  const own = usePaneState(undefined);
+  const pane = shared ?? own;
+  const openId = pane.itemId;
+  const setOpenId = (id: string | undefined, pressed = false) => pane.showItem(id, pressed);
   const [returnFocus, setReturnFocus] = useState<ReturnFocus>();
   const openIndex = useRef(0);
   const open = items.find((item) => item.id === openId);
@@ -57,9 +67,9 @@ export function useOpenItem(items: readonly ChangeItem[], onNothingLeft: () => v
     open,
     returnFocus: goneFocus ?? returnFocus,
     focusPlaced: () => setReturnFocus(undefined),
-    show: (id) => {
+    show: (id, pressed) => {
       setReturnFocus(undefined);
-      setOpenId(id);
+      setOpenId(id, pressed);
     },
     close: () => {
       setReturnFocus(undefined);

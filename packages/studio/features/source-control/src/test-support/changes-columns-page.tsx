@@ -1,6 +1,6 @@
 import type { VcsChange } from "@halonicjs/ports";
 import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
-import { act } from "react";
+import { act, useState } from "react";
 import type { ChangesRead, UpdateMerge, Version } from "../api.ts";
 import { ChangesList } from "../changes-list.ts";
 import { fakeSource, settle } from "../source.test-helper.ts";
@@ -34,6 +34,25 @@ export interface ColumnsPageOptions {
   readonly failReads?: unknown;
   /** Holds the first read until `releaseFirstRead` is called. */
   readonly holdFirstRead?: boolean;
+  /** Draws the list and the pane apart, as the window's list column and the page from 900px. */
+  readonly split?: boolean;
+}
+
+/**
+ * The list in the window's list column and the pane in the page's `main`, sharing one open item, as
+ * the Studio draws them from 900px (`shell.rail-frame`).
+ */
+function SplitChanges({ list }: { readonly list: ChangesList }) {
+  const [open, setOpen] = useState<string>();
+  const slot = { open, setOpen };
+  return (
+    <>
+      <ChangesView list={list} slot={slot} part="list" />
+      <main>
+        <ChangesView list={list} slot={slot} part="pane" />
+      </main>
+    </>
+  );
 }
 
 /**
@@ -60,7 +79,7 @@ export async function openColumnsPage(options: ColumnsPageOptions = {}) {
     ? { ...fake.source, read: async () => held.then(read) }
     : fake.source;
   const list = new ChangesList(source);
-  const view = <ChangesView list={list} />;
+  const view = options.split ? <SplitChanges list={list} /> : <ChangesView list={list} />;
   const root = render(
     <ToastStoreProvider store={createToastStore()}>
       {options.phone ? (

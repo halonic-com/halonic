@@ -1,7 +1,13 @@
 import { usePresentation } from "@halonicjs/studio-kit";
-import { focusFellToPage, type ItemRef, type PlaceViewProps } from "@halonicjs/studio-shell";
+import {
+  focusFellToPage,
+  type ItemRef,
+  type PlaceListPageProps,
+  type PlaceSlotProps,
+} from "@halonicjs/studio-shell";
 import {
   type ReactNode,
+  type RefObject,
   useCallback,
   useEffect,
   useRef,
@@ -14,39 +20,43 @@ import {
   DeveloperViewService,
   type ShareChoice,
   ShareChoiceService,
-  type Version,
 } from "../api.ts";
 import type { ChangeItem } from "../change-items.ts";
 import { type ChangesList, ChangesListService, type ChangesListState } from "../changes-list.ts";
 import { pageWords, stateWords } from "../changes-words.ts";
 import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList, orderItems } from "./change-list.tsx";
-import { ChangesColumns, ChangesPane } from "./changes-columns.tsx";
+import {
+  ChangesColumns,
+  ChangesPane,
+  changesContentPaneClass,
+  changesListPartClass,
+} from "./changes-columns.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
 import { LeftToGitCallout } from "./left-to-git-callout.tsx";
-import { MergeChoices, MergeStrip } from "./merge-choices.tsx";
+import { MergeStrip } from "./merge-choices.tsx";
+import { type PaneSlot, usePaneState } from "./pane-state.ts";
 import {
   type ChangesPhonePages,
   type PhoneOpening,
-  pushedPageOf,
   useChangesPhonePages,
   usePhoneOpening,
 } from "./phone-pages.ts";
+import { pushedPage } from "./phone-pushed-page.tsx";
 import { LoadFailed, Loading, NestedRepository, NoGit, TurnOnHistory } from "./read-states.tsx";
 import { SharingLine } from "./sharing-line.tsx";
 import { useFocusNewVersion } from "./use-focus-new-version.ts";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
 import { historyOpening, type PaneSelection, usePaneSelection } from "./use-pane-selection.ts";
 import { VersionDialogs } from "./version-dialogs.tsx";
-import { VersionPage } from "./version-page.tsx";
-import { WhatChangedPage } from "./whats-changed-page.tsx";
 
 /**
  * The Changes place's page: the open workspace's changes, from `ChangesListService`. On a phone, an
- * item's What changed and a version are pages of their own above it (`sub`).
+ * item's What changed and a version are pages of their own above it (`sub`). While the window draws
+ * the list in its list column (`listInFrame`), the page is the content pane alone.
  */
-export function ChangesPage(props: PlaceViewProps) {
+export function ChangesPage(props: PlaceListPageProps) {
   const { context } = props;
   const phonePages = useChangesPhonePages(props);
   return (
@@ -56,6 +66,26 @@ export function ChangesPage(props: PlaceViewProps) {
       shareChoice={context.services.find(ShareChoiceService)}
       openItem={context.openItem}
       phonePages={phonePages}
+      slot={props}
+      part={props.listInFrame ? "pane" : undefined}
+    />
+  );
+}
+
+/**
+ * The Changes list in the window's list column (`source-control.list-column`): the page's heading,
+ * sharing, changed items and History. What a row opens shows in the page beside it.
+ */
+export function ChangesListColumn(props: PlaceSlotProps) {
+  const { context } = props;
+  return (
+    <ChangesView
+      list={context.services.get(ChangesListService)}
+      developerView={context.services.find(DeveloperViewService)}
+      shareChoice={context.services.find(ShareChoiceService)}
+      openItem={context.openItem}
+      slot={props}
+      part="list"
     />
   );
 }
@@ -75,6 +105,13 @@ export interface ChangesViewProps {
   readonly phonePages?: ChangesPhonePages | undefined;
   /** Create version's remembered "Share with your team right away"; without it the box starts off. */
   readonly shareChoice?: ShareChoice | undefined;
+  /** Where what's open is kept, when the window keeps it for the tab; without it, the view's own. */
+  readonly slot?: PaneSlot | undefined;
+  /**
+   * One part of the desktop's page, while the window draws the list in its list column: the list
+   * there, or the content pane in the page. Without it, the whole page.
+   */
+  readonly part?: "list" | "pane" | undefined;
 }
 
 /**
@@ -98,6 +135,8 @@ export function ChangesView({
   openItem,
   phonePages,
   shareChoice,
+  slot,
+  part,
 }: ChangesViewProps) {
   const phone = usePresentation() === "phone";
   const pages = phone ? phonePages : undefined;
@@ -110,22 +149,57 @@ export function ChangesView({
   const [addingAddress, setAddingAddress] = useState(false);
   const [leftToGit, setLeftToGit] = useState(false);
   const items = orderItems(state.files);
+  const paneState = usePaneState(slot);
   // Beside the pane, a read nobody asked for may close the item while focus is elsewhere: leave it.
-  const nav = useOpenItem(items, () => {
-    if (phone || focusFellToPage()) heading.current?.focus();
-  });
-  const selection = usePaneSelection(list, nav, page, !phone);
+  // With nothing left the page's heading takes it, which is the pane's while the list is apart.
+  const nav = useOpenItem(
+    items,
+    () => {
+      if (part !== "list" && (phone || focusFellToPage())) heading.current?.focus();
+    },
+    paneState,
+  );
+  const selection = usePaneSelection(list, nav, page, !phone, paneState);
   const opening = usePhoneOpening(pages, items, state.history.versions);
-  useFocusAfterChoices(state.choosing, () => heading.current?.focus());
-  const pageClass = "flex w-full flex-col gap-4 p-4";
+  useFocusAfterChoices(state.choosing && part !== "pane", () => heading.current?.focus());
   const pushed = pushedPage({ list, pages, items, nav, openItem, phone });
   if (pushed !== undefined) return pushed;
+  const paneView = (
+    <ChangesPane
+      list={list}
+      state={state}
+      items={items}
+      open={nav.open}
+      version={state.history.versions.find((version) => version.id === selection.versionId)}
+      onVersionEscape={selection.focusVersionRow}
+      presses={selection.presses}
+      developer={developer}
+      openItem={openItem}
+    />
+  );
+  if (part === "pane") {
+    // The page's one `h1`, for the shell's focus on a page that opens; the list column shows the name.
+    return (
+      <div className={changesContentPaneClass} data-pane="content">
+        <h1 ref={heading} tabIndex={-1} className="sr-only">
+          {pageWords.title}
+        </h1>
+        {paneView}
+      </div>
+    );
+  }
+  // In the window's list column the name is an `h2`: the page beside it has the `h1`.
+  const Heading = part === "list" ? "h2" : "h1";
   const content = (
     <>
       <header className="flex flex-wrap items-center gap-3">
-        <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
+        <Heading
+          ref={heading}
+          tabIndex={-1}
+          className={phone ? "sr-only flex-1" : "text-title flex-1"}
+        >
           {pageWords.title}
-        </h1>
+        </Heading>
         {state.hasRemote ? (
           <GetUpdates list={list} phone={phone} onLeftToGit={setLeftToGit} />
         ) : null}
@@ -162,9 +236,39 @@ export function ChangesView({
       />
     </>
   );
+  return pageLayout({ part, phone, state, page, content, pane: paneView });
+}
+
+/**
+ * How the page lays out its parts: the list alone in the window's list column, one column on a
+ * phone, one page over the whole place where nothing could open in a pane, else the list column
+ * beside the content pane (`source-control.list-column`).
+ */
+function pageLayout({
+  part,
+  phone,
+  state,
+  page,
+  content,
+  pane,
+}: {
+  readonly part: "list" | undefined;
+  readonly phone: boolean;
+  readonly state: ChangesListState;
+  readonly page: RefObject<HTMLDivElement | null>;
+  readonly content: ReactNode;
+  readonly pane: ReactNode;
+}): ReactNode {
+  if (part === "list") {
+    return (
+      <div ref={page} className={changesListPartClass} data-pane="list">
+        {content}
+      </div>
+    );
+  }
   if (phone) {
     return (
-      <div ref={page} className={pageClass}>
+      <div ref={page} className="flex w-full flex-col gap-4 p-4">
         {content}
       </div>
     );
@@ -177,22 +281,7 @@ export function ChangesView({
     );
   }
   return (
-    <ChangesColumns
-      listRef={page}
-      pane={
-        <ChangesPane
-          list={list}
-          state={state}
-          items={items}
-          open={nav.open}
-          version={state.history.versions.find((version) => version.id === selection.versionId)}
-          onVersionEscape={selection.focusVersionRow}
-          presses={selection.presses}
-          developer={developer}
-          openItem={openItem}
-        />
-      }
-    >
+    <ChangesColumns listRef={page} pane={pane}>
       {content}
     </ChangesColumns>
   );
@@ -227,112 +316,6 @@ function useFocusAfterChoices(open: boolean, focus: () => void) {
 function focusIsLost(): boolean {
   const active = document.activeElement;
   return active === null || active === document.body;
-}
-
-/**
- * The page drawn instead of the Changes page on a phone, if one is open: a page on the stack above
- * it (`sub`), the Get updates choices, or an item's What changed opened in place. The desktop
- * draws these in the content pane beside the list (`source-control.list-column`).
- */
-function pushedPage({
-  list,
-  pages,
-  items,
-  nav,
-  openItem,
-  phone,
-}: {
-  readonly list: ChangesList;
-  readonly pages: ChangesPhonePages | undefined;
-  readonly items: readonly ChangeItem[];
-  readonly nav: OpenItem;
-  readonly openItem: ((item: ItemRef) => void) | undefined;
-  readonly phone: boolean;
-}): ReactNode | undefined {
-  if (!phone) return undefined;
-  if (pages?.sub !== undefined) {
-    return (
-      <PhonePushedPage
-        list={list}
-        items={items}
-        versions={list.state.history.versions}
-        openItem={openItem}
-        close={pages.close}
-        sub={pages.sub}
-      />
-    );
-  }
-  if (nav.open !== undefined) {
-    return (
-      // The page draws its own inset, so its bottom bar can run edge to edge.
-      <div className="flex min-h-full w-full flex-col">
-        <WhatChangedPage
-          list={list}
-          item={nav.open}
-          developer={false}
-          openItem={openItem}
-          onBack={nav.back}
-          phone
-        />
-      </div>
-    );
-  }
-  if (list.state.merge !== undefined && list.state.choosing) {
-    return (
-      // The page draws its own inset, so its bottom bar can run edge to edge.
-      <div className="flex min-h-full w-full flex-col">
-        <MergeChoices list={list} phone />
-      </div>
-    );
-  }
-  return undefined;
-}
-
-/**
- * On a phone, the page pushed above the Changes page: an item's What changed (2.13) or a version's
- * page (2.14), under a top bar that names it and has Back. When the item or the version is gone, as
- * after Undo these changes, the page closes and the list shows again.
- */
-function PhonePushedPage({
-  list,
-  items,
-  versions,
-  openItem,
-  close,
-  sub,
-}: {
-  readonly list: ChangesList;
-  readonly items: readonly ChangeItem[];
-  readonly versions: readonly Version[];
-  readonly openItem: ((item: ItemRef) => void) | undefined;
-  readonly close: (sub: string) => void;
-  readonly sub: string;
-}) {
-  const page = pushedPageOf(sub);
-  const item = page?.kind === "item" ? items.find((each) => each.id === page.id) : undefined;
-  const version =
-    page?.kind === "version" ? versions.find((each) => each.id === page.id) : undefined;
-  const gone = item === undefined && version === undefined;
-  useEffect(() => {
-    if (gone) close(sub);
-  }, [gone, close, sub]);
-  if (item !== undefined) {
-    return (
-      <div className="flex min-h-full w-full flex-col">
-        {/* The phone's What changed has no developer view: its changes are in words only. */}
-        <WhatChangedPage list={list} item={item} developer={false} openItem={openItem} phone />
-      </div>
-    );
-  }
-  if (version !== undefined) {
-    return (
-      // The page draws its own inset, so its bottom bar can run edge to edge.
-      <div className="flex min-h-full w-full flex-col">
-        <VersionPage version={version} list={list} />
-      </div>
-    );
-  }
-  return null;
 }
 
 /** What comes under the heading, by what the last read said. */

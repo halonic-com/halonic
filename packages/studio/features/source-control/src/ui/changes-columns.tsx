@@ -19,6 +19,13 @@ import { WhatChangedPage } from "./whats-changed-page.tsx";
 export const changesListColumnClass = `${listColumnClass} flex shrink-0 flex-col gap-4 overflow-y-auto border-e border-border px-4 py-5 *:shrink-0`;
 
 /**
+ * The list in the window's list column (`shell.rail-frame`): the same parts, scrolling on their own,
+ * at the width the window's column sets.
+ */
+export const changesListPartClass =
+  "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-5 *:shrink-0";
+
+/**
  * The content pane: the rest of the width, scrolling on its own. It has no padding, so the empty
  * pane's wash runs edge to edge, as the Library's does; an item, a version and the choices draw
  * theirs ({@link paneContentClass}).

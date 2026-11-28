@@ -41,6 +41,7 @@ export const sourceControlFeature = defineFeature({
       id: "changes",
       view: "ChangesPage",
       load: () => import("./ui/changes-page.tsx"),
+      listColumn: { view: "ChangesListColumn", load: () => import("./ui/changes-page.tsx") },
       signal: (context) => context.services.get(ChangesListService).signal(),
       subscribeSignal: (context, listener) =>
         context.services.get(ChangesListService).subscribe(listener),

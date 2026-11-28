@@ -1,5 +1,6 @@
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import type { ChangesList } from "../changes-list.ts";
+import type { PaneState } from "./pane-state.ts";
 import type { PhoneOpening } from "./phone-pages.ts";
 import type { OpenItem } from "./use-open-item.ts";
 
@@ -25,7 +26,8 @@ export interface PaneSelection {
  * changed, a version's details, or Get updates' choices. Opening an item or a version while the
  * choices show puts them aside with the merge still started, as a phone's Back does, so the list's
  * Continue brings them back; when the choices open, what the pane held closes, so finishing them
- * doesn't bring it back with focus on it.
+ * doesn't bring it back with focus on it. What's open is kept in `pane`. The version rows are in
+ * `listColumn`, or anywhere in the window when it draws the list itself (`listColumn` is empty).
  */
 export function usePaneSelection(
   list: ChangesList,
@@ -33,39 +35,34 @@ export function usePaneSelection(
   listColumn: RefObject<HTMLElement | null>,
   /** Whether the pane is drawn: on a phone the choices and What changed are pages of their own. */
   besidePane: boolean,
+  pane: PaneState,
 ): PaneSelection {
-  const [versionId, setVersionId] = useState<string>();
-  const [presses, setPresses] = useState(0);
-  const pressed = () => setPresses((count) => count + 1);
   const close = useRef(nav.close);
   close.current = nav.close;
   const choosing = list.state.choosing;
   useEffect(() => {
     if (!choosing || !besidePane) return;
+    // Closes the open item or version alike: the pane holds one at a time.
     close.current();
-    setVersionId(undefined);
   }, [choosing, besidePane]);
   const leaveChoices = () => {
     if (list.state.choosing) list.merge.leave();
   };
   return {
-    versionId,
-    presses,
+    versionId: pane.versionId,
+    presses: pane.presses,
     openRow: (id) => {
       leaveChoices();
-      setVersionId(undefined);
-      nav.show(id);
-      pressed();
+      nav.show(id, true);
     },
     pickVersion: (id) => {
       leaveChoices();
       nav.close();
-      setVersionId(id);
-      pressed();
+      pane.showVersion(id);
     },
     focusVersionRow: (id) => {
-      listColumn.current
-        ?.querySelector<HTMLElement>(
+      (listColumn.current ?? document)
+        .querySelector<HTMLElement>(
           `[data-part="history-list"] [data-row-id="${CSS.escape(id)}"] [role="gridcell"]`,
         )
         ?.focus();
