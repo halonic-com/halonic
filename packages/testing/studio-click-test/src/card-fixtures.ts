@@ -73,9 +73,17 @@ export const oneQuestionCard: CardFixture = {
 };
 
 /**
- * A checkbox confirmation that takes one or two of three picks. Paperclip refuses one whose
- * default picks are fewer than `minSelected`; Halonic doesn't tick the defaults, so the
- * steps' own picks are the whole answer.
+ * The checkbox card's fourth option, which no step ticks. Its words are wider than the 800px
+ * window, so they wrap in the Inbox and in a chat, and the step can read where the box sits
+ * beside them (`kit.checkbox-words`). Paperclip takes at most 120 characters in an option's label.
+ */
+export const wrappingOption =
+  "Everywhere on the same morning: an email to every Acme customer, the Acme blog and each of the Acme social accounts";
+
+/**
+ * A checkbox confirmation that takes one or two of its picks: three short ones the steps tick,
+ * and {@link wrappingOption}. Paperclip refuses one whose default picks are fewer than
+ * `minSelected`; Halonic doesn't tick the defaults, so the steps' own picks are the whole answer.
  */
 export const checkboxCard: CardFixture = {
   key: "checkbox",
@@ -88,6 +96,7 @@ export const checkboxCard: CardFixture = {
       { id: "email", label: "Email" },
       { id: "blog", label: "Blog" },
       { id: "social", label: "Social" },
+      { id: "everywhere", label: wrappingOption },
     ],
     defaultSelectedOptionIds: ["email"],
     minSelected: 1,
