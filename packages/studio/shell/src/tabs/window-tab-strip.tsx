@@ -49,7 +49,7 @@ export interface WindowTabStripProps {
 }
 
 /**
- * The window tabs in the title bar (component specs 24.5): one `tablist` named "Open tabs" and one
+ * The window tabs on the frame, right above the framed panel (component specs 24.5, `shell.frame`): one `tablist` named "Open tabs" and one
  * Tab stop. ← and → move the focus, Enter or Space opens the focused tab, Delete closes it,
  * Ctrl Shift PageUp and PageDown move it, and Shift F10 or the Menu key opens its tab menu, as a
  * right-click does. Dragging a tab moves it too, with no motion: it jumps
@@ -63,7 +63,7 @@ export interface WindowTabStripProps {
  * Nothing on a tab is `fg-subtle`, which reaches only 4.46:1 on the hovered tab.
  *
  * @example
- * <ShellFrame titleBar={<WindowTabStrip tabs={workspace.tabs} />} …>
+ * <ShellFrame tabs={<WindowTabStrip tabs={workspace.tabs} />} …>
  */
 export function WindowTabStrip({
   tabs,
@@ -217,13 +217,12 @@ function NewTabButton({ tabs, onNewTab }: Pick<WindowTabStripProps, "tabs" | "on
 }
 
 /**
- * The strip scrolls sideways, and a scroller clips on all four sides. Its 8px padding at both ends
- * and 1px at the foot, cancelled by negative margins, keep the active tab's foot curves and its
- * 1px overlap with the panel's top border inside the scroller's box, while the tabs stay where the
- * title bar puts them.
+ * The strip scrolls sideways, and a scroller clips on all four sides. Its 1px padding at the foot,
+ * cancelled by a negative margin, keeps the active tab's 1px overlap with the panel's top border
+ * inside the scroller's box, while the tabs stay right above the framed panel.
  */
 const stripClasses = [
-  "-mx-2 -mb-px flex min-w-0 items-end self-end overflow-x-auto px-2 pb-px",
+  "-mb-px flex min-w-0 items-end self-end overflow-x-auto pb-px",
   // No bar: the standard property for Firefox, the part for WebKit and Chromium, which draw the
   // kit's slim bar from the parts (`kit.slim-scrollbars`).
   "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",

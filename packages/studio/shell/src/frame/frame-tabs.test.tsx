@@ -2,11 +2,13 @@
 
 import { createToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { createAnnouncer } from "../announcer/announcer.ts";
 import { createCloseStack } from "../close-stack/close-stack.ts";
 import { createShellEngine } from "../engine/engine-connection.ts";
+import { TabSet } from "../tabs/tab-set.ts";
+import { WindowTabStrip } from "../tabs/window-tab-strip.tsx";
 import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
@@ -25,7 +27,16 @@ afterEach(() => {
   uninstall();
 });
 
-function renderFrame() {
+/** The real strip over tabs on Agents and Sorter, with the one at `activeIndex` active. */
+function stripWithActiveTab(activeIndex: number) {
+  const tabs = new TabSet();
+  tabs.openHere({ key: "agents", title: "Agents" });
+  tabs.openInNewTab({ key: "agent/acme/sorter", title: "Sorter" });
+  tabs.activate(tabs.state.tabs[activeIndex]?.id ?? "");
+  return <WindowTabStrip tabs={tabs} />;
+}
+
+function renderFrame(tabs: ReactNode = <div role="tablist" aria-label="Open tabs" />) {
   const timers = new FakeTimers();
   const announcer = createAnnouncer({ timers });
   return render(
@@ -36,7 +47,7 @@ function renderFrame() {
       toasts={createToastStore()}
       language="en"
       titleBar={<button type="button">Back</button>}
-      tabs={<div role="tablist" aria-label="Open tabs" />}
+      tabs={tabs}
     >
       <h1>Home</h1>
     </ShellFrame>,
@@ -73,14 +84,34 @@ verifies("shell.frame", () => {
     expect(panel?.className.split(" ")).not.toContain("rounded-ss-none");
   });
 
-  it("clips the tab row across only in a wide window, so the folded button's focus ring stays whole", () => {
+  it("doesn't clip the tab row, so the focus ring of + at its end stays whole", () => {
     const container = renderFrame();
     const row = container.querySelector("[data-panel-tabs]");
-    expect(row?.className.split(" ")).toContain("overflow-x-clip");
+    expect(row?.className).not.toMatch(/overflow/);
 
     act(() => media.resize(800));
-    expect(row?.className.split(" ")).not.toContain("overflow-x-clip");
+    expect(row?.className).not.toMatch(/overflow/);
   });
+
+  // HAL-21213: pieces past the active tab's sides painted over the foot of its side lines and over
+  // the panel's top line beside it, so the outline broke 5px above the panel.
+  for (const activeIndex of [0, 1]) {
+    it(`runs tab ${activeIndex + 1}'s side lines, while active, down into the panel's top line`, () => {
+      const container = renderFrame(stripWithActiveTab(activeIndex));
+      const active = container.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+      const classes = active?.className.split(" ") ?? [];
+
+      expect(active?.getAttribute("aria-label")).toBe(["Agents", "Sorter"][activeIndex]);
+      // Side lines down to its foot, 1px past the strip, over the panel's top line.
+      expect(classes).toEqual(expect.arrayContaining(["border", "border-b-0", "-mb-px"]));
+      const outside = [...(active?.querySelectorAll("[aria-hidden]") ?? [])].filter((piece) =>
+        /(^| )-(start|end)-/.test(piece.className),
+      );
+      expect(outside).toEqual([]);
+      const strip = container.querySelector('[role="tablist"]');
+      expect(strip?.className).not.toMatch(/(^| )-?(mx|px)-/);
+    });
+  }
 
   it("shows no tabs on a phone", () => {
     const container = renderFrame();

@@ -121,8 +121,8 @@ export interface ShellFrameProps {
  * The Studio window's frame. On the desktop (design direction 2) it has the 40px title bar on the
  * app frame the Messenger and the Inbox have (`bg-app-frame`, HAL-20499), then the framed sidebar
  * they share (`kit.framed-sidebar`, HAL-19923): the sidebar on the frame, full height, and 8px
- * beside it the framed panel with the
- * page over the 24px status bar. On a phone (narrower than `PHONE_MAX_WIDTH`) it
+ * beside it a column with the window tabs' row on the frame, then right under it the framed panel
+ * with the page over the 24px status bar (`shell.frame`). On a phone (narrower than `PHONE_MAX_WIDTH`) it
  * shows the phone's top bar, the page and the bottom navigation, with no window tabs and no
  * status bar (component specs 15.1, 15.2).
  * In a narrow window (600 to 899px) the sidebar folds into the Places drawer, opened by a Places
@@ -177,8 +177,8 @@ export function ShellFrame(props: ShellFrameProps) {
  * The desktop's framed panel beside the sidebar (`kit.framed-sidebar`): the engine's line, the
  * page and the status bar. Its classes, not the kit's `FramedPanel`, because on a phone the same
  * element stays as a `contents` box, so `main` keeps its place in the tree (`shell.frame`). Under
- * the window tabs in a wide window its top start corner is square, so the active first tab's line
- * runs into its own.
+ * the window tabs in a wide window its top start corner is square, so the active first tab's side
+ * line runs straight into its own.
  */
 const panel = `flex min-h-0 min-w-0 flex-1 flex-col ${framedPanelClass("studio")}`;
 
@@ -309,14 +309,10 @@ function FramedContent(props: {
     >
       {tabs ? (
         // On the frame, so an inactive tab's hover fill shows and the active tab, the panel's
-        // fill, joins the panel under it (the approved mockup, v26 on HAL-20617). In a wide window
-        // it's clipped across, so the active first tab's start curve doesn't spill onto the frame
-        // beside the panel; folded, there's no curve, and a clip would cut the button's focus ring.
-        // As high folded as with the tabs, so the panel doesn't move when the window narrows.
-        <div
-          data-panel-tabs=""
-          className={`flex min-h-9.5 shrink-0 items-end gap-0.5 pt-1 ${squareCorner ? "overflow-x-clip" : ""}`}
-        >
+        // fill, joins the panel under it (the approved mockup, v26 on HAL-20617). Not clipped:
+        // nothing spills past the active tab's side lines, and a clip cut **+**'s focus ring at the
+        // row's end. As high folded as with the tabs, so the panel doesn't move when it narrows.
+        <div data-panel-tabs="" className="flex min-h-9.5 shrink-0 items-end gap-0.5 pt-1">
           {frame.tabs}
         </div>
       ) : null}

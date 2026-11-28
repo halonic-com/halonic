@@ -3,7 +3,13 @@ import { expect, it } from "vitest";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
 import { demoWorkspace, switcherXpath } from "./steps/demo-workspace.ts";
 import { wideWindow } from "./steps/wide-window.ts";
-import { tabXpath, windowTabs } from "./steps/window-tabs.ts";
+import {
+  activeTabXpath,
+  framedPanelXpath,
+  frameXpath,
+  tabXpath,
+  windowTabs,
+} from "./steps/window-tabs.ts";
 import { keys } from "./webdriver.ts";
 import { basicsText, buttonLabels } from "./words.ts";
 
@@ -32,6 +38,9 @@ verifies("studio-click-test.wide-window", () => {
       sizes.push(`${studio.windowSize.width}`);
       return xpath === tabXpath ? tabs() + (studio.elements.get("opened") ?? 0) : 0;
     };
+    studio.backgrounds.set(activeTabXpath, "rgb(255, 255, 255)");
+    studio.backgrounds.set(framedPanelXpath, "rgb(255, 255, 255)");
+    studio.backgrounds.set(frameXpath, "rgb(224, 234, 255)");
     const open = (count: number) => () => studio.elements.set("opened", count);
     button(studio, "main", buttonLabels.newTab.text, open(1));
     button(studio, "main", keys.escape);
