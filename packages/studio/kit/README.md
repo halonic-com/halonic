@@ -89,7 +89,7 @@ The same minimum holds for every script the Studio page loads, not only for CSS.
 | the halo on a start screen | `bg-halo-spot`, `shadow-halo-glow` |
 | a hovered window tab, over the frame | `bg-tab-hover` |
 | the workflow canvas | `bg-canvas-grid` |
-| the focus ring (keyboard focus only) | `focus-ring`, `focus-ring-inset` for list rows |
+| the focus ring (keyboard focus only) | `focus-ring`, `focus-ring-inset` for list rows and for a Button at a scrolling box's edge (its `ring="inset"`) |
 | a heading only code focuses (`tabindex="-1"`) | none: the theme rings it; never add `outline-none` |
 | a selected row's mark | `selected-bar`, `selected-forced` |
 | Windows high-contrast mode only | `text-forced-disabled` |
@@ -284,6 +284,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
 | `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes. They're centred in it, except on a ghost button, which has no box at rest: there they start at its edge, so the label stays next to the text beside it |
 | `busyAlign` | With `busyLabel`: `start` or `center`, where the two labels sit in the kept width. A ghost button in a centred column (Welcome's Open demo) or at the end of a row that wraps (a proposal's Reject and Accept) takes `center` |
+| `ring` | Where the keyboard focus ring goes: `outside` (the default), or `inset`, drawn inside the button. Use `inset` only for a button at the edge of a scrolling box, which would clip the outer ring there (see below) |
 | `name` | A button with words only: what screen readers hear when the words leave something out, starting with those words ("Next: Approve this reply?, 2 left" for "Next: Approve this reply? · 2 left") |
 | `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now; its first line is also the button's tooltip |
 | `type` | `submit` only for a form's confirming button |
@@ -306,7 +307,7 @@ names several ids gives the first one's first line, as laid out on the page.
 | --- | --- |
 | Default | `primary` fill, `secondary` white with a `border-strong` edge, `ghost` no fill, `danger-outline` `surface` with a `danger` edge and `danger` text, `danger` fill |
 | Hover | `primary-hover`, `surface-subtle`, `surface-muted` with `fg` text, `danger-soft`, `danger-hover`; a press the same |
-| Focus | The standard focus ring |
+| Focus | The standard focus ring; with `ring="inset"` the same ring, drawn inside the button |
 | Pressed | The hover look, kept while `pressed`: a ghost button's `surface-muted` tile with `fg` text (`surface` on a tint); a 2px outline in high contrast |
 | Unavailable | 45% opacity, `not-allowed` cursor; hover and keyboard focus show the reason's first line as a Tooltip, and nothing else changes; its reason is read with it, once |
 | Busy | The spinner in the icon's place (in front of the label when there's no icon); the label stays |
@@ -327,6 +328,20 @@ words, so at large text it grows taller, never wider than its column.
 **In a narrow box** (a status box at 400 % zoom), a `sm`, `md` or `lg` button is never wider than
 the box: its label wraps between words, centred, and the button grows taller. On one line nothing
 changes. An `xs` button stays on one line, so the status bar keeps its height.
+
+**At the edge of a scrolling box**, the box clips a ring drawn outside the button, so the button
+takes `ring="inset"` and draws the same ring inside itself (`focus-ring-inset`,
+`kit.button-ring-inset`). There are two such places: a button in the last column of a scrolling
+grid (a collection record's ⋮), and a button pulled out to the box's edge so its label starts where
+the text above it starts (the Library's Try again under its stale-list line, pulled 13px into the
+16px padding of the scrolling list column, which leaves 3px where the outer ring needs 4px). Every
+other button keeps the outer ring.
+
+One limit: in Windows high-contrast mode the ring is the `Highlight` outline, 2px wide at a -2px
+offset. It starts at the button's very edge, where the ring otherwise starts inside the button's
+1px border. A button whose edge sits past the box's edge still loses that part of the outline: on a
+touch screen the Library's Try again is pulled 17px against the 16px of padding, so 1px of it is
+cut on that side.
 
 **On a tinted fill**, wrap a ghost button in `<OnTintContext value={true}>`: its label turns
 `accent-text` and its hover fill `surface`, so it stands out from the tint instead of greying it.
