@@ -20,14 +20,15 @@ pub async fn open_sign_in<R: Runtime>(
     url: String,
 ) -> Result<&'static str, &'static str> {
     let url = sign_in_url(&url).ok_or("invalid")?;
-    let Some(rect) = sign_in_rect(&window) else {
+    let Some((rect, scale_factor)) = sign_in_rect(&window) else {
         return Ok("fallback");
     };
     // Reading the registry and starting the browser wait on the system, so
     // they run off the async runtime's threads.
-    let launched =
-        tauri::async_runtime::spawn_blocking(move || halonic_sign_in_window::launch(&url, rect))
-            .await;
+    let launched = tauri::async_runtime::spawn_blocking(move || {
+        halonic_sign_in_window::launch(&url, rect, scale_factor)
+    })
+    .await;
     match launched {
         Ok(Ok(Some(launch))) => {
             // The search for the new window waits up to three seconds; the
@@ -49,9 +50,10 @@ pub async fn open_sign_in<R: Runtime>(
     }
 }
 
-/// Where the sign-in window goes over `window`, or `None`, logged, when
-/// the window's place or its monitor can't be read.
-fn sign_in_rect<R: Runtime>(window: &WebviewWindow<R>) -> Option<Rect> {
+/// Where the sign-in window goes over `window`, in physical pixels, and its
+/// monitor's scale factor, or `None`, logged, when the window's place or its
+/// monitor can't be read.
+fn sign_in_rect<R: Runtime>(window: &WebviewWindow<R>) -> Option<(Rect, f64)> {
     let placed = window
         .outer_position()
         .and_then(|position| Ok((position, window.outer_size()?)))
@@ -71,7 +73,7 @@ fn sign_in_rect<R: Runtime>(window: &WebviewWindow<R>) -> Option<Rect> {
                 width: area.size.width,
                 height: area.size.height,
             };
-            Some(popup_rect(owner, work_area))
+            Some((popup_rect(owner, work_area), monitor.scale_factor()))
         }
         Ok((_, None)) => {
             halonic_shell_log::record(

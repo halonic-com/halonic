@@ -23,8 +23,8 @@ pub use url::Url;
 mod rules;
 
 pub use rules::{
-    Browser, MIN_HEIGHT, MIN_WIDTH, NewWindows, browser_exe, chromium_browser, launch_arguments,
-    new_windows, popup_rect, sign_in_url,
+    Browser, MIN_HEIGHT, MIN_WIDTH, NewWindows, browser_exe, browser_rect, chromium_browser,
+    launch_arguments, new_windows, popup_rect, sign_in_url,
 };
 
 #[cfg(windows)]
@@ -94,11 +94,12 @@ impl std::fmt::Display for Placed {
     }
 }
 
-/// Opens `url` as an app window of the default browser at `rect`, when
-/// that browser is Chromium. `Ok(None)` when it isn't, or isn't found, so
+/// Opens `url` as an app window of the default browser at `rect`, in
+/// physical pixels on a monitor scaled by `scale_factor`, when that browser
+/// is Chromium. `Ok(None)` when it isn't, or isn't found, so
 /// the caller opens the page as before; `Err` when reading the setting or
 /// starting the browser failed, which the caller logs before doing the same.
-pub fn launch(url: &Url, rect: Rect) -> Result<Option<Launch>, String> {
+pub fn launch(url: &Url, rect: Rect, scale_factor: f64) -> Result<Option<Launch>, String> {
     let Some(prog_id) = platform::https_prog_id()? else {
         return Ok(None);
     };
@@ -115,7 +116,7 @@ pub fn launch(url: &Url, rect: Rect) -> Result<Option<Launch>, String> {
         .into_iter()
         .map(|window| window.handle)
         .collect();
-    start(&exe, url, rect)?;
+    start(&exe, url, rect, scale_factor)?;
     Ok(Some(Launch { exe, before, rect }))
 }
 
@@ -132,7 +133,7 @@ const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     clippy::disallowed_methods,
     reason = "the crate's one Command::new, which hides the console window"
 )]
-fn start(exe: &Path, url: &Url, rect: Rect) -> Result<(), String> {
+fn start(exe: &Path, url: &Url, rect: Rect, scale_factor: f64) -> Result<(), String> {
     let mut command = Command::new(exe);
     #[cfg(windows)]
     {
@@ -140,7 +141,7 @@ fn start(exe: &Path, url: &Url, rect: Rect) -> Result<(), String> {
         command.creation_flags(CREATE_NO_WINDOW);
     }
     command
-        .args(launch_arguments(url, rect))
+        .args(launch_arguments(url, rect, scale_factor))
         .spawn()
         .map(drop)
         .map_err(|error| format!("starting {}: {error}", exe.display()))

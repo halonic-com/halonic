@@ -130,10 +130,40 @@ fn centred(owner_start: i32, owner_size: u32, size: u32, area_start: i32, area_s
     i32::try_from(start).unwrap_or(area_start)
 }
 
+/// `rect`, in physical pixels, in the screen coordinates Chromium's
+/// `--window-size` and `--window-position` take: device-independent pixels,
+/// the physical ones divided by the monitor's `scale_factor` (1.5 on a
+/// display scaled to 150 %). Without it the window would start half again
+/// as big, away from Halonic. A scale that isn't a positive number counts
+/// as 1.
+pub fn browser_rect(rect: Rect, scale_factor: f64) -> Rect {
+    let scale = if scale_factor.is_finite() && scale_factor > 0.0 {
+        scale_factor
+    } else {
+        1.0
+    };
+    Rect {
+        x: to_dip(f64::from(rect.x), scale),
+        y: to_dip(f64::from(rect.y), scale),
+        width: to_dip(f64::from(rect.width), scale).unsigned_abs(),
+        height: to_dip(f64::from(rect.height), scale).unsigned_abs(),
+    }
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "a physical i32 or u32 divided by a scale of at least the smallest positive f64 rounds back into range; `as` saturates otherwise"
+)]
+fn to_dip(physical: f64, scale: f64) -> i32 {
+    (physical / scale).round() as i32
+}
+
 /// The browser's command line: the address as one `--app=` argument, and
-/// the window's size and place. Each is one argument of its own, started
-/// without a shell, so nothing in the address can add another.
-pub fn launch_arguments(url: &Url, rect: Rect) -> [String; 3] {
+/// the window's size and place, `rect` in physical pixels converted with
+/// [`browser_rect`]. Each is one argument of its own, started without a
+/// shell, so nothing in the address can add another.
+pub fn launch_arguments(url: &Url, rect: Rect, scale_factor: f64) -> [String; 3] {
+    let rect = browser_rect(rect, scale_factor);
     [
         format!("--app={url}"),
         format!("--window-size={},{}", rect.width, rect.height),

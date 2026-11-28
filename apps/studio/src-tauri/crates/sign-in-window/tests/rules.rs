@@ -135,7 +135,7 @@ fn the_address_is_one_app_argument_with_the_size_and_place() {
         width: 800,
         height: 600,
     };
-    let arguments = launch_arguments(&url, rect);
+    let arguments = launch_arguments(&url, rect, 1.0);
     assert_eq!(
         arguments,
         [
