@@ -2,6 +2,8 @@
 
 - Approval: HAL-18392 (the I6 plan, row 3, approved by the CTO)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:ChFp+i13/eaAXnlm8Bom7G6pAFZ6R02HOakq5lDbwfVLEkDW9UP17imR0a51+c4+kzhuxtBX+NolHAJD2cy+BA==
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:OK/hWuOIziHL1v/CcvdnBZ5OwNl5MlZj2syFE6eKfr34b8/AO4D9lyqdaaSrZj4UqKSN/mOs3Xlq5kKa+WWVAQ==
 
 The secret rules move unchanged from `tooling/check/src/leaks/secrets.ts` to
 `packages/core/std/src/secret-rules.ts`, so the leak guard and Studio's "Offer
