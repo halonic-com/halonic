@@ -2,7 +2,7 @@
 
 - Approval: the task is HAL-20727; Liam approves this note in review
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:5Fj/djP71JX74yN+FdjNarF1ic7u5vq3j7goKjRvIh/BnthgimilMktER/vqRsV4HTRr3RztJEg4cw+n9FHLBQ==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:CZzGxQ1kalM37CRxyVVkLeLUCZPkhrwY/iNnFXL7JbeLD7Z87xhkuATiAc3C0OEkpKteV1jPnyZTJuBfB+qtAw==
 - Task: HAL-20727
 
 ## What changes
