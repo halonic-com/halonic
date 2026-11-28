@@ -1018,6 +1018,14 @@ and records the feature that added each (`Registered`). A bad id, a repeated id 
   `display` and "On the computer running Halonic" heads `host` (`settingsGroups`). Features never
   write headings. `settingsSectionToOpen`
   picks the section `settings.open` shows (`shell.settings-open`).
+- **Sign-ins** (`shell.sign-in-needed`): `signIns.add` adds a sign-in the workspace can need,
+  with its provider, logo, `purpose`, the focused apps it blocks (`blockingFor`), a `watch` that
+  reports the sign-ins needed now and a `start` that begins one. Each window builds a
+  `SignInNeeds` for its app: it splits the needed sign-ins into `blocking` (a modal that can't be
+  closed) and `notBlocking` (a band that can't be dismissed), each ordered by provider, then name.
+  When a sign-in ends it posts on a `SignInChannel` (`createBroadcastSignInChannel` between the
+  app's windows), and every window runs each `watch` again; `windowFocused` does too, at most every
+  5 seconds. A `watch` that can't read is logged, sets `unreadable` and blocks nothing.
 - **Commands** (`shell.commands`, `shell.keybindings`): `commands.add`, `keybindings.add`,
   `commands.addSource`, `search.addProvider` and `persist`, which a feature calls at most once. A binding's `when` joins
   contexts with `&&`, each optionally `!`; of the bindings that hold, the one with the most

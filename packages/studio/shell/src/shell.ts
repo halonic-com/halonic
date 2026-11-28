@@ -14,6 +14,7 @@ import { type LayoutContributions, LayoutStores } from "./points/layout-points.t
 import { lookupFor, ServiceCatalog, type ServiceTarget } from "./service-catalog.ts";
 import type { ServiceKey } from "./service-key.ts";
 import { ShellError } from "./shell-error.ts";
+import { type SignInContributions, SignInStores } from "./sign-in-needed/sign-ins.ts";
 import type { Studio } from "./studio.ts";
 import type { WorkspaceContext } from "./workspace-context.ts";
 
@@ -73,7 +74,10 @@ export interface Shell {
   /** The window's header badges: features add and remove states, the frame shows them. */
   readonly badges: BadgeRegistry;
   /** Everything the features contributed, for the shell's layout. */
-  readonly contributions: LayoutContributions & FrameContributions & CommandContributions;
+  readonly contributions: LayoutContributions &
+    FrameContributions &
+    CommandContributions &
+    SignInContributions;
 }
 
 /**
@@ -92,8 +96,9 @@ export function createShell(options: ShellOptions): Shell {
   const layout = new LayoutStores();
   const frame = new FrameStores();
   const commands = new CommandStores(options.platform);
+  const signIns = new SignInStores();
   for (const feature of features) {
-    registerFeature(feature, catalog, { layout, frame, commands });
+    registerFeature(feature, catalog, { layout, frame, commands, signIns });
   }
   layout.check();
   commands.check();
@@ -121,6 +126,7 @@ export function createShell(options: ShellOptions): Shell {
       ...layout.contributions(),
       ...frame.contributions(),
       ...commands.contributions(),
+      ...signIns.contributions(),
     },
   };
 }
@@ -129,6 +135,7 @@ interface PointStores {
   readonly layout: LayoutStores;
   readonly frame: FrameStores;
   readonly commands: CommandStores;
+  readonly signIns: SignInStores;
 }
 
 function registerFeature(feature: Feature, catalog: ServiceCatalog, stores: PointStores): void {
@@ -145,6 +152,7 @@ function registerFeature(feature: Feature, catalog: ServiceCatalog, stores: Poin
     ...stores.layout.pointsFor(feature.id, guard),
     ...stores.frame.pointsFor(feature.id, guard),
     ...stores.commands.pointsFor(feature.id, guard),
+    ...stores.signIns.pointsFor(feature.id, guard),
     services: catalog.pointFor(feature, isOpen),
   };
   try {
