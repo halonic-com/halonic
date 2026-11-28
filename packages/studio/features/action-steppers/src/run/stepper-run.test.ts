@@ -1,4 +1,9 @@
-import type { AnswerResult, InboxActionRequest, InboxAnswer } from "@halonicjs/ports";
+import type {
+  ActionOperationRoute,
+  AnswerResult,
+  InboxActionRequest,
+  InboxAnswer,
+} from "@halonicjs/ports";
 import { createActionSteps, desktopOnlyActionSteps } from "@halonicjs/studio-services";
 import {
   FakeActionRecords,
@@ -7,7 +12,7 @@ import {
   type StandInUser,
 } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type ActionItem, reviewActionItem } from "../review/action-item-review.ts";
 import { acmeSource, actionItem } from "../test-support/acme-catalog.test-helper.ts";
 import {
@@ -153,6 +158,34 @@ verifies("action-steppers.shell-run", () => {
       expect(answered).not.toContain('"value"');
       expect(answered).not.toContain(typedSecret);
       expect(JSON.stringify(await records.read(request))).not.toContain(typedSecret);
+    });
+
+    it("sends an operation step to the sender and never opens it as a page", async () => {
+      const operation: ActionOperationRoute = {
+        kind: "operation",
+        definition: "acme.set-secret",
+        version: 1,
+        step: 1,
+        service: "paperclip",
+        risk: "admin",
+        placeholders: { name: "^[A-Z][A-Z0-9_]{0,63}$" },
+        operation: "paperclip.set-secret",
+        body: [{ name: "value", kind: "secret-input" }],
+        keep: [],
+      };
+      const route = vi.spyOn(acmeRunCatalog, "route").mockReturnValue(operation);
+      try {
+        const { fake, open } = await runOf(secretRequest);
+        const send = vi.spyOn(fake, "send");
+        const openGuided = vi.spyOn(fake, "openGuided");
+        const run = await open();
+        run.actions.runStep(1);
+        await run.idle();
+        expect(send).toHaveBeenCalledTimes(1);
+        expect(openGuided).not.toHaveBeenCalled();
+      } finally {
+        route.mockRestore();
+      }
     });
 
     it("runs nothing of a request once it ended, even opened again", async () => {

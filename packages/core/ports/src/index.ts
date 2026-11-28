@@ -7,6 +7,8 @@ export {
   type ActionGuidedRoute,
   type ActionMethod,
   type ActionOpenResult,
+  type ActionOperation,
+  type ActionOperationRoute,
   type ActionRefusal,
   type ActionRisk,
   type ActionRoute,
@@ -17,6 +19,7 @@ export {
   type ActionSignInResult,
   type ActionStepRef,
   type ActionValue,
+  actionOperations,
   actionSenderVersion,
 } from "./action-sender.ts";
 export {
