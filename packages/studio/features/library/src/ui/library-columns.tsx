@@ -25,7 +25,7 @@ export interface LibraryColumnsProps {
  * The desktop Library in the new design (`library.list-column`): the list column with the kinds'
  * chips and the items, and beside it the content pane, which names the selected kind and says
  * what it holds. A row opens its item in the tab, as today; the shell's own list column (rail flow
- * 35, HAL-20676) then keeps the list beside the item. A phone shows the list alone.
+ * 35, HAL-20676) will keep the list beside the item. A phone shows the list alone.
  */
 export function LibraryColumns({ kind, children }: LibraryColumnsProps) {
   if (usePresentation() !== "desktop") return children;
