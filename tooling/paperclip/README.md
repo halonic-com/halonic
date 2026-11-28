@@ -31,8 +31,20 @@ reads tasks in `backlog` and `blocked`, where a stacked pull request's task
 often waits, but only for a retargeted pull request (below): it never marks
 them done, wakes them for anything else or hands them on, and moves one to
 `todo` only if Paperclip won't wake it as it is (HAL-17869). When the
-reviewer holds it, the branches name different agents, or the author already
-has a run going, it does nothing and logs why.
+branches name different agents, or the author already has a run going, it
+does nothing and logs why. When the reviewer holds it, it gives it back
+(below) or does nothing.
+
+**Giving a task back to its author** (HAL-21150). When Liam, Julian or Nora
+holds a task as its reviewer with no run going, and an open pull request
+carries the holder's signed approval on its head, a finding of theirs made
+after the head was committed, or a head merge control holds, the watcher
+comments "PR watcher: back to <author> after review, head `abc1234`
+(HAL-21150)." and gives the task to its author with status `todo`, once per
+head. It works on every runner, so a reviewer on the native runner only has
+to post the verdict. When every pull request landed, the watcher closes the
+task as if the author held it, or gives it back when the author's rules keep
+it open. A task in `backlog` or `blocked` is only closed.
 
 | What it sees | What it does |
 | --- | --- |
