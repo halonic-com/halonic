@@ -280,9 +280,9 @@ verifies("home.list-column", () => {
     const tryAgain = button(page, "Try again") as HTMLElement;
     const pulledOut = tryAgain.parentElement as HTMLElement;
     const line = pulledOut.parentElement as HTMLElement;
-    // Its own row, pulled left by exactly the ghost button's side padding (px-3, px-4 on touch).
+    // Its own row, pulled left by the ghost button's 1px edge and side padding (px-3, px-4 on touch).
     expect(line.className).toContain("flex flex-col items-start gap-1 px-3");
-    expect(pulledOut.className).toBe("-ms-3 phone:-ms-4 touch:-ms-4");
+    expect(pulledOut.className).toBe("-ms-3.25 phone:-ms-4.25 touch:-ms-4.25");
     expect(tryAgain.className).toContain("px-3");
     expect(tryAgain.className).toContain("touch:px-4");
     // Both labels start at the button's edge in one grid cell, so the width doesn't change.

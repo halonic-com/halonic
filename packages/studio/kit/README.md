@@ -276,6 +276,7 @@ The kit's button: a native `<button>`, `type="button"` unless it submits a form.
 | `pressed` | An icon button only: a toggle's state, set while what it opens is open (the Messenger's activity panel). Sets `aria-pressed`; leave it out on a button that isn't a toggle |
 | `busy` | While its request runs: the spinner takes the icon's place, `aria-busy`, clicks ignored |
 | `busyLabel` | The label while busy ("Creating…"). Both labels share one cell, so the width never changes. They're centred in it, except on a ghost button, which has no box at rest: there they start at its edge, so the label stays next to the text beside it |
+| `busyAlign` | With `busyLabel`: `start` or `center`, where the two labels sit in the kept width. A ghost button in a centred column (Welcome's Open demo) or at the end of a row that wraps (a proposal's Reject and Accept) takes `center` |
 | `name` | A button with words only: what screen readers hear when the words leave something out, starting with those words ("Next: Approve this reply?, 2 left" for "Next: Approve this reply? · 2 left") |
 | `unavailable` | `{ reason }`: the `id` of the visible text that says why the button can't be used now; its first line is also the button's tooltip |
 | `type` | `submit` only for a form's confirming button |

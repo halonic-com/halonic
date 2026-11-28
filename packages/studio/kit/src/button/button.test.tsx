@@ -317,6 +317,31 @@ verifies("kit.button-unavailable", () => {
     }
   });
 
+  it("with busyAlign, a ghost button centres its copies and a primary one starts them", () => {
+    const copiesOf = (variant: "ghost" | "primary", busyAlign: "start" | "center") => {
+      const { container } = render(
+        <Button variant={variant} busyAlign={busyAlign} busyLabel="Copying the demo…">
+          Open demo
+        </Button>,
+      );
+      const cell = container.querySelector("button")?.firstElementChild;
+      return Array.from(cell?.children ?? []) as HTMLElement[];
+    };
+
+    const centredGhost = copiesOf("ghost", "center");
+    const startedPrimary = copiesOf("primary", "start");
+    expect(centredGhost).toHaveLength(2);
+    expect(startedPrimary).toHaveLength(2);
+    for (const copy of centredGhost) {
+      expect(copy.className).toContain("justify-center");
+      expect(copy.className).not.toContain("justify-start");
+    }
+    for (const copy of startedPrimary) {
+      expect(copy.className).toContain("justify-start");
+      expect(copy.className).not.toContain("justify-center");
+    }
+  });
+
   it("with a busyName, screen readers hear it while busy and the words otherwise", () => {
     const { container, rerender } = render(
       <Button busyLabel="Checking…" busyName="Checking for updates">

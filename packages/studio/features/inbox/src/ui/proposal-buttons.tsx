@@ -146,6 +146,8 @@ export function DecideButton({
       variant={variant}
       busy={busy}
       busyLabel={busyLabel}
+      // A file's Reject and Accept end a row that wraps to start one, so neither edge fits both.
+      busyAlign="center"
       {...(what === undefined
         ? {}
         : { name: `${label} ${what}`, busyName: `${busyLabel} ${what}` })}
