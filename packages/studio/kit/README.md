@@ -2030,6 +2030,10 @@ scrolling row.
   lines' hit areas apart.
 - One-of chips are native radios that share a name: one Tab stop, the arrow keys move the choice.
   The row shows the `value` it's given, so a screen that puts the old filter back shows it.
+- A one-of option can carry a `count`: `{ value: 1, tone: "danger", name: "1 problem" }` shows the
+  kit's count chip after the label (`accent` by default), and screen readers hear "Connectors,
+  1 problem" instead of the bare number. On an on or hovered chip the count's fill turns opaque,
+  as a counter on a tab does, so it keeps 4.5:1. Picker options take no count.
 - An `unavailable` toggle stays focusable, keeps its state in `fg-disabled`, ignores presses and
   points at the `id` of the visible hint that says why.
 - With one hub, the feature hides the hub filter; the kit doesn't decide that.
