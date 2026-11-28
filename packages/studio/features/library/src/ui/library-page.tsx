@@ -2,10 +2,9 @@ import type { LibraryItemKind } from "@halonicjs/app";
 import { type BrokenFileActions, brokenFileMenu } from "@halonicjs/studio-feature-files/api";
 import {
   Button,
-  TabList,
-  TabPanel,
+  FilterChips,
+  PlusIcon,
   usePresentation,
-  useTabIds,
   useToastStore,
 } from "@halonicjs/studio-kit";
 import {
@@ -154,12 +153,12 @@ function findEntry(listing: LibraryListing, place: LibraryEntryPlace): LibraryEn
 const noBrokenFiles: readonly FileWithErrors[] = [];
 
 /**
- * The tabs, Connectors with the count of its files that didn't load: "Connectors 1", read
+ * The kinds' chips, Connectors with the count of its files that didn't load: "Connectors 1", read
  * "Connectors, 1 problem" (C348 ST4).
  */
-function libraryTabs(brokenConnectors: number) {
+function libraryChips(brokenConnectors: number) {
   return libraryKinds.map((each) => ({
-    id: each,
+    value: each,
     label: tabLabel(each),
     ...(each === "connector" && brokenConnectors > 0
       ? {
@@ -173,10 +172,61 @@ function libraryTabs(brokenConnectors: number) {
   }));
 }
 
+/** The kind's New button; none for a kind without one (Knowledge) or without `onNew`. */
+function kindNewButton(
+  kind: LibraryItemKind,
+  onNew: ((kind: LibraryItemKind) => void) | undefined,
+): { readonly label: string; readonly onClick: () => void } | undefined {
+  const label = newLabel(kind);
+  if (onNew === undefined || label === undefined) return undefined;
+  return { label, onClick: () => onNew(kind) };
+}
+
 /**
- * The Library: one sentence, four tabs (Skills, Knowledge, Collections, Connectors) and, under
- * them, the shell's overview page with that tab's items and their "Used by". The Library
- * place shows it ({@link LibraryPlace}).
+ * Whether the overview shows its search and New: not on a failed read, nor for an empty list,
+ * whose New is its empty state's own button.
+ */
+function showsListHead(load: Load, overview: ReturnType<typeof libraryOverview>): boolean {
+  if (load.state === "failed") return false;
+  if (load.state === "loading") return true;
+  return (
+    overview.hubs.some((hub) => hub.items.length > 0) || (overview.shared?.items.length ?? 0) > 0
+  );
+}
+
+/**
+ * The page's title. On the desktop the list column is narrow, so New sits on the title's line, or
+ * wraps under "Library" where the column is too narrow for both, and the search keeps the full width; on a phone the top bar names the kind's list, so the heading
+ * says the same, for screen readers only. Margin, not padding: the shell focuses the heading, and
+ * its focus ring must fit inside the scrolling page.
+ */
+function LibraryTitle({
+  phone,
+  kind,
+  newButton,
+}: {
+  readonly phone: boolean;
+  readonly kind: LibraryItemKind;
+  readonly newButton: { readonly label: string; readonly onClick: () => void } | undefined;
+}) {
+  if (phone) return <h1 className="sr-only">{tabLabel(kind)}</h1>;
+  return (
+    <div className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-2">
+      <h1 className="text-title">Library</h1>
+      {newButton && (
+        <Button variant="primary" icon={<PlusIcon />} onClick={newButton.onClick}>
+          {newButton.label}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The Library's list: on the desktop, four kind chips (Skills, Knowledge, Collections,
+ * Connectors) and, under them, the shell's overview page with that kind's items and their "Used
+ * by"; on a phone, one kind's sentence and its items, with no chips. The Library place shows it in
+ * the list column ({@link LibraryPlace}).
  */
 export function LibraryPage({
   host,
@@ -192,9 +242,8 @@ export function LibraryPage({
   brokenActions = {},
 }: LibraryPageProps) {
   const phone = usePresentation() === "phone";
-  const ids = useTabIds();
   const brokenConnectors = useBrokenFiles(filesWithErrors, "connector");
-  const tabs = useMemo(() => libraryTabs(brokenConnectors.length), [brokenConnectors.length]);
+  const chips = useMemo(() => libraryChips(brokenConnectors.length), [brokenConnectors.length]);
   const { load, retry } = useListing(host, kind);
   // Only connectors are files the shared check reads; the other tabs have no broken rows.
   const broken = kind === "connector" ? brokenConnectors : noBrokenFiles;
@@ -203,7 +252,8 @@ export function LibraryPage({
     () => (load.state === "loaded" ? libraryOverview(load.listing, broken) : { hubs: [] }),
     [load, broken],
   );
-  const label = newLabel(kind);
+  const newButton = kindNewButton(kind, onNew);
+  const newInTitle = !phone && showsListHead(load, overview);
   const toasts = useToastStore();
   const page = useRef<HTMLDivElement>(null);
   const emptyTitle = useRef<HTMLHeadingElement>(null);
@@ -293,9 +343,15 @@ export function LibraryPage({
         ]),
   ];
 
-  // A phone shows one kind's list on its own page, with no tabs to be a panel of.
-  const content = (
-    <>
+  return (
+    <div ref={page}>
+      <LibraryTitle phone={phone} kind={kind} newButton={newInTitle ? newButton : undefined} />
+      {/* On the desktop the content pane beside the list column says what the kind is. */}
+      {phone && <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>}
+      {/* A phone shows one kind's list on its own page, so it has no chips. */}
+      {!phone && (
+        <FilterChips label="Library" options={chips} value={kind} onChange={onKindChange} />
+      )}
       {load.state === "loaded" && load.stale !== undefined && (
         <p className="flex flex-wrap items-center gap-2 px-4 py-2 text-small text-fg-muted">
           {showingLastList(kind, load.stale.reason)}
@@ -316,7 +372,7 @@ export function LibraryPage({
         words={overviewWords(kind, {
           phone,
           ...(onOpenDocsFolder === undefined ? {} : { onOpenDocsFolder }),
-          ...(onNew !== undefined && label !== undefined ? { onNew: () => onNew(kind) } : {}),
+          ...(newButton === undefined ? {} : { onNew: newButton.onClick }),
         })}
         quietWhenEmpty
         emptyTitleRef={emptyTitle}
@@ -336,33 +392,8 @@ export function LibraryPage({
         }}
         onOpen={(row) => open(row, false)}
         onOpenInNewTab={(row) => open(row, true)}
-        {...(onNew !== undefined && label !== undefined
-          ? { newButton: { label, onClick: () => onNew(kind) } }
-          : {})}
+        {...(newButton === undefined || newInTitle ? {} : { newButton })}
       />
-    </>
-  );
-
-  return (
-    <div ref={page}>
-      {/* On a phone the top bar names the kind's list, so the heading says the same. Margin, not
-          padding: the shell focuses it, and its focus ring must fit inside the scrolling page. */}
-      <h1 className={phone ? "sr-only" : "mx-4 mt-4 text-title"}>
-        {phone ? tabLabel(kind) : "Library"}
-      </h1>
-      <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>
-      {!phone && (
-        <div className="px-4 py-2">
-          <TabList label="Library" tabs={tabs} selected={kind} onSelect={onKindChange} ids={ids} />
-        </div>
-      )}
-      {phone ? (
-        content
-      ) : (
-        <TabPanel ids={ids} tabs={tabs} selected={kind}>
-          {content}
-        </TabPanel>
-      )}
     </div>
   );
 }

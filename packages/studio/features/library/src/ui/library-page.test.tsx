@@ -79,24 +79,21 @@ async function show(
   return page;
 }
 
+/** The kinds' chips: the radios of the row named "Library", not the hub chips under the search. */
+function kindChips(page: HTMLElement): HTMLInputElement[] {
+  return [...page.querySelectorAll<HTMLInputElement>('[aria-label="Library"] input[type="radio"]')];
+}
+
 function button(page: HTMLElement, name: string): HTMLButtonElement | undefined {
   return [...page.querySelectorAll("button")].find((each) => each.textContent?.includes(name));
 }
 
 verifies("library.library-page", () => {
-  it("shows four tabs, the tab's sentence, its rows with Used by and its New button", async () => {
+  it("shows four kind chips, the selected one on, its rows with Used by and its New button", async () => {
     const page = await show(hostWith({ skill: skills }), { onNew: () => undefined });
-    const tabs = [...page.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent);
-    // The kit sets each label twice in the tab, one copy hidden to keep the width steady.
-    expect(tabs).toEqual([
-      "SkillsSkills",
-      "KnowledgeKnowledge",
-      "CollectionsCollections",
-      "ConnectorsConnectors",
-    ]);
-    expect(page.textContent).toContain(
-      "Instructions your agents can pick up when a task calls for them.",
-    );
+    const chips = kindChips(page).map((chip) => chip.closest("label")?.textContent);
+    expect(chips).toEqual(["Skills", "Knowledge", "Collections", "Connectors"]);
+    expect(kindChips(page).map((chip) => chip.checked)).toEqual([true, false, false, false]);
     expect(page.textContent).toContain("Acme refunds");
     expect(page.textContent).toContain("Used by Support");
     expect(page.textContent).toContain("No skills in beta yet.");
@@ -107,15 +104,14 @@ verifies("library.library-page", () => {
     const host = hostWith({});
     const page = await show(host, { kind: "knowledge", onNew: () => undefined });
     expect(host.list).toHaveBeenCalledWith("knowledge");
-    expect(page.textContent).toContain("Documents your agents can search.");
     expect(page.textContent).toContain("No knowledge yet");
     expect(button(page, "New")).toBeUndefined();
   });
 
-  it("reports the selected tab to the app", async () => {
+  it("reports the chip the user picks to the app", async () => {
     const onKindChange = vi.fn();
     const page = await show(hostWith({}), { onKindChange });
-    const connectors = [...page.querySelectorAll<HTMLElement>('[role="tab"]')][3];
+    const connectors = kindChips(page)[3];
     act(() => connectors?.click());
     expect(onKindChange).toHaveBeenCalledWith("connector");
   });
@@ -217,6 +213,24 @@ verifies("library.library-page", () => {
     expect(button(without, "Open the docs folder")).toBeUndefined();
   });
 
+  it("puts the kind's sentence under the title on a phone, and none on the desktop", async () => {
+    const phone = render(
+      <PresentationProvider presentation="phone">
+        <LibraryPage
+          host={hostWith({})}
+          kind="knowledge"
+          onKindChange={() => undefined}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+        />
+      </PresentationProvider>,
+    );
+    await settled();
+    expect(phone.querySelector("h1 + p")?.textContent).toBe("Documents your agents can search.");
+    const desktop = await show(hostWith({}), { kind: "knowledge" });
+    expect(desktop.textContent).not.toContain("Documents your agents can search.");
+  });
+
   it("tells a phone to put knowledge in the docs folder on the computer, with no button", async () => {
     const root = render(
       <PresentationProvider presentation="phone">
@@ -259,7 +273,7 @@ verifies("library.library-page", () => {
     const page = render(<Switching />);
     await settled();
     expect(page.textContent).toContain("Acme refunds");
-    const knowledge = [...page.querySelectorAll<HTMLElement>('[role="tab"]')][1];
+    const knowledge = kindChips(page)[1];
     act(() => knowledge?.click());
     expect(page.textContent).not.toContain("Acme refunds");
   });
@@ -289,5 +303,52 @@ verifies("library.library-page", () => {
     expect(page.textContent).not.toContain("Acme refunds");
     expect(page.textContent).not.toContain("Showing the list from before.");
     expect(page.textContent).toContain("Couldn't load skills");
+  });
+});
+
+verifies("library.list-column", () => {
+  it("puts New on the title's line, so the search field has the column to itself", async () => {
+    const page = await show(hostWith({ skill: skills }), { onNew: () => undefined });
+    const title = page.querySelector("h1");
+    expect(title?.textContent).toBe("Library");
+    expect(title?.parentElement?.contains(button(page, "New skill") ?? null)).toBe(true);
+    // In a column too narrow for both, New wraps under "Library" instead of running past the edge.
+    expect(title?.parentElement?.className.split(" ")).toContain("flex-wrap");
+    // The title's line is its own: the search field sits under the chips, not beside New.
+    expect(title?.parentElement?.querySelector('input[type="search"]')).toBeNull();
+    expect(page.querySelector('input[type="search"]')).not.toBeNull();
+    // The one New button is the title's, none beside the search.
+    expect(
+      [...page.querySelectorAll("button")].filter((each) => each.textContent === "New skill"),
+    ).toHaveLength(1);
+  });
+
+  it("keeps New on the title's line while the list loads", async () => {
+    const host = hostWith({});
+    host.list.mockImplementation(() => new Promise(() => undefined));
+    const page = await show(host, { onNew: () => undefined });
+    const title = page.querySelector("h1");
+    expect(title?.parentElement?.contains(button(page, "New skill") ?? null)).toBe(true);
+    expect(
+      [...page.querySelectorAll("button")].filter((each) => each.textContent === "New skill"),
+    ).toHaveLength(1);
+  });
+
+  it("keeps New with the list on a phone, where the title is for screen readers only", async () => {
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <LibraryPage
+          host={hostWith({ skill: skills })}
+          kind="skill"
+          onKindChange={() => undefined}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+          onNew={() => undefined}
+        />
+      </PresentationProvider>,
+    );
+    await settled();
+    expect(page.querySelector("h1")?.className).toBe("sr-only");
+    expect(button(page, "New skill")).toBeDefined();
   });
 });

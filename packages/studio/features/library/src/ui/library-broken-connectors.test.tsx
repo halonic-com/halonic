@@ -140,13 +140,14 @@ verifies("library.broken-connectors", () => {
     expect(cellOf(page, "Sheets")).toBeUndefined();
   });
 
-  it("counts the broken connectors on the Connectors tab, from any tab", async () => {
+  it("counts the broken connectors on the Connectors chip, from any kind", async () => {
     const page = await showLibrary("skill");
 
-    const tab = [...page.querySelectorAll<HTMLElement>('[role="tab"]')][3];
+    const radio = page.querySelector('[aria-label="Library"] input[value="connector"]');
+    const chip = radio?.closest("label");
 
-    expect(tab?.textContent).toContain("1");
-    expect(tab?.textContent).toContain("1 problem");
+    expect(chip?.textContent).toBe("Connectors1, 1 problem");
+    expect(chip?.querySelector(".text-danger, [class*='danger']")).not.toBeNull();
     expect(cellOf(page, "crm.connector.yaml")).toBeUndefined();
   });
 });

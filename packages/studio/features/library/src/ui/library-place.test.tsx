@@ -90,8 +90,15 @@ async function show(
   return page;
 }
 
+/** The kinds' chips: the radios of the row named "Library", not the hub chips under the search. */
+function kindChips(page: HTMLElement): HTMLInputElement[] {
+  return [...page.querySelectorAll<HTMLInputElement>('[aria-label="Library"] input[type="radio"]')];
+}
+
 function selectedTab(page: HTMLElement): string | null | undefined {
-  return page.querySelector('[role="tab"][aria-selected="true"]')?.textContent;
+  return kindChips(page)
+    .find((chip) => chip.checked)
+    ?.closest("label")?.textContent;
 }
 
 verifies("library.library-place", () => {
@@ -119,7 +126,7 @@ verifies("library.library-place", () => {
   it("remembers the tab the user selects", async () => {
     const { context, memory } = contextOf(undefined);
     const page = await show(context);
-    act(() => [...page.querySelectorAll<HTMLElement>('[role="tab"]')][1]?.click());
+    act(() => kindChips(page)[1]?.click());
     await settled();
     expect(selectedTab(page)).toContain("Knowledge");
     expect(memory.set).toHaveBeenCalledWith("knowledge");
@@ -379,7 +386,7 @@ verifies("library.library-phone-kinds", () => {
     for (const row of page.querySelectorAll("li button")) {
       expect(row.className).toContain("focus-ring-inset");
     }
-    expect(page.querySelector('[role="tab"]')).toBeNull();
+    expect(kindChips(page)).toHaveLength(0);
     act(() => (page.querySelectorAll("li button")[1] as HTMLElement).click());
     expect(openPlaceList).toHaveBeenCalledWith("library", "knowledge", "Knowledge");
     expect(memory.set).not.toHaveBeenCalled();
@@ -402,7 +409,7 @@ verifies("library.library-phone-kinds", () => {
     const { context, list } = contextOf(undefined);
     const page = await show(context, "phone", "skill");
     expect(list).toHaveBeenCalledWith("skill");
-    expect(page.querySelector('[role="tab"]')).toBeNull();
+    expect(kindChips(page)).toHaveLength(0);
     expect(page.querySelector("h1")?.textContent).toBe("Skills");
     expect(page.textContent).toContain("Tone");
   });
@@ -430,5 +437,17 @@ verifies("library.library-phone-kinds", () => {
     await show(context, "phone");
     await act(async () => requestLibraryTab("collection"));
     expect(openPlaceList).toHaveBeenCalledWith("library", "collection", "Collections");
+  });
+});
+
+verifies("library.list-column", () => {
+  it("shows the picked kind in the content pane beside the list column", async () => {
+    const page = await show(contextOf(undefined).context);
+    const content = () => page.querySelector('[data-pane="content"] h2')?.textContent;
+    expect(content()).toBe("Skills");
+    act(() => kindChips(page)[1]?.click());
+    await settled();
+    expect(content()).toBe("Knowledge");
+    expect(page.querySelector('[data-pane="list"] h1')?.textContent).toBe("Library");
   });
 });
