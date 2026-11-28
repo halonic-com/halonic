@@ -19,7 +19,7 @@ export function TitleLine({ title, children }: TitleLineProps) {
     return <div className="flex items-center justify-end px-2.5 pt-1">{children}</div>;
   }
   return (
-    <div className="flex items-center justify-between px-2.5 pt-1">
+    <div className="flex items-center justify-between px-2.5 pt-4">
       <h1 tabIndex={-1} className="ps-2.5 text-title">
         {title}
       </h1>

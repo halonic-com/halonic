@@ -371,7 +371,8 @@ export function FilesSidebarView({ context, title, pageAsks }: FilesSidebarViewP
           onClick={startAdding}
         />
       </TitleLine>
-      <div className="px-5 pt-1 pb-2">
+      {/* Under a page title the field sits a little lower, as on Runs, Library and Changes. */}
+      <div className={title === undefined ? "px-5 pt-1 pb-2" : "px-5 pt-2 pb-2"}>
         <SearchField
           label={filesWords.search}
           value={search.typed}
