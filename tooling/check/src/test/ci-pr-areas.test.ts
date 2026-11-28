@@ -104,6 +104,7 @@ verifies("check.ci-pr-areas", () => {
       "apps/studio/src-tauri/windows/installer.nsi",
       "apps/studio/src-tauri/src/updates_check.rs",
       "apps/studio/src-tauri/tauri.installer.conf.json",
+      "apps/studio/src-tauri/crates/app-frame/src/frame.rs",
       "apps/agent-host/scripts/build.ts",
       "infra/wsl-image/runtime-archive.sh",
       ".github/workflows/ci.yml",

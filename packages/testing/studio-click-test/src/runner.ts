@@ -1,4 +1,5 @@
 import type { TestPaperclip } from "./test-paperclip.ts";
+import type { KeyboardFocus } from "./top-level-windows.ts";
 import type { Driver } from "./webdriver.ts";
 
 /** What one step found: passed, or failed with the error code the screen showed. */
@@ -21,6 +22,13 @@ export interface StepContext {
    * starts the shortcut's program with them instead, such as `--app ask`, which has no shortcut.
    */
   readonly openShortcut: (name: string, args?: readonly string[]) => Promise<void>;
+  /**
+   * The process images of the visible top-level windows whose image is named `exe`, such as
+   * "Halonic Inbox.exe", one per window: the image window managers such as FancyZones key on.
+   */
+  readonly topLevelWindows: (exe: string) => Promise<string[]>;
+  /** Where typing goes now: the foreground window's process image and whether its page has the focus. */
+  readonly keyboardFocus: () => Promise<KeyboardFocus>;
   /** The handle of Studio's main window, which the session started on. */
   readonly mainWindow: string;
   /**

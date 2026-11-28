@@ -37,15 +37,70 @@ verifies("studio.installer-focused-apps", () => {
     }
   });
 
-  it("starts Halonic with --app and gives each shortcut the app's own ID", () => {
-    const shortcut = installer.slice(installer.indexOf("!macro FocusedAppShortcut"));
-    const body = shortcut.slice(0, shortcut.indexOf("!macroend"));
+  /** The body of `!macro <name>` in the installer template. */
+  function macro(name: string): string {
+    const start = installer.indexOf(`!macro ${name} `);
+    expect(start).toBeGreaterThan(-1);
+    return installer.slice(start, installer.indexOf("!macroend", start));
+  }
+
+  it("starts the app's frame with no arguments and gives each shortcut the app's own ID", () => {
+    const body = macro("FocusedAppShortcut");
     expect(body).toContain(
       // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
-      'CreateShortcut "${FOCUSEDAPPFOLDER}\\${title}.lnk" "$INSTDIR\\${MAINBINARYNAME}.exe" "--app ${app}"',
+      'CreateShortcut "${FOCUSEDAPPFOLDER}\\${title}.lnk" "$INSTDIR\\${title}.exe" ""',
     );
     // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
     expect(body).toContain('"${BUNDLEID}.${app}"');
+  });
+
+  it("makes the frames next to Halonic.exe as hard links to it, or copies, on every install", () => {
+    const make = macro("MakeAppFrame");
+    // A frame left by the version before goes first, so the link is to this Halonic.exe.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+    expect(make.indexOf('Delete "$INSTDIR\\${title}.exe"')).toBeGreaterThan(-1);
+    expect(make).toContain(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+      'kernel32::CreateHardLinkW(w "$INSTDIR\\${title}.exe", w "$INSTDIR\\${MAINBINARYNAME}.exe", p 0)',
+    );
+    expect(make).toContain(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+      'CopyFiles /SILENT "$INSTDIR\\${MAINBINARYNAME}.exe" "$INSTDIR\\${title}.exe"',
+    );
+    const frames = block("Function", "MakeAppFrames");
+    for (const { title } of apps) {
+      expect(frames).toContain(`!insertmacro MakeAppFrame "\${PRODUCTNAME} ${title}"`);
+    }
+    const install = block("Section", "Install");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+    const copied = install.indexOf('File "${MAINBINARYSRCPATH}"');
+    expect(copied).toBeGreaterThan(-1);
+    expect(install.indexOf("Call MakeAppFrames")).toBeGreaterThan(copied);
+  });
+
+  it("removes the frames when Halonic is uninstalled", () => {
+    const uninstall = block("Section", "Uninstall");
+    for (const { title } of apps) {
+      expect(uninstall).toContain(`Delete "$INSTDIR\\\${PRODUCTNAME} ${title}.exe"`);
+    }
+  });
+
+  it("waits for a frame still closing before it replaces or removes its exe", () => {
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+    const wait = installer.slice(installer.indexOf("Function ${un}WaitUntilHelpersAreClosed"));
+    for (const { title } of apps) {
+      expect(wait.slice(0, wait.indexOf("FunctionEnd"))).toContain(
+        `"$INSTDIR\\\${PRODUCTNAME} ${title}.exe"`,
+      );
+    }
+    expect(installer).toContain('!insertmacro WaitUntilHelpersAreClosed "un."');
+    expect(block("Section", "Uninstall")).toContain("Call un.WaitUntilHelpersAreClosed");
+    const open = block("Function", "IsHalonicOpen");
+    for (const { title } of apps) {
+      expect(open).toContain(
+        `RestartManager_RegisterFile $R0 "$INSTDIR\\\${PRODUCTNAME} ${title}.exe"`,
+      );
+    }
   });
 
   it("puts them beside Halonic's own shortcut", () => {
@@ -64,5 +119,17 @@ verifies("studio.installer-focused-apps", () => {
     for (const { title } of apps) {
       expect(remove).toContain(`!insertmacro RemoveFocusedAppShortcut "\${PRODUCTNAME} ${title}"`);
     }
+    // Whether the shortcut starts the frame or, as before the frames, Halonic.exe.
+    const removeOne = macro("RemoveFocusedAppShortcut");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+    expect(removeOne).toContain('"$INSTDIR\\${title}.exe"');
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+    expect(removeOne).toContain('"$INSTDIR\\${MAINBINARYNAME}.exe"');
+  });
+
+  it("removes the frames' places when Halonic is uninstalled, not when it is updated", () => {
+    const uninstall = block("Section", "Uninstall");
+    const removed = uninstall.indexOf('DeleteRegKey HKCU "Software\\Halonic\\Frames"');
+    expect(removed).toBeGreaterThan(uninstall.indexOf("; Remove shortcuts if not updating"));
   });
 });

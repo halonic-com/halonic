@@ -1,6 +1,7 @@
-import type { Step } from "../runner.ts";
+import type { Step, StepContext, StepOutcome } from "../runner.ts";
 import { buttonNamed, lastWords, waitForText } from "../screen.ts";
 import { seedNames } from "../test-paperclip.ts";
+import type { KeyboardFocus } from "../top-level-windows.ts";
 import { screenText, words } from "../words.ts";
 import { openAppWindow } from "./app-window.ts";
 import { closeDialogs, onWorkspace, openConnections, openDialog } from "./open-demo.ts";
@@ -10,9 +11,12 @@ import { closeDialogs, onWorkspace, openConnections, openDialog } from "./open-d
  * Messenger shortcuts each show their window. The single-instance plugin
  * hands the second start's arguments to the running app, so the windows show
  * up in this session. No step opened the Inbox window before, so it must be a
- * new one, showing Needs you empty after step 9's answer; Messenger's, open
+ * new one, showing Needs you (empty after step 9's answer); Messenger's, open
  * since step 9, must show the seeded chat. The test never closes the app's
  * windows: WebDriver's close left a shortcut with no window (run 45730163649).
+ * Each page must sit in its app's frame (HAL-20480): one top-level window of
+ * `<shortcut>.exe`, no new top-level window of Halonic.exe, and a second start
+ * of the shortcut opens no second frame.
  */
 export const startMenuShortcuts: Step = {
   id: "start-menu-shortcuts",
@@ -22,20 +26,90 @@ export const startMenuShortcuts: Step = {
   run: async (context) => {
     const workspace = await onWorkspace(context);
     if (!workspace.passed) return workspace;
+    // The Inbox shows Needs you either empty or still holding the seeded card, so a failed
+    // step 9 doesn't keep the frame checks below from running (run 46170466401).
     const shortcuts = [
-      { name: "Halonic Inbox", shows: screenText.nothingWaiting.text, onlyNew: true },
-      { name: "Halonic Messenger", shows: seedNames.agent, onlyNew: false },
+      {
+        name: "Halonic Inbox",
+        shows: [screenText.nothingWaiting.text, screenText.strategyApproval.text],
+        onlyNew: true,
+      },
+      { name: "Halonic Messenger", shows: [seedNames.agent], onlyNew: false },
     ];
     for (const { name, shows, onlyNew } of shortcuts) {
-      const window = await openAppWindow(context, name, (text) => text.includes(shows), onlyNew);
+      const halonicWindows = (await context.topLevelWindows(halonicExe)).length;
+      const showsAny = (text: string) => shows.some((words) => text.includes(words));
+      const window = await openAppWindow(context, name, showsAny, onlyNew);
       if (!window.opened) {
-        const note = `${name} opened no window showing ${shows}. Last: ${lastWords(window.text)}`;
+        const expected = shows.join(" or ");
+        const note = `${name} opened no window showing ${expected}. Last: ${lastWords(window.text)}`;
         return { passed: false, code: "NO_WINDOW", note };
       }
+      const frame = await inItsFrame(context, name, halonicWindows);
+      if (!frame.passed) return frame;
     }
     return { passed: true };
   },
 };
+
+const halonicExe = "Halonic.exe";
+/** How long a second start gets to open a second window, if it wrongly would. */
+const secondStartWaitMs = 5_000;
+/** How long the page in a frame that just started gets to take the keyboard focus. */
+const focusWaitMs = 3_000;
+const focusPollMs = 250;
+
+/**
+ * Where typing goes once the page in `frameExe` has the keyboard focus, or after
+ * {@link focusWaitMs}: the frame shares its input queue with Halonic's page (HAL-20468),
+ * so a person typing as soon as the window shows must reach the page.
+ */
+async function focusInPage(context: StepContext, frameExe: string): Promise<KeyboardFocus> {
+  let typing = await context.keyboardFocus();
+  for (let waited = 0; waited < focusWaitMs; waited += focusPollMs) {
+    if (typing.image === frameExe && typing.focus === "page") return typing;
+    await context.sleep(focusPollMs);
+    typing = await context.keyboardFocus();
+  }
+  return typing;
+}
+
+/**
+ * Checks that the page `shortcut` showed is in its frame: exactly one top-level window of
+ * `<shortcut>.exe`, as many top-level windows of Halonic.exe as before, and still one frame
+ * after the shortcut starts again.
+ */
+async function inItsFrame(
+  context: StepContext,
+  shortcut: string,
+  halonicWindowsBefore: number,
+): Promise<StepOutcome> {
+  const frameExe = `${shortcut}.exe`;
+  const frames = await context.topLevelWindows(frameExe);
+  if (frames.length !== 1) {
+    const note = `${frames.length} top-level windows of ${frameExe}, not 1.`;
+    return { passed: false, code: "NO_FRAME", note };
+  }
+  const halonicWindows = (await context.topLevelWindows(halonicExe)).length;
+  if (halonicWindows > halonicWindowsBefore) {
+    const note = `${shortcut} opened a top-level window of ${halonicExe}, not one in ${frameExe}.`;
+    return { passed: false, code: "NOT_IN_FRAME", note };
+  }
+  const typing = await focusInPage(context, frameExe);
+  if (typing.image !== frameExe || typing.focus !== "page") {
+    const where = typing.image === "" ? "no window" : `${typing.image} (${typing.focus})`;
+    const note = `Right after ${shortcut} started, typing went to ${where}, not its page in ${frameExe}.`;
+    return { passed: false, code: "NO_FOCUS", note };
+  }
+  await context.openShortcut(shortcut);
+  await context.sleep(secondStartWaitMs);
+  const again = await context.topLevelWindows(frameExe);
+  if (again.length !== 1) {
+    const note = `A second start of ${shortcut} left ${again.length} top-level windows of ${frameExe}.`;
+    return { passed: false, code: "SECOND_FRAME", note };
+  }
+  return { passed: true };
+}
 
 /**
  * Step 14: Settings › Connections › Disconnect, confirmed, says the key is

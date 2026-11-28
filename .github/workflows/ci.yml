@@ -263,12 +263,13 @@ jobs:
             # (HAL-15970): how the installer is built and what it ships (the
             # agent host's build, the WSL runtime and image, srt-win's setup
             # version, the notices, src-tauri/windows, the Tauri configs and
-            # manifests), the shell's updater and agent-host code, the open
+            # manifests), the shell's updater and agent-host code, the
+            # Inbox's and Messenger's frames it ships (HAL-20480), the open
             # timings step's script (tooling/open-timings), and this
             # workflow. The agent host's code is built and run on Windows by
             # the agent host job, the rest of the shell by the Tauri job, and
             # main's run tests the installer whatever changed.
-            "installer=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/(package\.json$|scripts/)|apps/studio/package\.json$|apps/studio/src-tauri/(windows/|binaries/|Cargo\.(toml|lock)$|build\.rs$|rust-toolchain\.toml$|tauri(\.installer|\.runtime|\.image)?\.conf\.json$|windows-app-manifest\.xml$|src/(main|lib|sandbox_elevate|agent_host[a-z_]*|updates[a-z_]*)\.rs$|crates/(agent-host|update-state|sandbox-elevate|elevate-start)/)|infra/wsl-image/(Dockerfile|[a-z-]+\.(sh|conf)|image-version|files/)|packages/adapters/sandbox-srt/(package\.json|windows-setup-version\.json)$|tooling/check/src/(cli/sbom|lib/(sbom|licences))\.ts$|tooling/open-timings/|package\.json$|LICENSE$|NOTICE$)"
+            "installer=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/agent-host/(package\.json$|scripts/)|apps/studio/package\.json$|apps/studio/src-tauri/(windows/|binaries/|Cargo\.(toml|lock)$|build\.rs$|rust-toolchain\.toml$|tauri(\.installer|\.runtime|\.image)?\.conf\.json$|windows-app-manifest\.xml$|src/(main|lib|sandbox_elevate|agent_host[a-z_]*|updates[a-z_]*|app_frames)\.rs$|crates/(agent-host|update-state|sandbox-elevate|elevate-start|app-frame)/)|infra/wsl-image/(Dockerfile|[a-z-]+\.(sh|conf)|image-version|files/)|packages/adapters/sandbox-srt/(package\.json|windows-setup-version\.json)$|tooling/check/src/(cli/sbom|lib/(sbom|licences))\.ts$|tooling/open-timings/|package\.json$|LICENSE$|NOTICE$)"
             "studio=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/studio/|packages/studio/)"
             "docs=^(\.github/workflows/ci\.yml$|\.github/actions/|apps/docs/|docs/)"
             "workflows=^\.github/"

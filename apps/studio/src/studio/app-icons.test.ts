@@ -110,7 +110,7 @@ verifies("studio.app-icons", () => {
     const macro = installer.slice(installer.indexOf("!macro FocusedAppShortcut"));
     expect(macro.slice(0, macro.indexOf("!macroend"))).toContain(
       // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
-      '"--app ${app}" "$INSTDIR\\icons\\${app}.ico" 0',
+      '"$INSTDIR\\${title}.exe" "" "$INSTDIR\\icons\\${app}.ico" 0',
     );
   });
 
