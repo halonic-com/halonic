@@ -2693,7 +2693,8 @@ toasts.show({
 Bottom right, 16px in, 360px wide (`w-toast`), 8px apart, newest at the bottom, at
 `--layer-toast`. A card is `surface-raised`, 16px radius, `shadow-2`, 16px padding on the left: the tone's icon,
 the title, one line in `fg-muted`, up to two actions as 32px pills on a `surface-soft` fill on the
-title line (which stays 20px high), and a close button named "Close" and the title. Tones are those of
+title line (which stays 20px high; two actions share their own row under the text instead, side by
+side, `action` first), and a close button named "Close" and the title. Tones are those of
 the Status chip: `success`, `info` (accent), `running`, `warning`, `danger`. Only the icon carries
 the tone; the box is the same for all. It fades in and out in 120ms; nothing slides. In forced
 colours a transparent outline becomes its edge.
