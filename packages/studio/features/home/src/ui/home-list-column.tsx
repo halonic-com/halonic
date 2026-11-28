@@ -84,17 +84,23 @@ function FailureLine({
   const tryAgain = useRef<HTMLButtonElement>(null);
   useTellWhenGoneWithFocus(tryAgain, onGoneWithFocus);
   return (
-    <p className="flex flex-wrap items-center gap-2 px-3 text-small text-fg-muted">
+    // The sentence and Try again never fit on one row of the column, so Try again sits under it.
+    // `-ml-3` takes back the button's side padding: its label lines up with the sentence (but for
+    // the button's 1px border), and its hover and focus box starts at the column's edge, as New
+    // chat's does.
+    <p className="flex flex-col items-start gap-1 px-3 text-small text-fg-muted">
       {`${homeWords.chatsFailed} ${reason}`}
-      <Button
-        ref={tryAgain}
-        variant="ghost"
-        busy={retrying}
-        busyLabel={homeWords.tryingAgain}
-        onClick={onTryAgain}
-      >
-        {homeWords.tryAgain}
-      </Button>
+      <span className="-ml-3">
+        <Button
+          ref={tryAgain}
+          variant="ghost"
+          busy={retrying}
+          busyLabel={homeWords.tryingAgain}
+          onClick={onTryAgain}
+        >
+          {homeWords.tryAgain}
+        </Button>
+      </span>
     </p>
   );
 }

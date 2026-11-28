@@ -386,6 +386,10 @@ verifies("home.list-column", () => {
     const line = button(page, "New chat")?.nextElementSibling;
     expect(line?.textContent).toContain("Couldn't load the chats. The engine isn't answering.");
     expect(line?.contains(button(page, "Try again") ?? null)).toBe(true);
+    // Try again sits under the sentence, its label in line with the sentence's first letter.
+    expect(line?.classList.contains("flex-col")).toBe(true);
+    expect(line?.classList.contains("items-start")).toBe(true);
+    expect(button(page, "Try again")?.parentElement?.classList.contains("-ml-3")).toBe(true);
   });
 
   it("shows the generic sentence on the line, not the text of an error with no kind", async () => {
