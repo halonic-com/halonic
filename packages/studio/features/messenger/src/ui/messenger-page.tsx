@@ -207,9 +207,9 @@ const contentPaneClass = "flex min-h-0 min-w-0 flex-1 flex-col bg-app-panel";
 
 /**
  * The list's column, the page's Messenger landmark. With nothing connected the panel's No
- * connections is the one message, never an empty landmark (HAL-18316 MS12): side by side the
- * column is left out, so the message centres in the one panel (`messenger.framed-list`); one pane
- * at a time keeps a plain empty `div` in its place.
+ * connections is the one message, never an empty landmark (HAL-18316 MS12): the column is left
+ * out, so the message centres in the one panel (`messenger.framed-list`). One pane at a time
+ * shows the panel instead of the list then, so this runs only side by side.
  */
 function ListColumn({
   listRef,
@@ -223,7 +223,7 @@ function ListColumn({
   readonly children: ReactNode;
 }) {
   const className = onePane ? "flex min-w-0 flex-1 flex-col" : desktopListColumnClass;
-  if (connected === false) return onePane ? <div className={className} /> : null;
+  if (connected === false) return null;
   return (
     <nav
       ref={listRef}

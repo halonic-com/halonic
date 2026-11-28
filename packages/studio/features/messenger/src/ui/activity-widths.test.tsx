@@ -162,8 +162,11 @@ verifies("messenger.framed-list", () => {
     await openChat(page, "Chief");
     await press(button(page));
     const classes = classesOf(panel(page));
-    expect(classes).toEqual(expect.arrayContaining(["border-s", "border-border", "bg-app-panel"]));
-    expect(classes).not.toContain("border");
+    expect(classes.filter((name) => name.startsWith("border"))).toEqual([
+      "border-s",
+      "border-border",
+    ]);
+    expect(classes).toContain("bg-app-panel");
     expect(classes).not.toContain("rounded-lg");
   });
 

@@ -195,7 +195,10 @@ verifies("messenger.framed-list", () => {
       expect.arrayContaining(["w-80", "border-s", "border-border", "bg-app-panel"]),
     );
     expect(classes).not.toContain("rounded-lg");
-    expect(classes).not.toContain("border");
+    expect(classes.filter((name) => name.startsWith("border"))).toEqual([
+      "border-s",
+      "border-border",
+    ]);
     expect((aside.parentElement as HTMLElement).className.split(" ")).not.toContain("gap-2");
   });
 

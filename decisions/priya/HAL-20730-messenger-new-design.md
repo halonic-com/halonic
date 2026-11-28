@@ -20,7 +20,7 @@
 
 The two tests that checked the 8px gap and the separate rounded panels now check the framed page,
 the list column's size, the rows' inset, the 1px lines and the panel colour, and that the gap is
-gone. The No connections test now finds no list column in a wide window.
+gone. A new test finds no list column while nothing is connected in a wide window.
 
 ## Why
 

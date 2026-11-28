@@ -12,7 +12,7 @@ const toneClass: Record<FramedPanelTone, string> = {
 };
 
 /**
- * The framed panel's edge, without its fill: 12px corners and a 1px line, which forced colours
+ * The framed panel's edge, without its fill: 16px corners and a 1px line, which forced colours
  * draw in `CanvasText`, so the panel's edge stays visible there (`kit.framed-sidebar`).
  */
 const framedPanelEdgeClass = "overflow-hidden rounded-lg border border-border";
@@ -63,7 +63,7 @@ export interface FramedPanelProps {
 
 /**
  * The framed panel beside a {@link SidebarFrame}'s sidebar: a column that fills the room left,
- * with 12px corners, a 1px line and the window's panel fill.
+ * with 16px corners, a 1px line and the window's panel fill.
  *
  * @example
  * <FramedPanel as="main" ref={chat}>…</FramedPanel>
