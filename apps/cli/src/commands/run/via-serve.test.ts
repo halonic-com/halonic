@@ -132,7 +132,7 @@ verifies("cli.local-engine-lock", () => {
 
     expect(code).toBe(exitCode.ok);
     expect(io.stdout.join("\n")).toMatch(
-      /^✓ Started in the running Studio as run \S+\. Approve it on your phone when it asks\.\nSee where it is: halonic runs show \S+$/u,
+      /^✓ Started in the running Studio as run \S+\.\nSee where it is: halonic runs show \S+$/u,
     );
   });
 

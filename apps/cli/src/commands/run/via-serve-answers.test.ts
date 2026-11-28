@@ -20,7 +20,7 @@ import type { ProfileEnvironment } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
 import { loadWorkspace } from "@halonicjs/workspace";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { type EngineHolder, openLocalEngine } from "../../cli-local-engine.ts";
 import { exitCode } from "../../exit-code.ts";
 import { runCli } from "../../run-cli.ts";
@@ -62,12 +62,19 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.useRealTimers();
   await Promise.all(opened.splice(0).map((engine) => engine.close()));
   await removeTestFolder(folder);
 });
 
-/** Holds Acme's engine as `holder` does, with a console that answers every request with `reply`. */
-async function heldBy(holder: EngineHolder, reply: object = { ok: true, runId: servedRunId }) {
+/**
+ * Holds Acme's engine as `holder` does, with a console that answers every request with `reply`, or
+ * with what `reply` gives when it is a function.
+ */
+async function heldBy(
+  holder: EngineHolder,
+  reply: object | (() => Promise<object>) = { ok: true, runId: servedRunId },
+) {
   const engine = await openLocalEngine({
     workspace: await loadWorkspace(new FolderDefinitionStore(acme, "./acme")),
     workspaceRoot: acme,
@@ -85,7 +92,7 @@ async function heldBy(holder: EngineHolder, reply: object = { ok: true, runId: s
     await consolePlace({ profile }, dir),
     async (request) => {
       asked.push(request);
-      return reply;
+      return typeof reply === "function" ? await reply() : reply;
     },
     () => {},
   );
@@ -161,7 +168,7 @@ verifies("cli.local-engine-lock", () => {
 
       expect(code).toBe(exitCode.ok);
       expect(stdout[0]).toBe("Your uncommitted changes aren't used. Commit them to run them.");
-      expect(stdout[1]).toMatch(/^✓ Started in the running Studio as run b2c3d4\. /u);
+      expect(stdout[1]).toBe("✓ Started in the running Studio as run b2c3d4.");
     } finally {
       await runner.close();
     }
@@ -201,6 +208,31 @@ verifies("cli.local-engine-lock", () => {
       expect(stderr).toContain("Start halonic serve with --debug to see why, then run again.");
     },
   );
+
+  it("says the run may have started when serve doesn't answer in time", slowTest, async () => {
+    let taken: () => void = () => {};
+    const requestTaken = new Promise<void>((resolve) => {
+      taken = resolve;
+    });
+    // Still starting the run when the call stops waiting.
+    await heldBy("serve", () => {
+      taken();
+      return new Promise<object>(() => {});
+    });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+    const running = run(samsEmail);
+    await requestTaken;
+    await vi.advanceTimersByTimeAsync(10_000);
+    const { code, stderr } = await running;
+
+    expect(code).toBe(exitCode.unavailable);
+    expect(stderr).toContain(
+      "halonic serve didn't answer in time, so the run may have started there.",
+    );
+    expect(stderr).toContain("See whether it did before you run it again: halonic runs list");
+    expect(stderr).not.toContain("halonic serve is running for this workspace");
+  });
 
   it("keeps the refusal when serve doesn't know the request", slowTest, async () => {
     await heldBy("serve", { ok: false, reason: "bad-request" });
@@ -242,6 +274,19 @@ verifies("cli.local-engine-lock", () => {
       },
     );
   }
+
+  it("hands over a request of exactly what the console takes", slowTest, async () => {
+    await heldBy("serve");
+    const request = { op: "start-run", hubId: "support", workflowId: "support-reply" };
+    // The socket counts the line without its line end: 4096 bytes of JSON fit.
+    const around = JSON.stringify({ ...request, input: { mail: "" } }).length;
+    const input = JSON.stringify({ mail: "x".repeat(4096 - around) });
+
+    const { code } = await run(["--input", input]);
+
+    expect(code).toBe(exitCode.ok);
+    expect(asked).toHaveLength(1);
+  });
 
   it("refuses an input too big for the console, and says why", slowTest, async () => {
     await heldBy("serve");

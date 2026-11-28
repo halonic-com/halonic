@@ -35,11 +35,13 @@ export async function answerStartRun(
   logError: (error: unknown) => void,
 ): Promise<Readonly<Record<string, unknown>> | null> {
   if (!isStartRun(request)) return null;
-  const decision = await starts.trust.check();
-  if (decision.state !== "trusted") {
-    return { ok: false, reason: "not-trusted", message: printable(decision.message) };
-  }
+  // A trust check that throws is a start that failed, as the server's start route takes it; left
+  // outside the `try`, it would close the connection unanswered and `run` would refuse instead.
   try {
+    const decision = await starts.trust.check();
+    if (decision.state !== "trusted") {
+      return { ok: false, reason: "not-trusted", message: printable(decision.message) };
+    }
     const { hubId, workflowId, input } = request;
     const run = await starts.executor.start({ hubId, workflowId, input });
     return { ok: true, runId: run.id };
