@@ -93,6 +93,18 @@ verifies("agent-host.risky-answer-confirm", () => {
       expect(reply.body).not.toHaveProperty("confirmation.fromYou");
     });
 
+    it("leaves an agent that calls itself you unmarked", async () => {
+      const named = risky("named-you", "Hire an agent", {
+        from: { kind: "agent", agent: "paperclip:halonic:agent:you", name: "you" },
+      });
+      const on = await listing([named]);
+
+      const reply = await on.send("POST /v1/messaging/answer", named.id, approve);
+
+      expect(reply).toMatchObject({ status: 409, body: { confirmation: { from: "you" } } });
+      expect(reply.body).not.toHaveProperty("confirmation.fromYou");
+    });
+
     it("sends a reject, and any answer to a normal item, at once", async () => {
       const normal: InboxItem = { ...risky("normal", "Publish the launch post?"), risk: "normal" };
       const hire = riskyKinds[2]?.[1] ?? normal;
