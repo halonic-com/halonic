@@ -114,6 +114,25 @@ verifies("messenger.pinned-chats", () => {
     expect(rowNames(page)).toEqual(["Mara", "Chief"]);
   });
 
+  it("reads out each pin and unpin from the ··· menu, and a full try only as the note", async () => {
+    const page = await openMessenger(acme(["Chief", "Mara", "Kim", "Leo"]));
+    await openChat(page, "Chief");
+    await chatMenu(page, "Chief", "Pin chat");
+    expect(pageSaid(page)).toBe("Chat pinned.");
+    const pinnedSpan = byText(page, "[data-page-status] span", "Chat pinned.");
+    await chatMenu(page, "Chief", "Unpin chat");
+    expect(pageSaid(page)).toBe("Chat unpinned.");
+    await chatMenu(page, "Chief", "Pin chat");
+    expect(pageSaid(page)).toBe("Chat pinned.");
+    expect(byText(page, "[data-page-status] span", "Chat pinned.")).not.toBe(pinnedSpan);
+
+    for (const name of ["Mara", "Kim", "Leo"]) {
+      await openChat(page, name);
+      await chatMenu(page, name, "Pin chat");
+    }
+    expect(pageSaid(page)).toBe("You can pin up to 3 chats.");
+  });
+
   it("keeps the pins on this device, so the Messenger opens with them", async () => {
     const messaging = acme(["Chief", "Mara"]);
     const first = await openMessenger(messaging);

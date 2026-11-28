@@ -14,6 +14,10 @@ export interface ChatPinning {
   readonly full: boolean;
   /** Grows on each pin that finds them all taken, so the page's status reads every try. */
   readonly fullCount: number;
+  /** What the last pin or unpin did, for the page's status; none after a full try. */
+  readonly done: "pinned" | "unpinned" | undefined;
+  /** Grows on each pin or unpin that worked, so the page's status reads a repeat again. */
+  readonly doneCount: number;
 }
 
 const PinsContext = createContext<ChatPinning | undefined>(undefined);
@@ -34,18 +38,33 @@ export function useChatPinning(
   const pins = useMemo(() => given ?? new StoredChatPins(globalThis.localStorage ?? null), [given]);
   const [pinned, setPinned] = useState(() => pins.list());
   const [full, setFull] = useState({ shown: false, count: 0 });
+  const [done, setDone] = useState<{ what: ChatPinning["done"]; count: number }>({
+    what: undefined,
+    count: 0,
+  });
   return useMemo<ChatPinning>(() => {
     const isPinned = (row: ConversationRow) => pinned.some((pin) => isRowOf(row, pin));
     const isGone = (pin: PinnedChat) => isGoneFrom(rows ?? [], pin);
     const toggle = (row: ConversationRow) => {
       const chat = { source: row.conversation.source, conversation: row.conversation.id };
-      const wasFull = !isPinned(row) && pins.pin(chat, isGone) === "full";
-      if (isPinned(row)) pins.unpin(chat);
+      const wasPinned = isPinned(row);
+      const wasFull = !wasPinned && pins.pin(chat, isGone) === "full";
+      if (wasPinned) pins.unpin(chat);
       setFull((last) => ({ shown: wasFull, count: last.count + (wasFull ? 1 : 0) }));
+      const what = wasPinned ? "unpinned" : "pinned";
+      setDone((last) => ({ what: wasFull ? undefined : what, count: last.count + 1 }));
       setPinned(pins.list());
     };
-    return { pinned, isPinned, toggle, full: full.shown, fullCount: full.count };
-  }, [pins, pinned, full, rows]);
+    return {
+      pinned,
+      isPinned,
+      toggle,
+      full: full.shown,
+      fullCount: full.count,
+      done: done.what,
+      doneCount: done.count,
+    };
+  }, [pins, pinned, full, done, rows]);
 }
 
 /** Gives the page's list and open chat the pins {@link useChatPinning} keeps. */
