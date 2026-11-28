@@ -7,6 +7,7 @@ import {
   buttonLabels,
   configurationText,
   errorCodeIn,
+  kitText,
   screenText,
   words,
 } from "./words.ts";
@@ -37,6 +38,13 @@ verifies("studio-click-test.steps", () => {
 
   describe("basicsText", () => {
     it.each(Object.values(basicsText))("$text is still in $file", async ({ text, file }) => {
+      const source = await readFile(new URL(file, repo), "utf8");
+      expect(source).toContain(text);
+    });
+  });
+
+  describe("kitText", () => {
+    it.each(Object.values(kitText))("$text is still in $file", async ({ text, file }) => {
       const source = await readFile(new URL(file, repo), "utf8");
       expect(source).toContain(text);
     });
