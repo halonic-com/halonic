@@ -98,7 +98,7 @@ verifies("quick-ask.box-states", () => {
 
       expect(slot?.tagName).toBe("SPAN");
       expect(classes).toEqual(
-        expect.arrayContaining(["order-first", "mt-0.5", "h-8", "rounded-full", "border"]),
+        expect.arrayContaining(["order-first", "mb-0.5", "h-8", "rounded-full", "border"]),
       );
       expect(classes).not.toContain("hover:bg-surface-muted");
       const skeleton = slot?.querySelector("[data-agent-skeleton]");
