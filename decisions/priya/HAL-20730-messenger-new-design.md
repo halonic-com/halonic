@@ -20,3 +20,9 @@ P4 of the HAL-20617 build plan moves the Messenger to the new design's two colum
 layout Settings (`shell.settings-two-columns`) and Library (`library.list-column`) already use,
 now that the rail is in the window (HAL-20676). The frame and the 8px gap belonged to the old
 framed sidebar, which the rail replaces.
+
+## Covers
+
+- messenger.framed-list
+- packages/studio/features/messenger/src/ui/messenger-page.test.tsx
+- packages/studio/features/messenger/src/ui/activity-panel.test.tsx
