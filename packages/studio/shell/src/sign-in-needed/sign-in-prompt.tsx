@@ -1,5 +1,5 @@
 import { SignInBand, SignInModal, useOpenExternal } from "@halonicjs/studio-kit";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type AnnouncerTimers, systemTimers } from "../announcer/timers.ts";
 import type { Registered } from "../points/point-store.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
@@ -15,8 +15,13 @@ export interface SignInPromptProps {
   readonly appTitle: string;
   /** The sign-ins the features added. */
   readonly signIns: readonly Registered<SignInContribution>[];
-  /** The context of the feature with the given id, as the window builds it. Keep it stable: a new one reads the sign-ins again. */
+  /**
+   * The context of the feature with the given id, as the window builds it. It may change with
+   * every page; the prompt always reads the latest, and keeps a waiting sign-in.
+   */
   readonly contextFor: (featureId: string) => WorkspaceContext;
+  /** The open workspace: another one starts over, reading its own sign-ins. */
+  readonly workspace: object;
   /** Makes the channel to the other windows; a `BroadcastChannel` by default. */
   readonly channel?: (() => SignInChannel) | undefined;
   readonly timers?: Pick<AnnouncerTimers, "now"> | undefined;
@@ -58,10 +63,18 @@ export function SignInPrompt(props: SignInPromptProps) {
   );
 }
 
-/** One {@link SignInNeeds} while mounted, with its channel; a new one when the window or workspace changes. */
+/**
+ * One {@link SignInNeeds} while mounted, with its channel; a new one only when the window, the
+ * workspace or the sign-ins change. `contextFor` and `openExternal` are read through refs, because
+ * Studio's `contextFor` changes on every page and a new `SignInNeeds` would lose a waiting sign-in.
+ */
 function useSignInNeeds(props: SignInPromptProps): SignInNeeds | undefined {
-  const { window: shownIn, signIns, contextFor, channel, timers } = props;
+  const { window: shownIn, signIns, workspace, channel, timers } = props;
+  const latestContextFor = useRef(props.contextFor);
+  latestContextFor.current = props.contextFor;
   const openExternal = useOpenExternal();
+  const latestOpenExternal = useRef(openExternal);
+  latestOpenExternal.current = openExternal;
   const [needs, setNeeds] = useState<SignInNeeds | undefined>(undefined);
 
   useEffect(() => {
@@ -69,13 +82,13 @@ function useSignInNeeds(props: SignInPromptProps): SignInNeeds | undefined {
     const created = new SignInNeeds({
       window: shownIn,
       signIns,
-      contextFor,
+      contextFor: (featureId) => latestContextFor.current(featureId),
       channel: opened,
       timers: timers ?? systemTimers,
       openExternal: (url) => {
-        openExternal(url).catch((error: unknown) =>
-          console.error("Couldn't open the sign-in page.", error),
-        );
+        latestOpenExternal
+          .current(url)
+          .catch((error: unknown) => console.error("Couldn't open the sign-in page.", error));
       },
     });
     const onFocus = (): void => created.windowFocused();
@@ -87,7 +100,7 @@ function useSignInNeeds(props: SignInPromptProps): SignInNeeds | undefined {
       created.stop();
       opened.close();
     };
-  }, [shownIn, signIns, contextFor, channel, timers, openExternal]);
+  }, [shownIn, signIns, workspace, channel, timers]);
 
   return needs;
 }

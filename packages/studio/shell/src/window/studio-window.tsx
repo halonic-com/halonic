@@ -360,6 +360,7 @@ function StudioWindowBody(props: StudioWindowProps) {
             appTitle={appName}
             signIns={signIns}
             contextFor={contextFor}
+            workspace={workspace}
           />
           <Strips strips={contributions.strips.list()} contextFor={contextFor} />
         </>

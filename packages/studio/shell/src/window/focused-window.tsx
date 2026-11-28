@@ -244,7 +244,13 @@ function FocusedPage({
   );
   const signIns = useMemo(() => shell.contributions.signIns.list(), [shell]);
   const prompt = (
-    <SignInPrompt window={app.id} appTitle={app.title} signIns={signIns} contextFor={contextFor} />
+    <SignInPrompt
+      window={app.id}
+      appTitle={app.title}
+      signIns={signIns}
+      contextFor={contextFor}
+      workspace={workspace}
+    />
   );
   const page = (
     <PageErrorBoundary pageKey={app.id} pageName={app.title}>

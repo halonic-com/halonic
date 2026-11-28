@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import { OpenExternalProvider } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { defineFeature } from "../feature.ts";
 import type { FocusedAppContribution } from "../points/frame.ts";
@@ -12,6 +14,9 @@ import { FakeTimers } from "../test-support/fake-timers.ts";
 import { MapTarget } from "../test-support/map-target.ts";
 import { mountFocusedWindow } from "../window/focused-window.tsx";
 import { StudioWorkspace } from "../window/studio-workspace.ts";
+import type { WorkspaceContext } from "../workspace-context.ts";
+import type { SignInChannel } from "./sign-in-channel.ts";
+import { SignInPrompt } from "./sign-in-prompt.tsx";
 import type { SignInContribution, SignInNeed } from "./sign-ins.ts";
 
 let media: FakeMediaQueries;
@@ -116,5 +121,72 @@ verifies("shell.sign-in-needed", () => {
       expect(modalTitle(messenger)).toBeUndefined();
     });
     expect(opened).toEqual(["https://paperclip.acme.test/approve"]);
+  });
+
+  it("keeps a waiting sign-in when the window's contextFor changes, as it does on every page", async () => {
+    signedOut = [{ id: "acme-team", name: "Paperclip · Acme team" }];
+    let watches = 0;
+    const waiting: SignInContribution = {
+      ...paperclip,
+      watch: (context, listener) => {
+        watches++;
+        return paperclip.watch(context, listener);
+      },
+      start: async () => ({
+        phrase: "blue-otter",
+        approvalUrl: undefined,
+        finished: new Promise(() => undefined),
+      }),
+    };
+    const [signIn] = createShell({
+      features: [
+        defineFeature({
+          id: "acme",
+          title: "Acme",
+          register: (studio) => studio.signIns.add(waiting),
+        }),
+      ],
+    }).contributions.signIns.list();
+    if (signIn === undefined) throw new Error("Acme added no sign-in.");
+    const signIns = [signIn];
+    const channel: SignInChannel = {
+      post: () => undefined,
+      subscribe: () => () => undefined,
+      close: () => undefined,
+    };
+    const makeChannel = () => channel;
+    const workspace = {};
+    const element = document.createElement("div");
+    document.body.append(element);
+    elements.push(element);
+    const root = createRoot(element);
+    unmounts.push(() => root.unmount());
+    const draw = (contextFor: (featureId: string) => WorkspaceContext) =>
+      act(async () => {
+        root.render(
+          <OpenExternalProvider openExternal={async () => undefined}>
+            <SignInPrompt
+              window="inbox"
+              appTitle="Inbox"
+              signIns={signIns}
+              contextFor={contextFor}
+              workspace={workspace}
+              channel={makeChannel}
+            />
+          </OpenExternalProvider>,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+    await draw(() => ({}) as WorkspaceContext);
+    const button = element.querySelector<HTMLButtonElement>("dialog button");
+    await act(async () => button?.click());
+    await vi.waitFor(() =>
+      expect(element.textContent).toContain("Check that it shows: blue-otter"),
+    );
+
+    await draw(() => ({}) as WorkspaceContext);
+    expect(element.textContent).toContain("Check that it shows: blue-otter");
+    expect(watches).toBe(1);
   });
 });
