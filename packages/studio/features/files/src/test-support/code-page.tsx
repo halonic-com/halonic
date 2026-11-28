@@ -1,4 +1,4 @@
-import { PresentationProvider } from "@halonicjs/studio-kit";
+import { PresentationProvider, type ToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { ItemRef, ItemViewProps, WorkspaceContext } from "@halonicjs/studio-shell";
 import { act } from "react";
 import { codePageItem } from "../code-page.ts";
@@ -18,6 +18,8 @@ export interface CodePageOptions {
   readonly withSidebar?: boolean;
   /** Draws the page while it is still loading or failing, without waiting for the listing. */
   readonly unsettled?: boolean;
+  /** The window's toasts, such as a fake that keeps a rename's or a delete's Undo. */
+  readonly toasts?: ToastStore;
 }
 
 /** What {@link showCodePage} drew, and what the page asked the window for. */
@@ -55,10 +57,17 @@ export async function showCodePage(options: CodePageOptions = {}): Promise<Shown
   const props: ItemViewProps = { item: codePageItem, context, Sections: NoSections };
   const sidebar =
     options.withSidebar === true ? render(<FilesSidebarView context={context} />) : null;
-  const page = render(
+  const view = (
     <PresentationProvider presentation={options.presentation ?? "desktop"}>
       <CodePage {...props} />
-    </PresentationProvider>,
+    </PresentationProvider>
+  );
+  const page = render(
+    options.toasts === undefined ? (
+      view
+    ) : (
+      <ToastStoreProvider store={options.toasts}>{view}</ToastStoreProvider>
+    ),
   );
   if (options.unsettled !== true) await settled();
   return { page, sidebar, opened, openedInNewTab, shownViews };

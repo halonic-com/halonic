@@ -109,8 +109,8 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
   }, [editor, review]);
 
   // The pressed Accept or Reject is gone with its part, so the focus goes to the part that took its
-  // place, or the last one; with none left, to the file's heading (a11y check RV1). Focus the person
-  // moved elsewhere while the decision ran stays where they put it.
+  // place, or the last one; with none left, to the file's heading (a11y check RV1). Focus the
+  // person moved elsewhere while the decision ran stays where they put it.
   useEffect(() => {
     const lost = document.activeElement === null || document.activeElement === document.body;
     if (landing === undefined || !lost) return;
