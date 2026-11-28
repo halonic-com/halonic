@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { ViewRef } from "../view.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
-import type { PlaceSignal } from "./frame.ts";
+import type { PlaceSignal, PlaceSlotProps } from "./frame.ts";
 
 /**
  * Home's sections, in the only order they are shown (design direction 3, UX checklist 1.9):
@@ -73,17 +73,10 @@ export interface HomeViewContribution {
 }
 
 /**
- * What both of Home's slots get. The shell keeps which item is open, so a row picked in the list
- * column shows in the content pane.
+ * What both of Home's slots get: a place's slot props (`PlaceSlotProps`). The shell keeps which
+ * item is open, so a row picked in the list column shows in the content pane.
  */
-export interface HomeSlotProps {
-  /** The context of the feature that set Home's view. */
-  readonly context: WorkspaceContext;
-  /** The id of the item open in the content pane, such as a chat's, or `undefined` for none. */
-  readonly open: string | undefined;
-  /** Opens an item in the content pane, or none with `undefined`. */
-  readonly setOpen: (id: string | undefined) => void;
-}
+export type HomeSlotProps = PlaceSlotProps;
 
 /**
  * What Home's list column view gets. A row carries its item's id in `data-row-id` and takes the

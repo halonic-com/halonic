@@ -455,7 +455,12 @@ export {
   mountStudioWindow,
 } from "./window/mount-studio-window.tsx";
 export { shownPlaces } from "./window/shown-places.ts";
-export { type PlaceViewProps, StudioPage, type StudioPageProps } from "./window/studio-page.tsx";
+export {
+  type PlaceListPageProps,
+  type PlaceViewProps,
+  StudioPage,
+  type StudioPageProps,
+} from "./window/studio-page.tsx";
 export {
   StudioPhonePage,
   type StudioPhonePageProps,

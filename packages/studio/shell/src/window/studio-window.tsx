@@ -391,11 +391,12 @@ function StudioWindowBody(props: StudioWindowProps) {
         <TabPages
           tabs={tabs}
           cardTakers={cardTakers}
-          renderPage={(location) => (
+          renderPage={(location, tab) => (
             <StudioPage
               location={location}
               shell={shell}
               tabs={tabs}
+              tabId={tab.id}
               announcer={announcer}
               contextFor={contextFor}
               backLink

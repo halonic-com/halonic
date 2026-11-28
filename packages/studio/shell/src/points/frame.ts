@@ -287,6 +287,27 @@ export interface PlaceContribution extends ViewRef {
    * that only changes when the tabs do.
    */
   subscribeSignal?(context: WorkspaceContext, listener: () => void): () => void;
+  /**
+   * The place's own list, which the window draws in its list column in place of the places
+   * (`shell.rail-frame`), from a window 900px wide. Its view gets {@link PlaceSlotProps}; a row
+   * carries its item's id in `data-row-id` and takes the focus on its `role="gridcell"`, as the
+   * kit's `List` rows do. Leave it out for a place that lists nothing of its own.
+   */
+  readonly listColumn?: ViewRef;
+}
+
+/**
+ * What a place's list column and its page both get, and Home's slots too (`HomeSlotProps`). The
+ * shell keeps which item is open, one for each tab, so a row picked in the list column shows in
+ * the page, and what's open stays when the window crosses 900px.
+ */
+export interface PlaceSlotProps {
+  /** The context of the feature that added the place. */
+  readonly context: WorkspaceContext;
+  /** The id of the item open in the page, such as a change's, or `undefined` for none. */
+  readonly open: string | undefined;
+  /** Opens an item in the page, or none with `undefined`. */
+  readonly setOpen: (id: string | undefined) => void;
 }
 
 /** A place as the sidebar shows it now: its name and icon, and its signal if there is one. */

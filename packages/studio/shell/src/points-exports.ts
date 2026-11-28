@@ -29,6 +29,7 @@ export {
   type PlaceGroup,
   type PlaceName,
   type PlaceSignal,
+  type PlaceSlotProps,
   placeGroupNames,
   placeNames,
   type SettingsGroupName,
