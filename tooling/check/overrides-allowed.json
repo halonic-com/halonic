@@ -5,6 +5,18 @@
       "advisory": "GHSA-mrhx-c7xc-m3w5",
       "reason": "srt 0.0.82 pins zod ^3.25, which has the oversized-collection memory exhaustion advisory (fixed in 4.6.6). The override moves srt to the catalog zod. srt imports zod/v3, which zod 4 ships. Approved by Liam on HAL-1928.",
       "remove-when": "srt depends on zod >=4.6.6"
+    },
+    {
+      "selector": "miniflare>sharp",
+      "advisory": "GHSA-wq5f-xc86-pv6w",
+      "reason": "miniflare 4.20260730.0, the newest stable release, pins sharp 0.35.2, which has high advisories in its bundled libheif and librsvg (GHSA-rgj7-g3m4-5g8c, GHSA-wq5f-xc86-pv6w; fixed in 0.35.5). Dev-only: miniflare runs the Cloudflare contract tests and never ships. Only the miniflare 5 betas move to 0.35.5. Proposed on HAL-20858.",
+      "remove-when": "the catalog miniflare depends on sharp >=0.35.5"
+    },
+    {
+      "selector": "miniflare>undici",
+      "advisory": "GHSA-2m5v-pch6-74hx",
+      "reason": "miniflare 4.20260730.0, the newest stable release, pins undici 7.28.0, which has seven high advisories (TLS validation bypass, cache poisoning, DoS; all fixed by 7.30.1). The override stays on undici 7, the major miniflare expects. Dev-only: miniflare runs the Cloudflare contract tests and never ships. Proposed on HAL-20858.",
+      "remove-when": "the catalog miniflare depends on undici >=7.30.1"
     }
   ]
 }

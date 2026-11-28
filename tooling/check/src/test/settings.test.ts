@@ -1,11 +1,16 @@
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { loadContext } from "../lib/context.ts";
+import type { Problem } from "../lib/problems.ts";
+import { rules } from "../rules/all.ts";
 import {
   type FixtureOptions,
   type FixturePackage,
   manifestFor,
+  removeFixtureRepo,
   runChecks,
+  writeFixtureRepo,
 } from "./fixture-repo.ts";
 
 /** A core package `std` with these external dev dependencies. */
@@ -20,6 +25,18 @@ function messages(packages: FixturePackage[], options: FixtureOptions = {}): str
   return runChecks(packages, { coreOrder: ["@halonicjs/std"], ...options }).map(
     (problem) => problem.message,
   );
+}
+
+/** The dependencies rule's warnings (`runChecks` keeps only errors). */
+function warnings(options: FixtureOptions): string[] {
+  const root = writeFixtureRepo([], { coreOrder: ["@halonicjs/std"], ...options });
+  let problems: readonly Problem[];
+  try {
+    problems = rules["dependencies"]?.(loadContext(root)).problems ?? [];
+  } finally {
+    removeFixtureRepo(root);
+  }
+  return problems.filter((p) => p.severity === "warning").map((p) => p.message);
 }
 
 /** Changes one entry of the real dependencies.json. */
@@ -178,11 +195,15 @@ describe("tooling/check: allowed overrides", () => {
     );
   });
 
-  it("refuses a listed entry with no override, so a stale one can't stay", () => {
+  it("warns on a listed entry with no override, so a stale one gets removed", () => {
     // The real workspace file overrides allowedSelector, so list one it does not override.
+    // A warning, not an error: the entry lands before its override (HAL-20858).
     const stale = "stale-parent>zod";
-    const found = messages([], { overridesAllowed: allowing(stale) });
-    expect(found.some((m) => m.includes(`"${stale}" is allowed but`))).toBe(true);
+    const options: FixtureOptions = { overridesAllowed: allowing(stale) };
+    const isStale = (m: string) =>
+      m.includes(`"${stale}" is allowed but`) && m.includes("srt depends on zod 4.6.6 or later");
+    expect(messages([], options).some(isStale)).toBe(false);
+    expect(warnings(options).some(isStale)).toBe(true);
   });
 
   it("reads overrides-allowed.json strictly", () => {

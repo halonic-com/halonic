@@ -170,8 +170,10 @@ entry to these rules:
   tree and fails.
 - The value is the catalog version of the child (or `catalog:`), so the
   catalog stays the one place for versions.
-- An entry with no matching override fails, so a fix that is no longer
-  needed gets removed.
+- An entry with no matching override is a warning, so a fix that is no
+  longer needed gets removed. Not an error: CI checks an override against
+  the base commit's list, so the entry merges first, in its own pull
+  request, and the override follows in the next one.
 
 `patchedDependencies:` in `pnpm-workspace.yaml` is allowed only for a patch
 listed in `tooling/check/patches-allowed.json`, again in its own pull
