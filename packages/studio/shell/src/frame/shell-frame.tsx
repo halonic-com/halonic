@@ -44,10 +44,15 @@ export interface ShellFrameProps {
   /** The language of the Studio's words, such as `en`, set on `<html lang>`. */
   readonly language: string;
   /**
-   * The title bar's content on the desktop: the Halonic Studio mark, Back and Forward, the window
-   * tabs, +. In a narrow window the frame puts the Places button before it.
+   * The title bar's content on the desktop: the Halonic Studio mark, Back and Forward, and the
+   * items at its right end. In a narrow window the frame puts the Places button before it.
    */
   readonly titleBar?: ReactNode;
+  /**
+   * The workspace's tabs on the desktop, `WindowTabStrip`: the framed panel's first row, above the
+   * engine's line and the page (`shell.frame`, P3 of the HAL-20617 build plan).
+   */
+  readonly tabs?: ReactNode;
   /**
    * The sidebar on the desktop. It sets its own width on a wide window; in a narrow window
    * (`useNarrowWindow`) it fills the 264px Places drawer the title bar's Places button opens.
@@ -292,6 +297,11 @@ function FramedContent(props: {
       data-framed-panel={desktop ? "" : undefined}
       className={desktopPanelClass(desktop, props.besideSidebar)}
     >
+      {desktop && frame.tabs !== undefined ? (
+        <div data-panel-tabs="" className="flex shrink-0 items-end gap-0.5 ps-1 pt-1">
+          {frame.tabs}
+        </div>
+      ) : null}
       {desktop ? <EngineLine engine={frame.engine} starting={frame.engineStarting} /> : null}
       <div className={desktop ? "relative flex min-h-0 flex-1" : "contents"}>
         {props.children}

@@ -31,7 +31,7 @@ first, as for `needs`, but nobody providing it is no error.
 | `defineFeature`, `createShell` | register features in dependency order; refuse bad graphs | `shell.feature-registry` |
 | `serviceKey`, `studio.services` | provide services per workspace; lookups limited to `needs`, `wants` and `provides` | `shell.feature-services` |
 | `TabSet` | a workspace's window tabs, each with Back and Forward | `shell.tab-set` |
-| `WindowTabStrip` | the window tabs in the title bar, one Tab stop | `shell.window-tab-strip` |
+| `WindowTabStrip` | the window tabs above the content pane, one Tab stop | `shell.window-tab-strip` |
 | `hintKeys` | the Kbd keys of a shortcut, Ctrl or ⌘ for the platform, ⌃ ⌥ ⇧ on macOS | `shell.key-hints` |
 | `TabPages` | the last 5 tabs' pages kept mounted, focus given back | `shell.tab-pages` |
 | `ShellFrame` | the window's frame: layers, live regions, Esc, toasts | `shell.frame` |
@@ -109,7 +109,7 @@ at either end. `activate`, `cycle` (Ctrl Tab, wraps), `activateAt` (`-1` is the 
 
 The strip reads `tabs.state` and `subscribe`s; every change makes a new state.
 
-`WindowTabStrip` draws them in the title bar (component specs 24.5): a `tablist` named "Open tabs"
+`WindowTabStrip` draws them above the content pane, the frame's `tabs` slot (component specs 24.5): a `tablist` named "Open tabs"
 that is one Tab stop. `iconFor` gives a tab's 16px icon. ← and → move the focus, Enter or Space opens the focused tab, Delete closes
 it, and Ctrl Shift PageUp and PageDown move it. A tab is named "Support reply, workflow", plus
 ", needs you" with the 6px dot when `needsYou` says its item waits for a person. Tabs are 200px
@@ -1041,7 +1041,7 @@ there (`shell.view-loading`).
 ## The Studio window
 
 `StudioWindow` puts the desktop window together for one open workspace (`shell.studio-window`):
-`TitleBarBrand`, `HistoryButtons` and `WindowTabStrip` in the title bar, the sidebar
+`TitleBarBrand` and `HistoryButtons` in the title bar, `WindowTabStrip` above the content pane, the sidebar
 (`SidebarSearch`, `PlacesList` and `SidebarResizeEdge`, with `WorkspaceSwitcher` once the app passes
 a workspace menu), `TabPages` and `StatusBarItems` with `StatusBarSaveNote` at its right end, and the Ctrl K palette, opened from the Search
 box, Mod K, **+** and Ctrl T. A tab on Home shows `HomePage`, a tab on a search the `SearchPage`,
