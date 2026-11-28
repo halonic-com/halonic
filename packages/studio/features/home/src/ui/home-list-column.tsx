@@ -46,6 +46,7 @@ export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) 
       <Button
         ref={newChatButton}
         variant="ghost"
+        ring="inset"
         icon={<PlusIcon />}
         onClick={() => void newChat()}
       >
