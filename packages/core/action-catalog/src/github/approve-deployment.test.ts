@@ -153,6 +153,22 @@ verifies("action-catalog.github-approve-deployment", () => {
       );
     });
 
+    it("names the fork in the approval line too, the one line the confirming dialog shows", async () => {
+      const { kept } = await runChecks("fork-run");
+      const current = { ...kept.get(1), ...kept.get(2) };
+      expect(definition.preview(parameters, current)[2]).toBe(
+        "Approves run 7001 of acme/app, a commit of the fork `outsider/app`, for the environment `production`. This starts the deployment and can't be undone.",
+      );
+    });
+
+    it("still names the commit and the fork when GitHub answers no head branch", async () => {
+      const { kept } = await runChecks("fork-run");
+      const current = { ...kept.get(1), ...kept.get(2), head_branch: null };
+      expect(definition.preview(parameters, current)[0]).toBe(
+        "Run 7001 of acme/app: commit `4f2c9e1` of the fork `outsider/app`, started by `outsider`.",
+      );
+    });
+
     it("doesn't call the request's own repository a fork when only the case differs", () => {
       const current = {
         head_sha: seenCommit,
@@ -162,12 +178,18 @@ verifies("action-catalog.github-approve-deployment", () => {
       expect(definition.preview(parameters, current)[0]).toBe(
         "Run 7001 of acme/app: commit `4f2c9e1` on `main`.",
       );
+      expect(definition.preview(parameters, current)[2]).toBe(
+        "Approves run 7001 of acme/app for the environment id 42. This starts the deployment and can't be undone.",
+      );
     });
 
     it("says so when GitHub names no repository for the commit, as for a deleted fork", () => {
       const current = { head_sha: seenCommit, head_branch: "main" };
       expect(definition.preview(parameters, current)[0]).toBe(
         "Run 7001 of acme/app: commit `4f2c9e1` on `main` of a repository GitHub didn't name.",
+      );
+      expect(definition.preview(parameters, current)[2]).toContain(
+        "Approves run 7001 of acme/app, a commit of a repository GitHub didn't name, for",
       );
     });
 
