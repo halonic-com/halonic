@@ -2,8 +2,8 @@
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { button, polyfillModals } from "../test-support/modal.ts";
-import { byText, openChat, openMessenger, press } from "../test-support/page.tsx";
+import { button, openDialog, polyfillModals } from "../test-support/modal.ts";
+import { byText, openChat, openMessenger, press, pressKey, typeIn } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 
 beforeEach(polyfillModals);
@@ -26,6 +26,37 @@ function acme(names: readonly string[]) {
     messaging.addMessage(chat.id, { body: `${name} here.` });
   }
   return messaging;
+}
+
+/** Acme's chats with Chief, Kim and Mara, then the Design channel with Chief and Kim, newest. */
+function acmeWithChannel() {
+  let minute = 0;
+  const messaging = new FakeAgentMessaging({
+    now: () => new Date(Date.UTC(2026, 10, 28, 9, minute++)),
+  });
+  const source = messaging.addSource({ label: "Paperclip · Acme" });
+  const agents = ["Chief", "Kim", "Mara"].map((name) => {
+    const agent = messaging.addAgent(source.id, { name });
+    const chat = messaging.addConversation(agent.id);
+    messaging.addMessage(chat.id, { body: `${name} here.` });
+    return agent;
+  });
+  const members = agents.slice(0, 2).map((agent) => agent.id);
+  const design = messaging.addConversation(members[0] ?? "", { title: "Design", members });
+  messaging.addMessage(design.id, { body: "Mockups are up." });
+  return messaging;
+}
+
+/** Leaves the channel whose row holds `name`, through its header and the dialog. */
+async function leaveChannel(page: HTMLElement, name: string): Promise<void> {
+  await openChat(page, name);
+  await press(byText(page, "header button", "Leave channel"));
+  await press(button("Leave", openDialog() ?? document));
+}
+
+/** What the page's own status region last read out. */
+function pageSaid(page: HTMLElement): string | null | undefined {
+  return page.querySelector("[data-page-status]")?.textContent;
 }
 
 /** The names on the list's rows, top to bottom. */
@@ -65,7 +96,8 @@ verifies("messenger.pinned-chats", () => {
     await openChat(page, "Leo");
     await chatMenu(page, "Leo", "Pin chat");
 
-    expect(byText(page, "nav [role=status]", "You can pin up to 3 chats.")).toBeDefined();
+    expect(byText(page, "nav p", "You can pin up to 3 chats.")).toBeDefined();
+    expect(pageSaid(page)).toContain("You can pin up to 3 chats.");
     expect(rowNames(page)).toEqual(["Kim", "Mara", "Chief", "Leo"]);
     expect(page.querySelector("[data-pinned-chats]")?.textContent).not.toContain("Leo");
   });
@@ -89,5 +121,72 @@ verifies("messenger.pinned-chats", () => {
 
     const again = await openMessenger(messaging);
     expect(rowNames(again)).toEqual(["Chief", "Mara"]);
+  });
+
+  it("lets a new pin take the place of a pinned channel the board left", async () => {
+    const page = await openMessenger(acmeWithChannel());
+    for (const name of ["Design", "Chief", "Kim"]) {
+      await openChat(page, name);
+      await chatMenu(page, name, "Pin chat");
+    }
+    await leaveChannel(page, "Design");
+    await openChat(page, "Mara");
+    await chatMenu(page, "Mara", "Pin chat");
+
+    expect(page.textContent).not.toContain("You can pin up to 3 chats.");
+    expect(rowNames(page).slice(0, 3)).toEqual(["Mara", "Kim", "Chief"]);
+  });
+
+  it("after Leave, focuses the row that took the channel's place in the order shown", async () => {
+    const page = await openMessenger(acmeWithChannel());
+    await openChat(page, "Mara");
+    await chatMenu(page, "Mara", "Pin chat");
+    // Mara pinned, then Design, Kim, Chief by newest message.
+    expect(rowNames(page)).toEqual(["Mara", "Design", "Kim", "Chief"]);
+    await leaveChannel(page, "Design");
+
+    expect(rowNames(page)).toEqual(["Mara", "Kim", "Chief"]);
+    expect(document.activeElement).toBe(byText(page, "nav li > button", "Kim"));
+  });
+
+  it("drops the note at the next unpin, and reads it out on every full try", async () => {
+    const page = await openMessenger(acme(["Chief", "Mara", "Kim", "Leo"]));
+    for (const name of ["Chief", "Mara", "Kim"]) {
+      await openChat(page, name);
+      await chatMenu(page, name, "Pin chat");
+    }
+    await openChat(page, "Leo");
+    await chatMenu(page, "Leo", "Pin chat");
+    const first = page.querySelector("[data-page-status] span:last-child");
+    await chatMenu(page, "Leo", "Pin chat");
+    const second = page.querySelector("[data-page-status] span:last-child");
+    expect(second?.textContent).toBe("You can pin up to 3 chats.");
+    expect(second).not.toBe(first);
+
+    await openChat(page, "Kim");
+    await chatMenu(page, "Kim", "Unpin chat");
+    expect(page.querySelector("nav")?.textContent).not.toContain("You can pin up to 3 chats.");
+    expect(pageSaid(page)).not.toContain("You can pin up to 3 chats.");
+  });
+
+  it("reads the note out in one pane, where the chat takes the list's place", async () => {
+    const page = await openMessenger(acme(["Chief", "Mara", "Kim", "Leo"]), [], true);
+    for (const name of ["Chief", "Mara", "Kim", "Leo"]) {
+      await openChat(page, name);
+      await chatMenu(page, name, "Pin chat");
+      await press(byText(page, "main button", "Back to chats"));
+    }
+    expect(pageSaid(page)).toContain("You can pin up to 3 chats.");
+  });
+
+  it("lists what a search found in its own order, with no Pinned group", async () => {
+    const page = await openMessenger(acme(["Chief", "Mara"]));
+    await openChat(page, "Chief");
+    await chatMenu(page, "Chief", "Pin chat");
+    await pressKey("k", { ctrlKey: true });
+    await typeIn(page.querySelector('nav input[type="search"]'), "here");
+
+    expect(page.querySelector("[data-pinned-chats]")).toBeNull();
+    expect(rowNames(page)).toEqual(["Mara", "Chief"]);
   });
 });

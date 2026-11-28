@@ -36,6 +36,24 @@ verifies("messenger.pinned-chats", () => {
       expect(new StoredChatPins(storage).list()).toEqual([chat("a")]);
     });
 
+    it("leaves the pins another window kept in the meantime", () => {
+      const storage = memory();
+      const here = new StoredChatPins(storage);
+      here.pin(chat("a"));
+      new StoredChatPins(storage).pin(chat("b"));
+      here.pin(chat("c"));
+      expect(here.list().map((pin) => pin.conversation)).toEqual(["c", "b", "a"]);
+    });
+
+    it("counts only listed pins, and a new pin takes an unlisted one's place", () => {
+      const pins = new StoredChatPins(memory());
+      for (const id of ["gone", "a", "b"]) pins.pin(chat(id));
+      const isListed = (pin: { readonly conversation: string }) => pin.conversation !== "gone";
+      expect(pins.pin(chat("c"), isListed)).toBe("pinned");
+      expect(pins.list().map((pin) => pin.conversation)).toEqual(["c", "b", "a"]);
+      expect(pins.pin(chat("d"), isListed)).toBe("full");
+    });
+
     it("keeps the pins for this page when storage refuses them, and says so", () => {
       const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
       const pins = new StoredChatPins({

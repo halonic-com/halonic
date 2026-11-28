@@ -1,8 +1,8 @@
 import { createContext, type ReactNode, use, useMemo, useState } from "react";
-import { type ChatPins, type PinnedChat, StoredChatPins } from "../chat-pins.ts";
+import { type ChatPins, isRowOf, type PinnedChat, StoredChatPins } from "../chat-pins.ts";
 import type { ConversationRow } from "../messenger.ts";
 
-/** The Messenger page's pins as the list and the open chat's menu share them (`messenger.pinned-chats`). */
+/** The Messenger page's pins, shared by its list and its open chat's menu. */
 export interface ChatPinning {
   /** The pinned chats, the most recently pinned first. */
   readonly pinned: readonly PinnedChat[];
@@ -12,6 +12,8 @@ export interface ChatPinning {
   readonly toggle: (row: ConversationRow) => void;
   /** The last pin found all the pins taken, until the next pin or unpin. */
   readonly full: boolean;
+  /** Grows on each pin that finds them all taken, so the page's status reads every try. */
+  readonly fullCount: number;
 }
 
 const PinsContext = createContext<ChatPinning | undefined>(undefined);
@@ -22,32 +24,37 @@ export function useChatPins(): ChatPinning | undefined {
 }
 
 /**
- * Gives the Messenger page's list and open chat one set of pins, kept on this device; a pin or an
- * unpin draws both again. `pins` stands in for the device's storage in tests.
+ * The Messenger page's pins (`messenger.pinned-chats`), kept on this device; `given` stands in for
+ * the device's storage in tests. Only pins whose chats are in `rows` count toward the limit.
  */
-export function ChatPinsProvider({
-  pins: given,
-  children,
-}: {
-  readonly pins?: ChatPins | undefined;
-  readonly children: ReactNode;
-}) {
+export function useChatPinning(
+  given: ChatPins | undefined,
+  rows: readonly ConversationRow[] | undefined,
+): ChatPinning {
   const pins = useMemo(() => given ?? new StoredChatPins(globalThis.localStorage ?? null), [given]);
   const [pinned, setPinned] = useState(() => pins.list());
-  const [full, setFull] = useState(false);
-  const value = useMemo<ChatPinning>(() => {
-    const isPinned = (row: ConversationRow) => pinned.some((pin) => isPinOf(pin, row));
+  const [full, setFull] = useState({ shown: false, count: 0 });
+  return useMemo<ChatPinning>(() => {
+    const isPinned = (row: ConversationRow) => pinned.some((pin) => isRowOf(row, pin));
+    const isListed = (pin: PinnedChat) => (rows ?? []).some((row) => isRowOf(row, pin));
     const toggle = (row: ConversationRow) => {
       const chat = { source: row.conversation.source, conversation: row.conversation.id };
+      const wasFull = !isPinned(row) && pins.pin(chat, isListed) === "full";
       if (isPinned(row)) pins.unpin(chat);
-      setFull(!isPinned(row) && pins.pin(chat) === "full");
+      setFull((last) => ({ shown: wasFull, count: last.count + (wasFull ? 1 : 0) }));
       setPinned(pins.list());
     };
-    return { pinned, isPinned, toggle, full };
-  }, [pins, pinned, full]);
-  return <PinsContext value={value}>{children}</PinsContext>;
+    return { pinned, isPinned, toggle, full: full.shown, fullCount: full.count };
+  }, [pins, pinned, full, rows]);
 }
 
-function isPinOf(pin: PinnedChat, row: ConversationRow): boolean {
-  return pin.source === row.conversation.source && pin.conversation === row.conversation.id;
+/** Gives the page's list and open chat the pins {@link useChatPinning} keeps. */
+export function ChatPinsProvider({
+  value,
+  children,
+}: {
+  readonly value: ChatPinning;
+  readonly children: ReactNode;
+}) {
+  return <PinsContext value={value}>{children}</PinsContext>;
 }

@@ -14,7 +14,7 @@ import {
 import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ChatOpensService, MessengerService } from "../api.ts";
-import type { ChatPins } from "../chat-pins.ts";
+import { type ChatPins, type PinnedChat, pinnedFirst } from "../chat-pins.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
@@ -25,7 +25,7 @@ import { useFadeIn } from "./load-states.tsx";
 import { NeedsYouPanel, useWaiting } from "./needs-you.tsx";
 import { NewMenu } from "./new-menu.tsx";
 import { useChatOpens } from "./use-chat-opens.ts";
-import { ChatPinsProvider } from "./use-chat-pins.tsx";
+import { ChatPinsProvider, useChatPinning } from "./use-chat-pins.tsx";
 import { useLeft } from "./use-left.ts";
 import { useShownChat } from "./use-shown-chat.ts";
 
@@ -115,7 +115,9 @@ export function MessengerPage({
     readAgain();
     select(channel);
   };
-  const { said, leave } = useLeft(list, rows);
+  const pinning = useChatPinning(pins, rows);
+  // Leaving finds the row that takes the channel's place in the order the list shows it.
+  const { said, leave } = useLeft(list, shownOrder(rows, pinning.pinned));
   const left = () => {
     if (open !== undefined) leave(open);
     setSelected(undefined);
@@ -128,13 +130,17 @@ export function MessengerPage({
     back();
   };
   return (
-    <ChatPinsProvider pins={pins}>
+    <ChatPinsProvider value={pinning}>
       <div className={pageClass}>
         {/* The page's heading and status come first, so they read before the list, and stay while
           one pane shows the chat; both are out of the flow, so they take no room. */}
         <h1 className="sr-only">{messengerWords.title}</h1>
         <p role="status" className="sr-only" data-page-status>
           <span key={said.count}>{said.text}</span>
+          {/* Read on every pin that finds them all taken, also while one pane shows the chat. */}
+          <span key={`pins-${pinning.fullCount}`}>
+            {pinning.full ? messengerWords.pinsFull : ""}
+          </span>
         </p>
         {onePane && panelFirst ? null : (
           <ListColumn listRef={list} onePane={onePane} connected={connected}>
@@ -195,6 +201,16 @@ export function MessengerPage({
       </div>
     </ChatPinsProvider>
   );
+}
+
+/** The rows in the order the list shows them: the pinned ones first (`messenger.pinned-chats`). */
+function shownOrder(
+  rows: readonly ConversationRow[] | undefined,
+  pinned: readonly PinnedChat[],
+): readonly ConversationRow[] | undefined {
+  if (rows === undefined) return undefined;
+  const split = pinnedFirst(rows, pinned);
+  return [...split.pinned, ...split.others];
 }
 
 /**

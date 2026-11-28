@@ -3,7 +3,7 @@ import type { MessagingId } from "@halonicjs/ports";
 /** The part of the page's `localStorage` the pins use. */
 export type ChatPinStorage = Pick<Storage, "getItem" | "setItem">;
 
-/** How many chats the person can pin (Sofia's flows on HAL-20673, line 22; the board's option A). */
+/** How many chats the person can pin (Sofia's flows on HAL-20673, line 22, her option A). */
 export const pinLimit = 3;
 
 /** The key the pins are kept under on this device. */
@@ -25,8 +25,12 @@ export type PinResult = "pinned" | "full";
 export interface ChatPins {
   /** The pinned chats, the most recently pinned first. */
   list(): readonly PinnedChat[];
-  /** Pins a chat first; with {@link pinLimit} chats pinned already, keeps them and says `full`. */
-  pin(chat: PinnedChat): PinResult;
+  /**
+   * Pins a chat first. Only pins whose chats `isListed` count: with {@link pinLimit} of those,
+   * the pins stay as they are and it says `full`; otherwise the new pin takes the place of the
+   * oldest pin whose chat isn't listed (one the person left, say), if there's no room for it.
+   */
+  pin(chat: PinnedChat, isListed?: (pin: PinnedChat) => boolean): PinResult;
   /** Unpins a chat; nothing happens when it isn't pinned. */
   unpin(chat: PinnedChat): void;
 }
@@ -53,11 +57,18 @@ export class StoredChatPins implements ChatPins {
     return this.#fresh();
   }
 
-  pin(chat: PinnedChat): PinResult {
+  pin(chat: PinnedChat, isListed: (pin: PinnedChat) => boolean = () => true): PinResult {
     const pins = this.#fresh();
     if (pins.some((each) => same(each, chat))) return "pinned";
-    if (pins.length >= pinLimit) return "full";
-    this.#write([chat, ...pins]);
+    if (pins.filter(isListed).length >= pinLimit) return "full";
+    const next = [chat, ...pins];
+    while (next.length > pinLimit) {
+      next.splice(
+        next.findLastIndex((each) => !isListed(each)),
+        1,
+      );
+    }
+    this.#write(next);
     return "pinned";
   }
 
@@ -108,7 +119,7 @@ export function pinnedFirst<Row extends PinnableRow>(
 }
 
 /** Whether a row is the pinned chat's. */
-function isRowOf(row: PinnableRow, pin: PinnedChat): boolean {
+export function isRowOf(row: PinnableRow, pin: PinnedChat): boolean {
   return row.conversation.source === pin.source && row.conversation.id === pin.conversation;
 }
 

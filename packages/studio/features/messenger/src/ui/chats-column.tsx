@@ -158,11 +158,14 @@ function linesOf(found: readonly FoundChat[]): ReadonlyMap<MessagingId, string> 
   );
 }
 
-/** "You can pin up to 3 chats." under the list's header, while the last pin found them all taken. */
+/**
+ * "You can pin up to 3 chats." under the list's header, while the last pin found them all taken.
+ * The page's status region reads it out, so this line isn't read again.
+ */
 function PinsFullNote({ full }: { readonly full: boolean }) {
   if (!full) return null;
   return (
-    <p role="status" className="px-5 pt-1 text-small text-fg-muted">
+    <p aria-hidden="true" className="px-5 pt-1 text-small text-fg-muted">
       {messengerWords.pinsFull}
     </p>
   );

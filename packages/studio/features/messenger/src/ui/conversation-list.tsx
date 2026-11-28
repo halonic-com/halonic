@@ -72,7 +72,7 @@ export function ConversationList({
   search,
 }: ConversationListProps) {
   // The rows fade in once they arrive in the skeleton's place.
-  const list = useRef<HTMLUListElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   useFadeIn(list, rows !== undefined);
   if (rows === undefined) return <ChatsSkeleton onRetry={onRetry} />;
   if (rows.length === 0 && pinned.length === 0) {
@@ -98,17 +98,16 @@ export function ConversationList({
     );
   };
   return (
-    <>
+    // One wrapper, so the pinned chats fade in with the others (motion 7, HAL-18481).
+    <div ref={list} className="flex flex-col">
       {pinned.length === 0 ? null : (
         <div data-pinned-chats="" className="flex flex-col pb-2">
           <h3 className="px-3 pb-1 text-small text-fg-muted">{messengerWords.pinned}</h3>
           <PlainList label={messengerWords.pinned}>{pinned.map(rowOf)}</PlainList>
         </div>
       )}
-      <PlainList listRef={list} label={messengerWords.chatsLabel}>
-        {rows.map(rowOf)}
-      </PlainList>
-    </>
+      <PlainList label={messengerWords.chatsLabel}>{rows.map(rowOf)}</PlainList>
+    </div>
   );
 }
 

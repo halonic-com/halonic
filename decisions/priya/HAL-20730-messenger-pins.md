@@ -11,8 +11,12 @@
   when there's no agent's message to mark unread, because its menu now also holds **Pin chat** or
   **Unpin chat** (`messenger.pinned-chats`, new). The test still checks what `messenger.read-marks`
   asks: no **Mark as unread** without an agent's message newer than the person's own.
-- `messenger.read-marks` itself doesn't change: it says when the menu holds Mark as unread, not
-  that the button is absent otherwise.
+- `messenger.read-marks`: the ··· sentence said the header ends with the button "while the open
+  chat has such a message", which read as if the button comes and goes with that message. It now
+  says the header always ends with the button, and its menu holds Mark as unread while there's
+  such a message. What Mark as unread does doesn't change.
+- `messenger.conversations`: "newest first" becomes "newest first after the pinned chats
+  (`messenger.pinned-chats`)", since pinned chats now come first.
 
 ## Why
 
@@ -22,4 +26,6 @@ where the open chat's own actions live, so Pin chat goes there and the menu show
 
 ## Covers
 
+- messenger.read-marks
+- messenger.conversations
 - packages/studio/features/messenger/src/ui/read-marks.test.tsx

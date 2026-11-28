@@ -5,7 +5,8 @@ The Messenger feature of the Studio: one conversation per agent, read from the e
 agent's messages the person hasn't read, and a violet dot after its name marks a card or question
 waiting. What was read is kept on the device per source (`ReadMarks`, in `localStorage`, not in the
 port), so it outlives a restart; a row offers Mark as read or Mark as unread on hover, and the open
-chat's ··· menu offers Mark as unread. An agent's bubbles are tinted in its own colour, one of six from the kit's theme
+chat's ··· menu offers Mark as unread and Pin chat. Up to 3 pinned chats show first, under
+"Pinned", kept on the device too (`ChatPins`, in `localStorage`). An agent's bubbles are tinted in its own colour, one of six from the kit's theme
 (`bg-agent-*`). The search icon over the list, or Ctrl+K inside the Messenger, finds chats by name or
 message; in a chat, Ctrl+F opens a find bar. "Needs you" at the top of the list opens every card and
 question waiting across the chats, oldest first. It sends through `AgentMessaging.send`, keeps a
