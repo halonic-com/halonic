@@ -28,7 +28,7 @@ import { subscribeTrashed, type Trashed, trashedFile } from "../trash.ts";
 import { CompareView } from "./compare-view.tsx";
 import { FileHeader } from "./file-header.tsx";
 import { followFileText } from "./follow-file-text.ts";
-import { type Loaded, LoadNotice } from "./load-notice.tsx";
+import { goToFiles, type Loaded, LoadNotice } from "./load-notice.tsx";
 import { OutsideStrip } from "./outside-strip.tsx";
 import { ProblemsPanel } from "./problems-panel.tsx";
 import { TrashedStrip } from "./trashed-strip.tsx";
@@ -62,16 +62,54 @@ function stripShown(applies: {
   return applies.outside ? "outside" : undefined;
 }
 
+/** Code's list column, beside a file in Code's pane: it takes the file's Rename and Go to Files. */
+export interface BesideList {
+  /** Edits the file's name in its row in the list column. */
+  rename(path: string): void;
+  /** Moves the focus to the list column's tree. */
+  focusTree(): void;
+}
+
+/** What {@link FileView} gets: an item's view props, and in Code's pane the list beside it. */
+export interface FileViewProps extends ItemViewProps {
+  /**
+   * Code's list column, when the file shows in Code's content pane (`files.code-page`). Rename, F2
+   * and Go to Files then go to it, and the file takes no request to open at a line, which is
+   * meant for the file's own tab.
+   */
+  readonly list?: BesideList;
+}
+
+/** Where a file's Rename and Go to Files lead. */
+interface TreeWays {
+  rename(): void;
+  goToFiles(): void;
+}
+
+/** Code's list column for a file in Code's pane, else the sidebar's tree, shown on its switch. */
+function treeWays(path: string, context: ItemViewProps["context"], list?: BesideList): TreeWays {
+  if (list !== undefined) return { rename: () => list.rename(path), goToFiles: list.focusTree };
+  return {
+    rename: () => {
+      askRename(path);
+      context.showSidebarView?.(FILES_VIEW);
+    },
+    goToFiles,
+  };
+}
+
 /**
  * A file in its tab: the file's name over the code editor. Typing goes straight to the
  * workspace's files, which save a moment later, so the tab has no Save button and no unsaved dot
  * (requirement `files.ui.file-tab`).
  */
-export function FileView({ item, context }: ItemViewProps) {
+export function FileView({ item, context, list }: FileViewProps) {
   const host = context.services.get(FilesHostService);
   const toasts = useToastStore();
   const writeClipboard = useWriteClipboard();
   const path = item.id;
+  // In Code's pane the file leaves line requests to its own tab (`files.code-page`).
+  const inPane = list !== undefined;
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const parent = useRef<HTMLDivElement>(null);
   // Bumped when Compare changed the file, so the text is read again.
@@ -258,7 +296,7 @@ export function FileView({ item, context }: ItemViewProps) {
         made.setReviewParts(review.parts());
         unsubscribe = follow(made);
         // A broken file's row opens the file with the cursor on its first problem (C348).
-        stopLines = takeOpenAtLineRequests(path, (line) => made.goTo(line));
+        if (!inPane) stopLines = takeOpenAtLineRequests(path, (line) => made.goTo(line));
         // A file the user just made opens with the cursor in the editor (files flow 8.10).
         const justMade = takeFocusOnOpen(path);
         if (refocus.current || justMade) {
@@ -274,7 +312,7 @@ export function FileView({ item, context }: ItemViewProps) {
       editorRef.current = undefined;
       editor?.destroy();
     };
-  }, [editing, trashedHere, host, path]);
+  }, [editing, trashedHere, host, path, inPane]);
 
   /** Reads the text again, and shows no editor until it has: the old text would be stale. */
   function reload(): void {
@@ -303,10 +341,8 @@ export function FileView({ item, context }: ItemViewProps) {
   }
 
   /** Asks the tree to edit the file's name in its row, and shows the tree so the user sees it. */
-  function renameInTree(): void {
-    askRename(path);
-    context.showSidebarView?.(FILES_VIEW);
-  }
+  const ways = treeWays(path, context, list);
+  const renameInTree = ways.rename;
 
   /** Open as *kind*, for a file that defines an agent, a workflow or a routine the window can open. */
   function openAsItem(): FileMenuActions["openAsItem"] {
@@ -337,7 +373,7 @@ export function FileView({ item, context }: ItemViewProps) {
           copyPath: () => void copyPath(writeClipboard, toasts, path),
         }}
       />
-      <LoadNotice loaded={loaded} missing={missing} onRetry={reload} />
+      <LoadNotice loaded={loaded} missing={missing} onRetry={reload} onGoToFiles={ways.goToFiles} />
       {strip === "trash" && trash !== undefined && (
         <TrashedStrip
           announce={(text) => announcer.current.announce(text)}

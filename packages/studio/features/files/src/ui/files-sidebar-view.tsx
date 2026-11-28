@@ -17,18 +17,28 @@ import { askFocusOnOpen } from "../focus-on-open.ts";
 import { startingPath } from "../new-file.ts";
 import { removeFile } from "../remove-file.ts";
 import { renamedPath, renameFile, typedNameProblem } from "../rename-file.ts";
-import { subscribeRenameAsked, takeRenameAsked } from "../rename-request.ts";
+import { type RenameAsks, windowRenameAsks } from "../rename-request.ts";
 import { type FilesRevealTaken, takeFilesRevealRequests } from "../reveal-request.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { deepestRow, revealFile, revealRow, visibleRows } from "../tree/visible-rows.ts";
 import { FilesTree } from "./files-tree.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
+import { TitleLine } from "./title-line.tsx";
 import { TreeSearchStatus } from "./tree-search-status.tsx";
 import { useTreeSearch } from "./use-tree-search.ts";
 
 /** What the sidebar's Files view gets: the context of the feature that added it. */
 export interface FilesSidebarViewProps {
   readonly context: WorkspaceContext;
+  /** The page's title on the + button's line, as Code's list column has it; the sidebar's none. */
+  readonly title?: string;
+  /**
+   * Code's list column only: its page's own rename asks, which it takes in place of the window's.
+   * With them, the view takes no window-wide ask, a file tab's Rename or another feature's reveal
+   * request, so a Code page in a tab behind never takes what the sidebar's tree should
+   * (`files.code-page`).
+   */
+  readonly pageAsks?: RenameAsks;
 }
 
 type Loaded =
@@ -38,12 +48,18 @@ type Loaded =
 
 const skeletonWidths = ["1/2", "2/3", "2/5", "3/5"] as const;
 
+/** Under a page title the search field sits a little lower, as on Runs, Library and Changes. */
+function searchWrapClass(title: string | undefined): string {
+  if (title === undefined) return "px-5 pt-1 pb-2";
+  return "px-5 pt-2 pb-2";
+}
+
 /**
  * The Files view in the sidebar: the workspace's file tree, with the loading, can't-load and empty
  * states. It lists again whenever the host says a file or a mark changed, and keeps the opened
  * folders and the focused row while it does.
  */
-export function FilesSidebarView({ context }: FilesSidebarViewProps) {
+export function FilesSidebarView({ context, title, pageAsks }: FilesSidebarViewProps) {
   const host = context.services.get(FilesHostService);
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const [state, setState] = useState<TreeState>(emptyTreeState);
@@ -119,17 +135,19 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   // A tab's ⋮ or F2 asks for its file's name to be edited here; the ask waits until this view is
   // shown. A search could hide the file's row, and its name field with it, so the search ends,
   // and the folders above the file open, as the search may have been all that showed its row.
+  // Code's list column takes only its own page's asks.
+  const renames = pageAsks ?? windowRenameAsks;
   useEffect(() => {
     const takeAsk = () => {
-      const path = takeRenameAsked();
+      const path = renames.take();
       if (path === undefined) return;
       typeSearch("");
       setState((was) => ({ ...was, expanded: revealFile(was.expanded, path) }));
       setRenaming(path);
     };
     takeAsk();
-    return subscribeRenameAsked(takeAsk);
-  }, [typeSearch]);
+    return renames.subscribe(takeAsk);
+  }, [typeSearch, renames]);
 
   // A renamed or restored file takes the focus at its row. Where the search would leave that row
   // out, the search ends and the folders above the file open, so the focus has a row to land on
@@ -151,13 +169,14 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     setState((was) => ({ ...was, focus: path }));
   }, []);
 
-  // Focus moves to the awaited row as soon as it is drawn; a row that never comes is dropped.
+  // Focus moves to the awaited row as soon as it is drawn; a row that never comes is dropped. The
+  // row is this view's own: the window can hold two trees, the sidebar's and Code's list column.
+  const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const path = pendingFocus.current;
     if (path === undefined || loaded.kind !== "ready") return;
-    const row = [...document.querySelectorAll<HTMLElement>("[data-path]")].find(
-      (item) => item.dataset["path"] === path,
-    );
+    const rows = root.current?.querySelectorAll<HTMLElement>("[data-path]") ?? [];
+    const row = [...rows].find((item) => item.dataset["path"] === path);
     if (row === undefined) return;
     pendingFocus.current = undefined;
     row.focus();
@@ -171,6 +190,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   // A path another feature asked to show, such as the Library's docs folder, taken once the tree
   // is listed: its row, else its deepest folder there, else the tree's first row. The answer says
   // which, so the Library can say there's no docs folder. A search would hide the row, so it ends.
+  // Requests are meant for the sidebar's tree, so Code's list column leaves them.
   const revealAsked = useCallback(
     (path: string): FilesRevealTaken => {
       typeSearch("");
@@ -185,8 +205,8 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   );
   const listedNow = loaded.kind === "ready";
   useEffect(
-    () => (listedNow ? takeFilesRevealRequests(revealAsked) : undefined),
-    [listedNow, revealAsked],
+    () => (listedNow && pageAsks === undefined ? takeFilesRevealRequests(revealAsked) : undefined),
+    [listedNow, pageAsks, revealAsked],
   );
 
   const applyRename = useCallback(
@@ -269,30 +289,36 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
 
   if (loaded.kind === "loading") {
     return (
-      <div role="status" aria-label={filesWords.loading} className="grid gap-3 p-3">
-        {skeletonWidths.map((width) => (
-          <SkeletonBar key={width} kind="title" width={width} />
-        ))}
-      </div>
+      <>
+        <TitleLine title={title} />
+        <div role="status" aria-label={filesWords.loading} className="grid gap-3 p-3">
+          {skeletonWidths.map((width) => (
+            <SkeletonBar key={width} kind="title" width={width} />
+          ))}
+        </div>
+      </>
     );
   }
   if (loaded.kind === "error") {
     return (
-      <EmptyState
-        tone="error"
-        plain
-        title={filesWords.errorTitle}
-        description={loaded.reason}
-        action={{
-          label: filesWords.retry,
-          busy: retrying,
-          busyLabel: filesWords.retrying,
-          onClick: () => {
-            setRetrying(true);
-            void load(() => false).finally(() => setRetrying(false));
-          },
-        }}
-      />
+      <>
+        <TitleLine title={title} />
+        <EmptyState
+          tone="error"
+          plain
+          title={filesWords.errorTitle}
+          description={loaded.reason}
+          action={{
+            label: filesWords.retry,
+            busy: retrying,
+            busyLabel: filesWords.retrying,
+            onClick: () => {
+              setRetrying(true);
+              void load(() => false).finally(() => setRetrying(false));
+            },
+          }}
+        />
+      </>
     );
   }
   // Only a focused folder gives the new path its start; a focused file leaves it at the default.
@@ -340,8 +366,8 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
     </>
   );
   return (
-    <div className="flex min-h-0 flex-col">
-      <div className="flex items-center justify-end px-2.5 pt-1">
+    <div ref={root} className="flex min-h-0 flex-col">
+      <TitleLine title={title}>
         <Button
           ref={addButton}
           variant="ghost"
@@ -350,8 +376,8 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           label={filesWords.newFile}
           onClick={startAdding}
         />
-      </div>
-      <div className="px-5 pt-1 pb-2">
+      </TitleLine>
+      <div className={searchWrapClass(title)}>
         <SearchField
           label={filesWords.search}
           value={search.typed}

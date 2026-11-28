@@ -236,12 +236,12 @@ export function FilesTree({
     });
   }
 
-  function activate(row: TreeRow) {
+  function activate(row: TreeRow, inNewTab = false) {
     const { node } = row;
     focusing.current = true;
     if (node.kind === "file") {
       onStateChange({ ...state, focus: node.path });
-      onIntent?.({ kind: "open", path: node.path });
+      onIntent?.({ kind: inNewTab ? "open-in-new-tab" : "open", path: node.path });
       return;
     }
     const expanded = new Set(state.expanded);
@@ -291,9 +291,17 @@ export function FilesTree({
               // file's steps aside while the row has keyboard focus, so the focus outline shows.
               className={treeRowClasses}
               style={{ paddingLeft: `${row.depth * 16 + 8}px` }}
+              // A Ctrl-click, Cmd-click or middle click opens a file in a new tab, as a run row's
+              // does (`files.ui.file-tab`). A Ctrl-click on a folder opens or closes it as a click
+              // does; a middle click leaves a folder as it is.
               onClick={(event) => {
                 event.stopPropagation();
-                activate(row);
+                activate(row, event.ctrlKey || event.metaKey);
+              }}
+              onAuxClick={(event) => {
+                if (event.button !== 1 || node.kind !== "file") return;
+                event.stopPropagation();
+                activate(row, true);
               }}
               onContextMenu={(event) => rightClicked(node, event)}
             >
