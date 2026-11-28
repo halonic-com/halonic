@@ -73,9 +73,13 @@ verifies("app.integration-request-log", () => {
 
     it("keeps 200 requests by default", async () => {
       const store = storeIn(profile);
-      for (let n = 0; n < 201; n += 1) {
-        await store.addRequest(workspace, "shop", request(n === 0 ? "/v2" : "/orders"), code);
-      }
+      await store.addRequest(workspace, "shop", request("/v2"), code);
+      // Added together, the next 200 go into one write that must trim the file
+      // to 200: 201 renames one after another took over 30 s on Windows (HAL-21120).
+      const added = Array.from({ length: 200 }, () =>
+        store.addRequest(workspace, "shop", request("/orders"), code),
+      );
+      await Promise.all(added);
       const kept = await paths(store);
       expect(kept).toHaveLength(200);
       expect(kept).not.toContain("/v2");
