@@ -133,6 +133,10 @@ pub(crate) fn operation_route(mut route: RouteFile) -> Result<OperationRoute, St
     })
 }
 
+/// An operation step ready to run: its route and the placeholder values the
+/// page sent, after their patterns passed.
+pub type OperationStep<'a> = (&'a OperationRoute, &'a BTreeMap<String, String>);
+
 /// The operation a send request names, with its placeholder values after
 /// their patterns passed. `None` when the step isn't an operation; a
 /// refusal when its values don't fit or the page sent a body, which an
@@ -140,7 +144,7 @@ pub(crate) fn operation_route(mut route: RouteFile) -> Result<OperationRoute, St
 pub fn operation_step<'a>(
     operations: &'a BTreeMap<StepKey, OperationRoute>,
     request: &'a SendRequest,
-) -> Option<Result<(&'a OperationRoute, &'a BTreeMap<String, String>), Refusal>> {
+) -> Option<Result<OperationStep<'a>, Refusal>> {
     let key = StepKey {
         definition: request.definition.clone(),
         version: request.version,

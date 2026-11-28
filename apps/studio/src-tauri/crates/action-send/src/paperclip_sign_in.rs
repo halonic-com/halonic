@@ -252,10 +252,7 @@ impl<T: Transport, K: Keychain, C: Clock, S: ApprovalScreen> PaperclipSignIn<'_,
         let address = address(connection, "/api/cli-auth/me")?;
         let answer = self.call("GET", address, Some(key), None).await.ok()?;
         let owner: OwnerAnswer = (answer.status == 200).then(|| json_of(&answer)).flatten()?;
-        let reaches = owner
-            .company_ids
-            .iter()
-            .any(|company| *company == connection.company);
+        let reaches = owner.company_ids.contains(&connection.company);
         (reaches && is_id(&owner.user_id)).then_some(owner.user_id)
     }
 
