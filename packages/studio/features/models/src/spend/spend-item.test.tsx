@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
 import {
+  type AllRunsRow,
+  RunsAppView,
   type RunsList,
   RunsListService,
   type SourcedRun,
@@ -8,6 +10,7 @@ import {
 import {
   createShell,
   defineFeature,
+  engineWordsOf,
   type ItemRef,
   limitedLookup,
   type WorkspaceContext,
@@ -94,6 +97,25 @@ async function show(
   await act(async () => root?.render(<SpendItem context={context} />));
   return element;
 }
+
+/** A run of the Runs page's list, which opens the run `acme/r1`. */
+const runRow: AllRunsRow = {
+  id: "r1",
+  phase: "succeeded",
+  startedAt: "2026-11-05T08:00:00.000Z",
+  lineage: "r1",
+  cost: { kind: "none" },
+  title: "Support reply",
+  line: "Finished",
+  where: "Acme Ops",
+  by: { kind: "workflow" },
+  chip: { word: "Done", tone: "success" },
+  label: "Run r1, Support reply, finished.",
+  notice: { startedByMe: false },
+  item: { kind: "run", hub: "acme", id: "r1" },
+};
+/** The parts of the Runs page's feed that the test leaves alone. */
+const quietFeed = { subscribe: () => () => undefined, refresh: async () => undefined };
 
 /** What the item says on the bar, without the tooltip text. */
 const lineOf = (item: HTMLElement) => item.querySelector("button span")?.textContent?.trim() ?? "";
@@ -233,6 +255,59 @@ verifies("models.spend.month-line", () => {
           act(() => root?.unmount());
           element?.remove();
         }
+      });
+
+      it("follows the run the Runs page opens in its content pane, through setPageItem", async () => {
+        // The shell's part, the page item as `activeItem`, has its own tests (`shell.page-item`).
+        let inView: ItemRef | null = null;
+        const listeners = new Set<() => void>();
+        const activeItem = {
+          get: () => inView,
+          subscribe: (listener: () => void) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+          },
+        };
+        const setPageItem = (item: ItemRef | null) => {
+          inView = item;
+          for (const listener of listeners) listener();
+        };
+        const runs = runsOf([["2026-11-02T08:00:00.000Z", 3.2], month({})]);
+        const files = filesOf(budget, cloud);
+        const services = limitedLookup(modelsFeature, {
+          get: () => files,
+          find: (key) => (key === RunsListService ? runs : files),
+        });
+        const context = { services, activeItem } as unknown as WorkspaceContext;
+        element = document.createElement("div");
+        document.body.append(element);
+        root = createRoot(element);
+        await act(async () =>
+          root?.render(
+            <>
+              <RunsAppView
+                feed={{
+                  state: { rows: [runRow], failures: [], loaded: true, error: undefined },
+                  ...quietFeed,
+                }}
+                engine={engineWordsOf({})}
+                runPane={(item) => <p>{`Run page ${item.id}`}</p>}
+                setPageItem={setPageItem}
+              />
+              <footer>
+                <SpendItem context={context} />
+              </footer>
+            </>,
+          ),
+        );
+        const bar = element.querySelector("footer") as HTMLElement;
+        expect(lineOf(bar)).toBe("Est. €3.35 of €50.00 this month");
+
+        await act(async () =>
+          element?.querySelector<HTMLElement>('[data-row-id="r1"] td')?.click(),
+        );
+
+        expect(lineOf(bar)).toBe("Est. this run €0.15 of €5.00 · €3.35 of €50.00 this month");
       });
     });
 

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-1292 (T4), HAL-10289
 
-The window shall give every feature's context a read-only `activeItem`: the item the active window tab shows, as its `ItemRef`, or `null` when that tab shows Home, a place or a search, or when no tab is active. It shall let a feature subscribe, shall tell a listener only when the item itself changes, and shall expose nothing else of the tabs. On a phone, which has no tabs, `activeItem` is absent.
+The window shall give every feature's context a read-only `activeItem`: the item the active window tab shows, as its `ItemRef`, or `null` when that tab shows Home, a search or a place whose page names no item (`shell.page-item`), or when no tab is active. It shall let a feature subscribe, shall tell a listener only when the item itself changes, and shall expose nothing else of the tabs. On a phone, which has no tabs, `activeItem` is absent.
 
 ## Examples
 

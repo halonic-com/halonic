@@ -1,6 +1,13 @@
 import { BackIcon, Button, useNarrow } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
-import { type ReactNode, useCallback, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { flushSync } from "react-dom";
 import type { AllRunsFeed, AllRunsFeedState } from "../app/all-runs-feed.ts";
 import { RunsAppList } from "../app/runs-app-list.tsx";
@@ -30,6 +37,11 @@ export interface RunsAppViewProps {
   readonly runPane?: (item: RunItem, ways: PaneWays) => ReactNode;
   /** Opens a run's page in a new tab, for a Ctrl-click, Cmd-click or middle click on its row. */
   readonly openInNewTab?: (item: RunItem) => void;
+  /**
+   * Tells the shell the run the content pane shows, or `null` once it shows none, so the status
+   * bar follows it (`shell.page-item`): the context's `setPageItem`.
+   */
+  readonly setPageItem?: (item: RunItem | null) => void;
   /** The clock for the day headings and today's summary; tests pass a fixed one. */
   readonly now?: () => Date;
   /** The user's IANA time zone; the system's by default. */
@@ -49,6 +61,7 @@ export function RunsAppView({
   engine,
   runPane,
   openInNewTab,
+  setPageItem,
   now = () => new Date(),
   timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
 }: RunsAppViewProps) {
@@ -57,6 +70,7 @@ export function RunsAppView({
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   const { onePane, open, listColumn, pane, show, close } = useRunsPanes();
   const panes = runsPanes(onePane, open);
+  useShownRun(open, runPane !== undefined, setPageItem);
   const actions = rowActions(state.rows, {
     // A run the user has opened leaves Failed (`runs.run-groups`).
     markOpened: (id) => setOpened((current) => new Set(current).add(id)),
@@ -137,6 +151,20 @@ export function RunsAppView({
       ) : null}
     </div>
   );
+}
+
+/**
+ * Names the open run to the shell while the content pane draws it (`drawn`), so the status bar
+ * follows it (`shell.page-item`), and `null` whenever it draws none, a fresh page too. No clear on
+ * unmount: the shell drops the item when the tab leaves the place or closes.
+ */
+function useShownRun(
+  open: RunItem | undefined,
+  drawn: boolean,
+  setPageItem: RunsAppViewProps["setPageItem"],
+) {
+  const shown = drawn ? open : undefined;
+  useEffect(() => setPageItem?.(shown ?? null), [shown, setPageItem]);
 }
 
 /** Whether listing the sources, or a source's last read, failed. */

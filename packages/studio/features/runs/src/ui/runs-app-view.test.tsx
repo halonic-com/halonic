@@ -236,3 +236,75 @@ verifies("runs.list-column", () => {
     });
   });
 });
+
+verifies("shell.page-item", () => {
+  describe("RunsAppView names the open run to the shell", () => {
+    function showNaming({ narrow = false, withPane = true } = {}) {
+      const setPageItem = vi.fn();
+      const root = render(
+        <NarrowProvider narrow={narrow}>
+          <RunsAppView
+            feed={feedOf({ rows: [workspaceRow, teamRow] })}
+            engine={engineWordsOf({})}
+            {...(withPane ? { runPane: (item) => <p>{`Run page ${item.id}`}</p> } : {})}
+            setPageItem={setPageItem}
+            now={() => now}
+            timeZone="Europe/Madrid"
+          />
+        </NarrowProvider>,
+      );
+      return { root, setPageItem };
+    }
+
+    it("names the run a row opens in the content pane, and none while the table shows", () => {
+      const { root, setPageItem } = showNaming();
+      expect(setPageItem.mock.calls).toEqual([[null]]);
+
+      clickRow(root, "w1");
+
+      expect(setPageItem).toHaveBeenLastCalledWith(workspaceRow.item);
+    });
+
+    it("names none when the pane keeps the table, as it does without a run page", () => {
+      const { root, setPageItem } = showNaming({ withPane: false });
+
+      clickRow(root, "w1");
+
+      expect(setPageItem).not.toHaveBeenCalledWith(workspaceRow.item);
+    });
+
+    it("clears it on Back in one pane, and a page drawn afresh names none", () => {
+      const { root, setPageItem } = showNaming({ narrow: true });
+      clickRow(root, "w1");
+      const back = [...root.querySelectorAll("button")].find(
+        (button) => button.textContent === "Back to Runs",
+      );
+      act(() => back?.click());
+      expect(setPageItem).toHaveBeenLastCalledWith(null);
+
+      clickRow(root, "w1");
+      unmountAll();
+      const again = showNaming({ narrow: true });
+
+      expect(again.setPageItem.mock.calls).toEqual([[null]]);
+    });
+
+    it("gets its setPageItem from the Runs page's context", async () => {
+      const list = new RunsList(fakeSource([]).source);
+      await act(() => list.refresh());
+      const feed = feedOf({ rows: [workspaceRow] });
+      const services = {
+        find: (key: unknown) => (key === AllRunsService ? feed : undefined),
+        get: (key: unknown) => (key === RunsListService ? list : undefined),
+      };
+      const announcer = { announce: vi.fn(), announceState: vi.fn() };
+      const setPageItem = vi.fn();
+      const context = { services, openItem: vi.fn(), announcer, setPageItem };
+      const root = render(<RunsPage context={context as unknown as PlaceViewProps["context"]} />);
+
+      clickRow(root, "w1");
+
+      expect(setPageItem).toHaveBeenLastCalledWith(workspaceRow.item);
+    });
+  });
+});
