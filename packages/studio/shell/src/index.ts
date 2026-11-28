@@ -124,6 +124,11 @@ export { type StartFailure, startFailureOf, withFullStop } from "./errors/start-
 export { TryAgainLater } from "./errors/try-again-later.ts";
 export { defineFeature, type Feature, type FeatureDefinition } from "./feature.ts";
 export {
+  focusFellToPage,
+  useRefocusWhenGone,
+  useTellWhenGoneWithFocus,
+} from "./focus/refocus-when-gone.ts";
+export {
   narrowQuery,
   phoneQuery,
   useNarrowWindow,
