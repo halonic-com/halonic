@@ -11,7 +11,7 @@ import {
   STILL_LOADING_AFTER_MS,
   TimeStamp,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useState } from "react";
 import { phoneMessengerWords as words } from "./phone-messenger-words.ts";
 
 /** What the chat rows need besides the conversations. */
@@ -65,6 +65,53 @@ export function ChatRows({ conversations, agents, sources, drafts, now, onOpen }
       })}
     </PlainList>
   );
+}
+
+/** The chat Back came from, and whether its row has had the focus yet. */
+export interface ReturnTo {
+  readonly id: MessagingId;
+  placed: boolean;
+}
+
+/**
+ * After Back, gives the focus once to the chat the person came back from (WCAG 2.4.3): its row in
+ * `list`, or the chips once the row has left on a later read, as from Waiting for me after a reply,
+ * but only if the focus fell to the page. It runs when `rows` change, not on every draw, and lets
+ * go (clears `returnTo`) once the person moves on from the row or the row has left, the shape of
+ * the Inbox's `InboxList`.
+ */
+export function useFocusOnReturn(
+  list: RefObject<HTMLElement | null>,
+  returnTo: RefObject<ReturnTo | undefined>,
+  rows: readonly Conversation[] | undefined,
+) {
+  useEffect(() => {
+    const target = returnTo.current;
+    const node = list.current;
+    // Nothing to give back, or the list isn't drawn yet (still loading): wait for its rows.
+    if (target === undefined || node === null) return;
+    const items = [...node.querySelectorAll<HTMLElement>("li[data-row-id]")];
+    const row = items.find((each) => each.dataset["rowId"] === target.id)?.querySelector("button");
+    if (row != null && !target.placed) {
+      target.placed = true;
+      row.focus();
+      return;
+    }
+    if (row != null) {
+      // The person moved on from the row: nothing to look after.
+      if (row.ownerDocument.activeElement !== row) returnTo.current = undefined;
+      return;
+    }
+    returnTo.current = undefined;
+    if (target.placed && !focusFell(node)) return;
+    node.querySelector<HTMLElement>('input[type="radio"]:checked')?.focus();
+  }, [list, returnTo, rows]);
+}
+
+/** Whether the focus is on nothing but the page: in `node`'s own document (B7 item 12). */
+function focusFell(node: Element): boolean {
+  const page = node.ownerDocument;
+  return page.activeElement === null || page.activeElement === page.body;
 }
 
 /** A row's second line (p02b): its draft first, else whether its agent is working. */

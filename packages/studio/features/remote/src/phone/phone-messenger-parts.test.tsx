@@ -246,7 +246,7 @@ verifies("remote.phone-messenger", () => {
       expect(reply?.querySelector("h3")?.textContent).toBe("Elena");
       expect(reply?.textContent).toContain("Merged.");
       const yours = document.querySelector('[data-chat-message="you"]');
-      expect(yours?.textContent).toBe("Ship it");
+      expect(yours?.textContent).toBe("You: Ship it");
       expect(document.querySelector("[data-day]")?.textContent).toBe("Today");
     });
 

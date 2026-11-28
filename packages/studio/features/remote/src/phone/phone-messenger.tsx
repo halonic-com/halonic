@@ -1,11 +1,11 @@
 import type { Conversation, MessagingAgent, MessagingId, MessagingSource } from "@halonicjs/ports";
 import { EmptyState, FilterChips } from "@halonicjs/studio-kit";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChatDrafts } from "./chat-drafts.ts";
 import type { MessagingClient } from "./messaging-client.ts";
 import { OlderComputerPanel } from "./older-computer-note.tsx";
 import { PhoneChat } from "./phone-chat.tsx";
-import { ChatRows, ChatsSkeleton } from "./phone-chat-rows.tsx";
+import { ChatRows, ChatsSkeleton, type ReturnTo, useFocusOnReturn } from "./phone-chat-rows.tsx";
 import { type ReadFailure, phoneMessengerWords as words } from "./phone-messenger-words.ts";
 import { ReadFailedLine } from "./read-failed-line.tsx";
 
@@ -64,6 +64,9 @@ function MessengerLists({
 }: PhoneMessengerProps) {
   const [waitingOnly, setWaitingOnly] = useState(false);
   const [open, setOpen] = useState<Conversation | undefined>(undefined);
+  // The chat Back came from, whose row takes the focus back, and the chips and rows it's found in.
+  const returnTo = useRef<ReturnTo | undefined>(undefined);
+  const listRef = useRef<HTMLDivElement>(null);
   const openChat = (conversation: Conversation) => {
     setOpen(conversation);
     onOpened?.(conversation);
@@ -85,6 +88,14 @@ function MessengerLists({
   );
   const failure = listed.failure ?? agentsRead.failure;
   const conversations = listed.items;
+  const waiting = useMemo(
+    () => conversations.filter((conversation) => conversation.waitingForMe),
+    [conversations],
+  );
+  const shown = waitingOnly ? waiting : conversations;
+  // On Back and on the rows shown, not on every draw: the remote view draws the list again on
+  // each event.
+  useFocusOnReturn(listRef, returnTo, open === undefined ? shown : undefined);
   // The shortcut's chat opens once the list has answered; a chat that's gone leaves the list.
   useEffect(() => {
     if (landing === undefined || !listed.read) return;
@@ -109,12 +120,13 @@ function MessengerLists({
         onKeep={(text) => drafts.keep(open.id, text)}
         onSend={drafts.send}
         onOpenLink={onOpenLink}
-        onBack={() => setOpen(undefined)}
+        onBack={() => {
+          returnTo.current = { id: open.id, placed: false };
+          setOpen(undefined);
+        }}
       />
     );
   }
-  const waiting = conversations.filter((conversation) => conversation.waitingForMe);
-  const shown = waitingOnly ? waiting : conversations;
   const retry = () => {
     listed.retry();
     agentsRead.retry();
@@ -146,7 +158,7 @@ function MessengerLists({
     );
   }
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={listRef} className="flex flex-col gap-3">
       <FilterChips
         label={words.title}
         flush

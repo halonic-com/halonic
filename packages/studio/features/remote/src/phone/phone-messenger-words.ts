@@ -22,6 +22,8 @@ export const phoneMessengerWords = {
   nothingWaiting: "Nothing is waiting for you.",
   /** A chat's back button, named for where it goes, as the Inbox card's "Inbox" (HAL-20039). */
   back: "Messenger",
+  /** Before the person's own message, for a screen reader only, as a reply's author (HAL-19086). */
+  you: "You: ",
   /** After a link's address, for a screen reader only: the tap leaves for the browser (L4). */
   opensInBrowser: " opens in your browser",
   /** p04a: "Message Chief…", as the prompt box writes it. */
