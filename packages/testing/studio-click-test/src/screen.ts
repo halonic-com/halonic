@@ -162,7 +162,11 @@ export async function pickWhenShown(
   return (await clickXPathOrWhyNot(context, option, waitMs)) === undefined;
 }
 
-async function clickXPathOrWhyNot(
+/**
+ * Clicks the element `xpath` finds once it shows and is enabled, waiting at most `waitMs`.
+ * Returns undefined once the click lands, else WebDriver's last reason it didn't.
+ */
+export async function clickXPathOrWhyNot(
   context: StepContext,
   xpath: string,
   waitMs: number,
