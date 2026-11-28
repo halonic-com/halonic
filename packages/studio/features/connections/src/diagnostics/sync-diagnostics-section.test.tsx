@@ -54,10 +54,10 @@ verifies("connections.sync-diagnostics", () => {
       expect(container.textContent).toContain(
         "Live updates are off, so Halonic checks Paperclip for changes regularly.",
       );
-      expect(rowText(container, "Regular checks")).toBe("3 (75 %)");
-      expect(rowText(container, "Live updates")).toBe("1 (25 %)");
+      expect(rowText(container, "Regular checks")).toBe("3 (75%)");
+      expect(rowText(container, "Live updates")).toBe("1 (25%)");
       expect(rowText(container, "Delay of regular checks")).toBe(
-        "1.2 s typical, 4 s for the slowest 5 %",
+        "1.2 s typical, 4 s for the slowest 5%",
       );
       expect(rowText(container, "Delay of live updates")).toBe("None yet");
       expect(rowText(container, "Live updates reconnected")).toBe("2");
@@ -123,7 +123,7 @@ verifies("connections.sync-diagnostics", () => {
       await settle();
 
       expect(read).toHaveBeenCalledTimes(2);
-      expect(rowText(view, "Regular checks")).toBe("3 (75 %)");
+      expect(rowText(view, "Regular checks")).toBe("3 (75%)");
     });
   });
 

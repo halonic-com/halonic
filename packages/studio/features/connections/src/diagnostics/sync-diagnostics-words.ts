@@ -40,7 +40,7 @@ export const TIME_IN: Record<SyncConnection, string> = {
 
 /** The heading and columns of the Paperclip calls. */
 export const CALLS = "Paperclip calls";
-export const CALL_COLUMNS = ["Route", "Calls", "Failed", "Typical", "Slowest 5 %", "Data"] as const;
+export const CALL_COLUMNS = ["Route", "Calls", "Failed", "Typical", "Slowest 5%", "Data"] as const;
 export const NO_CALLS = "No calls to Paperclip yet.";
 
 export const READ_AGAIN = "Read again";
@@ -49,9 +49,9 @@ export const READING = "Reading…";
 export const READ_FAILED = "Sync diagnostics couldn't be read.";
 export const TRY_AGAIN = "Try again";
 
-/** A count with its share, such as "3 (75 %)". */
+/** A count with its share, such as "3 (75%)". */
 export function countLine(count: number, share: number): string {
-  return `${count} (${Math.round(share * 100)} %)`;
+  return `${count} (${Math.round(share * 100)}%)`;
 }
 
 /** A time in milliseconds, such as "320 ms" or "1.2 s". */
@@ -61,12 +61,12 @@ export function msText(ms: number): string {
 }
 
 /**
- * A delay's typical and slowest time, such as "1.2 s typical, 4 s for the slowest 5 %", or
+ * A delay's typical and slowest time, such as "1.2 s typical, 4 s for the slowest 5%", or
  * "None yet".
  */
 export function delayLine(timing: SyncTiming): string {
   if (timing.p50Ms === null || timing.p95Ms === null) return "None yet";
-  return `${msText(timing.p50Ms)} typical, ${msText(timing.p95Ms)} for the slowest 5 %`;
+  return `${msText(timing.p50Ms)} typical, ${msText(timing.p95Ms)} for the slowest 5%`;
 }
 
 /**
