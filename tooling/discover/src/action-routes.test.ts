@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { shippedDefinitions } from "@halonicjs/action-catalog";
+import type { StepperDefinition } from "@halonicjs/action-steppers";
 import type { ActionBodyField, ActionCallRoute, ActionRoute } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -176,21 +177,29 @@ verifies("discover.action-routes", () => {
       expect(listKeyProblems(list)).toEqual([]);
     });
 
-    // Until `routesOf` writes targets, an irreversible definition with a call
-    // step would make the shell refuse the whole list and send nothing.
+    // An irreversible call without a target would make the shell refuse the
+    // whole list and send nothing: `routesOf` refuses the definition first,
+    // and the shape check still catches a route that skipped it.
     it("catches an irreversible call without a target", () => {
+      const untargeted = (step: StepperDefinition["steps"][number]) =>
+        step.kind === "call" && step.target === undefined;
       const withCall = shipped.find(
         (definition) =>
-          shellServices.includes(definition.service) &&
-          definition.steps.some((step) => step.kind === "call"),
+          shellServices.includes(definition.service) && definition.steps.some(untargeted),
       );
       expect(withCall).toBeDefined();
       if (withCall === undefined) return;
+      const where = `${withCall.id}@${withCall.version} step ${
+        withCall.steps.findIndex(untargeted) + 1
+      }`;
       const irreversible = { ...withCall, risk: "irreversible" as const };
-      expect(shapeProblems(actionRouteList([irreversible]).routes)).toContain(
-        `${withCall.id}@${withCall.version}#${
-          irreversible.steps.findIndex((step) => step.kind === "call") + 1
-        }: an irreversible call needs a target`,
+      expect(() => actionRouteList([irreversible])).toThrow(
+        `${where}: an irreversible call needs a target`,
+      );
+      const { target: _, ...call } = shippedCall();
+      const route: ActionCallRoute = { ...call, risk: "irreversible" };
+      expect(shapeProblems([route])).toContain(
+        `${whereOf(route)}: an irreversible call needs a target`,
       );
     });
 

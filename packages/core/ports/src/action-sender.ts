@@ -63,6 +63,11 @@ export interface ActionCallRoute extends ActionRouteBase {
   body: readonly ActionBodyField[];
   /** The fields of a successful answer the sender hands back, named one by one; a dotted name (at most 3 keys) reads inside objects. */
   keep: readonly string[];
+  /**
+   * For an `irreversible` call only, and required there: the name the user types in the native dialog before it is
+   * sent, as a template over the route's own placeholders, such as `{owner}/{repo} run {runId}`.
+   */
+  target?: string;
 }
 
 /** A guided step: a page on the service's own web origin that the sender opens in the user's browser. */
