@@ -87,7 +87,8 @@ function FailureLine({
     // The sentence and Try again never fit on one row of the column, so Try again sits under it.
     // `-ml-3` takes back the button's side padding: its label lines up with the sentence (but for
     // the button's 1px border), and its hover and focus box starts at the column's edge, as New
-    // chat's does.
+    // chat's does. That holds for a mouse: on a touch screen the kit's `md` button pads `px-4`, so
+    // there the label sits 5px right of the sentence.
     <p className="flex flex-col items-start gap-1 px-3 text-small text-fg-muted">
       {`${homeWords.chatsFailed} ${reason}`}
       <span className="-ml-3">
