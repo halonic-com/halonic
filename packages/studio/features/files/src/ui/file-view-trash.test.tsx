@@ -22,6 +22,8 @@ afterEach(() => {
   forgetOpenedEditors();
   announced.length = 0;
   clearTrashed("notes/a.md");
+  // A field a test focused outside the tab.
+  document.body.replaceChildren();
 });
 
 /** A host whose file holds `state.text`, and that tells its listeners when told to. */
@@ -110,6 +112,55 @@ verifies("files.ui.delete-file", () => {
     expect(undo).toHaveBeenCalledOnce();
     expect(page.textContent).not.toContain("This file was deleted");
     expect(opened.at(-1)?.options.readOnly).toBe(false);
+  });
+
+  it("gives the editor the focus after the strip's Undo, whose button is gone", async () => {
+    const state = { text: "keep" as string | null };
+    const { host, notify } = hostOf(state);
+    const undo = async () => {
+      state.text = "keep";
+      clearTrashed(path);
+      notify();
+      return true;
+    };
+    const page = show(host, path);
+    await settle();
+    state.text = null;
+    await act(async () => {
+      markTrashed(path, { undo });
+    });
+    await settle();
+
+    const button = [...page.querySelectorAll("button")].find((b) => b.textContent === "Undo");
+    await act(async () => {
+      button?.focus();
+      button?.click();
+    });
+    await settle();
+
+    expect(opened.at(-1)?.options.readOnly).toBe(false);
+    expect(document.activeElement).toBe(page.querySelector("[data-editor]"));
+  });
+
+  it("leaves the focus where it is when the file comes back from outside Halonic", async () => {
+    const state = { text: "keep" as string | null };
+    const { host, notify } = hostOf(state);
+    const page = show(host, path);
+    await settle();
+    const field = document.createElement("input");
+    document.body.append(field);
+    field.focus();
+
+    state.text = null;
+    act(() => notify());
+    await settle();
+    expect(page.textContent).toContain("This file isn't in this workspace any more.");
+    state.text = "back";
+    act(() => notify());
+    await settle();
+
+    expect(opened.at(-1)?.options.text).toBe("back");
+    expect(document.activeElement).toBe(field);
   });
 
   it("is read-only as soon as the file is in the trash, before any read says it is gone", async () => {

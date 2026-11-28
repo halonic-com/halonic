@@ -119,6 +119,10 @@ export function FileView({ item, context, list }: FileViewProps) {
   const [failure, setFailure] = useState<string | undefined>();
   // Set when the user chose in the strip or in Compare: the reopened editor takes focus.
   const refocus = useRef(false);
+  // Set when the file came back (an Undo, or a restore elsewhere): the reopened editor takes the
+  // focus only if it fell to the page. The tree's restored row, or a field the person is typing
+  // in, keeps it (HAL-21146).
+  const refocusIfLost = useRef(false);
   // The last text the tab held, so the editor can open again greyed when the file goes to the trash.
   const lastText = useRef<string | undefined>(undefined);
   // The way to put the file back, while a delete in this window has it in the trash.
@@ -241,7 +245,7 @@ export function FileView({ item, context, list }: FileViewProps) {
   const ready = loaded.kind === "ready";
   const gone = useFileGone(host, path, ready, trash !== undefined, () => {
     // Back (Undo, or a restore elsewhere): the editor opens again on what the file holds now.
-    refocus.current = true;
+    refocusIfLost.current = true;
     reload();
   });
 
@@ -299,7 +303,10 @@ export function FileView({ item, context, list }: FileViewProps) {
         if (!inPane) stopLines = takeOpenAtLineRequests(path, (line) => made.goTo(line));
         // A file the user just made opens with the cursor in the editor (files flow 8.10).
         const justMade = takeFocusOnOpen(path);
-        if (refocus.current || justMade) {
+        const lost = document.activeElement === null || document.activeElement === document.body;
+        const back = refocusIfLost.current && lost;
+        refocusIfLost.current = false;
+        if (refocus.current || justMade || back) {
           refocus.current = false;
           made.focus();
         }

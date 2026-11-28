@@ -53,6 +53,8 @@ export async function openCodeEditor(options: CodeEditorOptions): Promise<CodeEd
     destroyed: false,
   };
   openedEditors.push(entry);
+  // Made on the first focus only, so a test that never focuses the editor sees the pane as before.
+  let field: HTMLElement | undefined;
   return {
     text: () => entry.text,
     load: (text: string) => {
@@ -60,8 +62,16 @@ export async function openCodeEditor(options: CodeEditorOptions): Promise<CodeEd
       entry.loads.push(text);
     },
     setReadOnly: () => {},
+    // The focus moves into the pane, as the real editor's does, so a test sees who holds it last.
     focus: () => {
       entry.focused++;
+      if (field === undefined) {
+        field = options.parent.ownerDocument.createElement("div");
+        field.tabIndex = -1;
+        field.dataset["editor"] = "";
+        options.parent.append(field);
+      }
+      field.focus();
     },
     setProblems: (problems: readonly EditorProblem[]) => {
       entry.shown = problems;
@@ -81,6 +91,7 @@ export async function openCodeEditor(options: CodeEditorOptions): Promise<CodeEd
     canRedo: () => false,
     tabMovesFocus: () => false,
     destroy: () => {
+      field?.remove();
       entry.destroyed = true;
     },
   };

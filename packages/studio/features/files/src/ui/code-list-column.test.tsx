@@ -54,6 +54,8 @@ function changingWithProblem(): Partial<FilesHost> {
   };
   return {
     list: async () => listing(paths, marks),
+    // The pane's open file reads null while it is gone, so it hears the Undo bring it back.
+    read: async (path) => (paths.includes(path) ? "total: 0\n" : null),
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -254,15 +256,19 @@ verifies("files.code-list-chips", () => {
     const { page } = await showCodePage(shown);
     await pick(page, "Problems");
     await openFolders(page, "src", "src/checkout");
-    const row = rowNamed(page, "src/checkout/refunds.ts");
-    act(() => row.click());
-    await key(row, "Delete");
+    // The file is open in the pane, so its editor opens again on the Undo too (HAL-21146).
+    await openInPane(page, "src/checkout/refunds.ts");
+    expect(openedEditors).toHaveLength(1);
+    await key(rowNamed(page, "src/checkout/refunds.ts"), "Delete");
     expect(chip(page, "Problems").checked).toBe(true);
     expect(codePane(page, "list")?.textContent).toContain("No problems in your files.");
 
     await undoFirstToast(toasts);
 
     expect(chip(page, "All").checked).toBe(true);
+    // The pane's editor opened again after the Undo, and left the focus on the restored row.
+    expect(openedEditors.filter((editor) => !editor.destroyed)).toHaveLength(1);
+    expect(openedEditors.length).toBeGreaterThan(1);
     expect(document.activeElement).toBe(rowNamed(page, "src/checkout/refunds.ts"));
   });
 
