@@ -164,12 +164,22 @@ async function shellLog(): Promise<string> {
   );
 }
 
-/** Opens a Start menu shortcut with Start-Process, as a double-click would. */
-async function openShortcut(name: string): Promise<void> {
+/**
+ * Opens a Start menu shortcut with Start-Process, as a double-click would. With `args`, it starts
+ * the program the shortcut points at with them, as a second start from a terminal would.
+ */
+async function openShortcut(name: string, args: readonly string[] = []): Promise<void> {
   const shortcut = join(required("HALONIC_SHORTCUTS"), `${name}.lnk`);
-  await powershell("Start-Process -FilePath $env:CLICK_TEST_SHORTCUT", {
-    CLICK_TEST_SHORTCUT: shortcut,
-  });
+  if (args.length === 0) {
+    await powershell("Start-Process -FilePath $env:CLICK_TEST_SHORTCUT", {
+      CLICK_TEST_SHORTCUT: shortcut,
+    });
+    return;
+  }
+  await powershell(
+    "$target = (New-Object -ComObject WScript.Shell).CreateShortcut($env:CLICK_TEST_SHORTCUT).TargetPath; Start-Process -FilePath $target -ArgumentList $env:CLICK_TEST_ARGS",
+    { CLICK_TEST_SHORTCUT: shortcut, CLICK_TEST_ARGS: args.join(" ") },
+  );
 }
 
 /** Runs one PowerShell command; the values it needs go in the environment, not the command line. */
