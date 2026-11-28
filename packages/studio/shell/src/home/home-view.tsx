@@ -6,7 +6,9 @@ import {
   useNarrow,
   usePresentation,
 } from "@halonicjs/studio-kit";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { focusRow, visibleRowIds } from "../overview/row-focus.ts";
 import type {
   HomeContentPaneProps,
   HomeListColumnProps,
@@ -49,8 +51,7 @@ export interface HomeViewProps {
  */
 export function HomeView({ view, context, sections, name }: HomeViewProps) {
   const phone = usePresentation() === "phone";
-  const narrow = useNarrow();
-  const [open, setOpen] = useState<string | undefined>(undefined);
+  const { narrow, open, setOpen, column: listColumn, back } = useHomePanes();
   if (phone) return sections;
   const slot = { context, open, setOpen };
   // The pane names the page while it loads; the column says nothing, so "Loading Home" is said once.
@@ -63,15 +64,31 @@ export function HomeView({ view, context, sections, name }: HomeViewProps) {
     />
   );
   if (narrow) {
-    if (open === undefined) return <div className="flex min-w-0 flex-1 flex-col">{column}</div>;
+    // The column stays drawn, only hidden, while an item is open: its rows are there to take the
+    // focus back on "Back to Home", even where the column reads them before it draws them.
     return (
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="px-2 pt-2">
-          <Button variant="ghost" size="sm" icon={<BackIcon />} onClick={() => setOpen(undefined)}>
-            {homeViewWords.back}
-          </Button>
+        <div
+          ref={listColumn}
+          className={open === undefined ? "flex min-w-0 flex-1 flex-col" : "hidden"}
+        >
+          {column}
         </div>
-        {pane}
+        {open === undefined ? null : (
+          <>
+            <div ref={back} className="px-2 pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<BackIcon />}
+                onClick={() => setOpen(undefined)}
+              >
+                {homeViewWords.back}
+              </Button>
+            </div>
+            {pane}
+          </>
+        )}
       </div>
     );
   }
@@ -81,4 +98,33 @@ export function HomeView({ view, context, sections, name }: HomeViewProps) {
       <FramedPanel>{pane}</FramedPanel>
     </SidebarFrame>
   );
+}
+
+/** What can take the keyboard focus in the list column, for a column that draws no row. */
+const focusable = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+/**
+ * The open item and the panes' focus. In one pane the list column and the open item replace each
+ * other, so the focused row or button would be hidden with them: the focus moves to "Back to Home"
+ * when an item opens, as the Runs page's one pane does. When the item closes, the focus moves to
+ * its row (the element with its `data-row-id`) while the column lists it, else to the first row,
+ * else, while the column draws no row, to its first control.
+ */
+function useHomePanes() {
+  const narrow = useNarrow();
+  const [open, setOpenState] = useState<string | undefined>(undefined);
+  const column = useRef<HTMLDivElement>(null);
+  const back = useRef<HTMLDivElement>(null);
+  const setOpen = (id: string | undefined) => {
+    // Only a pane change moves the focus; one open item after another keeps it in the pane.
+    if (!narrow || (id === undefined) === (open === undefined)) return setOpenState(id);
+    flushSync(() => setOpenState(id));
+    if (id !== undefined) return back.current?.querySelector<HTMLElement>("button")?.focus();
+    const list = column.current;
+    if (list === null || open === undefined || focusRow(list, open)) return;
+    const [first] = visibleRowIds(list);
+    if (first !== undefined && focusRow(list, first)) return;
+    list.querySelector<HTMLElement>(focusable)?.focus();
+  };
+  return { narrow, open, setOpen, column, back };
 }

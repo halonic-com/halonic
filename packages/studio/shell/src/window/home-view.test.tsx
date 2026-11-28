@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { verifies } from "@halonicjs/testing-spec";
-import { act } from "react";
+import { act, useEffect, useState } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { defineFeature } from "../feature.ts";
 import { homeViewWords } from "../home/home-view.tsx";
@@ -21,6 +21,7 @@ let restoreModal: () => void;
 
 beforeEach(() => {
   restoreModal = fakeShowModal();
+  chatRows = ["inbox", "triage", "drafts"];
 });
 
 afterEach(() => {
@@ -33,14 +34,45 @@ afterEach(() => {
 /** A service only the _chats_ feature's context reaches, so a slot shows whose context it got. */
 const ChatsOwner = serviceKey<string>("chats.owner");
 
-/** Home's list column as a feature draws it: one row, which opens "triage" in the pane. */
+/** The chats the list column reads, and how a test takes one out while it's open. */
+let chatRows: readonly string[] = [];
+let removeChat: (id: string) => void = () => undefined;
+
+/**
+ * Home's list column as a feature draws it: "New chat" above the chats, which it reads before it
+ * draws them, as Home's own column does. Its rows are built as the kit's `List` builds them.
+ */
 function ChatsColumn({ context, setOpen }: HomeListColumnProps) {
+  const [rows, setRows] = useState<readonly string[] | undefined>(undefined);
+  useEffect(() => {
+    void Promise.resolve(chatRows).then(setRows);
+  }, []);
+  removeChat = (id) => setRows((current) => current?.filter((each) => each !== id));
   return (
     <nav aria-label="Chats">
       <p className="owner">{context.services.get(ChatsOwner)}</p>
-      <button type="button" className="triage" onClick={() => setOpen("triage")}>
-        Triage
+      <button type="button" className="new-chat" onClick={() => setOpen("new")}>
+        New chat
       </button>
+      {/* biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the ARIA grid pattern on a table, as the kit's List */}
+      <table role="grid">
+        <tbody>
+          {rows?.map((id) => (
+            <tr key={id} data-row-id={id}>
+              {/* biome-ignore lint/a11y/useKeyWithClickEvents: the kit's grid handles the keys */}
+              <td
+                // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: a cell of the grid above
+                role="gridcell"
+                tabIndex={-1}
+                className={id}
+                onClick={() => setOpen(id)}
+              >
+                {id}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </nav>
   );
 }
@@ -130,7 +162,7 @@ verifies("shell.home-view", () => {
 
   it("shows in the content pane what the list column opened", async () => {
     const container = await renderHome([chatsFeature]);
-    await act(async () => container.querySelector<HTMLButtonElement>(".triage")?.click());
+    await act(async () => container.querySelector<HTMLElement>(".triage")?.click());
     expect(container.querySelector(".chats-pane")?.textContent).toBe("Chat triage");
   });
 
@@ -145,11 +177,41 @@ verifies("shell.home-view", () => {
     const container = await renderHome([chatsFeature], 800);
     expect(container.querySelector('nav[aria-label="Chats"]')).not.toBeNull();
     expect(container.querySelector(".chats-pane")).toBeNull();
-    await act(async () => container.querySelector<HTMLButtonElement>(".triage")?.click());
-    expect(container.querySelector('nav[aria-label="Chats"]')).toBeNull();
+    await act(async () => container.querySelector<HTMLElement>(".triage")?.click());
+    expect(container.querySelector('nav[aria-label="Chats"]')?.parentElement?.className).toBe(
+      "hidden",
+    );
     expect(container.querySelector(".chats-pane")?.textContent).toBe("Chat triage");
     await act(async () => buttonNamed(container, homeViewWords.back)?.click());
-    expect(container.querySelector('nav[aria-label="Chats"]')).not.toBeNull();
+    const column = container.querySelector('nav[aria-label="Chats"]')?.parentElement;
+    expect(column?.className).toContain("flex");
+    expect(container.querySelector(".chats-pane")).toBeNull();
+  });
+
+  it("moves the focus to Back to Home when an item opens under 900px, and back to its row after", async () => {
+    const container = await renderHome([chatsFeature], 800);
+    container.querySelector<HTMLElement>(".triage")?.focus();
+    await act(async () => container.querySelector<HTMLElement>(".triage")?.click());
+    expect(document.activeElement).toBe(buttonNamed(container, homeViewWords.back));
+    await act(async () => buttonNamed(container, homeViewWords.back)?.click());
+    expect(document.activeElement).toBe(container.querySelector(".triage"));
+  });
+
+  it("moves the focus to the first row on Back to Home when the open item's row is gone", async () => {
+    const container = await renderHome([chatsFeature], 800);
+    await act(async () => container.querySelector<HTMLElement>(".triage")?.click());
+    await act(async () => removeChat("triage"));
+    await act(async () => buttonNamed(container, homeViewWords.back)?.click());
+    expect(document.activeElement).toBe(container.querySelector(".inbox"));
+  });
+
+  it("moves the focus to the column's first control on Back to Home while it shows no row", async () => {
+    chatRows = [];
+    const container = await renderHome([chatsFeature], 800);
+    await act(async () => container.querySelector<HTMLElement>(".new-chat")?.click());
+    expect(document.activeElement).toBe(buttonNamed(container, homeViewWords.back));
+    await act(async () => buttonNamed(container, homeViewWords.back)?.click());
+    expect(document.activeElement).toBe(container.querySelector(".new-chat"));
   });
 
   it("shows Home's sections alone on a phone", async () => {
