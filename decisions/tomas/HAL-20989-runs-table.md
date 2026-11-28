@@ -2,7 +2,7 @@
 
 - Approval: the board's pick on the Paperclip task HAL-20742 (28 Nov 2026, 09:17 CET, option A for Runs: the table at rest, the canvas for a run), built on HAL-20989
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:mH5FFhjsspnlhZ4K569b+flaHIMw18I9gjMi8tMTEB/5CJNrz13xIcvc/c2BjejD+rXBwyQD5wyUgBELq3RxAA==
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:DLVAN1zSG3FXhieIn30kwQ4dmb0CFERr/eaOQRwiIL0x2aaxIAibcvecvuDRwLVRZri+qSwBdqKLuetIi6YqDA==
 
 ## What changes
 
