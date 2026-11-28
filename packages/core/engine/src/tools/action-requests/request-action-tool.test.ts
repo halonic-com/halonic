@@ -76,6 +76,7 @@ function setup(policy?: RequesterPolicy) {
     clock: fixedClock(start, 0),
     ids: fixedIds(),
     log,
+    runs: { events: async () => [] },
   });
   return { log, tool };
 }
@@ -226,7 +227,7 @@ verifies("engine.request-action", () => {
 
     typeTest("take the policy only from the profile and the source only from the host", () => {
       expectTypeOf<keyof RequestActionToolOptions>().toEqualTypeOf<
-        "catalog" | "policy" | "source" | "runId" | "agent" | "clock" | "ids" | "log"
+        "catalog" | "policy" | "source" | "runId" | "agent" | "clock" | "ids" | "log" | "runs"
       >();
     });
 

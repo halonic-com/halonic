@@ -14,7 +14,7 @@ import {
   validateStepperRequest,
 } from "@halonicjs/action-steppers";
 import { type ActionRequestedEvent, checkActionEvent } from "@halonicjs/events";
-import type { Clock, IdGenerator } from "@halonicjs/ports";
+import type { Clock, IdGenerator, RunStore } from "@halonicjs/ports";
 import type { TurnLog } from "../../agent/turn-log.ts";
 import type { HalonicTool } from "../../agent/turn-tools.ts";
 import { integerArg, requiredStringArg, type ToolArgs } from "../tool-args.ts";
@@ -66,7 +66,16 @@ export interface RequestActionToolOptions extends ActionRequests {
   readonly ids: IdGenerator;
   /** The run's log, where `action.requested` goes. */
   readonly log: TurnLog;
+  /** The run's stored events, where the requests it filed before are counted. */
+  readonly runs: Pick<RunStore, "events">;
 }
+
+/**
+ * The most requests one run may file (requirement `engine.request-action-cap`).
+ * Filing is `read` risk, so no approval stops an agent that loops; the cap
+ * keeps it from burying the user's inbox.
+ */
+export const maxActionRequestsPerRun = 10;
 
 /** The name of the tool. */
 export const requestActionToolName = "request_action";
@@ -78,11 +87,12 @@ export const requestActionToolName = "request_action";
  *
  * @example
  * const source = { kind: "halonic", id: "halonic-server:https://acme.example" } as const;
- * const tool = requestActionTool({ catalog, policy, source, runId: "r-1", agent: "ops", clock, ids, log });
+ * const tool = requestActionTool({ catalog, policy, source, runId: "r-1", agent: "ops", clock, ids, log, runs });
  * await tool.run({ definition: "acme.restart-app", version: 1, parameters: { app: "web" }, reason: "It hangs." });
  * // => "Filed request req_1. The user reviews it in Studio and runs it or declines it."
  */
 export function requestActionTool(options: RequestActionToolOptions): HalonicTool {
+  let queue: Promise<unknown> = Promise.resolve();
   return {
     definition: {
       name: requestActionToolName,
@@ -112,7 +122,12 @@ export function requestActionTool(options: RequestActionToolOptions): HalonicToo
     },
     // Filing changes nothing outside the run: the user still has to open and run it.
     risk: "read",
-    run: (args) => fileActionRequest(options, args),
+    run: (args) => {
+      // One at a time, so calls made together can't each count the same total.
+      const filed = queue.then(() => fileActionRequest(options, args));
+      queue = filed.catch(() => undefined);
+      return filed;
+    },
   };
 }
 
@@ -120,7 +135,7 @@ export function requestActionTool(options: RequestActionToolOptions): HalonicToo
  * Files one action request for an agent in a run.
  *
  * @returns the text the model gets back, with the request's id
- * @throws Error naming what's wrong when the request doesn't pass the catalog, the policy or the event's allow-list
+ * @throws Error naming what's wrong when the run filed its most requests, or the request doesn't pass the catalog, the policy or the event's allow-list
  */
 export async function fileActionRequest(
   options: RequestActionToolOptions,
@@ -133,6 +148,7 @@ export async function fileActionRequest(
   const version = integerArg(args, "version", { min: 1, max: 1000, fallback: 1 });
   const reason = requiredStringArg(args, "reason");
   const parameters = args["parameters"] ?? {};
+  await refuseOverCap(options);
   const risk = checkAgainstCatalog(options.catalog, { definition, version, reason, parameters });
   const policy = await options.policy.read();
   if (decideRequester(policy, options.source, options.agent, risk) === "blocked") {
@@ -143,6 +159,17 @@ export async function fileActionRequest(
   const event = requestedEvent(options, { definition, version, reason, parameters, args });
   await options.log.append(withoutAt(event));
   return `Filed request ${event.request}. The user reviews it in Studio and runs it or declines it.`;
+}
+
+/** Fails once the run filed {@link maxActionRequestsPerRun} requests, counted in its stored log. */
+async function refuseOverCap(options: RequestActionToolOptions): Promise<void> {
+  const events = await options.runs.events(options.runId);
+  const filed = events.filter((event) => event.type === "action.requested").length;
+  if (filed >= maxActionRequestsPerRun) {
+    throw new Error(
+      `this run already filed ${filed} action requests, the most one run may file, so nothing was filed. Wait for the user to answer the ones in Studio.`,
+    );
+  }
 }
 
 interface RequestFields {
