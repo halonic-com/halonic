@@ -33,6 +33,7 @@ import {
 import { AgentAttachments } from "./agent-attachments.tsx";
 import { AgentMarkdown } from "./agent-markdown.tsx";
 import {
+  agentCardBarClasses,
   CardHeader,
   cardBodyClasses,
   cardClasses,
@@ -171,7 +172,7 @@ export function AgentItemCard({
         <AgentBody text={agentItemBody(item)} />
         <AgentAttachments attachments={item.attachments} read={readAttachment} />
       </div>
-      <div className="flex flex-col gap-3 border-t border-border p-4">
+      <div className={agentCardBarClasses}>
         <ReasonLine
           id={reasonId}
           item={item}

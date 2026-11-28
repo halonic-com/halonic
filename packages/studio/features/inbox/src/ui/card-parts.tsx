@@ -36,6 +36,14 @@ export const cardClasses =
   "m-2 flex min-h-0 flex-col overflow-hidden rounded-md border border-border bg-surface shadow-1 short:min-h-auto short:overflow-visible";
 /** The scrolling body of a card, above its bar; see {@link cardClasses}. */
 export const cardBodyClasses = "flex flex-col gap-4 overflow-y-auto p-4 short:overflow-visible";
+/**
+ * An agent's bar of answers, under its body; see {@link cardClasses}. A form of several questions
+ * can be taller than the card, which would clip its Submit out of reach, so the bar takes at most
+ * half the window and scrolls on its own beyond that (`inbox.card-bar-reach`). In a short window
+ * it stays whole, as the item pane scrolls the card.
+ */
+export const agentCardBarClasses =
+  "flex max-h-[50dvh] shrink-0 flex-col gap-3 overflow-y-auto border-t border-border p-4 short:max-h-none short:overflow-visible";
 
 interface CardHeaderProps {
   readonly titleId: string;
