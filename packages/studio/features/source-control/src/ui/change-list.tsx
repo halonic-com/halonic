@@ -7,7 +7,7 @@ import {
   type ListRow,
   type MenuEntry,
 } from "@halonicjs/studio-kit";
-import type { ItemRef } from "@halonicjs/studio-shell";
+import { focusFellToPage, type ItemRef } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems, isOpenable } from "../change-items.ts";
@@ -31,7 +31,17 @@ export interface ChangeListProps {
   readonly onOpen: (id: string) => void;
   /** Opens the item itself, from the row's ⋮; without it the ⋮ has no Open entry. */
   readonly openItem?: ((item: ItemRef) => void) | undefined;
-  /** Where focus goes when the list comes back from a page; `undefined` leaves it alone. */
+  /** The item open in the content pane beside the list, marked as the current row. */
+  readonly current?: string | undefined;
+  /**
+   * Whether the list sits beside the desktop's content pane: then `returnFocus` moves focus only if
+   * it fell to the page with what the pane showed, never from where the person put it.
+   */
+  readonly besidePane?: boolean;
+  /**
+   * Where focus goes when the list comes back from a page, or when the item open beside it is
+   * gone; `undefined` leaves it alone.
+   */
   readonly returnFocus?: ReturnFocus | undefined;
   /** Called once focus is placed from `returnFocus`, so the caller can forget it. */
   readonly onFocusPlaced?: (() => void) | undefined;
@@ -71,14 +81,18 @@ export function orderItems(files: readonly ChangedFile[]): ChangeItem[] {
 /**
  * What changed, one row for each item (checklist part 2, 2.2), under "Since your last version" with
  * its count and Create version; files no kind places are under "Other files". The rows are the
- * kit List: one Tab stop, ↑ ↓ move, Enter opens the item's What changed page. When the list comes
- * back from that page, focus goes to the row it was opened from, or the one that took its place.
+ * kit List: one Tab stop, ↑ ↓ move, Enter opens the item's What changed: a page of its own, or the
+ * desktop's content pane beside the list. When the list comes back from that page, focus goes to
+ * the row it was opened from, or the one that took its place; beside the pane, focus goes to that
+ * row when the open item goes, but only if it fell to the page with it.
  */
 export function ChangeList({
   list,
   items,
   onOpen,
   openItem,
+  current,
+  besidePane = false,
   returnFocus,
   onFocusPlaced,
   phone = false,
@@ -87,20 +101,26 @@ export function ChangeList({
   const waitingId = useId();
   const waiting = list.merging;
   const region = useRef<HTMLElement>(null);
-  const placeFocus = useRef(returnFocus);
   const focusPlaced = useRef(onFocusPlaced);
   focusPlaced.current = onFocusPlaced;
   const latestItems = useRef(items);
   latestItems.current = items;
+  const besidePaneRef = useRef(besidePane);
+  besidePaneRef.current = besidePane;
+  const target = useRef(returnFocus);
+  target.current = returnFocus;
+  // Each target once, by what it names, as a caller may pass an equal one on every draw: on the
+  // list's first draw after a page, or while the list stays beside the content pane.
+  const targetKey = returnFocus === undefined ? "" : `${returnFocus.id}:${returnFocus.index}`;
   useEffect(() => {
-    const target = placeFocus.current;
-    if (target === undefined) return;
+    const returnTo = target.current;
+    if (targetKey === "" || returnTo === undefined) return;
     const next =
-      latestItems.current.find((item) => item.id === target.id) ??
-      latestItems.current[target.index];
-    focusRowOrHeading(region.current, next);
+      latestItems.current.find((item) => item.id === returnTo.id) ??
+      latestItems.current[returnTo.index];
+    if (!besidePaneRef.current || focusFellToPage()) focusRowOrHeading(region.current, next);
     focusPlaced.current?.();
-  }, []);
+  }, [targetKey]);
 
   const [menu, setMenu] = useState<{ readonly id: string; readonly target: ContextMenuTarget }>();
   const undoing = useUndoItem(list);
@@ -167,6 +187,7 @@ export function ChangeList({
           },
         ]}
         onOpen={onOpen}
+        {...(current === undefined ? {} : { current })}
       />
       <UndoPartialCallout undoing={undoing} />
       {hidden > 0 ? <p className="text-small text-fg-muted">{itemWords.andMore(hidden)}</p> : null}

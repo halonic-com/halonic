@@ -109,7 +109,9 @@ verifies("source-control.history-page", () => {
         row.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       });
       const title = document.activeElement;
-      expect(title?.tagName).toBe("H3");
+      // In the desktop's content pane, under the page's h1 (`source-control.list-column`).
+      expect(title?.tagName).toBe("H2");
+      expect(title?.closest('[data-pane="content"]')).not.toBeNull();
       expect(title?.textContent).toBe("Version 2");
       expect(title?.closest('section[aria-label="Version \\"Version 2\\""]')).not.toBeNull();
       expect(row.getAttribute("aria-current")).toBe("true");
@@ -144,7 +146,7 @@ verifies("source-control.history-page", () => {
       expect(details?.textContent).not.toContain("weekly-report");
     });
 
-    it("puts the details in a column beside the list and Show more, not after them", async () => {
+    it("puts the details beside the list and Show more, in the content pane, not after them", async () => {
       const fake = fakeSource({ kind: "ready", changes: [] });
       fake.setHistory(versions(25));
       const { root } = await openPage(fake);
@@ -153,7 +155,8 @@ verifies("source-control.history-page", () => {
       const details = root.querySelector('section[aria-label="Version \\"Version 25\\""]');
       expect(list?.textContent).toContain("Show more");
       expect(list?.contains(details ?? null)).toBe(false);
-      expect(details?.parentElement).toBe(list?.parentElement);
+      expect(details?.closest('[data-pane="content"]')).not.toBeNull();
+      expect(list?.closest('[data-pane="list"]')).not.toBeNull();
     });
 
     it("says No versions yet. for a repository without a version", async () => {

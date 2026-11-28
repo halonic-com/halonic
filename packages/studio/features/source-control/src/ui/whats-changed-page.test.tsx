@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { createToastStore, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
 import type { ItemRef } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -19,7 +19,7 @@ const before = lines("id: triage", "name: Triage", "model: claude", "instruction
 const after = lines("id: triage", "name: Triage", "model: gpt", "instructions: Sort all mail.");
 const skillPaths = ["library/skills/tone/SKILL.md", "library/skills/tone/notes.md"] as const;
 
-async function openPage(openItemOf?: (item: ItemRef) => void) {
+async function openPage(openItemOf?: (item: ItemRef) => void, phone = false) {
   const fake = fakeSource({
     kind: "ready",
     changes: [
@@ -31,9 +31,10 @@ async function openPage(openItemOf?: (item: ItemRef) => void) {
   for (const path of skillPaths)
     fake.setTexts(path, { before: "Be brief.\n", after: "Be kind.\n" });
   const toasts = createToastStore();
+  const view = <ChangesView list={new ChangesList(fake.source)} openItem={openItemOf} />;
   const root = render(
     <ToastStoreProvider store={toasts}>
-      <ChangesView list={new ChangesList(fake.source)} openItem={openItemOf} />
+      {phone ? <PresentationProvider presentation="phone">{view}</PresentationProvider> : view}
     </ToastStoreProvider>,
   );
   await act(settle);
@@ -48,8 +49,23 @@ function buttons(root: ParentNode, name: string): HTMLElement[] {
 
 verifies("source-control.whats-changed-page", () => {
   describe("What changed page", () => {
-    it("opens in place of the list with the item's name as the only h1, and focus on it", async () => {
+    it("opens beside the list on the desktop, the item's name as the pane's h2, and focus on it", async () => {
       const { root } = await openPage();
+      openItem(root, "Triage");
+      expect(root.querySelector('[data-pane="list"]')?.textContent).toContain(
+        "Since your last version",
+      );
+      expect(document.activeElement?.tagName).toBe("H2");
+      expect(document.activeElement?.textContent).toBe("Triage");
+      expect(document.activeElement?.closest('[data-pane="content"]')).not.toBeNull();
+      expect([...root.querySelectorAll("h1")].map((heading) => heading.textContent)).toEqual([
+        "Changes",
+      ]);
+      expect(buttons(root, "Back to Changes")).toHaveLength(0);
+    });
+
+    it("opens in place of the list as its own page, with the item's name as the only h1", async () => {
+      const { root } = await openPage(undefined, true);
       openItem(root, "Triage");
       expect(root.textContent).not.toContain("Since your last version");
       expect(document.activeElement?.tagName).toBe("H1");
@@ -92,14 +108,14 @@ verifies("source-control.whats-changed-page", () => {
     });
 
     it("puts focus on the row it came from when the person presses Back to Changes", async () => {
-      const { root } = await openPage();
+      const { root } = await openPage(undefined, true);
       openItem(root, "Triage");
       await act(async () => buttons(root, "Back to Changes")[0]?.click());
       expect(root.textContent).toContain("Since your last version");
       expect(document.activeElement?.textContent).toContain("Triage");
     });
 
-    it("keeps the headings in order: one h1, then h2s, with no level skipped", async () => {
+    it("keeps the headings in order under the pane's h2, with no level skipped", async () => {
       const { root } = await openPage();
       const page = openItem(root, "Triage");
       const levels = (heading: ParentNode) =>
@@ -107,26 +123,26 @@ verifies("source-control.whats-changed-page", () => {
           Number(element.tagName.slice(1)),
         );
       const skipsALevel = (all: number[]) =>
-        all.some((level, index) => level > (all[index - 1] ?? 0) + 1);
-      expect(levels(page)).toEqual([1, 2, 2]);
+        // The first heading sits under the list column's h1, "Changes".
+        all.some((level, index) => level > (all[index - 1] ?? 1) + 1);
+      expect(levels(page)).toEqual([2, 3, 3]);
       const several = levels(openItem(root, "tone"));
-      expect(several[0]).toBe(1);
+      expect(several[0]).toBe(2);
       expect(skipsALevel(several)).toBe(false);
     });
 
     it("puts the line headings of Advanced a level under the heading above them", async () => {
       const { root } = await openPage();
       const lineHeadings = (page: ParentNode) =>
-        [...page.querySelectorAll("h2, h3")]
+        [...page.querySelectorAll("h2, h3, h4")]
           .filter((element) => element.textContent?.startsWith("Line"))
           .map((element) => element.tagName);
-      // One file: straight under the page's h1.
+      // One file: straight under the pane's h2.
       const one = openItem(root, "Triage");
       await act(async () => buttons(one, "Advanced")[0]?.click());
       expect(lineHeadings(one).length).toBeGreaterThan(0);
-      expect(new Set(lineHeadings(one))).toEqual(new Set(["H2"]));
-      // Several files: under each file's path, an h2.
-      await act(async () => buttons(root, "Back to Changes")[0]?.click());
+      expect(new Set(lineHeadings(one))).toEqual(new Set(["H3"]));
+      // Several files: under each file's path, an h3.
       const several = openItem(root, "tone");
       // Advanced starts open on a file Halonic can't put in words; open the others.
       for (const advanced of buttons(several, "Advanced")) {
@@ -135,7 +151,7 @@ verifies("source-control.whats-changed-page", () => {
         }
       }
       expect(lineHeadings(several).length).toBeGreaterThan(0);
-      expect(new Set(lineHeadings(several))).toEqual(new Set(["H3"]));
+      expect(new Set(lineHeadings(several))).toEqual(new Set(["H4"]));
     });
 
     it("opens the item itself with Open agent, from its hub", async () => {

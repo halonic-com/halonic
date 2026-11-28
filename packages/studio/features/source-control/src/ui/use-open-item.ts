@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 
-/** Where focus goes when the list comes back: the row that was open, or the one that took its place. */
+/**
+ * Where focus goes when the list comes back, or, on the desktop, when the item open beside it goes:
+ * the row that was open, or the one that took its place.
+ */
 export interface ReturnFocus {
   readonly id: string;
   readonly index: number;
@@ -9,20 +12,25 @@ export interface ReturnFocus {
 
 /** What {@link useOpenItem} gives the page. */
 export interface OpenItem {
-  /** The item whose What changed page is open; `undefined` shows the list. */
+  /**
+   * The item whose What changed is open: a page of its own, or the desktop's content pane beside
+   * the list. `undefined` shows the list alone, or the pane without an item.
+   */
   readonly open: ChangeItem | undefined;
-  /** Where the list puts focus when it is drawn again after a page; `undefined` leaves it alone. */
+  /** Where the list puts focus after a page, or after the item beside it went; else `undefined`. */
   readonly returnFocus: ReturnFocus | undefined;
   /** Says the list has put focus where `returnFocus` asked, so a later redraw leaves focus alone. */
   readonly focusPlaced: () => void;
   readonly show: (id: string) => void;
   readonly back: () => void;
+  /** Closes the open item without moving focus, as when the pane shows something else. */
+  readonly close: () => void;
 }
 
 /**
- * Which item's What changed page is open. When the open item is gone, as after Undo these changes,
- * the page goes back to the list; when no item is left, `onNothingLeft` moves focus to the heading,
- * since the list isn't there for the row to take it.
+ * Which item's What changed is open. When the open item is gone, as after Undo these changes, What
+ * changed closes and the list is told which row takes focus; when no item is left,
+ * `onNothingLeft` is called instead, as there is no row to take it.
  */
 export function useOpenItem(items: readonly ChangeItem[], onNothingLeft: () => void): OpenItem {
   const [openId, setOpenId] = useState<string>();
@@ -52,6 +60,10 @@ export function useOpenItem(items: readonly ChangeItem[], onNothingLeft: () => v
     show: (id) => {
       setReturnFocus(undefined);
       setOpenId(id);
+    },
+    close: () => {
+      setReturnFocus(undefined);
+      setOpenId(undefined);
     },
     back: () => {
       if (openId === undefined) return;

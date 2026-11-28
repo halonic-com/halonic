@@ -37,9 +37,12 @@ export function VersionPage({ version, list }: VersionPageProps) {
   );
 }
 
+/** The level of What's in it, one below the version's name. */
+const whatsInItLevel = { page: 2, pane: 3, details: 4 } as const;
+
 /**
  * Who made a version and when, its notes and what's in it: under the `h1` on the phone's version
- * page, or under the `h3` of the desktop's details box.
+ * page, the `h3` of History's details box, or the `h2` of the desktop's content pane.
  */
 export function VersionFacts({
   version,
@@ -48,8 +51,8 @@ export function VersionFacts({
 }: {
   readonly version: Version;
   readonly list: ChangesList;
-  /** "page" puts What's in it under an `h2`; "details" under an `h4`. */
-  readonly level: "page" | "details";
+  /** "page" puts What's in it under an `h2`; "pane" under an `h3`; "details" under an `h4`. */
+  readonly level: "page" | "pane" | "details";
 }) {
   return (
     <>
@@ -59,7 +62,7 @@ export function VersionFacts({
       {version.notes === "" ? null : (
         <p className="text-body whitespace-pre-wrap">{version.notes}</p>
       )}
-      <VersionItems version={version} list={list} headingLevel={level === "page" ? 2 : 4} />
+      <VersionItems version={version} list={list} headingLevel={whatsInItLevel[level]} />
     </>
   );
 }

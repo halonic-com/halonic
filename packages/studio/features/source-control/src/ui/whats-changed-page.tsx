@@ -18,18 +18,28 @@ export interface WhatChangedPageProps {
   /** Opens the item itself; without it the page has no Open button. */
   readonly openItem?: ((item: ItemRef) => void) | undefined;
   /**
-   * Back to Changes, above the page. Without it, as on a phone page whose top bar names the item
-   * and has Back, the page has none and its `h1` is for screen readers only.
+   * Back to Changes, above the page. Without it the page has none: on a phone page, whose top bar
+   * names the item and has Back, its `h1` is for screen readers only; in the desktop's content pane
+   * (`inPane`) the list is beside it, and its `h2` stays visible.
    */
   readonly onBack?: (() => void) | undefined;
   /** On a phone (2.13) the page is pushed, with Open as a row and Undo in the bottom bar. */
   readonly phone?: boolean;
+  /**
+   * In the desktop's content pane beside the Changes list (`source-control.list-column`): the
+   * item's name is a visible `h2` under the list's `h1`, and there is no Back to Changes.
+   */
+  readonly inPane?: boolean;
+  /** In the pane, changes with each press that opens this item, so focus moves to its name again. */
+  readonly focusRequest?: number;
 }
 
 /**
- * What changed in one item, as its own page in this tab (checklist part 2, 2.4): Back to Changes,
- * the item's name as the `h1`, **Undo these changes** and Open workflow, then the changes of each
- * of its files. Focus starts on the heading, so a screen reader says where it is.
+ * What changed in one item (checklist part 2, 2.4): on the desktop in the content pane beside the
+ * Changes list, under the item's name as an `h2` (`source-control.list-column`); else as its own
+ * page in this tab with Back to Changes and the name as the `h1`. Then **Undo these changes** and
+ * Open workflow, then the changes of each of its files. Focus starts on the heading, so a screen
+ * reader says where it is.
  *
  * On a phone (2.13) the changes are in words only, **Open Sorter** is a 48px row under them and
  * **Undo these changes** is the bottom bar; a failed roll-back's Callout comes first. It is a page
@@ -42,9 +52,12 @@ export function WhatChangedPage({
   openItem,
   onBack,
   phone = false,
+  inPane = false,
+  focusRequest = 0,
 }: WhatChangedPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), []);
+  // Each new press moves focus again; a read draws without changing `focusRequest`.
+  useEffect(() => heading.current?.focus(), [focusRequest]);
   const undoing = useUndoItem(list);
   const waitingId = useId();
   const headingId = useId();
@@ -53,15 +66,16 @@ export function WhatChangedPage({
     openItem !== undefined && isOpenable(item)
       ? () => openItem({ kind: item.kind ?? "", hub: item.hub, id: item.itemId })
       : undefined;
+  const Title = inPane ? "h2" : "h1";
   const title = (
-    <h1
+    <Title
       id={headingId}
       ref={heading}
       tabIndex={-1}
-      className={onBack === undefined ? "sr-only" : "text-title flex-1"}
+      className={onBack === undefined && !inPane ? "sr-only" : "text-title flex-1"}
     >
       {item.name}
-    </h1>
+    </Title>
   );
   if (phone) {
     return (
@@ -101,7 +115,7 @@ export function WhatChangedPage({
       </header>
       <WaitingNote list={list} id={waitingId} />
       <UndoPartialCallout undoing={undoing} />
-      <ItemChanges list={list} item={item} developer={developer} />
+      <ItemChanges list={list} item={item} developer={developer} titleLevel={inPane ? 2 : 1} />
       <UndoWithoutCopyDialog undoing={undoing} />
     </section>
   );

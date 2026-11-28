@@ -25,8 +25,13 @@ export interface HistoryProps {
   readonly now?: Date;
   /** On a phone Show more and Try again are 48px touch buttons, and git's words say "your computer". */
   readonly phone?: boolean;
-  /** On a phone a version opens as its own page through this; without it the details show beside the list. */
+  /**
+   * A version opens through this: on a phone as its own page, on the desktop in the content pane.
+   * Without it the details show beside the list, in History itself.
+   */
   readonly onOpenVersion?: ((id: string) => void) | undefined;
+  /** The version open in the content pane, marked as the current row. */
+  readonly currentId?: string | undefined;
   /** The version whose page was just left, on a phone: its row takes focus, unfolded if need be. */
   readonly returnTo?: string | undefined;
 }
@@ -51,6 +56,7 @@ export function History({
   now = new Date(),
   phone = false,
   onOpenVersion,
+  currentId,
   returnTo,
 }: HistoryProps) {
   const headingId = useId();
@@ -83,13 +89,13 @@ export function History({
             unshared={unshared}
             now={now}
             phone={phone}
-            pickedId={picked?.id}
+            pickedId={picked?.id ?? currentId}
             onPick={onOpenVersion ?? pick}
             returnTo={returnTo}
           />
         </div>
         {picked === undefined ? null : (
-          <Details
+          <VersionDetails
             version={picked}
             list={list}
             titleRef={detailsFocus.title}
@@ -291,18 +297,21 @@ function HistoryFooter({
 
 /**
  * The picked version: who, when, its notes, what's in it and Go back. Never only on hover. Its title takes
- * focus when it opens, and Escape puts focus back on the version's row.
+ * focus when it opens, and Escape puts focus back on the version's row. In the desktop's content
+ * pane (`inPane`) its title is an `h2` under the page's `h1`, with no box around it.
  */
-function Details({
+export function VersionDetails({
   version,
   list,
   titleRef,
   onEscape,
+  inPane = false,
 }: {
   readonly version: Version;
   readonly list: ChangesList;
   readonly titleRef: RefObject<HTMLHeadingElement | null>;
   readonly onEscape: () => void;
+  readonly inPane?: boolean;
 }) {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape" || event.defaultPrevented) return;
@@ -310,16 +319,18 @@ function Details({
     onEscape();
   };
   const going = useGoBack(list);
+  const Title = inPane ? "h2" : "h3";
+  const box = "rounded-md border border-border p-4 wide:sticky wide:top-4";
   return (
     <section
       aria-label={historyWords.detailsLabel(version.name)}
-      className="flex min-w-0 flex-col gap-2 rounded-md border border-border p-4 wide:sticky wide:top-4"
+      className={`flex min-w-0 flex-col gap-2 ${inPane ? "" : box}`}
       onKeyDown={onKeyDown}
     >
-      <h3 ref={titleRef} tabIndex={-1} className="text-heading">
+      <Title ref={titleRef} tabIndex={-1} className={inPane ? "text-title" : "text-heading"}>
         {version.name}
-      </h3>
-      <VersionFacts version={version} list={list} level="details" />
+      </Title>
+      <VersionFacts version={version} list={list} level={inPane ? "pane" : "details"} />
       <GoBackPartialCallout going={going} />
       <GoBackButton version={version} list={list} going={going} />
     </section>

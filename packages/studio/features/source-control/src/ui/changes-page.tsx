@@ -1,5 +1,5 @@
 import { usePresentation } from "@halonicjs/studio-kit";
-import type { ItemRef, PlaceViewProps } from "@halonicjs/studio-shell";
+import { focusFellToPage, type ItemRef, type PlaceViewProps } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
   useCallback,
@@ -21,6 +21,7 @@ import { type ChangesList, ChangesListService, type ChangesListState } from "../
 import { pageWords, stateWords } from "../changes-words.ts";
 import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList, orderItems } from "./change-list.tsx";
+import { ChangesColumns, ChangesPane } from "./changes-columns.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
 import { LeftToGitCallout } from "./left-to-git-callout.tsx";
@@ -36,6 +37,7 @@ import { LoadFailed, Loading, NestedRepository, NoGit, TurnOnHistory } from "./r
 import { SharingLine } from "./sharing-line.tsx";
 import { useFocusNewVersion } from "./use-focus-new-version.ts";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
+import { historyOpening, type PaneSelection, usePaneSelection } from "./use-pane-selection.ts";
 import { VersionDialogs } from "./version-dialogs.tsx";
 import { VersionPage } from "./version-page.tsx";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
@@ -76,7 +78,8 @@ export interface ChangesViewProps {
 }
 
 /**
- * The Changes page on the desktop (checklist part 2, 2.2 and 2.10): "Changes" over what the
+ * The Changes page on the desktop (checklist part 2, 2.2 and 2.10), in a list column beside a
+ * content pane for a repository it read (`source-control.list-column`): "Changes" over what the
  * folder's history says: a first read's skeleton, why it couldn't load, "Keep a history of your
  * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
@@ -107,29 +110,28 @@ export function ChangesView({
   const [addingAddress, setAddingAddress] = useState(false);
   const [leftToGit, setLeftToGit] = useState(false);
   const items = orderItems(state.files);
-  const nav = useOpenItem(items, () => heading.current?.focus());
+  // Beside the pane, a read nobody asked for may close the item while focus is elsewhere: leave it.
+  const nav = useOpenItem(items, () => {
+    if (phone || focusFellToPage()) heading.current?.focus();
+  });
+  const selection = usePaneSelection(list, nav, page, !phone);
   const opening = usePhoneOpening(pages, items, state.history.versions);
   useFocusAfterChoices(state.choosing, () => heading.current?.focus());
-  const pageClass = `flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`;
-  const pushed = pushedPage({ list, pages, items, nav, developer, openItem, phone, pageClass });
+  const pageClass = "flex w-full flex-col gap-4 p-4";
+  const pushed = pushedPage({ list, pages, items, nav, openItem, phone });
   if (pushed !== undefined) return pushed;
-  return (
-    <div ref={page} className={pageClass}>
-      <header className="flex items-center gap-3">
+  const content = (
+    <>
+      <header className="flex flex-wrap items-center gap-3">
         <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
           {pageWords.title}
         </h1>
         {state.hasRemote ? (
-          <span className="ml-auto">
-            <GetUpdates list={list} phone={phone} onLeftToGit={setLeftToGit} />
-          </span>
+          <GetUpdates list={list} phone={phone} onLeftToGit={setLeftToGit} />
         ) : null}
       </header>
       <LeftToGitCallout shown={state.hasRemote && leftToGit} />
       {state.merge !== undefined && !state.choosing ? <MergeStrip list={list} /> : null}
-      {state.merge !== undefined && state.choosing && !phone ? (
-        <MergeChoices list={list} phone={false} />
-      ) : null}
       <SharingLine list={list} phone={phone} onAdd={() => setAddingAddress(true)} />
       <PageBody
         list={list}
@@ -139,6 +141,7 @@ export function ChangesView({
         opening={opening}
         openItem={openItem}
         phone={phone}
+        selection={phone ? undefined : selection}
         focusHeading={() => heading.current?.focus()}
       />
       {addingAddress ? (
@@ -157,8 +160,53 @@ export function ChangesView({
         returnFocus={() => heading.current}
         onCreated={focusNewVersion}
       />
-    </div>
+    </>
   );
+  if (phone) {
+    return (
+      <div ref={page} className={pageClass}>
+        {content}
+      </div>
+    );
+  }
+  if (!showsColumns(state)) {
+    return (
+      <div ref={page} className="flex w-full flex-col gap-4 px-6 py-5">
+        {content}
+      </div>
+    );
+  }
+  return (
+    <ChangesColumns
+      listRef={page}
+      pane={
+        <ChangesPane
+          list={list}
+          state={state}
+          items={items}
+          open={nav.open}
+          version={state.history.versions.find((version) => version.id === selection.versionId)}
+          onVersionEscape={selection.focusVersionRow}
+          presses={selection.presses}
+          developer={developer}
+          openItem={openItem}
+        />
+      }
+    >
+      {content}
+    </ChangesColumns>
+  );
+}
+
+/**
+ * Whether the desktop draws the list column beside the content pane: for a repository it read, and
+ * for a first read's skeleton. A folder without history, a computer without git, a folder inside a
+ * larger repository and a first read that failed get one page over the whole place, as nothing
+ * could open in the pane (`source-control.list-column`).
+ */
+function showsColumns(state: ChangesListState): boolean {
+  if (state.read === undefined) return state.error === undefined;
+  return state.read.kind === "ready";
 }
 
 /**
@@ -182,28 +230,26 @@ function focusIsLost(): boolean {
 }
 
 /**
- * The page drawn instead of the Changes page, if one is open: on a phone a page on the stack above
- * it (`sub`) or the Get updates choices, or an item's What changed opened in place.
+ * The page drawn instead of the Changes page on a phone, if one is open: a page on the stack above
+ * it (`sub`), the Get updates choices, or an item's What changed opened in place. The desktop
+ * draws these in the content pane beside the list (`source-control.list-column`).
  */
 function pushedPage({
   list,
   pages,
   items,
   nav,
-  developer,
   openItem,
   phone,
-  pageClass,
 }: {
   readonly list: ChangesList;
   readonly pages: ChangesPhonePages | undefined;
   readonly items: readonly ChangeItem[];
   readonly nav: OpenItem;
-  readonly developer: boolean;
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
-  readonly pageClass: string;
 }): ReactNode | undefined {
+  if (!phone) return undefined;
   if (pages?.sub !== undefined) {
     return (
       <PhonePushedPage
@@ -213,25 +259,25 @@ function pushedPage({
         openItem={openItem}
         close={pages.close}
         sub={pages.sub}
-        pageClass={pageClass}
       />
     );
   }
   if (nav.open !== undefined) {
     return (
-      <WhatChangedFrame phone={phone} pageClass={pageClass}>
+      // The page draws its own inset, so its bottom bar can run edge to edge.
+      <div className="flex min-h-full w-full flex-col">
         <WhatChangedPage
           list={list}
           item={nav.open}
-          developer={developer}
+          developer={false}
           openItem={openItem}
           onBack={nav.back}
-          phone={phone}
+          phone
         />
-      </WhatChangedFrame>
+      </div>
     );
   }
-  if (phone && list.state.merge !== undefined && list.state.choosing) {
+  if (list.state.merge !== undefined && list.state.choosing) {
     return (
       // The page draws its own inset, so its bottom bar can run edge to edge.
       <div className="flex min-h-full w-full flex-col">
@@ -240,22 +286,6 @@ function pushedPage({
     );
   }
   return undefined;
-}
-
-/**
- * Where What changed is drawn: in the page's inset, or on a phone edge to edge, as the page draws
- * its own inset so its bottom bar can run from edge to edge.
- */
-function WhatChangedFrame({
-  phone,
-  pageClass,
-  children,
-}: {
-  readonly phone: boolean;
-  readonly pageClass: string;
-  readonly children: ReactNode;
-}) {
-  return <div className={phone ? "flex min-h-full w-full flex-col" : pageClass}>{children}</div>;
 }
 
 /**
@@ -270,7 +300,6 @@ function PhonePushedPage({
   openItem,
   close,
   sub,
-  pageClass,
 }: {
   readonly list: ChangesList;
   readonly items: readonly ChangeItem[];
@@ -278,7 +307,6 @@ function PhonePushedPage({
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly close: (sub: string) => void;
   readonly sub: string;
-  readonly pageClass: string;
 }) {
   const page = pushedPageOf(sub);
   const item = page?.kind === "item" ? items.find((each) => each.id === page.id) : undefined;
@@ -290,10 +318,10 @@ function PhonePushedPage({
   }, [gone, close, sub]);
   if (item !== undefined) {
     return (
-      <WhatChangedFrame phone pageClass={pageClass}>
+      <div className="flex min-h-full w-full flex-col">
         {/* The phone's What changed has no developer view: its changes are in words only. */}
         <WhatChangedPage list={list} item={item} developer={false} openItem={openItem} phone />
-      </WhatChangedFrame>
+      </div>
     );
   }
   if (version !== undefined) {
@@ -316,6 +344,7 @@ function PageBody({
   opening,
   openItem,
   phone,
+  selection,
   focusHeading,
 }: {
   readonly list: ChangesList;
@@ -325,6 +354,8 @@ function PageBody({
   readonly opening: PhoneOpening | undefined;
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
+  /** On the desktop, what the content pane shows; rows and versions open there. */
+  readonly selection: PaneSelection | undefined;
   readonly focusHeading: () => void;
 }) {
   const retry = () => void list.refresh();
@@ -346,6 +377,7 @@ function PageBody({
         opening={opening}
         openItem={openItem}
         phone={phone}
+        selection={selection}
         focusHeading={focusHeading}
       />
     </>
@@ -362,6 +394,7 @@ function ReadBody({
   opening,
   openItem,
   phone,
+  selection,
   focusHeading,
 }: {
   readonly list: ChangesList;
@@ -372,6 +405,7 @@ function ReadBody({
   readonly opening: PhoneOpening | undefined;
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
+  readonly selection: PaneSelection | undefined;
   readonly focusHeading: () => void;
 }) {
   if (read.kind === "not-a-repository") {
@@ -387,8 +421,10 @@ function ReadBody({
         <ChangeList
           list={list}
           items={items}
-          onOpen={opening?.openItem ?? nav.show}
+          onOpen={opening?.openItem ?? selection?.openRow ?? nav.show}
           openItem={openItem}
+          current={nav.open?.id}
+          besidePane={selection !== undefined}
           returnFocus={opening === undefined ? nav.returnFocus : opening.itemFocus}
           onFocusPlaced={nav.focusPlaced}
           phone={phone}
@@ -399,9 +435,7 @@ function ReadBody({
         history={state.history}
         unshared={state.unsharedIds}
         phone={phone}
-        {...(opening === undefined
-          ? {}
-          : { onOpenVersion: opening.openVersion, returnTo: opening.versionFocus })}
+        {...historyOpening(opening, selection)}
       />
     </>
   );

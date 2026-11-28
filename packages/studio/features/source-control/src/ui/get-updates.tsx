@@ -64,25 +64,39 @@ export function GetUpdates({
     }
   };
   const merging = list.merging;
-  const parts = (
+  const button = (
+    <Button
+      variant="secondary"
+      size={phone ? "touch" : "sm"}
+      busy={list.state.gettingUpdates}
+      busyLabel={updatesWords.gettingUpdates}
+      unavailable={merging ? { reason: reasonId } : undefined}
+      onClick={() => void getUpdates()}
+    >
+      {updatesWords.getUpdates}
+    </Button>
+  );
+  const reason = (className: string) =>
+    merging ? (
+      <span id={reasonId} className={`text-small text-fg-muted ${className}`}>
+        {mergeWords.finishFirst}
+      </span>
+    ) : null;
+  // On a phone the reason sits on its own line under the button, lined up with its left edge.
+  if (phone) {
+    return (
+      <span className="ml-auto flex flex-col items-start gap-1">
+        {button}
+        {reason("")}
+      </span>
+    );
+  }
+  // On the desktop the button ends the header's line and the reason takes a line of its own under
+  // it, the column's whole width, rather than wrapping beside it.
+  return (
     <>
-      <Button
-        variant="secondary"
-        size={phone ? "touch" : "sm"}
-        busy={list.state.gettingUpdates}
-        busyLabel={updatesWords.gettingUpdates}
-        unavailable={merging ? { reason: reasonId } : undefined}
-        onClick={() => void getUpdates()}
-      >
-        {updatesWords.getUpdates}
-      </Button>
-      {merging ? (
-        <span id={reasonId} className="text-small text-fg-muted">
-          {mergeWords.finishFirst}
-        </span>
-      ) : null}
+      <span className="ml-auto">{button}</span>
+      {reason("basis-full")}
     </>
   );
-  // On a phone the reason sits on its own line under the button, lined up with its left edge.
-  return phone ? <span className="flex flex-col items-start gap-1">{parts}</span> : parts;
 }
