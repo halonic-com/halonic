@@ -14,6 +14,8 @@ Two tests are loosened on purpose, because a selected entry can now be `"true"` 
 - `apps/studio/src/studio/start-studio.places.test.ts`: after a rail click it waits for any `aria-current`, not `"page"`, because Messenger opens no page. There it only shows that the pick took; `shell.rail-current`'s tests check the value.
 - `packages/studio/shell/src/rail/window-rail.test.tsx`: the `shell.rail-frame` tests' "selected" helper reads any `aria-current`, so those tests no longer check `"page"` on each selected entry. A new `pages()` helper puts `"page"` back where the entry holds the page: Home at the start and Inbox after its click.
 
+The click test's `affected.test.ts` adds `rail-current` to the steps a Messenger-only change runs, since the new step names `messenger.rail-entry`; nothing is taken out of the list.
+
 `rail-dot.tsx` finds the selected button by any `aria-current`, so the white dot (`shell.rail-dot`) still moves to a picked Messenger.
 
 New tests: the window names no two `nav`s alike; a picked Messenger is `"true"` with no entry `"page"`; the kit's `current="true"`; the white dot travels to a picked Messenger; and the click test's new `rail-current` step (`studio-click-test.rail-current-step`) checks the landmarks and the pick in the installed app. No test was skipped.
