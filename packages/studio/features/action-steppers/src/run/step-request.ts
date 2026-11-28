@@ -11,6 +11,7 @@ import type { Step } from "@halonicjs/action-steppers";
 import type {
   ActionBodyField,
   ActionCallRoute,
+  ActionOperationRoute,
   ActionRoute,
   ActionSendRequest,
   ActionStepRef,
@@ -62,14 +63,14 @@ function pageValue(
 }
 
 /**
- * The body fields the page sends for a call step, from the request's checked parameters; the
+ * The body fields the page sends for a call or operation step, from the request's checked parameters; the
  * sender adds `constant` and `secret-input` fields itself. Both the send and "Show the request"
  * build it here, so the screen shows what goes out.
  *
  * @param step - the definition's step the route belongs to, which names each list field's parameter
  */
 export function pageBody(
-  route: ActionCallRoute,
+  route: ActionCallRoute | ActionOperationRoute,
   parameters: Parameters,
   step: Step | undefined,
 ): PageBody {
@@ -105,5 +106,6 @@ export function stepRequest(
 
 /** Whether a step's value is one the user types in the shell's dialog, so the answer may only say when. */
 export function setsSecret(route: ActionRoute | undefined): boolean {
-  return route?.kind === "call" && route.body.some((field) => field.kind === "secret-input");
+  if (route === undefined || route.kind === "guided") return false;
+  return route.body.some((field) => field.kind === "secret-input");
 }

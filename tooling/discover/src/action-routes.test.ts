@@ -55,6 +55,9 @@ function shapeProblems(routes: readonly ActionRoute[]): string[] {
   return written.flatMap((route) => {
     const where = whereOf(route);
     const unknown = unknownKeys(route, routeKeys, where);
+    if (route.kind === "operation") {
+      return [...unknown, `${where}: the shell's reader takes no operation route yet`];
+    }
     if (route.kind === "guided") {
       const extra = callOnlyFields.filter((field) => Object.hasOwn(route, field));
       return extra.length > 0
@@ -157,9 +160,10 @@ verifies("discover.action-routes", () => {
 
     it("writes only patterns and templates the shell can read", () => {
       const routes = actionRouteList(shipped).routes;
-      const templates = routes.map((route) =>
-        route.kind === "guided" ? route.address : route.path,
-      );
+      const templates = routes.flatMap((route) => {
+        if (route.kind === "guided") return [route.address];
+        return route.kind === "call" ? [route.path] : [];
+      });
       const patterns = routes.flatMap((route) => [
         ...Object.values(route.placeholders),
         ...(route.kind === "call" ? route.body : []).flatMap((field) =>

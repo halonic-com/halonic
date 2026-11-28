@@ -73,11 +73,34 @@ export interface ActionGuidedRoute extends ActionRouteBase {
 }
 
 /**
+ * The operations a sender runs itself, each with the one service it belongs to. An operation is
+ * for a service whose API needs more than one fixed call for a step: its calls are written in the
+ * sender's own code, not in the route list. `paperclip.set-secret` creates or rotates one named
+ * secret in Paperclip Secrets (architecture note on HAL-17491, row C1; HAL-20275).
+ */
+export const actionOperations = { "paperclip.set-secret": "paperclip" } as const;
+
+/** An operation's name, such as `paperclip.set-secret`. */
+export type ActionOperation = keyof typeof actionOperations;
+
+/**
+ * A step the sender runs as one of its own {@link actionOperations}, never as a method and a path.
+ * Its `service` must be the one the operation belongs to, and a sender refuses the route otherwise.
+ */
+export interface ActionOperationRoute extends ActionRouteBase {
+  kind: "operation";
+  operation: ActionOperation;
+  body: readonly ActionBodyField[];
+  /** The fields of the operation's result the sender hands back, named one by one. */
+  keep: readonly string[];
+}
+
+/**
  * One reviewed step, as the sender's route list holds it. The list is
  * generated from the action catalog at build time and compiled into the
  * sender; nothing at run time adds to it, and no call of the port reads it.
  */
-export type ActionRoute = ActionCallRoute | ActionGuidedRoute;
+export type ActionRoute = ActionCallRoute | ActionGuidedRoute | ActionOperationRoute;
 
 /** Which reviewed step: never an address, a method or a header. */
 export interface ActionStepRef {
