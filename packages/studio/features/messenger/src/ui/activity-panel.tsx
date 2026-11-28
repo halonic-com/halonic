@@ -23,7 +23,8 @@ export const activityPanelId = "messenger-activity";
 
 /**
  * The id of the control that closes the panel: a place's **‹ Chief** or the kit's **×**, whichever
- * shows. It takes the focus as a sheet or a place opens, and **Ctrl+I** closes through it.
+ * shows. It takes the focus as a sheet or a place opens, and **Ctrl+I** closes through it. A narrow
+ * window's channel agent view has neither: **‹ Channel** leads its header and takes the focus.
  */
 export const panelCloseId = `${activityPanelId}-close`;
 
@@ -126,7 +127,13 @@ function usePanelMotion(
     if (place === "sheet" && aside.current !== null) arriveFromEnd(aside.current);
   }, [aside, place]);
   useEffect(() => {
-    if (place !== "beside") aside.current?.querySelector<HTMLElement>(`#${panelCloseId}`)?.focus();
+    if (place === "beside") return;
+    // A sheet's ‹ Channel comes before its ×, so look for the close control first, then ‹ Channel.
+    const panel = aside.current;
+    const first =
+      panel?.querySelector<HTMLElement>(`#${panelCloseId}`) ??
+      panel?.querySelector<HTMLElement>("[data-back-to-channel]");
+    first?.focus();
   }, [aside, place]);
   return () => {
     const sheet = aside.current;

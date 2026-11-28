@@ -135,10 +135,9 @@ verifies("messenger.activity-channel", () => {
       ).toBe(true);
       await press(panel(page)?.querySelectorAll("[data-agent-line]")[1]);
       await settle();
-      expect(activity.runs).toHaveBeenCalledWith({
-        agent: finished.agent,
-        since: expect.any(String),
-      });
+      const perAgent = vi.mocked(activity.runs).mock.calls.filter(([query]) => query.agent);
+      expect(perAgent.length).toBeGreaterThan(0);
+      expect(perAgent.every(([query]) => query.agent === finished.agent)).toBe(true);
       expect(panel(page)?.textContent).toContain("Idle · last run ended 11:11");
     });
 
@@ -218,6 +217,22 @@ verifies("messenger.activity-channel-states", () => {
       expect(lines(page)).toEqual(["Liam · Working on ACME-7", "Noah · Idle"]);
     });
 
+    it("keeps the lines under the stale line when a later read fails", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const { messaging, activity } = acme();
+      const page = await openMessenger(messaging, [], false, now, activity);
+      await openChat(page, "Launch");
+      await press(panel(page)?.querySelector("[data-agent-line]"));
+      vi.mocked(activity.runs).mockRejectedValue(new Error("The agent host is down."));
+      // Going back reads the channel again, and that read fails.
+      await press(panel(page)?.querySelector("[data-back-to-channel]"));
+      await settle();
+      expect(panel(page)?.textContent).toContain(
+        "The engine isn't answering. Showing what it said last.",
+      );
+      expect(lines(page)).toEqual(["Liam · Working on ACME-7", "Noah · Idle"]);
+    });
+
     it("marks each line as one that opens, with a chevron at its end", async () => {
       const { messaging, activity } = acme();
       const page = await openMessenger(messaging, [], false, now, activity);
@@ -240,6 +255,20 @@ verifies("messenger.activity-channel-states", () => {
       await press(panel(page)?.querySelector("[data-agent-line]"));
       expect(header()?.querySelector("[data-back-to-channel]")).not.toBeNull();
       expect(header()?.textContent).not.toContain("‹ Launch");
+      expect(document.activeElement?.getAttribute("aria-label")).toBe("Back to the channel");
+    });
+
+    it("closes and reopens a narrow window's agent view with Ctrl+I, focusing ‹ Channel", async () => {
+      const { messaging, activity } = acme();
+      const page = await openMessenger(messaging, [], true, now, activity);
+      await openChat(page, "Launch");
+      await press(headerButton(page));
+      await press(panel(page)?.querySelector("[data-agent-line]"));
+      await pressKey("i", { ctrlKey: true });
+      expect(panel(page)).toBeNull();
+      expect(document.activeElement).toBe(headerButton(page));
+      await pressKey("i", { ctrlKey: true });
+      expect(panel(page)?.textContent).toContain("Liam's activity");
       expect(document.activeElement?.getAttribute("aria-label")).toBe("Back to the channel");
     });
   });

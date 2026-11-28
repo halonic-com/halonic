@@ -70,8 +70,8 @@ export function ActivityHost({
   const { go, opens } = usePlaceMotion(host, place, toggle);
   const title = shown.buttonTitle;
   const value = useMemo(
-    () => ({ open, working, name, title, toggle: opens }),
-    [open, working, name, title, opens],
+    () => ({ open, working, title, toggle: opens }),
+    [open, working, title, opens],
   );
   const close = useCallback(() => {
     // The panel is gone; focus goes back to the button that opens it.

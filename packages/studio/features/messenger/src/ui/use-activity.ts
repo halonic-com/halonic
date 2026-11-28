@@ -68,7 +68,7 @@ export function useActivityReads(
     reads.current += 1;
     const thisRead = reads.current;
     const since = startOfToday(messenger.now()).toISOString();
-    // A channel with no agents listed reads none of its own (HAL-18567 review).
+    // A channel with no agents listed reads no runs (HAL-18567 review).
     const ids = agentsKey === "" ? [] : agentsKey.split("\n");
     const runs = readRuns(activity, ids, since, picked);
     Promise.all([runs, activity.pullRequests()]).then(
@@ -132,7 +132,8 @@ async function readRuns(
   picked: MessagingId | undefined,
 ): Promise<readonly TeamRuns[]> {
   const [only, ...others] = agents;
-  if (only !== undefined && others.length === 0) return activity.runs({ agent: only, since });
+  if (only === undefined) return [];
+  if (others.length === 0) return activity.runs({ agent: only, since });
   const all = await activity.runs({ since });
   if (picked === undefined || all.every((each) => each.complete)) return all;
   const own = await activity.runs({ agent: picked, since });
