@@ -98,9 +98,9 @@ export const configurationWords = {
    * OpenCode's copies Claude Code's, decided by the team under the HAL-2282 rule.
    */
   harnessRefused: {
-    "claude-code": "Claude Code can use Anthropic models only.",
+    "claude-code": "Claude Code can use Anthropic models only. Choose another.",
     codex: "This model can't be used with Codex. Choose another.",
-    opencode: "OpenCode can use Anthropic models only.",
+    opencode: "OpenCode can use Anthropic models only. Choose another.",
   },
   /** Flow 5.6, F25: under the alias line of a Codex agent on an OpenAI-compatible provider. */
   responsesApiWarning: "Make sure this endpoint supports the Responses API.",
