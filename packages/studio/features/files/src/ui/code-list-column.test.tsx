@@ -10,6 +10,7 @@ import { forgetOpenedEditors, openedEditors } from "../test-support/code-editor.
 import { codePane, openFolders, showCodePage } from "../test-support/code-page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
 import { listing, rowNamed, settled } from "../test-support/sidebar.ts";
+import { forgetAllTrashed } from "../trash.ts";
 
 // The real editor is tested in its own package; here a stand-in lets the pane draw.
 vi.mock("@halonicjs/studio-code-editor", () => import("../test-support/code-editor.ts"));
@@ -18,6 +19,7 @@ afterEach(() => {
   unmountAll();
   forgetOpenedEditors();
   takeRenameAsked();
+  forgetAllTrashed();
 });
 
 const acmeFiles = ["src/checkout/orders.ts", "src/checkout/refunds.ts", "README.md"];
@@ -35,7 +37,11 @@ function withProblems(problems: boolean) {
 function changingWithProblem(): Partial<FilesHost> {
   let paths = acmeFiles;
   let marks = new Map([["src/checkout/refunds.ts", { errors: 1 }]]);
-  let notify = () => {};
+  // The tree and the pane's open file both listen, so every listener hears each change.
+  const listeners = new Set<() => void>();
+  const notify = () => {
+    for (const listener of [...listeners]) listener();
+  };
   const change = (next: string[]) => {
     const before = paths;
     paths = next;
@@ -49,8 +55,8 @@ function changingWithProblem(): Partial<FilesHost> {
   return {
     list: async () => listing(paths, marks),
     subscribe: (listener) => {
-      notify = listener;
-      return () => {};
+      listeners.add(listener);
+      return () => listeners.delete(listener);
     },
     rename: async (from, to) => {
       const undo = change(paths.map((path) => (path === from ? to : path)));
@@ -209,6 +215,7 @@ verifies("files.code-list-chips", () => {
     await key(field, "Enter");
     // The rename itself turned All on, so Problems goes back on before the Undo.
     await pick(page, "Problems");
+    expect(codePane(page, "list")?.textContent).toContain("No file has a problem.");
 
     await undoFirstToast(toasts);
 
@@ -226,6 +233,7 @@ verifies("files.code-list-chips", () => {
     act(() => row.click());
     await key(row, "Delete");
     expect(chip(page, "Problems").checked).toBe(true);
+    expect(codePane(page, "list")?.textContent).toContain("No file has a problem.");
 
     await undoFirstToast(toasts);
 
