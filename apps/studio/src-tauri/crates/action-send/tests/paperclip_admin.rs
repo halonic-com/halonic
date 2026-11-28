@@ -8,7 +8,7 @@ mod support;
 
 use halonic_action_send::paperclip_admin::{
     ADMIN_KEY_SECONDS, PaperclipConnection, admin_key, admin_origin, connection_of,
-    forget_admin_key, store_admin_key,
+    forget_admin_key, store_admin_key, stored_admin_key,
 };
 use halonic_secrets::{MemoryBackend, SecretBackend, SecretName};
 use support::{NOW, TOKEN};
@@ -151,4 +151,20 @@ fn forgetting_the_admin_key_removes_the_key_and_its_record() {
         assert_eq!(backend.get(&entry), Ok(None), "{name}");
     }
     forget_admin_key(&backend).expect("forgetting twice does nothing");
+}
+
+#[test]
+fn an_expired_key_can_still_be_found_to_revoke_it_where_it_was_made() {
+    let backend = MemoryBackend::new();
+    store_admin_key(&backend, &acme(), "user-1", TOKEN, NOW).expect("stores");
+    assert_eq!(
+        admin_key(&backend, &acme(), NOW + ADMIN_KEY_SECONDS),
+        Ok(None)
+    );
+    assert_eq!(
+        stored_admin_key(&backend),
+        Ok(Some((acme(), TOKEN.to_owned())))
+    );
+    forget_admin_key(&backend).expect("forgets");
+    assert_eq!(stored_admin_key(&backend), Ok(None));
 }

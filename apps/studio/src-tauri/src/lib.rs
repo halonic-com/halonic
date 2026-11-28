@@ -411,6 +411,8 @@ fn shell<R: Runtime>(builder: Builder<R>) -> Builder<R> {
             #[cfg(desktop)]
             actions::action_sign_in_cancel,
             #[cfg(desktop)]
+            actions::paperclip::action_paperclip_sign_in,
+            #[cfg(desktop)]
             actions::action_sign_out,
             #[cfg(desktop)]
             actions::action_account,

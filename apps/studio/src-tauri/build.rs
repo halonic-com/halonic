@@ -125,6 +125,7 @@ fn main() {
         "action_send",
         "action_sign_in",
         "action_sign_in_cancel",
+        "action_paperclip_sign_in",
         "action_sign_out",
         "action_account",
         "action_open_guided",

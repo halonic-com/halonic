@@ -18,6 +18,7 @@ fn action_calls() -> Vec<(&'static str, Value)> {
             json!({"service": "github", "code": "__CHANNEL__:7"}),
         ),
         ("action_sign_in_cancel", json!({})),
+        ("action_paperclip_sign_in", json!({"connection": "acme"})),
         ("action_sign_out", json!({"service": "github"})),
         ("action_account", json!({"service": "github"})),
         ("action_open_guided", json!({"request": step})),
@@ -79,6 +80,14 @@ fn served_page_test_sees_the_connect_page_reach_the_action_commands() {
     );
     let cancelled = invoke(&window, CONNECT_PAGE, "action_sign_in_cancel", json!({}));
     assert_eq!(cancelled, Ok(Value::Null));
+    // No Paperclip operation is listed yet, so the admin sign-in starts nothing.
+    let admin = invoke(
+        &window,
+        CONNECT_PAGE,
+        "action_paperclip_sign_in",
+        json!({"connection": "acme"}),
+    );
+    assert_eq!(admin, Ok(json!({"outcome": "not-available"})));
     for command in ["action_sign_out", "action_account"] {
         let answer = invoke(&window, CONNECT_PAGE, command, json!({"service": "acme"}));
         let refusal = answer.expect_err("no such service");

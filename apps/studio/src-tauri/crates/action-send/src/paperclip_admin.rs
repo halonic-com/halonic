@@ -178,6 +178,26 @@ pub fn admin_session(
     Ok(key.map(|key| (connection, record.user, key)))
 }
 
+/// The stored admin key and the origin and company its record says it was
+/// made for, whether or not it has expired: only to revoke it there, so a
+/// sign-out never sends it to an address the connection names later.
+pub fn stored_admin_key(
+    backend: &dyn SecretBackend,
+) -> Result<Option<(PaperclipConnection, String)>, SecretError> {
+    let Some(record) = read_record(backend)? else {
+        return Ok(None);
+    };
+    let key = backend.get(&key_name()?)?;
+    Ok(key.map(|key| {
+        let made_for = PaperclipConnection {
+            connection: record.connection,
+            origin: record.origin,
+            company: record.company,
+        };
+        (made_for, key)
+    }))
+}
+
 /// Stores a new admin key for `connection`, approved by `user`: the key
 /// first, then the record that points at it, so a failure halfway never
 /// leaves a record without its key.

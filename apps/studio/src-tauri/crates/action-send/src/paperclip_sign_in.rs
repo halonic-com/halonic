@@ -117,19 +117,17 @@ impl<T: Transport, K: Keychain, C: Clock, S: ApprovalScreen> PaperclipSignIn<'_,
         result
     }
 
-    /// Revokes the admin key in Paperclip, then forgets it, also when the
-    /// revoke fails, so the key never stays on this computer.
+    /// Revokes the stored admin key in Paperclip, then forgets it, also when
+    /// the revoke fails, so the key never stays on this computer. The key is
+    /// found through its own record, also once it has expired, and revoked
+    /// only at the origin it was made for, so closing any stepper's page
+    /// signs it out.
     pub async fn sign_out(&self) -> Result<(), halonic_secrets::SecretError> {
-        let name = self.connection.to_owned();
-        let now = self.clock.now();
         let found = self
             .keychain
-            .with_backend(move |backend| {
-                let Some(connection) = connection_of(backend, &name)? else {
-                    return Ok(None);
-                };
-                let key = paperclip_admin::admin_key(backend, &connection, now)?;
-                Ok(key.map(|key| (connection, Wiped::text(key))))
+            .with_backend(|backend| {
+                let stored = paperclip_admin::stored_admin_key(backend)?;
+                Ok(stored.map(|(made_for, key)| (made_for, Wiped::text(key))))
             })
             .await?;
         if let Some((connection, key)) = found {

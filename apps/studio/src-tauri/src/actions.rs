@@ -15,8 +15,9 @@ use std::time::Instant;
 
 use halonic_action_send::account::{self, Account};
 use halonic_action_send::{
-    DeviceFlow, GITHUB, OpenLimiter, Refusal, RouteList, SendRequest, SendResult, Sender,
-    SignInCancel, SignInResult, StepRef, UserCode, is_client_id, open_guided, open_page, service,
+    DeviceFlow, GITHUB, OpenLimiter, PAPERCLIP, Refusal, RouteList, SendRequest, SendResult,
+    Sender, SignInCancel, SignInResult, StepRef, UserCode, is_client_id, open_guided, open_page,
+    operation_step, service,
 };
 use halonic_secrets::SecretError;
 use serde::Serialize;
@@ -140,15 +141,27 @@ fn keychain<R: Runtime>(app: &AppHandle<R>) -> ShellKeychain {
     }
 }
 
-/// Sends one reviewed call step with the user's token, or refuses it.
+/// Sends one reviewed call step with the user's token, or runs one
+/// reviewed operation step with its own code, or refuses it.
 #[tauri::command]
 pub async fn action_send<R: Runtime>(app: AppHandle<R>, request: SendRequest) -> SendResult {
+    let state = app.state::<ActionState>();
+    match operation_step(&state.routes.operations, &request) {
+        Some(Ok((route, values))) => return paperclip::run_operation(&app, route, values).await,
+        Some(Err(reason)) => {
+            log(format!(
+                "action_send {}@{} step {}: refused ({reason:?})",
+                request.definition, request.version, request.step
+            ));
+            return SendResult::Refused { reason };
+        }
+        None => {}
+    }
     let transport = ShellTransport {
         proxy: app.state::<HttpFetchState>().proxy(),
     };
     let dialogs = ShellDialogs { app: app.clone() };
     let tokens = keychain(&app);
-    let state = app.state::<ActionState>();
     let sender = Sender {
         routes: &state.routes,
         transport: &transport,
@@ -263,6 +276,7 @@ pub fn action_sign_in_cancel<R: Runtime>(app: AppHandle<R>, webview: Webview<R>)
 pub fn end_page<R: Runtime>(app: &AppHandle<R>, page: &str) {
     if let Some(state) = app.try_state::<ActionState>() {
         state.cancel_sign_in(Some(page));
+        paperclip::end_page(app);
     }
 }
 
@@ -273,6 +287,9 @@ pub async fn action_sign_out<R: Runtime>(
     app: AppHandle<R>,
     service: String,
 ) -> Result<(), ActionCommandRefusal> {
+    if service == PAPERCLIP {
+        return paperclip::sign_out(&app).await;
+    }
     let service = known_service(&service)?;
     keychain(&app)
         .on_worker(move |backend| account::sign_out(backend, service))
@@ -289,6 +306,9 @@ pub async fn action_account<R: Runtime>(
     app: AppHandle<R>,
     service: String,
 ) -> Result<Option<Account>, ActionCommandRefusal> {
+    if service == PAPERCLIP {
+        return paperclip::account(&app).await;
+    }
     let service = known_service(&service)?;
     keychain(&app)
         .on_worker(move |backend| account::signed_in(backend, service, now_seconds()))
@@ -340,6 +360,9 @@ fn open<R: Runtime>(app: &AppHandle<R>, page: &Url) -> OpenResult {
         }
     }
 }
+
+#[path = "action_paperclip.rs"]
+pub mod paperclip;
 
 #[path = "action_records.rs"]
 pub mod records;
