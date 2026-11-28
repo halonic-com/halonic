@@ -15,7 +15,7 @@ import { GitRunner, GitVcs } from "@halonicjs/adapter-git";
 import { testGit } from "@halonicjs/adapter-git/testing";
 import type { LocalEngine } from "@halonicjs/adapter-workspace-engine-node";
 import { AgentPlacement, agentFingerprint } from "@halonicjs/app";
-import { noKeyOrigins } from "@halonicjs/ports";
+import { noKeyOrigins, type SandboxCheck } from "@halonicjs/ports";
 import type { ProfileEnvironment } from "@halonicjs/profile";
 import { fixedClock } from "@halonicjs/std";
 import { verifies } from "@halonicjs/testing-spec";
@@ -144,7 +144,9 @@ async function writerOnThisComputer(): Promise<Partial<RunSetup>> {
   const check = await trust.check(read.subject);
   assertTrustable(check, read);
   expect((await trust.grant(read.subject, check.fingerprint, "cli")).ok).toBe(true);
-  const sandbox = { check: async () => ({ ok: true }) as const };
+  // Never asked: an agent set to "On this computer" isn't fenced.
+  const missing: SandboxCheck = { ok: false, reason: "bubblewrap-missing", missing: [] };
+  const sandbox = { check: async () => missing };
   return { sandboxGate: () => ({ sandbox, placement }) };
 }
 
