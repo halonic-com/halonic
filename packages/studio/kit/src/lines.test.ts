@@ -11,8 +11,11 @@ import { describe, expect, it } from "vitest";
 /** A one-sided 1px or wider border: `border-b`, `border-s-2`, `before:border-t`. Not `-0`. */
 const dividerWidth = /^(?:[\w-]+:)*border-[xytbselr](?:-[1-9]\d*)?$/;
 
-/** A border colour: `border-border`, `before:border-border`, `border-t-transparent`. */
-const borderColour = /^(?:[\w-]+:)*border(?:-[xytbselr])?-[a-z][\w-]*$/;
+/**
+ * A border colour: `border-border`, `before:border-border`, `border-t-transparent`, or a system
+ * colour in brackets such as `forced-colors:border-[CanvasText]`.
+ */
+const borderColour = /^(?:[\w-]+:)*border(?:-[xytbselr])?-(?:[a-z][\w-]*|\[[A-Za-z]+\])$/;
 
 /** Class names on a line, split from the quotes, backticks and `${…}` round them. */
 function classTokens(line: string): string[] {
@@ -44,6 +47,7 @@ describe("studio-kit lines", () => {
     '"relative before:absolute before:border-t before:border-border"',
     '"rounded-md border border-border phone:rounded-none phone:border-x-0"',
     '"flex h-12 items-center gap-2 pr-2.5 pl-4"',
+    '"shadow-header forced-colors:border-b forced-colors:border-[CanvasText]"',
   ])("lets %s through", (line) => {
     expect(lacksColour(line)).toBe(false);
   });

@@ -21,7 +21,14 @@ verifies("kit.content-header", () => {
     const heading = header.querySelector("h2") as HTMLElement;
 
     expect(header.className.split(" ")).toEqual(
-      expect.arrayContaining(["h-16", "gap-4", "shadow-header"]),
+      expect.arrayContaining([
+        "h-16",
+        "gap-4",
+        "shadow-header",
+        // Forced colours drop the shadow, so the edge comes back as a border there.
+        "forced-colors:border-b",
+        "forced-colors:border-[CanvasText]",
+      ]),
     );
     expect(header.className.split(" ")).not.toContain("border-b");
     // On a phone the gaps narrow to 12px, so a one-pane header's title keeps its room (HAL-20776).
