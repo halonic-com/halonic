@@ -9,22 +9,23 @@ import { MenuRow } from "./menu-row.tsx";
 // popover/place-popover.ts: change both together), so a long item wraps or cuts rather than
 // pushing its key and check off the screen. Exported for the states page's static copy.
 export const menuClasses = [
-  "m-0 inset-auto outline-none min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-md border border-transparent p-1",
-  "bg-surface-raised text-fg shadow-2",
+  "m-0 inset-auto outline-none min-w-45 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-transparent p-1",
+  "bg-surface text-fg shadow-2",
   "transition-opacity duration-(--duration-fast) ease-enter starting:opacity-0",
 ].join(" ");
 
-export const dividerClasses = "mx-0 my-1 border-0 border-t border-border";
+// Inset 8px from the menu's sides, 4px from the groups above and below (COMPONENTS.md, Menu).
+export const dividerClasses = "mx-2 my-1 border-0 border-t border-border";
 
-// Padding 8px 8px 6px, at most 300px wide, wrapping (component specs 20.2).
-const descriptionClasses = "m-0 max-w-75 px-2 pt-2 pb-1.5 text-small text-fg-muted";
+// Padding 8px above, 6px below and 12px at the sides, in line with the item labels, at most 300px wide, wrapping (component specs 20.2).
+const descriptionClasses = "m-0 max-w-75 px-3 pt-2 pb-1.5 text-small text-fg-muted";
 
 // The description's padding, mirrored, at the bottom and in caption size (component specs 21.5).
-const footerClasses = "m-0 max-w-75 px-2 pt-1.5 pb-2 text-caption text-fg-subtle";
+const footerClasses = "m-0 max-w-75 px-3 pt-1.5 pb-2 text-caption text-fg-subtle";
 
 // The caption-caps label of a group (component specs 24.4, "Group labels"). Exported for the states
 // page's static copy.
-export const menuHeadingClasses = "px-2 pt-2 pb-1 text-label uppercase text-fg-subtle";
+export const menuHeadingClasses = "px-3 pt-2 pb-1 text-label uppercase text-fg-subtle";
 
 /** What names the menu: the button that opens it, or a label of its own (a context menu). */
 export type MenuNaming = { readonly labelledBy: string } | { readonly label: string };

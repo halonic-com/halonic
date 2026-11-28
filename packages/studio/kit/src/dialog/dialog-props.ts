@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { ButtonUnavailable } from "../button/button.tsx";
 import type { CalloutAction } from "../callout/callout.tsx";
 
-/** `sm` 440px: confirmations, short forms. `md` 560px: a form with hints. `lg` 720px: Settings. */
+/** `sm` 500px: confirmations, short forms. `md` 560px: a form with hints. `lg` 720px: Settings. */
 export type DialogSize = "sm" | "md" | "lg";
 
 /** The confirming button, last in the footer on desktop and first on a phone. */

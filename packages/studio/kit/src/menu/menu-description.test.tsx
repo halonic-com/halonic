@@ -73,7 +73,7 @@ verifies("kit.menu-description", () => {
     const { menu } = renderMenu(costLine);
     const line = menu.querySelector("p") as HTMLElement;
     expect(line.className).toContain("text-small text-fg-muted");
-    expect(line.className).toContain("px-2 pt-2 pb-1.5");
+    expect(line.className).toContain("px-3 pt-2 pb-1.5");
     expect(line.className).toContain("max-w-75");
     expect(line.className).not.toContain("truncate");
   });

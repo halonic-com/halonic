@@ -28,17 +28,21 @@ const tones: Record<ToastTone, { readonly icon: ReactNode; readonly colour: stri
  * outline, inside the box so nothing grows, becomes its edge there.
  */
 const card = [
-  "pointer-events-auto flex items-start gap-2 rounded-md p-3 outline-1 outline-transparent",
+  "pointer-events-auto flex items-start gap-2 rounded-lg py-3 pr-3 pl-4 outline-1 outline-transparent",
   "-outline-offset-1 bg-surface-raised shadow-2 transition-opacity duration-(--duration-fast)",
   "starting:opacity-0",
 ].join(" ");
 
 /**
- * A text button in `accent-text` with no padding, so a wrapped label starts at the text's left
- * edge; hover underlines it, and on touch its 48px hit area is a pseudo-element.
+ * A 32px pill on the `surface-soft` fill (COMPONENTS.md, Toast), which stays visible on the dark
+ * card where `surface-muted` doesn't. It is pulled 6px into the line above and below so it keeps
+ * the title line 20px high; forced colours drop the fill, so a transparent outline inside it
+ * becomes its edge there. On touch its 48px hit area is a pseudo-element.
  */
 const actionButton = [
-  "rounded-xs text-left text-body-strong text-accent-text hover:underline focus-ring",
+  "-my-1.5 min-h-control-md rounded-full py-1.5 bg-surface-soft px-3 text-left text-body-strong text-fg",
+  "outline-1 -outline-offset-1 outline-transparent",
+  "hover:bg-surface-soft-hover focus-ring",
   "phone:hit-touch touch:hit-touch",
 ].join(" ");
 
@@ -92,7 +96,7 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
       >
         {tone.icon}
       </span>
-      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-2 gap-y-3.5">
         <div className="min-w-0 flex-[1_1_10rem] wrap-break-word">
           <p className="text-body-strong text-fg">{toast.title}</p>
           {toast.text === undefined ? null : (

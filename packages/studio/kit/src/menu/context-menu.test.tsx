@@ -116,7 +116,7 @@ verifies("kit.context-menu", () => {
     expect(menu.getAttribute("popover")).toBe("auto");
     expect(menu.getAttribute("aria-label")).toBe("Support reply");
     expect(menu.hasAttribute("aria-labelledby")).toBe(false);
-    expect(menu.className).toContain("bg-surface-raised text-fg shadow-2");
+    expect(menu.className).toContain("bg-surface text-fg shadow-2");
     expect(isOpen(menu)).toBe(false);
     expect(items.map((item) => item.textContent)).toEqual([
       "Close",

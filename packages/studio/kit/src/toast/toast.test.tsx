@@ -82,9 +82,8 @@ verifies("kit.toast", () => {
     expect(region?.className).toContain("phone:short:fixed");
     const [card] = cards(container);
     expect(card?.getAttribute("role")).toBe("status");
-    expect(card?.className).toContain("rounded-md");
+    expect(card?.className).toContain("rounded-lg py-3 pr-3 pl-4");
     expect(card?.className).toContain("bg-surface-raised shadow-2");
-    expect(card?.className).toContain("p-3");
     expect(card?.className).toContain("outline-1 outline-transparent -outline-offset-1");
     expect(card?.className).toContain("ease-enter");
     expect(card?.querySelector("[aria-hidden]")?.className).toContain("text-success");
@@ -184,9 +183,16 @@ verifies("kit.toast", () => {
     show({ tone: "danger", title: "Signed out", action: { label: "Sign in", onClick: vi.fn() } });
     const action = button(container, "Sign in");
     expect(action.parentElement?.className).toContain("flex-wrap items-start");
+    // 14px of row gap less the pill's 6px pull leaves 8px between the text and a wrapped action.
+    expect(action.parentElement?.className).toContain("gap-x-2 gap-y-3.5");
     expect(action.parentElement?.firstElementChild?.className).toContain("flex-[1_1_10rem]");
     expect(action.className).toContain("max-w-full flex-none");
-    expect(action.className).toContain("hover:underline");
+    expect(action.className).toContain("min-h-control-md rounded-full py-1.5");
+    expect(action.className).toContain("bg-surface-soft");
+    // Pulled 6px into the line above and below, so the 32px pill keeps the title line 20px high.
+    expect(action.className).toContain("-my-1.5");
+    // Forced colours drop the fill: the transparent outline inside it becomes the pill's edge.
+    expect(action.className).toContain("outline-1 -outline-offset-1 outline-transparent");
     expect(action.className).toContain("phone:hit-touch");
   });
 

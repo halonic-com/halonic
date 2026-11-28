@@ -12,7 +12,7 @@ import { type MenuItem, taggedItemName } from "./menu.tsx";
  * edge as well.
  */
 const rowClasses = [
-  "flex w-full min-h-control-md items-center gap-2 rounded-sm px-2 text-left text-body",
+  "flex w-full min-h-control-md items-center gap-2 rounded-md px-3 text-left text-body",
   "outline-2 -outline-offset-2 outline-transparent focus:outline-solid",
   "contrast-more:focus:outline-border-control",
   "phone:min-h-touch touch:min-h-touch",
@@ -31,6 +31,17 @@ const twoLineClasses = "py-1.5 phone:py-3 touch:py-3";
 
 const iconSlot =
   "inline-grid size-icon-sm shrink-0 place-items-center *:size-full phone:size-icon-md touch:size-icon-md";
+
+// The leading icon draws 18px in a 20px box (COMPONENTS.md, Menu), in `fg-muted` unless the item
+// is danger or disabled, whose colour it takes from the row.
+const leadingIconSlot =
+  "inline-grid size-icon-md shrink-0 place-items-center *:size-4.5 phone:*:size-full touch:*:size-full";
+const leadingIconTone = {
+  default: "text-fg-muted",
+  danger: "",
+  disabled: "",
+  unavailable: "text-fg-muted",
+} as const;
 
 /** Only the label and the icon fade on an unavailable item; its reason stays at full strength. */
 const fadedWhileUnavailable = "opacity-45 contrast-more:opacity-60 forced-colors:opacity-100";
@@ -87,7 +98,10 @@ export function MenuRow({ item, active, keyShortcuts, onFocus, onBlur, onPick }:
       }}
     >
       {item.icon === undefined ? null : (
-        <span className={`${iconSlot} ${faded}`.trim()} aria-hidden="true">
+        <span
+          className={`${leadingIconSlot} ${leadingIconTone[tone]} ${faded}`.trim()}
+          aria-hidden="true"
+        >
           {item.icon}
         </span>
       )}

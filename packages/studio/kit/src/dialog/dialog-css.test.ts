@@ -8,11 +8,16 @@ verifies("kit.dialog", () => {
     expect(css).toContain("width: var(--container-dialog-sm)");
     expect(css).toContain("width: var(--container-dialog-md)");
     expect(css).toContain("width: var(--container-dialog-lg)");
-    expect(css).toContain("--container-dialog-sm: 440px");
+    expect(css).toContain("--container-dialog-sm: 500px");
     expect(css).toContain("--container-dialog-md: 560px");
     expect(css).toContain("--container-dialog-lg: 720px");
     expect(css).toContain("max-width: calc(100vw - 32px)");
     expect(css).toContain("max-height: calc(100dvh - 64px)");
+  });
+
+  it("dims the window behind it with 32% black in light and dark alike", async () => {
+    const css = await buildCss(["backdrop:bg-overlay"]);
+    expect(css).toContain("--color-overlay: light-dark(rgb(0 0 0 / 0.32), rgb(0 0 0 / 0.32))");
   });
 
   it("keeps a fixed height inside the same limit", async () => {
