@@ -16,10 +16,15 @@ afterEach(unmountAll);
 /** A folder facts source the test changes by hand. */
 class HandFacts implements FolderFactsSource {
   #listeners = new Set<() => void>();
-  constructor(public facts: FolderFacts) {}
+  facts: FolderFacts;
+  constructor(facts: FolderFacts) {
+    this.facts = facts;
+  }
   subscribe(listener: () => void) {
     this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
+    return () => {
+      this.#listeners.delete(listener);
+    };
   }
   set(facts: FolderFacts) {
     this.facts = facts;

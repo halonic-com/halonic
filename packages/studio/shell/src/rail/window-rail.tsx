@@ -74,19 +74,22 @@ export interface WindowRailOptions {
 export interface WindowRailParts {
   /** The `IconRail`, for the frame's `rail` slot. */
   readonly element: ReactNode;
-  /** The places other entries hold, which the sidebar leaves out: its `leftOut`. */
+  /**
+   * The places other entries hold, which the list column beside the rail leaves out. The window
+   * hands them to the sidebar once the places list gives way to the column (P3, the next PR).
+   */
   readonly leftOut: ReadonlySet<string>;
 }
 
 /**
  * The rail in the window (`shell.rail-frame`): the entries the folder shows and the selection the
- * rail and the list column share, so the sidebar leaves out the places other entries hold.
- * Settings stays the sidebar's last row for now, so the rail doesn't show it a second time.
+ * rail and the list column share. Settings stays the sidebar's last row for now, so the rail
+ * doesn't show it a second time.
  *
  * @example
  * const rail = useWindowRailParts({ rail: contributions.rail, source: workspace.folderFacts,
  *   tabs, placeOfKind });
- * <ShellFrame rail={rail.element} sidebar={<StudioSidebar leftOut={rail.leftOut} … />} … />
+ * <ShellFrame rail={rail.element} sidebar={<StudioSidebar … />} … />
  */
 export function useWindowRailParts(options: WindowRailOptions): WindowRailParts {
   const { tabs, placeOfKind } = options;

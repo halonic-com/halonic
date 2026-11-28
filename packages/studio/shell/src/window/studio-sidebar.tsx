@@ -60,11 +60,6 @@ export interface StudioSidebarProps {
   readonly width?: number | undefined;
   /** Called with the width the resize edge sets, when the window keeps it. */
   readonly onWidthChange?: ((width: number) => void) | undefined;
-  /**
-   * The places the rail's other entries hold, which the sidebar beside the rail doesn't list
-   * (`shell.rail-frame`): it lists the selected entry's places, and those no entry holds.
-   */
-  readonly leftOut?: ReadonlySet<string> | undefined;
 }
 
 /**
@@ -92,9 +87,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
     useCallback((listener) => tabs.subscribe(listener), [tabs]),
     () => tabs.state,
   );
-  const every = useShownPlaces(props.places, contextFor);
-  const { leftOut } = props;
-  const places = leftOut === undefined ? every : every.filter((place) => !leftOut.has(place.id));
+  const places = useShownPlaces(props.places, contextFor);
 
   return (
     <>

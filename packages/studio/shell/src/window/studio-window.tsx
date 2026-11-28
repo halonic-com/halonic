@@ -348,7 +348,6 @@ function StudioWindowBody(props: StudioWindowProps) {
       sidebar={
         <StudioSidebar
           places={places}
-          leftOut={rail.leftOut}
           views={sidebarViews}
           selectedView={sidebarView}
           onSelectView={setSidebarView}

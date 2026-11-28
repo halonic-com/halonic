@@ -147,7 +147,8 @@ verifies("studio.entry", () => {
       const link = placeLinks(element).find((candidate) => candidate.textContent === label);
       link?.click();
       await vi.waitFor(
-        () => expect(element.querySelector('[aria-current="page"]')?.textContent).toBe(label),
+        // The sidebar's row: the icon rail marks its own selected entry too, a button with no text.
+        () => expect(element.querySelector('a[aria-current="page"]')?.textContent).toBe(label),
         { timeout: 4_000 },
       );
       // Pages load on demand: wait out the import, then until the page drew its heading or
