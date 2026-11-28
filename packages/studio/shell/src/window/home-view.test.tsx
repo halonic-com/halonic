@@ -33,12 +33,20 @@ afterEach(() => {
 /** A service only the _chats_ feature's context reaches, so a slot shows whose context it got. */
 const ChatsOwner = serviceKey<string>("chats.owner");
 
-/** Home's list column as a feature draws it: one row, which opens "triage" in the pane. */
+/** Home's list column as a feature draws it: two rows; "triage" opens in the pane. */
 function ChatsColumn({ context, setOpen }: HomeListColumnProps) {
   return (
     <nav aria-label="Chats">
       <p className="owner">{context.services.get(ChatsOwner)}</p>
-      <button type="button" className="triage" onClick={() => setOpen("triage")}>
+      <button type="button" className="inbox" data-row-id="inbox" onClick={() => setOpen("inbox")}>
+        Inbox
+      </button>
+      <button
+        type="button"
+        className="triage"
+        data-row-id="triage"
+        onClick={() => setOpen("triage")}
+      >
         Triage
       </button>
     </nav>
@@ -150,6 +158,15 @@ verifies("shell.home-view", () => {
     expect(container.querySelector(".chats-pane")?.textContent).toBe("Chat triage");
     await act(async () => buttonNamed(container, homeViewWords.back)?.click());
     expect(container.querySelector('nav[aria-label="Chats"]')).not.toBeNull();
+  });
+
+  it("moves the focus to Back to Home when an item opens under 900px, and back to its row after", async () => {
+    const container = await renderHome([chatsFeature], 800);
+    container.querySelector<HTMLButtonElement>(".triage")?.focus();
+    await act(async () => container.querySelector<HTMLButtonElement>(".triage")?.click());
+    expect(document.activeElement).toBe(buttonNamed(container, homeViewWords.back));
+    await act(async () => buttonNamed(container, homeViewWords.back)?.click());
+    expect(document.activeElement).toBe(container.querySelector(".triage"));
   });
 
   it("shows Home's sections alone on a phone", async () => {
