@@ -1,8 +1,12 @@
 import { parse } from "@halonicjs/schema-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { guidedAddresses, manualGuideOf, secretFields } from "../guided-test-support.ts";
-import { acceptedValueNames } from "../value-fields.test-helper.ts";
+import {
+  acceptedValueNames,
+  guidedAddresses,
+  manualGuideOf,
+  secretFields,
+} from "../guided-test-support.ts";
 import { definition } from "./bind-secret.ts";
 
 const parameters = {
@@ -67,6 +71,94 @@ verifies("action-catalog.paperclip-bind-secret", () => {
           "",
         ].join("\n"),
       );
+    });
+  });
+});
+
+/** One name for each entry of the deny list, and the entry it falls under. */
+const deniedVariables = [
+  ["NPM_CONFIG_*", "NPM_CONFIG_REGISTRY"],
+  ["GOPROXY", "GOPROXY"],
+  ["PIP_INDEX_URL", "PIP_INDEX_URL"],
+  ["PIP_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL"],
+  ["UV_INDEX_URL", "UV_INDEX_URL"],
+  ["UV_DEFAULT_INDEX", "UV_DEFAULT_INDEX"],
+  ["OPENAI_API_BASE", "OPENAI_API_BASE"],
+  ["AWS_ENDPOINT_URL*", "AWS_ENDPOINT_URL"],
+  ["AWS_ENDPOINT_URL*", "AWS_ENDPOINT_URL_S3"],
+  ["CLAUDE_CODE_SHELL_PREFIX", "CLAUDE_CODE_SHELL_PREFIX"],
+  ["EDITOR", "EDITOR"],
+  ["VISUAL", "VISUAL"],
+  ["BROWSER", "BROWSER"],
+  ["JAVA_TOOL_OPTIONS", "JAVA_TOOL_OPTIONS"],
+  ["JDK_JAVA_OPTIONS", "JDK_JAVA_OPTIONS"],
+  ["PERL5OPT", "PERL5OPT"],
+  ["RUBYOPT", "RUBYOPT"],
+  ["BUN_OPTIONS", "BUN_OPTIONS"],
+  ["NODE_TLS_REJECT_UNAUTHORIZED", "NODE_TLS_REJECT_UNAUTHORIZED"],
+  ["HOME", "HOME"],
+  ["XDG_CONFIG_HOME", "XDG_CONFIG_HOME"],
+  ["CLAUDE_CONFIG_DIR", "CLAUDE_CONFIG_DIR"],
+  ["CODEX_HOME", "CODEX_HOME"],
+  ["ZDOTDIR", "ZDOTDIR"],
+  ["CARGO_TARGET_*", "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER"],
+  ["*_INDEX", "UV_INDEX"],
+  ["*_INDEX_URL", "UV_EXTRA_INDEX_URL"],
+  ["*_FIND_LINKS", "UV_FIND_LINKS"],
+  ["*_FIND_LINKS", "PIP_FIND_LINKS"],
+  ["*_REGISTRY", "BUN_CONFIG_REGISTRY"],
+  ["*_SERVER", "YARN_NPM_REGISTRY_SERVER"],
+  ["*_SERVER", "RUSTUP_DIST_SERVER"],
+  ["*_OPTS", "JAVA_OPTS"],
+  ["*_OPTS", "GRADLE_OPTS"],
+  ["*_OPTS", "MAVEN_OPTS"],
+  ["*_OPTIONS", "DENO_OPTIONS"],
+  ["*_HOME", "CARGO_HOME"],
+  ["*_DIR", "GNUPG_DIR"],
+  ["*_PROXY", "HTTPS_PROXY"],
+  ["*_BASE_URL", "ANTHROPIC_BASE_URL"],
+  ["*_API_URL", "OPENAI_API_URL"],
+  ["NODE_OPTIONS", "NODE_OPTIONS"],
+  ["LD_*", "LD_PRELOAD"],
+  ["PATH", "PATH"],
+  ["GIT_*", "GIT_SSH_COMMAND"],
+  ["PAPERCLIP_*", "PAPERCLIP_API_URL"],
+  ["NODE_EXTRA_CA_CERTS", "NODE_EXTRA_CA_CERTS"],
+  ["SSL_CERT_*", "SSL_CERT_FILE"],
+  ["*_CA_BUNDLE", "REQUESTS_CA_BUNDLE"],
+  ["DYLD_*", "DYLD_INSERT_LIBRARIES"],
+  ["BASH_ENV", "BASH_ENV"],
+  ["ENV", "ENV"],
+  ["PYTHON*", "PYTHONPATH"],
+  ["*_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT"],
+  ["*_HOST", "DOCKER_HOST"],
+] as const;
+
+verifies("action-catalog.paperclip-bind-variable", () => {
+  describe("paperclip.bind-secret@1's variable", () => {
+    for (const [entry, variable] of deniedVariables) {
+      it(`refuses ${variable}, under ${entry}`, () => {
+        expect(parse(definition.parameters, { ...parameters, variable }).ok).toBe(false);
+      });
+    }
+
+    it("takes a key's own name, also one that only starts like a denied one", () => {
+      for (const variable of [
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GITHUB_TOKEN",
+        "PATHFINDER_KEY",
+        "HOSTNAME_KEY",
+        "ENVIRONMENT_NAME",
+        "HOME_ASSISTANT_TOKEN",
+        "EDITOR_KEY",
+      ]) {
+        expect(parse(definition.parameters, { ...parameters, variable }).ok).toBe(true);
+      }
+    });
+
+    it("refuses those names as the variable only, not as the secret's own name", () => {
+      expect(parse(definition.parameters, { ...parameters, name: "DOCKER_HOST" }).ok).toBe(true);
     });
   });
 });

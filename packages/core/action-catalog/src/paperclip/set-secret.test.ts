@@ -2,12 +2,12 @@ import { parse } from "@halonicjs/schema-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
+  acceptedValueNames,
   addressesOffOrigin,
   guidedAddresses,
   manualGuideOf,
   secretFields,
 } from "../guided-test-support.ts";
-import { acceptedValueNames } from "../value-fields.test-helper.ts";
 import { definition } from "./set-secret.ts";
 
 const parameters = { host: "paperclip.acme.example", company: "ACME", name: "ANTHROPIC_API_KEY" };

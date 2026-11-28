@@ -1,4 +1,5 @@
 import { type StepperDefinition, strictParameters } from "@halonicjs/action-steppers";
+import { paperclipHost } from "../paperclip-parameters.ts";
 
 /** Each part of the sign-in happens on the connection's own Paperclip, so the guide opens it once. */
 const paperclipPage = "https://{host}/";
@@ -23,11 +24,7 @@ export const definition: StepperDefinition<Record<string, string | number>> = {
   // Makes a board key, which can do everything the board can in Paperclip.
   risk: "admin",
   parameters: strictParameters({
-    host: {
-      kind: "text",
-      pattern:
-        /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?){1,8}$/,
-    },
+    host: paperclipHost,
     // As Studio names a connection file (`agent-host.paperclip-key`).
     connection: { kind: "text", pattern: /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/ },
     mode: { kind: "choice", options: ["connect", "test"] },

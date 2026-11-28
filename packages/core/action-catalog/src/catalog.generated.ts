@@ -157,19 +157,19 @@ export const catalogEntries = {
   },
   "paperclip/add-project-repository": {
     definition: paperclipAddProjectRepository,
-    sourceHash: "af82f33be855aad09ebd9dcefeec5f7b6953adf3677b2a9abb3cc51d0ce047ba",
+    sourceHash: "946c0ae77439c22afbd20a1cad81511f556ba77d436755ba13bb313812da59ba",
   },
   "paperclip/bind-secret": {
     definition: paperclipBindSecret,
-    sourceHash: "45adeb5c5c1af80672b423019edf09ee6abae8476722c658afe1d5c290169ce5",
+    sourceHash: "5807df62afef435f60df4ab3e3da2945ff69310e2602d3ee6db905993845a09b",
   },
   "paperclip/connect-and-test": {
     definition: paperclipConnectAndTest,
-    sourceHash: "2158ac39d4b52bbd4434b3864d1d4d9042cc8f9bb2a557c0bf2c5e693fcb88c2",
+    sourceHash: "4d82f26a1ff4a2c44b6689c5797d9ac6c2895f6230e8712c0afb3713c93d66de",
   },
   "paperclip/set-secret": {
     definition: paperclipSetSecret,
-    sourceHash: "f851db9f1e9020118366c65b39f1bbdcd80777b5ac5889b9a054e34e68fc315c",
+    sourceHash: "2e73efdc94faed8c5d9fd5ce90fb2147f597264e665db44090a75d67f1db7556",
   },
   "play/fill-data-safety": {
     definition: playFillDataSafety,
