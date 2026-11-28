@@ -3,7 +3,7 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, test } from "vitest";
-import { fakeHost } from "./fake-host.test-helper.ts";
+import { fakeHost, fakeHostStoringUpdates } from "./fake-host.test-helper.ts";
 import { doneOnly, type HostApi, handoffOnly, paperclipHost } from "./host.ts";
 
 const srcDir = fileURLToPath(new URL("..", import.meta.url));
@@ -112,6 +112,26 @@ verifies("paperclip.pr-watcher-handoff", () => {
         options: { reason: "pr_watcher", idempotencyKey: "pr-watcher task-1 k1" },
       },
     ]);
+  });
+
+  test("hands a reviewed task back to its author without the reviewer's monitor", async () => {
+    // HAL-21217: the reviewer's monitor would otherwise wake the author for nothing.
+    const reviewersTask = {
+      ...openTask,
+      assigneeAgentId: "agent-nora",
+      monitorNextCheckAt: new Date("2026-11-28T18:30:00.000Z"),
+    };
+    const { host } = fakeHostStoringUpdates([reviewersTask]);
+    const handBack = { from: "agent-nora", to: "agent-mateo" };
+    const body = "PR watcher: changes requested on #5701, head `5701aaa`.";
+    expect(await paperclipHost(host, "acme").handOff("task-1", handBack, body, "k1")).toBe(
+      "written",
+    );
+    expect(await host.issues.get("task-1", "acme")).toMatchObject({
+      assigneeAgentId: "agent-mateo",
+      status: "todo",
+      monitorNextCheckAt: null,
+    });
   });
 
   test("posts no comment, so no once-per-head marker, when the reassignment fails", async () => {
