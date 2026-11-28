@@ -1,10 +1,12 @@
 import { EmptyState, PlaceIcon } from "@halonicjs/studio-kit";
 import { listColumnClass } from "@halonicjs/studio-kit/list-column";
 import type { ItemRef } from "@halonicjs/studio-shell";
-import type { ReactNode, Ref } from "react";
+import { type ReactNode, type Ref, useEffect, useRef } from "react";
+import type { Version } from "../api.ts";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangesList, ChangesListState } from "../changes-list.ts";
-import { pageWords, stateWords } from "../changes-words.ts";
+import { pageWords, stateWords, versionWords } from "../changes-words.ts";
+import { VersionDetails } from "./history.tsx";
 import { MergeChoices } from "./merge-choices.tsx";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
 
@@ -49,18 +51,31 @@ export interface ChangesPaneProps {
   readonly list: ChangesList;
   readonly state: ChangesListState;
   readonly items: readonly ChangeItem[];
-  /** The item whose What changed is open; `undefined` shows what the list holds. */
+  /** The item whose What changed is open; `undefined` shows the version, or what the list holds. */
   readonly open: ChangeItem | undefined;
+  /** The version picked in History, shown when no item is open. */
+  readonly version: Version | undefined;
+  /** Escape in the version's details: focus goes back to the version's row. */
+  readonly onVersionEscape: (id: string) => void;
   readonly developer: boolean;
   readonly openItem: ((item: ItemRef) => void) | undefined;
 }
 
 /**
  * What the content pane shows: Get updates' choices while the person picks them, else the open
- * item's What changed, else the Changes place's icon with how many items changed. A new item
- * draws a new What changed, so focus moves to its heading each time.
+ * item's What changed, else the picked version, else the Changes place's icon with how many items
+ * changed. A new item or version is drawn anew, so focus moves to its heading each time.
  */
-export function ChangesPane({ list, state, items, open, developer, openItem }: ChangesPaneProps) {
+export function ChangesPane({
+  list,
+  state,
+  items,
+  open,
+  version,
+  onVersionEscape,
+  developer,
+  openItem,
+}: ChangesPaneProps) {
   if (state.merge !== undefined && state.choosing)
     return <MergeChoices list={list} phone={false} />;
   if (open !== undefined) {
@@ -72,6 +87,16 @@ export function ChangesPane({ list, state, items, open, developer, openItem }: C
         developer={developer}
         openItem={openItem}
         inPane
+      />
+    );
+  }
+  if (version !== undefined) {
+    return (
+      <PaneVersion
+        key={version.id}
+        version={version}
+        list={list}
+        onEscape={() => onVersionEscape(version.id)}
       />
     );
   }
@@ -88,8 +113,29 @@ export function ChangesPane({ list, state, items, open, developer, openItem }: C
   );
 }
 
-/** Under "Changes" in the empty pane: "3 changes", or that nothing changed; nothing before a read. */
+/**
+ * Under "Changes" in the empty pane: "3 items", as the list counts them, or that nothing changed.
+ * Nothing before a read worked, or in a folder without history, without git or in a larger
+ * repository.
+ */
 function paneSentence(state: ChangesListState, items: readonly ChangeItem[]): string | undefined {
   if (state.read?.kind !== "ready") return undefined;
-  return items.length === 0 ? stateWords.nothingChanged : pageWords.spokenCount(items.length);
+  return items.length === 0 ? stateWords.nothingChanged : versionWords.itemCount(items.length);
+}
+
+/** A picked version in the pane: its title takes focus when it is drawn. */
+function PaneVersion({
+  version,
+  list,
+  onEscape,
+}: {
+  readonly version: Version;
+  readonly list: ChangesList;
+  readonly onEscape: () => void;
+}) {
+  const title = useRef<HTMLHeadingElement>(null);
+  useEffect(() => title.current?.focus(), []);
+  return (
+    <VersionDetails version={version} list={list} titleRef={title} onEscape={onEscape} inPane />
+  );
 }

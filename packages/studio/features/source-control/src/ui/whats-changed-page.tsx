@@ -18,8 +18,9 @@ export interface WhatChangedPageProps {
   /** Opens the item itself; without it the page has no Open button. */
   readonly openItem?: ((item: ItemRef) => void) | undefined;
   /**
-   * Back to Changes, above the page. Without it, as on a phone page whose top bar names the item
-   * and has Back, the page has none and its `h1` is for screen readers only.
+   * Back to Changes, above the page. Without it the page has none: on a phone page, whose top bar
+   * names the item and has Back, its `h1` is for screen readers only; in the desktop's content pane
+   * (`inPane`) the list is beside it, and its `h2` stays visible.
    */
   readonly onBack?: (() => void) | undefined;
   /** On a phone (2.13) the page is pushed, with Open as a row and Undo in the bottom bar. */
@@ -32,9 +33,11 @@ export interface WhatChangedPageProps {
 }
 
 /**
- * What changed in one item, as its own page in this tab (checklist part 2, 2.4): Back to Changes,
- * the item's name as the `h1`, **Undo these changes** and Open workflow, then the changes of each
- * of its files. Focus starts on the heading, so a screen reader says where it is.
+ * What changed in one item (checklist part 2, 2.4): on the desktop in the content pane beside the
+ * Changes list, under the item's name as an `h2` (`source-control.list-column`); else as its own
+ * page in this tab with Back to Changes and the name as the `h1`. Then **Undo these changes** and
+ * Open workflow, then the changes of each of its files. Focus starts on the heading, so a screen
+ * reader says where it is.
  *
  * On a phone (2.13) the changes are in words only, **Open Sorter** is a 48px row under them and
  * **Undo these changes** is the bottom bar; a failed roll-back's Callout comes first. It is a page

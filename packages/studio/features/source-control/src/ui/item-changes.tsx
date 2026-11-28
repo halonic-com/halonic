@@ -76,7 +76,7 @@ function FileChanges({
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
-  // Headings in the file sit under its path, or straight under the item's name without one (a11y C3).
+  // Headings in the file sit under its path, or straight under the item's name (a11y C3).
   const level = showPath ? levelBelow(pathLevel) : pathLevel;
 
   async function discardFile() {

@@ -1,5 +1,5 @@
 import { usePresentation } from "@halonicjs/studio-kit";
-import type { ItemRef, PlaceViewProps } from "@halonicjs/studio-shell";
+import { focusFellToPage, type ItemRef, type PlaceViewProps } from "@halonicjs/studio-shell";
 import {
   type ReactNode,
   useCallback,
@@ -37,6 +37,7 @@ import { LoadFailed, Loading, NestedRepository, NoGit, TurnOnHistory } from "./r
 import { SharingLine } from "./sharing-line.tsx";
 import { useFocusNewVersion } from "./use-focus-new-version.ts";
 import { type OpenItem, useOpenItem } from "./use-open-item.ts";
+import { historyOpening, type PaneSelection, usePaneSelection } from "./use-pane-selection.ts";
 import { VersionDialogs } from "./version-dialogs.tsx";
 import { VersionPage } from "./version-page.tsx";
 import { WhatChangedPage } from "./whats-changed-page.tsx";
@@ -109,7 +110,11 @@ export function ChangesView({
   const [addingAddress, setAddingAddress] = useState(false);
   const [leftToGit, setLeftToGit] = useState(false);
   const items = orderItems(state.files);
-  const nav = useOpenItem(items, () => heading.current?.focus());
+  // Beside the pane, a read nobody asked for may close the item while focus is elsewhere: leave it.
+  const nav = useOpenItem(items, () => {
+    if (phone || focusFellToPage()) heading.current?.focus();
+  });
+  const selection = usePaneSelection(list, nav, page, !phone);
   const opening = usePhoneOpening(pages, items, state.history.versions);
   useFocusAfterChoices(state.choosing, () => heading.current?.focus());
   const pageClass = "flex w-full flex-col gap-4 p-4";
@@ -117,7 +122,7 @@ export function ChangesView({
   if (pushed !== undefined) return pushed;
   const content = (
     <>
-      <header className="flex items-center gap-3">
+      <header className="flex flex-wrap items-center gap-3">
         <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
           {pageWords.title}
         </h1>
@@ -138,6 +143,7 @@ export function ChangesView({
         opening={opening}
         openItem={openItem}
         phone={phone}
+        selection={phone ? undefined : selection}
         focusHeading={() => heading.current?.focus()}
       />
       {addingAddress ? (
@@ -174,6 +180,8 @@ export function ChangesView({
           state={state}
           items={items}
           open={nav.open}
+          version={state.history.versions.find((version) => version.id === selection.versionId)}
+          onVersionEscape={selection.focusVersionRow}
           developer={developer}
           openItem={openItem}
         />
@@ -319,6 +327,7 @@ function PageBody({
   opening,
   openItem,
   phone,
+  selection,
   focusHeading,
 }: {
   readonly list: ChangesList;
@@ -328,6 +337,8 @@ function PageBody({
   readonly opening: PhoneOpening | undefined;
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
+  /** On the desktop, what the content pane shows; rows and versions open there. */
+  readonly selection: PaneSelection | undefined;
   readonly focusHeading: () => void;
 }) {
   const retry = () => void list.refresh();
@@ -349,6 +360,7 @@ function PageBody({
         opening={opening}
         openItem={openItem}
         phone={phone}
+        selection={selection}
         focusHeading={focusHeading}
       />
     </>
@@ -365,6 +377,7 @@ function ReadBody({
   opening,
   openItem,
   phone,
+  selection,
   focusHeading,
 }: {
   readonly list: ChangesList;
@@ -375,6 +388,7 @@ function ReadBody({
   readonly opening: PhoneOpening | undefined;
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
+  readonly selection: PaneSelection | undefined;
   readonly focusHeading: () => void;
 }) {
   if (read.kind === "not-a-repository") {
@@ -390,9 +404,10 @@ function ReadBody({
         <ChangeList
           list={list}
           items={items}
-          onOpen={opening?.openItem ?? nav.show}
+          onOpen={opening?.openItem ?? selection?.openRow ?? nav.show}
           openItem={openItem}
           current={nav.open?.id}
+          besidePane={selection !== undefined}
           returnFocus={opening === undefined ? nav.returnFocus : opening.itemFocus}
           onFocusPlaced={nav.focusPlaced}
           phone={phone}
@@ -403,9 +418,7 @@ function ReadBody({
         history={state.history}
         unshared={state.unsharedIds}
         phone={phone}
-        {...(opening === undefined
-          ? {}
-          : { onOpenVersion: opening.openVersion, returnTo: opening.versionFocus })}
+        {...historyOpening(opening, selection)}
       />
     </>
   );

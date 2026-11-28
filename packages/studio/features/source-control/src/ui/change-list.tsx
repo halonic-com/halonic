@@ -7,7 +7,7 @@ import {
   type ListRow,
   type MenuEntry,
 } from "@halonicjs/studio-kit";
-import type { ItemRef } from "@halonicjs/studio-shell";
+import { focusFellToPage, type ItemRef } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import { groupIntoItems, isOpenable } from "../change-items.ts";
@@ -33,6 +33,11 @@ export interface ChangeListProps {
   readonly openItem?: ((item: ItemRef) => void) | undefined;
   /** The item open in the content pane beside the list, marked as the current row. */
   readonly current?: string | undefined;
+  /**
+   * Whether the list sits beside the desktop's content pane: then `returnFocus` moves focus only if
+   * it fell to the page with what the pane showed, never from where the person put it.
+   */
+  readonly besidePane?: boolean;
   /**
    * Where focus goes when the list comes back from a page, or when the item open beside it is
    * gone; `undefined` leaves it alone.
@@ -76,8 +81,10 @@ export function orderItems(files: readonly ChangedFile[]): ChangeItem[] {
 /**
  * What changed, one row for each item (checklist part 2, 2.2), under "Since your last version" with
  * its count and Create version; files no kind places are under "Other files". The rows are the
- * kit List: one Tab stop, ↑ ↓ move, Enter opens the item's What changed page. When the list comes
- * back from that page, focus goes to the row it was opened from, or the one that took its place.
+ * kit List: one Tab stop, ↑ ↓ move, Enter opens the item's What changed: a page of its own, or the
+ * desktop's content pane beside the list. When the list comes back from that page, focus goes to
+ * the row it was opened from, or the one that took its place; beside the pane, focus goes to that
+ * row when the open item goes, but only if it fell to the page with it.
  */
 export function ChangeList({
   list,
@@ -85,6 +92,7 @@ export function ChangeList({
   onOpen,
   openItem,
   current,
+  besidePane = false,
   returnFocus,
   onFocusPlaced,
   phone = false,
@@ -97,6 +105,8 @@ export function ChangeList({
   focusPlaced.current = onFocusPlaced;
   const latestItems = useRef(items);
   latestItems.current = items;
+  const besidePaneRef = useRef(besidePane);
+  besidePaneRef.current = besidePane;
   const target = useRef(returnFocus);
   target.current = returnFocus;
   // Each target once, by what it names, as a caller may pass an equal one on every draw: on the
@@ -108,7 +118,7 @@ export function ChangeList({
     const next =
       latestItems.current.find((item) => item.id === returnTo.id) ??
       latestItems.current[returnTo.index];
-    focusRowOrHeading(region.current, next);
+    if (!besidePaneRef.current || focusFellToPage()) focusRowOrHeading(region.current, next);
     focusPlaced.current?.();
   }, [targetKey]);
 

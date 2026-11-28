@@ -1,71 +1,63 @@
 // @vitest-environment jsdom
 
-import type { VcsChange } from "@halonicjs/ports";
-import { createToastStore, PresentationProvider, ToastStoreProvider } from "@halonicjs/studio-kit";
+import { listColumnClass } from "@halonicjs/studio-kit/list-column";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import type { UpdateMerge } from "../api.ts";
-import { ChangesList } from "../changes-list.ts";
-import { fakeSource, settle } from "../source.test-helper.ts";
+import {
+  agentChange,
+  listColumn,
+  openColumnsPage,
+  pane,
+  readmeChange,
+  sorterVersion,
+} from "../test-support/changes-columns-page.tsx";
 import { openItem } from "../test-support/open-item.ts";
-import { render, unmountAll } from "../test-support/render.tsx";
-import { ChangesView } from "./changes-page.tsx";
+import { unmountAll } from "../test-support/render.tsx";
 
 afterEach(unmountAll);
 
-const lines = (...all: string[]) => `${all.join("\n")}\n`;
-const agentPath = "agents/triage.agent.yaml";
-const agentChange: VcsChange = { path: agentPath, status: "modified", staged: false };
-const readmeChange: VcsChange = { path: "README.md", status: "modified", staged: false };
+const classesOf = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
 
-async function openPage(
-  changes: readonly VcsChange[],
-  options: { readonly phone?: boolean; readonly left?: UpdateMerge } = {},
-) {
-  const { phone = false, left } = options;
-  const fake = fakeSource({ kind: "ready", changes });
-  if (left !== undefined) {
-    fake.setRemote(true);
-    fake.setMerge(left);
-  }
-  fake.setTexts(agentPath, {
-    before: lines("id: triage", "name: Triage", "model: claude"),
-    after: lines("id: triage", "name: Triage", "model: gpt"),
-  });
-  fake.setTexts("README.md", { before: "a\n", after: "b\n" });
-  const list = new ChangesList(fake.source);
-  const view = <ChangesView list={list} />;
-  const root = render(
-    <ToastStoreProvider store={createToastStore()}>
-      {phone ? <PresentationProvider presentation="phone">{view}</PresentationProvider> : view}
-    </ToastStoreProvider>,
+const historyRow = (root: HTMLElement, name: string) =>
+  [...root.querySelectorAll<HTMLElement>('[data-part="history-list"] [role="gridcell"]')].find(
+    (cell) => cell.textContent?.includes(name),
   );
-  await act(settle);
-  return { fake, root };
-}
-
-const pane = (root: HTMLElement) => root.querySelector<HTMLElement>('[data-pane="content"]');
-const listColumn = (root: HTMLElement) => root.querySelector<HTMLElement>('[data-pane="list"]');
 
 verifies("source-control.list-column", () => {
   describe("Changes in a list column beside a content pane", () => {
-    it("puts the list in the kit's list column and says how many items changed in the pane", async () => {
-      const { root } = await openPage([agentChange, readmeChange]);
-      expect(listColumn(root)?.className).toContain("w-[34%]");
-      expect(listColumn(root)?.className).toContain("overflow-y-auto");
+    it("puts the list in the kit's list column, beside a pane that takes the rest", async () => {
+      const { root } = await openColumnsPage({ changes: [agentChange, readmeChange] });
+      expect(classesOf(listColumn(root))).toEqual(
+        expect.arrayContaining([...listColumnClass.split(" "), "overflow-y-auto", "shrink-0"]),
+      );
+      expect(classesOf(pane(root))).toEqual(
+        expect.arrayContaining(["flex-1", "min-w-0", "overflow-y-auto"]),
+      );
       expect(listColumn(root)?.textContent).toContain("Since your last version");
+      // The header lets Get updates drop under "Changes" in a narrow column.
+      expect(classesOf(listColumn(root)?.querySelector("header"))).toContain("flex-wrap");
+    });
+
+    it("says in the pane how many items changed, as the list counts them", async () => {
+      const { root } = await openColumnsPage({ changes: [agentChange, readmeChange] });
       expect(pane(root)?.querySelector("h2")?.textContent).toBe("Changes");
-      expect(pane(root)?.textContent).toContain("2 changes");
+      expect(pane(root)?.textContent).toBe("Changes2 items");
     });
 
     it("says nothing changed in the pane when no file changed", async () => {
-      const { root } = await openPage([]);
-      expect(pane(root)?.textContent).toContain("Nothing has changed since your last version.");
+      const { root } = await openColumnsPage();
+      expect(pane(root)?.textContent).toBe("ChangesNothing has changed since your last version.");
+    });
+
+    it("says only Changes in the pane for a folder without history", async () => {
+      const { root } = await openColumnsPage({ read: { kind: "not-a-repository" } });
+      expect(listColumn(root)?.textContent).toContain("Keep a history of your work");
+      expect(pane(root)?.textContent).toBe("Changes");
     });
 
     it("opens a row's What changed in the pane, keeps the list and marks the row current", async () => {
-      const { root } = await openPage([agentChange, readmeChange]);
+      const { root } = await openColumnsPage({ changes: [agentChange, readmeChange] });
       openItem(root, "Triage");
       expect(pane(root)?.querySelector("h2")?.textContent).toBe("Triage");
       expect(document.activeElement?.textContent).toBe("Triage");
@@ -76,43 +68,26 @@ verifies("source-control.list-column", () => {
       expect(document.activeElement?.textContent).toBe("README.md");
     });
 
-    it("empties the pane and puts focus on the row that took the place of an item undone", async () => {
-      const { fake, root } = await openPage([agentChange, readmeChange]);
-      const page = openItem(root, "Triage");
-      fake.answer({ kind: "ready", changes: [readmeChange] });
-      const undo = [...page.querySelectorAll("button")].find(
-        (button) => button.textContent?.trim() === "Undo these changes",
-      );
-      await act(async () => {
-        undo?.click();
-        await settle();
+    it("shows one thing in the pane: a picked version replaces the item, and a row the version", async () => {
+      const { root } = await openColumnsPage({ changes: [agentChange], history: [sorterVersion] });
+      openItem(root, "Triage");
+      await act(async () => historyRow(root, sorterVersion.name)?.click());
+      expect(pane(root)?.querySelector("h2")?.textContent).toBe(sorterVersion.name);
+      expect(document.activeElement?.textContent).toBe(sorterVersion.name);
+      expect(listColumn(root)?.querySelectorAll('tr[aria-current="true"]')).toHaveLength(1);
+      act(() => {
+        document.activeElement?.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        );
       });
-      expect(pane(root)?.querySelector("h2")?.textContent).toBe("Changes");
-      expect(document.activeElement?.closest('[data-pane="list"]')).not.toBeNull();
-      expect(document.activeElement?.textContent).toContain("README.md");
-    });
-
-    it("shows Get updates' choices in the pane", async () => {
-      const { root } = await openPage([agentChange], {
-        left: {
-          items: [{ path: "x.md", mine: "a\n", theirs: "b\n", choice: undefined, copy: undefined }],
-          versions: 2,
-          people: ["Sam"],
-        },
-      });
-      const resume = [...root.querySelectorAll("button")].find(
-        (button) => button.textContent?.trim() === "Continue",
-      );
-      await act(async () => {
-        resume?.click();
-        await settle();
-      });
-      expect(pane(root)?.textContent).toContain("Keep mine");
-      expect(listColumn(root)?.textContent).not.toContain("Keep mine");
+      expect(document.activeElement).toBe(historyRow(root, sorterVersion.name));
+      openItem(root, "Triage");
+      expect(pane(root)?.querySelector("h2")?.textContent).toBe("Triage");
+      expect(pane(root)?.textContent).not.toContain(sorterVersion.name);
     });
 
     it("shows the list alone on a phone", async () => {
-      const { root } = await openPage([agentChange], { phone: true });
+      const { root } = await openColumnsPage({ changes: [agentChange], phone: true });
       expect(pane(root)).toBeNull();
       expect(root.textContent).toContain("Since your last version");
     });
