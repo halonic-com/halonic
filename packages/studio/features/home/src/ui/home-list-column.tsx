@@ -84,17 +84,22 @@ function FailureLine({
   const tryAgain = useRef<HTMLButtonElement>(null);
   useTellWhenGoneWithFocus(tryAgain, onGoneWithFocus);
   return (
-    <p className="flex flex-wrap items-center gap-2 px-3 text-small text-fg-muted">
-      {`${homeWords.chatsFailed} ${reason}`}
-      <Button
-        ref={tryAgain}
-        variant="ghost"
-        busy={retrying}
-        busyLabel={homeWords.tryingAgain}
-        onClick={onTryAgain}
-      >
-        {homeWords.tryAgain}
-      </Button>
+    // Try again gets a row of its own, and its side padding hangs out to the left as a chat row's
+    // fill does, so its label starts where the reason text starts (HAL-20925). The pull matches
+    // the kit's ghost button padding: 12px, 16px on a phone or touch screen.
+    <p className="flex flex-col items-start gap-2 px-3 text-small text-fg-muted">
+      <span>{`${homeWords.chatsFailed} ${reason}`}</span>
+      <span className="-ms-3 phone:-ms-4 touch:-ms-4">
+        <Button
+          ref={tryAgain}
+          variant="ghost"
+          busy={retrying}
+          busyLabel={homeWords.tryingAgain}
+          onClick={onTryAgain}
+        >
+          {homeWords.tryAgain}
+        </Button>
+      </span>
     </p>
   );
 }

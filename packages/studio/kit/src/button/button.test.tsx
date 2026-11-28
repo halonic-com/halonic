@@ -293,6 +293,30 @@ verifies("kit.button-unavailable", () => {
     expect(busyCopy?.querySelector("svg.animate-spin")).not.toBeNull();
   });
 
+  it("with a busyLabel, starts a ghost button's copies at its edge and centres a primary one's", () => {
+    const copiesOf = (variant: "ghost" | "primary") => {
+      const { container } = render(
+        <Button variant={variant} busyLabel="Trying again…">
+          Try again
+        </Button>,
+      );
+      const cell = container.querySelector("button")?.firstElementChild;
+      return Array.from(cell?.children ?? []) as HTMLElement[];
+    };
+
+    const ghostCopies = copiesOf("ghost");
+    const primaryCopies = copiesOf("primary");
+    expect(ghostCopies).toHaveLength(2);
+    expect(primaryCopies).toHaveLength(2);
+    for (const copy of ghostCopies) {
+      expect(copy.className).toContain("justify-start");
+      expect(copy.className).not.toContain("justify-center");
+    }
+    for (const copy of primaryCopies) {
+      expect(copy.className).toContain("justify-center");
+    }
+  });
+
   it("with a busyName, screen readers hear it while busy and the words otherwise", () => {
     const { container, rerender } = render(
       <Button busyLabel="Checking…" busyName="Checking for updates">

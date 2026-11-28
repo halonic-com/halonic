@@ -253,7 +253,13 @@ const largeIconSlot = "phone:size-icon-md";
 
 /** One grid cell: the resting and the busy copy lie on top of each other in it. */
 const busyCell = "inline-grid";
-const busyCopy = "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5";
+const busyCopy = "col-start-1 row-start-1 inline-flex items-center gap-1.5";
+/**
+ * Where each copy sits in the kept width. A ghost button has no box at rest, so a centred label
+ * would stand in from the text beside it; its copies start at its edge instead (HAL-20925).
+ */
+const busyCopyAlign = (variant: ButtonVariant) =>
+  variant === "ghost" ? "justify-start" : "justify-center";
 
 /**
  * The kit's button: a native `<button>`, `type="button"` unless it submits a form. With `icon`
@@ -337,16 +343,21 @@ export function Button(props: ButtonProps) {
         onClick={handleClick}
         onFocus={handleFocus}
       >
-        <ButtonBody props={props} busy={busy} iconClasses={iconClasses} />
+        <ButtonBody props={props} variant={variant} busy={busy} iconClasses={iconClasses} />
       </button>
       {reasonTooltip.popover}
     </>
   );
 }
 
-type ButtonBodyProps = { props: ButtonProps; busy: boolean; iconClasses: string };
+type ButtonBodyProps = {
+  props: ButtonProps;
+  variant: ButtonVariant;
+  busy: boolean;
+  iconClasses: string;
+};
 
-function ButtonBody({ props, busy, iconClasses }: ButtonBodyProps) {
+function ButtonBody({ props, variant, busy, iconClasses }: ButtonBodyProps) {
   const iconBox = (icon: ReactNode) =>
     icon === undefined ? null : (
       <span className={iconClasses} aria-hidden="true">
@@ -364,13 +375,14 @@ function ButtonBody({ props, busy, iconClasses }: ButtonBodyProps) {
   }
   // Both copies always take up room; the one not in use is `invisible`, so it only sets the
   // width and screen readers skip it.
+  const copy = `${busyCopy} ${busyCopyAlign(variant)}`;
   return (
     <span className={busyCell}>
-      <span className={`${busyCopy} ${busy ? "invisible" : ""}`.trim()}>
+      <span className={`${copy} ${busy ? "invisible" : ""}`.trim()}>
         {iconBox(props.icon)}
         {props.children}
       </span>
-      <span className={`${busyCopy} ${busy ? "" : "invisible"}`.trim()}>
+      <span className={`${copy} ${busy ? "" : "invisible"}`.trim()}>
         {iconBox(<Spinner />)}
         {props.busyLabel}
       </span>
