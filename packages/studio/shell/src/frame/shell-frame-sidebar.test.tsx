@@ -62,10 +62,14 @@ verifies("shell.frame", () => {
     expect(panel?.contains(container.querySelector("main"))).toBe(true);
     expect(panel?.lastElementChild?.tagName).toBe("FOOTER");
     expect(classesOf(panel)).toEqual(
-      expect.arrayContaining(["ms-2", "rounded-lg", "border", "border-border", "bg-surface"]),
+      expect.arrayContaining(["rounded-lg", "border", "border-border", "bg-surface"]),
     );
+    // The 8px is on the column that holds the window tabs, on the frame, over the panel.
+    const column = panel?.closest("[data-framed-column]");
+    expect(classesOf(column)).toContain("ms-2");
     // Nothing between the sidebar and the frame: the frame's row has no fill of its own.
-    expect(classesOf(panel?.parentElement)).not.toContain("bg-surface");
+    expect(classesOf(column)).not.toContain("bg-surface");
+    expect(classesOf(column?.parentElement)).not.toContain("bg-surface");
   });
 
   it("draws the desktop frame in the Messenger's app frame colour, not the halo", () => {
@@ -82,7 +86,7 @@ verifies("shell.frame", () => {
     const panel = container.querySelector("[data-framed-panel]");
 
     expect(drawer?.className).toContain("w-sidebar bg-surface-subtle shadow-3");
-    expect(classesOf(panel)).not.toContain("ms-2");
+    expect(classesOf(panel?.closest("[data-framed-column]"))).not.toContain("ms-2");
     expect(classesOf(panel)).toContain("rounded-lg");
   });
 

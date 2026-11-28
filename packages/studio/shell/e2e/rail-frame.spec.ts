@@ -56,8 +56,9 @@ test("at 1280px the rail is the window's first 64px, its buttons 12px in and 4px
   for (const [index, button] of apps.slice(1).entries()) {
     expect(button.y - (apps[index]?.y ?? Number.NaN)).toBe(44);
   }
-  const panel = await box(page.locator("[data-framed-panel]"));
-  expect(apps[0]?.y).toBe(panel.y);
+  // The column of the tabs on the frame and the framed panel under them (HAL-21209).
+  const column = await box(page.locator("[data-framed-column]"));
+  expect(apps[0]?.y).toBe(column.y);
   const settings = buttons.at(-1);
   expect((settings?.y ?? 0) + (settings?.height ?? 0)).toBe(wide.height - 10);
 });
@@ -78,6 +79,19 @@ test("at 1280px the active tab starts where the framed panel does", async ({ pag
   const panel = await box(page.locator("[data-framed-panel]"));
   const tab = await box(page.getByRole("tab", { selected: true }));
   expect(tab.x).toBe(panel.x);
+});
+
+test("at 1280px the tabs sit on the frame, so the active tab's fill differs from their ground", async ({
+  page,
+}) => {
+  await openWindow(page, wide);
+  const fill = (locator: Locator) =>
+    locator.evaluate((element) => getComputedStyle(element).backgroundColor);
+  const frame = await fill(page.locator("[data-layout]"));
+  const activeTab = await fill(page.getByRole("tab", { selected: true }));
+  expect(await fill(page.locator("[data-panel-tabs]"))).toBe("rgba(0, 0, 0, 0)");
+  expect(activeTab).toBe(await fill(page.locator("[data-framed-panel]")));
+  expect(activeTab).not.toBe(frame);
 });
 
 test("at 640px the Places button sits on the rail's axis", async ({ page }) => {
