@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, beforeEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   chatOf,
   fakeHost,
@@ -27,7 +27,7 @@ afterEach(() => {
 
 async function triagePane() {
   const fake = fakeHost([chatOf("triage", triageQuestion, "Triage")]);
-  const context = hostContextOf(fake);
+  const context = hostContextOf(fake, vi.fn);
   aiChats.open("triage", context);
   return show(aiChats.render("triage", context, () => {}));
 }
@@ -68,7 +68,7 @@ verifies("assistant.home.chat-look", () => {
 
   it("shows a new chat with the mark and its title, and no ⋮ until its first message", async () => {
     const fake = fakeHost([chatOf("draft")]);
-    const context = hostContextOf(fake);
+    const context = hostContextOf(fake, vi.fn);
     aiChats.open("draft", context);
     const pane = await show(aiChats.render("draft", context, () => {}));
     const header = pane.querySelector("header");
