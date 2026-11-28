@@ -408,6 +408,7 @@ describe("theme.css scales", () => {
       "--shadow-header",
       "--shadow-bubble",
       "--shadow-composer",
+      "--shadow-point-of-light",
     ]);
     expect(namesStartingWith(themeTokens, "--animate-")).toEqual([
       "--animate-spin",
@@ -438,6 +439,10 @@ describe("theme.css scales", () => {
       "--duration-slow",
       "--duration-rail-hover",
       "--duration-rail-press",
+      "--duration-rail-fade",
+      "--duration-dot-lead",
+      "--duration-dot-streak",
+      "--duration-dot-pulse-ring",
     ]);
     expect(namesStartingWith(plainVariables, "--motion-")).toEqual([
       "--motion-rise",

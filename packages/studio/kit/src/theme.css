@@ -117,6 +117,11 @@
   --color-primary: light-dark(#2668ed, #477ff0); /* filled primary button */
   --color-primary-hover: light-dark(#1658dc, #588ffe);
   --color-on-primary: light-dark(#ffffff, #090a0d);
+  /* The rail's one white dot and the ring Pulse opens round an icon (HAL-20745). Both are the same
+     in light and dark: the dot lies on the selected drawing's dark glass, and the ring is the
+     board's pick on HAL-20742. Decoration, so neither has a contrast minimum. */
+  --color-point-of-light: light-dark(#ffffff, #ffffff);
+  --color-rail-pulse: light-dark(#60a5fa, #60a5fa);
 
   /* ---------------------------------------------------------------- Colour: status */
   /* The spectrum's azure, teal, violet and rose. The Studio's muted surface is darker than the
@@ -292,6 +297,9 @@
   --shadow-header: 0 1px 0 0 var(--shade-header-line), 0 1px 4px 0 var(--shade-header);
   --shadow-bubble: 0 1px 0.5px 0 var(--shade-bubble);
   --shadow-composer: 0 1px 6px 0 var(--shade-composer);
+  /* The glow of the rail's white dot, the same in light and dark (HAL-20672). */
+  --shadow-point-of-light:
+    0 0 1.5px #fff, 0 0 5px 1px rgb(59 130 246 / 0.85), 0 0 12px 2px rgb(59 130 246 / 0.4);
 
   /* ---------------------------------------------------------------- Motion (ease-*, animate-*) */
   /* Colour changes and short fades, plus three movements (design review HAL-18481): things that
@@ -305,6 +313,8 @@
   --ease-exit: cubic-bezier(0.4, 0, 1, 1); /* things that leave */
   --ease-press: var(--ease-standard); /* a pressed button shrinking, 120ms */
   --ease-menu: cubic-bezier(0.17, 0.17, 0, 1); /* a menu opening, 300ms */
+  --ease-dot: cubic-bezier(0.25, 1, 0.5, 1); /* the rail's dot: leaves fast, settles slowly */
+  --ease-pulse-ring: cubic-bezier(0.33, 1, 0.68, 1); /* the ring Pulse opens as the dot lands */
   --default-transition-duration: 120ms; /* --duration-fast, so `transition-colors` is enough */
   --default-transition-timing-function: var(--ease-standard);
 
@@ -376,6 +386,10 @@
   --duration-slow: 320ms; /* dialogs, drawers, side panels */
   --duration-rail-hover: 180ms; /* a rail button's drawing growing under the pointer (HAL-20672) */
   --duration-rail-press: 60ms; /* and shrinking while pressed */
+  --duration-rail-fade: 150ms; /* the rail's dot fading to the new icon under reduced motion */
+  --duration-dot-lead: 360ms; /* the rail's dot travelling to the new icon: Lead and Pulse */
+  --duration-dot-streak: 400ms; /* and as Streak, stretched into a line of light */
+  --duration-dot-pulse-ring: 500ms; /* the ring Pulse opens round the new icon */
 
   --motion-rise: 8px; /* how far anything that arrives rises (or drops) as it fades in */
   --motion-slide: 24px; /* how far a pane slides in a one-pane window */

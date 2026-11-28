@@ -272,6 +272,11 @@ export {
   useFilesWithErrorsReading,
 } from "./problems/use-files-with-errors.ts";
 export {
+  type RailDotMotion,
+  railDotMotionAttribute,
+  railDotMotions,
+} from "./rail/rail-dot-motion.ts";
+export {
   type ChildProcessUsage,
   type EngineResourceReport,
   type LoadedModel,

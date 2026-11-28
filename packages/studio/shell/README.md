@@ -39,6 +39,7 @@ first, as for `needs`, but nobody providing it is no error.
 | `shell.announcer` | read text to screen readers, once per window | `shell.announcer` |
 | `shell.closeStack` | close the right layer on Esc and Android's Back | `shell.close-stack` |
 | `TitleBarBrand`, `HistoryButtons` | Studio's logo (`AppLogo`, the ring with its point of light), and Back and Forward, in the title bar | `shell.title-bar` |
+| `railDotMotions`, `RailDotMotion`, `railDotMotionAttribute` | how the icon rail's white dot goes to a newly selected icon: `lead` (the default), `streak` or `pulse`, named by `data-rail-dot-motion` on the window's root element, as `data-theme` names the theme; a fade under reduced motion | `shell.rail-dot`, `shell.rail-dot-streak`, `shell.rail-dot-pulse` |
 | `shell.engine` | send and announce when the engine is lost and back | `shell.engine-connection` |
 | `EngineLine` | the one line while the engine isn't answering, or the shown workspace's engine starts | `shell.engine-line`, `shell.engine-starting` |
 | `shell.engine.supervise` | start the engine process, restart it once, report why it failed; unused in 0.1 | `shell.engine-start` (parked), `shell.engine-report-interrupted-runs` |

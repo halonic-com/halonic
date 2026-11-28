@@ -145,6 +145,13 @@ The rail is the one place something scales (`kit.rail-button-motion`, decision H
 the selected button and never under reduced motion. No other part scales on hover or press, and a
 test holds that.
 
+The rail's white dot is the shell's (`shell.rail-dot`); the theme holds its values
+(`kit.rail-dot-tokens`): `--color-point-of-light` and `--shadow-point-of-light`, the curve
+`--ease-dot`, the times `--duration-dot-lead` (360ms) and `--duration-dot-streak` (400ms), the
+ring's `--color-rail-pulse`, `--ease-pulse-ring` and `--duration-dot-pulse-ring` (500ms), and
+`--duration-rail-fade` (150ms) for reduced motion. The dot and the ring have the same colour in
+light and dark.
+
 A card that ended settles away (`kit.settle`, imported from `@halonicjs/studio-kit/settle`): `useSettling` keeps it in its
 list while it shows its final state, one line from `finalState` ("Approved by Ada · 14:02",
 `kit.final-state`); `useSettleAway` holds it 4 seconds, paused while the pointer or the focus is

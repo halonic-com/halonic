@@ -12,6 +12,7 @@ import type { RailEntry } from "../points/rail.ts";
 import { usePageHeadingFocus } from "../tabs/history-moves.ts";
 import { currentLocation, type TabSet } from "../tabs/tab-set.ts";
 import type { RailColumn } from "./rail-column.ts";
+import { RailDot } from "./rail-dot.tsx";
 import { type PlaceOfKind, selectedRailEntry } from "./rail-selection.ts";
 
 /** Props for {@link IconRail}. */
@@ -41,7 +42,8 @@ export interface IconRailProps {
  * holds the active tab is selected, so the selection follows a tab click, Back, a search result
  * or a link as well as a click here. A click opens the entry's page in the active tab and moves
  * the focus to the page's `h1`; a click on the selected entry, or on one with no page yet, leaves
- * the tab as it is. Settings opens its dialog over the page and is never selected.
+ * the tab as it is. Settings opens its dialog over the page and is never selected. The one white
+ * dot rests on the selected entry and travels to a newly selected one (`RailDot`).
  *
  * Ctrl-click, Cmd-click and middle-click into a new tab, and links in place of buttons, come with
  * the frame (P3 PR 2b), once the kit's `RailButton` reports how it was clicked.
@@ -70,7 +72,7 @@ export function IconRail({ entries, tabs, placeOfKind, onSettings, column }: Ico
   return (
     <nav
       aria-label="Places"
-      className="flex h-full w-(--spacing-rail) shrink-0 flex-col items-center gap-2 py-2"
+      className="relative flex h-full w-(--spacing-rail) shrink-0 flex-col items-center gap-2 py-2"
     >
       <ul className="flex flex-col items-center gap-2">
         {apps.map((entry) => (
@@ -94,6 +96,7 @@ export function IconRail({ entries, tabs, placeOfKind, onSettings, column }: Ico
           />
         </div>
       )}
+      <RailDot selected={selected} layout={apps.map((entry) => entry.id).join(" ")} />
     </nav>
   );
 }
