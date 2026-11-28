@@ -1,7 +1,11 @@
 import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AgentHostMessaging, type AgentHostTransport } from "@halonicjs/adapter-agent-host-client";
+import {
+  type AgentHostAnswer,
+  AgentHostMessaging,
+  type AgentHostTransport,
+} from "@halonicjs/adapter-agent-host-client";
 import { ManualClock, MemoryScheduler, MemorySecretStore } from "@halonicjs/adapter-memory";
 import { PaperclipKeys } from "@halonicjs/host-agent-messaging-hub";
 import {
@@ -66,6 +70,8 @@ export class FakePaperclip {
    * answer empty lists, so a whole poll works and fills the local copy (`agent-host.paperclip-sync`).
    */
   servesInbox = false;
+  /** What the secret proposals list answers while {@link FakePaperclip.servesInbox} is set. */
+  secretProposals: unknown[] = [];
   /** The company's open tasks, which the Inbox reads cards on; none unless a test sets them. */
   tasks: unknown[] = [];
   /** Each open task's cards, by task ID. */
@@ -157,7 +163,8 @@ export class FakePaperclip {
     if (path === `${company}/issues`) return this.tasks;
     if (path === `${company}/live-runs`) return this.liveRuns;
     if (path === `${company}/heartbeat-runs`) return this.runs;
-    return this.servesInbox && inboxLists.has(path) ? [] : undefined;
+    if (!this.servesInbox || !inboxLists.has(path)) return undefined;
+    return path.endsWith("/secret-proposals") ? this.secretProposals : [];
   }
 }
 
@@ -213,6 +220,8 @@ export class FakeServer {
   readonly seen: SeenRequest[] = [];
   /** The device token it accepts. */
   token = "acme-device-token-for-tests-only";
+  /** What its inbox list answers. */
+  inboxItems: unknown[] = [];
 
   readonly fetch = async (request: Request): Promise<Response> => {
     const authorization = request.headers.get("authorization");
@@ -227,7 +236,7 @@ export class FakeServer {
     if (path === "/api/messaging/agents") {
       return json({ items: [{ id: "server-cy", source, name: "Cy", activity: "idle" }] });
     }
-    return json({ items: [] });
+    return json({ items: path === "/api/messaging/inbox-items" ? this.inboxItems : [] });
   };
 }
 
@@ -268,6 +277,8 @@ export interface Desktop {
   paperclipKey: ShellPaperclipKey;
   /** The page's calls to the host. */
   transport: AgentHostTransport;
+  /** The shell's own calls to the host, on routes no page may name. */
+  shell(route: string, body: unknown): Promise<AgentHostAnswer>;
   /** Every answer body the host sent the page, as text. */
   answers: string[];
   /** Every line the host logged. */
@@ -409,6 +420,7 @@ export async function startDesktop(
     otherStudio: new AgentHostMessaging(transport, otherWorkspace),
     paperclipKey: new ShellPaperclipKey(host.url, token, transport, answers),
     transport,
+    shell: hostRequest(host.url, token, answers),
     answers,
     logged,
     writeConnection: (address, company) => writeConnection(address, company),
@@ -431,22 +443,27 @@ export async function startDesktop(
 /** The page's calls to the host over loopback, recording every answer's text. */
 export function pageTransport(url: string, token: string, answers: string[]): AgentHostTransport {
   return {
-    request: async (route, body) => {
-      const [method = "GET", path = "/"] = route.split(" ");
-      const response = await fetch(`${url}${path}`, {
-        method,
-        headers: {
-          authorization: `Bearer ${token}`,
-          "content-type": "application/json",
-          "sec-fetch-site": "same-origin",
-        },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
-      const text = await response.text();
-      answers.push(text);
-      return { status: response.status, body: JSON.parse(text) as unknown };
-    },
+    request: hostRequest(url, token, answers),
     stream: () => Promise.reject(new Error("No stream route is used here.")),
+  };
+}
+
+/** A call to the host over loopback on any route, `"POST /v1/…"`, recording its answer's text. */
+function hostRequest(url: string, token: string, answers: string[]) {
+  return async (route: string, body?: unknown): Promise<AgentHostAnswer> => {
+    const [method = "GET", path = "/"] = route.split(" ");
+    const response = await fetch(`${url}${path}`, {
+      method,
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+        "sec-fetch-site": "same-origin",
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    const text = await response.text();
+    answers.push(text);
+    return { status: response.status, body: JSON.parse(text) as unknown };
   };
 }
 

@@ -166,6 +166,18 @@ export class StoredAgentMessaging implements AgentMessaging {
   }
 
   /**
+   * Reads the provider's collections again with a read that starts after this call, for an answer
+   * that must not go out on an old copy (`agent-host.risky-answer-confirm`). Unlike
+   * {@link refresh}, it throws when the source may not be read or the read fails.
+   */
+  async refreshNow(): Promise<void> {
+    if (!(await this.#mayRead())) throw new Error("The source can't be read now.");
+    const changed = await this.#store.syncAfter();
+    this.#stale = false;
+    if (changed) this.#feed.push(this.#source);
+  }
+
+  /**
    * Deletes the source's local copy for good, as Disconnect does: a sync, answer or send still in
    * flight saves nothing afterwards, and reads go to the provider.
    */

@@ -1,4 +1,4 @@
-import type { AnswerResult, InboxAnswer } from "@halonicjs/ports";
+import type { AnswerResult, InboxAnswer, InboxItem } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type Desktop, startDesktop } from "./desktop-messaging.test-helper.ts";
@@ -12,11 +12,24 @@ afterEach(async () => {
 
 const answered: AnswerResult = { outcome: "answered", answeredAt: "2026-11-24T14:00:00.000Z" };
 
-/** The desktop, with its workspace's `answer` replaced by a spy that answers every item. */
+/** A normal card the workspace lists, which every answer goes to. */
+const card: InboxItem = {
+  id: "card-1",
+  source: "paperclip:halonic",
+  from: { kind: "agent", agent: "paperclip:halonic:agent:ada", name: "Ada" },
+  question: "Which repo layout?",
+  options: [],
+  attachments: [],
+  createdAt: "2026-11-24T13:00:00.000Z",
+  state: { kind: "open" },
+};
+
+/** The desktop, with its workspace listing the card and its `answer` replaced by a spy that answers it. */
 async function withAnswerSpy() {
   desktop = await startDesktop();
   const workspace = await desktop.messaging.of(desktop.workspace);
   if (workspace === undefined) throw new Error("The helper's workspace isn't served.");
+  vi.spyOn(workspace.messaging, "listInboxItems").mockResolvedValue([card]);
   const answer = vi.spyOn(workspace.messaging, "answer").mockResolvedValue(answered);
   return {
     studio: desktop.studio,

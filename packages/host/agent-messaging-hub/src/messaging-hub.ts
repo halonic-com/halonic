@@ -27,6 +27,11 @@ import { OwnerIndex } from "./owner-index.ts";
  */
 export interface MessagingProvider extends AgentMessaging {
   refresh?(): Promise<void>;
+  /**
+   * Reads the source again with a read that starts after the call, and throws when it fails. A
+   * provider without it reads its source on every list.
+   */
+  refreshNow?(): Promise<void>;
 }
 
 /** A provider and the name its failures are reported under, such as `paperclip:acme`. Never shown to apps. */
@@ -222,6 +227,16 @@ export class MessagingHub implements AgentMessaging {
         }
       }),
     );
+  }
+
+  /**
+   * Reads again, now, only the provider that listed `item`, so the next read of the item is what
+   * its source holds (`agent-host.risky-answer-confirm`). Unlike {@link refresh}, a failure is
+   * thrown, never only reported. An item no provider listed reads nothing.
+   */
+  async refreshSourceOf(item: MessagingId): Promise<void> {
+    const owner = await this.#inboxOwner(item);
+    await owner?.messaging.refreshNow?.();
   }
 
   /**

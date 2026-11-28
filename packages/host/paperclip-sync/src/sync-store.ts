@@ -43,6 +43,18 @@ export class SyncStore {
   }
 
   /**
+   * As {@link sync}, but every read starts after this call: a sync already in flight, which may
+   * have read before something changed, is waited out first, whatever it ends in. A failure is
+   * thrown, as {@link sync} throws it.
+   *
+   * @returns whether any collection changed
+   */
+  async syncAfter(): Promise<boolean> {
+    await this.#syncing?.catch(() => undefined);
+    return this.sync();
+  }
+
+  /**
    * Closes every collection, waits for the saves already started, then deletes the source's saved
    * copy, as Disconnect does. A sync or a write still in flight then saves nothing, so the copy
    * can't come back; the store keeps nothing more.

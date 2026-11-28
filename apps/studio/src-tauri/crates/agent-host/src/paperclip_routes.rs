@@ -21,6 +21,13 @@ pub const SIGN_IN_CANCEL: Route = route(Method::Post, "/v1/paperclip/sign-in/can
 /// it isn't in [`PAPERCLIP_ROUTES`] and no page can name it.
 pub const KEY_HAND_OVER: Route = route(Method::Post, "/v1/paperclip/key", Answer::Json);
 
+/// An inbox answer the person confirmed in the shell's own dialog, with the
+/// digest of the host's copy they saw (`risky_answer.rs`, HAL-20441). Only
+/// the shell sends it, so it isn't in [`PAPERCLIP_ROUTES`] and no page can
+/// name it.
+pub const ANSWER_CONFIRMED: Route =
+    route(Method::Post, "/v1/messaging/answer-confirmed", Answer::Json);
+
 /// Every Paperclip and agent messaging route a page may call, by its name.
 pub(crate) const PAPERCLIP_ROUTES: &[(&str, Route)] = &[
     // Disconnect and the desktop engine's AgentMessaging (HAL-17438); no key comes back.

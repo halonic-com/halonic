@@ -1,0 +1,39 @@
+# Decision: a risky approve from the page waits for the shell's own confirmation
+
+- Approval: /HAL/issues/HAL-20278 (plan approved by Liam, PR 4; 6.8 decided on HAL-20274, Julian's additions on HAL-20278; stack B on HAL-20441)
+- Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:uktKrFhgAUP8OD8cxdgAn+nPZHy/eMGg058BhJ6PNb2g7zQisO3dczVGYPJHYaqfOFt8b1nXLN6UucEebkDeCA==
+
+Condition 2 of section 6.8 of the HAL-17491 note: a page script can't
+approve a hire, a secret or any other risky item without the person's
+click. The agent host refuses such an answer on the page's route, and
+Studio's shell asks in its own dialog, built from the host's copy, before it
+sends the answer on a route only the shell can name
+(`agent-host.risky-answer-confirm`, `studio.src-tauri.risky-answer-confirm`).
+
+- `agent-host.messaging-answer-route` said the host passes on every answer
+  the port takes. It now names the exception, an approve of a risky item,
+  and passes on answers to items the workspace lists: the host reads the
+  item again for its risk, so an item it no longer lists is refused with
+  `not-found` rather than sent unchecked. Its tests now list the card they
+  answer; every `expect` stays as it was.
+
+After the security review on HAL-20469, only options the provider marks
+with the port's `declines` flag skip the window, never an option an agent
+named `reject`; the window shows the note sent with an approve, such as a
+budget override's new limit; the host reads the sources again before a
+risky item's ask and every confirmed send; and an option the item doesn't
+offer is refused with `bad-answer` before anything is asked. After the
+second round, that read is the item's own source read again with a read
+that starts after the request (`SyncStore.syncAfter`,
+`MessagingHub.refreshSourceOf`); when it fails, the host answers 502 and
+sends nothing rather than trust its copy.
+`risky-answer-confirm.test.ts` now takes its fixtures from
+`risky-answer.test-helper.ts`; every `expect` in it stays as it was.
+
+The user sees a new confirmation window when they approve a risky item in
+Studio desktop. Rejects and normal items go through as before.
+
+## Covers
+
+- agent-host.messaging-answer-route
