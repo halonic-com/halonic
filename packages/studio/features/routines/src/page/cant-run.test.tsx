@@ -98,12 +98,12 @@ verifies("routines.page.cant-run", () => {
     expect(button.getAttribute("aria-disabled")).toBe("true");
     expect(
       document.getElementById(button.getAttribute("aria-describedby") ?? "")?.textContent,
-    ).toBe("Agent host is still starting");
+    ).toBe("The agent host is still starting…");
     await act(async () => button.click());
     expect(runNow).not.toHaveBeenCalled();
     await act(async () => answer({ ok: true }));
     expect(runNowButton(page)?.hasAttribute("aria-disabled")).toBe(false);
-    expect(page.textContent).not.toContain("Agent host is still starting");
+    expect(page.textContent).not.toContain("The agent host is still starting…");
   });
 
   it("keeps Run now unavailable and focusable on a phone", async () => {

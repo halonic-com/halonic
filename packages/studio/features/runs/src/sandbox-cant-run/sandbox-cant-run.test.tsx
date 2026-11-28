@@ -240,11 +240,11 @@ verifies("runs.sandbox-cant-run", () => {
     const run = runOf(root);
     expect(run.getAttribute("aria-disabled")).toBe("true");
     const why = document.getElementById(run.getAttribute("aria-describedby") ?? "");
-    expect(why?.textContent).toBe("Agent host is still starting");
+    expect(why?.textContent).toBe("The agent host is still starting…");
     expect(root.textContent).not.toContain("can't run");
     await act(async () => answer({ ok: true }));
     expect(runOf(root).hasAttribute("aria-disabled")).toBe(false);
-    expect(root.textContent).not.toContain("Agent host is still starting");
+    expect(root.textContent).not.toContain("The agent host is still starting…");
   });
 
   it("goes from the starting line to the Callout when the first check refuses", async () => {
@@ -252,7 +252,7 @@ verifies("runs.sandbox-cant-run", () => {
     const check = vi.fn(() => new Promise<SandboxStartResult>((resolve) => (answer = resolve)));
     const root = await open(<Page check={{ check }} />);
     await act(async () => answer(refused("bubblewrap-missing")));
-    expect(root.textContent).not.toContain("Agent host is still starting");
+    expect(root.textContent).not.toContain("The agent host is still starting…");
     expect(root.textContent).toContain("Support reply can't run");
     expect(runOf(root).getAttribute("aria-disabled")).toBe("true");
   });

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19614; HAL-4291 (checklist 3.1, 3.4, 3.9); HAL-14848; microcopy 23.3 "Can't run, routine"; HAL-11626 R9; `runs.sandbox-cant-run`.
 
-When what a routine starts runs an agent in Claude Code or Codex (`startsProgram`), the page has **Run now** and the sandbox check refuses, the routine page shall show the can't-run Callout of `runs.sandbox-cant-run` at the top of its column, on the Schedule and Runs views alike, with no last line of its own, and **Run now** shall stay focusable but unavailable, described by the Callout's first line, on a phone too. A press on it starts nothing and asks nothing. While the check hasn't answered, **Run now** shall be unavailable the same way, described by "Agent host is still starting" (`runs.sandbox-cant-run`). The routine stays on: the Callout changes nothing in its file. When **Check again** finds the sandbox ready, focus shall move to **Run now**.
+When what a routine starts runs an agent in Claude Code or Codex (`startsProgram`), the page has **Run now** and the sandbox check refuses, the routine page shall show the can't-run Callout of `runs.sandbox-cant-run` at the top of its column, on the Schedule and Runs views alike, with no last line of its own, and **Run now** shall stay focusable but unavailable, described by the Callout's first line, on a phone too. A press on it starts nothing and asks nothing. While the check hasn't answered, **Run now** shall be unavailable the same way, described by "The agent host is still starting…" (`runs.sandbox-cant-run`). The routine stays on: the Callout changes nothing in its file. When **Check again** finds the sandbox ready, focus shall move to **Run now**.
 
 A routine whose target starts no program shall not be checked and shall show no Callout. While Halonic can't run an agent on its own, a routine that starts an agent starts no program, whatever the agent's harness, so its **Run now** gives that reason instead of the sandbox's.
 
@@ -13,7 +13,7 @@ A routine whose target starts no program shall not be checked and shall show no 
 - Given *Daily summary*, which starts a workflow with an agent in Claude Code, and a check that says `bubblewrap-missing`,
   then the page says "Daily summary can't run: the sandbox can't start on this computer.", then the fix, Check again and How to install bubblewrap, and Run now is unavailable and described by that first line.
 - Given the same routine and a check that hasn't answered yet,
-  then Run now is unavailable and described by "Agent host is still starting"; when the check passes, Run now works.
+  then Run now is unavailable and described by "The agent host is still starting…"; when the check passes, Run now works.
 - Given the same page and a check that now passes,
   when the person presses Check again,
   then the Callout goes and Run now has the focus.

@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-19614 (the line while the agent host starts); HAL-4291 (checklist 3.1 to 3.3, 3.9, 3.10); HAL-14960 (Copy details for `other`); microcopy 23.3; HAL-11626 R9 (the guide link named for the reason); `app.sandbox-start-words`; `app.sandbox-start-check`.
 
-The runs feature shall give the pages that start runs one Callout, and one check behind it, for a sandbox that can't start. A page shall check once when it opens, where it has a control that would start a program in the sandbox and the workspace provides `sandboxStartCheckKey`. While that first check hasn't answered, the controls that would start a program shall be unavailable, still focusable, and in the Callout's place the page shall show the one muted line "Agent host is still starting", which they name as their description and which isn't read out; once it answers, they follow the answer. Until the agent host has started, the shell holds the check, and a run would wait without a word. Otherwise only a check that refuses shall disable anything: where nothing can check, and when the check itself can't run, the controls stay as they are.
+The runs feature shall give the pages that start runs one Callout, and one check behind it, for a sandbox that can't start. A page shall check once when it opens, where it has a control that would start a program in the sandbox and the workspace provides `sandboxStartCheckKey`. While that first check hasn't answered, the controls that would start a program shall be unavailable, still focusable, and in the Callout's place the page shall show the one muted line "The agent host is still starting…", which they name as their description and which isn't read out; once it answers, they follow the answer. Until the agent host has started, the shell holds the check, and a run would wait without a word. Otherwise only a check that refuses shall disable anything: where nothing can check, and when the check itself can't run, the controls stay as they are.
 
 While the check refuses, the Callout shall show, in the warning tone and in this order:
 
@@ -29,7 +29,7 @@ While the check refuses, the Callout shall show, in the warning tone and in this
   when the person presses Check again,
   then the Callout goes and "The sandbox works now. You can run Support reply." is read.
 - Given a check that hasn't answered yet,
-  then Run is unavailable and described by "Agent host is still starting", and no Callout shows;
+  then Run is unavailable and described by "The agent host is still starting…", and no Callout shows;
   when the check answers that the sandbox can start, the line goes and Run works.
 - Given a check that throws when the page opens,
   then nothing is disabled and no Callout shows.

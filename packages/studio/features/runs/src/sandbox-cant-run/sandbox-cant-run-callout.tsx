@@ -11,7 +11,7 @@ export interface SandboxCantRunCalloutProps {
   readonly name: string;
   /**
    * The page's {@link SandboxStart}; the Callout draws while `refused` names a reason, and only
-   * its first line, "Agent host is still starting", while `starting`.
+   * its first line, "The agent host is still starting…", while `starting`.
    */
   readonly start: SandboxStart;
   /**
