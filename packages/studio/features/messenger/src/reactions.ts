@@ -49,3 +49,17 @@ export function toggled(
   );
   return on ? [...others, { emoji, by: { kind: "me" }, at }] : others;
 }
+
+/**
+ * A message's reactions `now` with only the person's own `emoji` as it was `before` a toggle that
+ * failed: every other change since, saved or shown, stays.
+ */
+export function undone(
+  now: readonly MessageReaction[],
+  before: readonly MessageReaction[],
+  emoji: ReactionEmoji,
+): readonly MessageReaction[] {
+  const mineOf = (reaction: MessageReaction) =>
+    reaction.emoji === emoji && reaction.by.kind === "me";
+  return [...now.filter((reaction) => !mineOf(reaction)), ...before.filter(mineOf)];
+}

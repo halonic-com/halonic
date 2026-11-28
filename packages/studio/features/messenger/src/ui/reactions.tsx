@@ -1,5 +1,5 @@
 import { type MessageReaction, type ReactionEmoji, reactionEmoji } from "@halonicjs/ports";
-import { Tooltip } from "@halonicjs/studio-kit";
+import { AddReactionIcon, Tooltip } from "@halonicjs/studio-kit";
 import { type FocusEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { reactionWords } from "../reaction-words.ts";
 import { chipsOf, isMine } from "../reactions.ts";
@@ -33,8 +33,9 @@ export function ReactionChips({ reactions, canReact, onToggle }: MessageReaction
         const buttonLook = `focus-ring ${look}${mine ? "" : " hover:bg-surface-muted"}`;
         const content = (
           <>
-            <span aria-hidden="true">
-              {emoji} {count}
+            <span aria-hidden="true" className="inline-flex items-center gap-1">
+              {/* Flex drops the space from view; it keeps the chip's text "👍 2" when copied. */}
+              <span className="text-[16px] leading-none">{emoji}</span> {count}
             </span>
             <span className="sr-only">{reactionWords.chip(emoji, names)}</span>
           </>
@@ -71,7 +72,9 @@ export function ReactionChips({ reactions, canReact, onToggle }: MessageReaction
  * pointer is on the message or focus is in it, and opens a row of the six: a menu of
  * `menuitemcheckbox` items that the arrows, Home and End move through. A pick or Escape closes it
  * and focus goes back to the button; Tab or a click elsewhere closes it too. The row opens above
- * the message, or below where the transcript has no room above it.
+ * the message, or below where the transcript has no room above it. It hangs from the message's
+ * line, not the button (the line is `relative`): it ends where the person's own bubble ends and
+ * starts where an agent's bubble starts, so it stays inside any transcript of about 250 px or more.
  */
 export function AddReaction({
   reactions,
@@ -101,7 +104,7 @@ export function AddReaction({
   return (
     <div
       data-add-reaction
-      className={`relative shrink-0 ${open ? "" : "opacity-0 group-hover/message:opacity-100 focus-within:opacity-100"}`}
+      className={`shrink-0 ${open ? "" : "opacity-0 group-hover/message:opacity-100 focus-within:opacity-100"}`}
     >
       <Tooltip text={reactionWords.add} isName>
         {(trigger) => (
@@ -120,7 +123,7 @@ export function AddReaction({
             className="focus-ring flex size-7 items-center justify-center rounded-full border border-border-strong bg-surface-raised text-fg-muted shadow-1 hover:bg-surface-muted hover:text-fg"
           >
             <span className="size-4">
-              <SmileyPlusIcon />
+              <AddReactionIcon />
             </span>
           </button>
         )}
@@ -133,7 +136,7 @@ export function AddReaction({
           aria-orientation="horizontal"
           onKeyDown={(event) => onRowKey(event, close)}
           onBlur={onBlur}
-          className={`absolute end-0 z-10 flex gap-0.5 rounded-full bg-surface-raised p-1 shadow-2 ${below ? "top-full mt-1" : "bottom-full mb-1"}`}
+          className={`absolute ${author === undefined ? "end-0" : "start-9"} z-10 flex gap-0.5 rounded-full border border-transparent bg-surface-raised p-1 shadow-2 ${below ? "top-full mt-1" : "bottom-full mb-1"}`}
         >
           {reactionEmoji.map((emoji) => {
             const mine = isMine(reactions, emoji);
@@ -195,26 +198,5 @@ function noRoomAbove(button: HTMLElement | null): boolean {
   if (button === null || transcript == null) return false;
   return (
     button.getBoundingClientRect().top - transcript.getBoundingClientRect().top < ROOM_ABOVE_PX
-  );
-}
-
-/**
- * A smiley with a plus, in the text colour. A stand-in until the kit has its own (HAL-19684).
- */
-function SmileyPlusIcon() {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      aria-hidden="true"
-    >
-      <path d="M13 7.5A5.5 5.5 0 1 1 7.5 2" />
-      <path d="M5 9.5c.6.9 1.5 1.4 2.5 1.4s1.9-.5 2.5-1.4" />
-      <path d="M5.5 6h.01M9.5 6h.01" />
-      <path d="M13 1v4M11 3h4" />
-    </svg>
   );
 }

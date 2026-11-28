@@ -15,6 +15,7 @@ import {
 import { useEffect, useId, useRef, useState } from "react";
 import type { ChatDraft } from "./chat-drafts.ts";
 import {
+  authorName,
   ChatHeader,
   ChatLines,
   isChannel,
@@ -24,7 +25,10 @@ import {
 } from "./phone-chat-parts.tsx";
 import type { ChatAgents, PhoneMessaging, SourceLabels } from "./phone-messenger.tsx";
 import { type ReadFailure, phoneMessengerWords as words } from "./phone-messenger-words.ts";
+import { phoneReactionWords } from "./phone-reaction-words.ts";
+import { ReactionSheet } from "./phone-reactions.tsx";
 import { ReadFailedLine } from "./read-failed-line.tsx";
+import { usePhoneReactions } from "./use-phone-reactions.ts";
 
 /** What a chat on the phone needs. */
 export interface PhoneChatProps {
@@ -52,7 +56,8 @@ export interface PhoneChatProps {
  * them. In a channel, `@` (typed, or the Name someone button) opens the box's picker of members
  * (k16b), whose picks fill the message's `to`, each named member ticked; Members lists who is in
  * it, read-only (k16c). Until the messages are read, the kit's skeleton lines stand in their place;
- * messages it couldn't read show why, with Try again.
+ * messages it couldn't read show why, with Try again. While the computer keeps reactions, a
+ * long-press on a message opens its reaction sheet (`remote.phone-reactions`).
  */
 export function PhoneChat(props: PhoneChatProps) {
   const { messaging, conversation, agents, sources, computer, onOpenLink, onBack } = props;
@@ -61,6 +66,8 @@ export function PhoneChat(props: PhoneChatProps) {
   const [membersOpen, setMembersOpen] = useState(false);
   const [reads, setReads] = useState(0);
   const [failure, setFailure] = useState<ReadFailure | undefined>(undefined);
+  const reactions = usePhoneReactions(messaging, conversation.id, reads);
+  const [pressed, setPressed] = useState<Message | undefined>(undefined);
 
   useEffect(() => {
     let current = true;
@@ -106,10 +113,18 @@ export function PhoneChat(props: PhoneChatProps) {
           ) : null}
         </div>
       ) : (
-        <ChatLines messages={messages} agents={agents} now={new Date()} onOpenLink={onOpenLink} />
+        <ChatLines
+          messages={messages}
+          agents={agents}
+          now={new Date()}
+          reactions={reactions}
+          onLongPress={setPressed}
+          onOpenLink={onOpenLink}
+        />
       )}
       <ChatBox
         {...props}
+        reactionLine={reactions?.failed === true ? phoneReactionWords.notSaved : undefined}
         to={to}
         onTo={setTo}
         onSent={() => {
@@ -117,6 +132,15 @@ export function PhoneChat(props: PhoneChatProps) {
           setReads((count) => count + 1);
         }}
       />
+      {pressed !== undefined && reactions !== undefined ? (
+        <ReactionSheet
+          body={pressed.body}
+          author={authorName(pressed, agents)}
+          reactions={reactions.byMessage.get(pressed.id) ?? []}
+          onToggle={(emoji) => reactions.toggle(pressed.id, emoji)}
+          onClose={() => setPressed(undefined)}
+        />
+      ) : null}
       {membersOpen ? (
         <MembersSheet
           conversation={conversation}
@@ -143,10 +167,13 @@ function ChatBox({
   draft,
   onKeep,
   onSend,
+  reactionLine,
   to,
   onTo,
   onSent,
 }: PhoneChatProps & {
+  /** A reaction that didn't save, said where the box says why a message didn't go. */
+  readonly reactionLine: string | undefined;
   readonly to: readonly MessagingId[];
   readonly onTo: (to: readonly MessagingId[]) => void;
   readonly onSent: () => void;
@@ -259,7 +286,11 @@ function ChatBox({
             </span>
           ) : undefined
         }
-        line={boxLine(lineId, tooLong ? words.tooLong : draft.line, draft.sending)}
+        line={boxLine(
+          lineId,
+          tooLong ? words.tooLong : (draft.line ?? reactionLine),
+          draft.sending,
+        )}
       />
     </div>
   );

@@ -35,6 +35,8 @@ export default defineConfig({
         "pull-requests": `${import.meta.dirname}/e2e/pages/pull-requests.html`,
         "update-button": `${import.meta.dirname}/e2e/pages/update-button.html`,
         "first-run-polish": `${import.meta.dirname}/e2e/pages/first-run-polish.html`,
+        "phone-reactions": `${import.meta.dirname}/e2e/pages/phone-reactions.html`,
+        "messenger-reactions": `${import.meta.dirname}/e2e/pages/messenger-reactions.html`,
         "runs-page": `${import.meta.dirname}/e2e/pages/runs-page.html`,
       },
     },

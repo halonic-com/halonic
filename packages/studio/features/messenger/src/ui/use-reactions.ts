@@ -9,7 +9,7 @@ import { useToastStore } from "@halonicjs/studio-kit";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConversationRow } from "../messenger.ts";
 import { reactionWords } from "../reaction-words.ts";
-import { isMine, toggled } from "../reactions.ts";
+import { isMine, toggled, undone } from "../reactions.ts";
 
 /** A chat's reactions as its transcript shows them (`messenger.reactions`). */
 export interface ReactionsView {
@@ -71,8 +71,9 @@ export function useReactions(
       // A second press before the next render sees the first.
       latest.current = withMessage(latest.current, message, shown);
       setByMessage((all) => withMessage(all, message, shown));
+      // Only this emoji goes back: a later toggle of another may have saved meanwhile.
       const undo = () => {
-        setByMessage((all) => withMessage(all, message, before));
+        setByMessage((all) => withMessage(all, message, undone(all[message] ?? [], before, emoji)));
         toasts?.show({ tone: "danger", title: reactionWords.notSaved });
       };
       reactions
