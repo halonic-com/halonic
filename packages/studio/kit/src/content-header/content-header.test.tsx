@@ -24,6 +24,11 @@ verifies("kit.content-header", () => {
       expect.arrayContaining(["h-16", "gap-4", "shadow-header"]),
     );
     expect(header.className.split(" ")).not.toContain("border-b");
+    // On a phone the gaps narrow to 12px, so a one-pane header's title keeps its room (HAL-20776).
+    expect(header.className.split(" ")).toContain("phone:gap-3");
+    expect(heading.parentElement?.className.split(" ")).toEqual(
+      expect.arrayContaining(["-ml-px", "phone:ml-0"]),
+    );
     expect(header.firstElementChild?.className.split(" ")).toContain("size-10");
     expect(heading.textContent).toBe("Chief");
     expect(heading.className.split(" ")).toContain("truncate");

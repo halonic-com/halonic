@@ -88,6 +88,9 @@
   /* The four "type to an agent" boxes only (HAL-19142): the board's search-box edge. Its 1.34:1 is
      accepted there, because the placeholder, the shadow and Send mark the box; fields keep 3:1. */
   --color-border-prompt: light-dark(#dcdfe5, #353c4c);
+  /* The chat's message box (HAL-20728): see-through in light, where its shadow marks it; in dark
+     its fill is only 1.08:1 on the panel, so it keeps the divider's edge, 1.28:1 (HAL-20776). */
+  --color-border-composer: light-dark(transparent, #1b2638);
   /* In dark the box is a step lighter than whatever panel it sits on: 6% white over it. */
   --color-surface-prompt: light-dark(#ffffff, rgb(255 255 255 / 0.06));
   /* The round buttons inside a prompt box (the `soft` Button). In dark, surface-muted sat almost
@@ -286,7 +289,7 @@
   --shadow-prompt: 0 4px 18px -2px var(--shade-prompt);
   --shadow-prompt-focus: 0 4px 18px -2px var(--shade-prompt-focus);
   /* The new design's conversation (HAL-20728): the chat header's, a bubble's and the message box's. */
-  --shadow-header: 0 1px 4px 0 var(--shade-header);
+  --shadow-header: 0 1px 0 0 var(--shade-header-line), 0 1px 4px 0 var(--shade-header);
   --shadow-bubble: 0 1px 0.5px 0 var(--shade-bubble);
   --shadow-composer: 0 1px 6px 0 var(--shade-composer);
 
@@ -345,6 +348,9 @@
   --shade-prompt-focus: light-dark(rgb(60 64 67 / 0.2), rgb(0 0 0 / 0.6));
   /* The recipes' measured shades (HAL-20672), the same in both modes as there. */
   --shade-header: light-dark(rgb(10 10 10 / 0.12), rgb(10 10 10 / 0.12));
+  /* A shadow doesn't show on the dark panel, so in dark the header keeps the old divider's line
+     (HAL-20776); in light the shadow is enough. */
+  --shade-header-line: light-dark(transparent, #1b2638);
   --shade-bubble: light-dark(rgb(11 20 26 / 0.13), rgb(11 20 26 / 0.13));
   --shade-composer: light-dark(rgb(0 0 0 / 0.12), rgb(0 0 0 / 0.12));
 
@@ -406,6 +412,7 @@
     --color-border-strong: var(--color-border-control);
     --color-border-prompt: var(--color-border-control);
     --shade-edge: var(--color-border-control);
+    --shade-header-line: var(--color-border-control);
     --focus-ring: 0 0 0 2px var(--color-surface), 0 0 0 5px var(--color-accent);
     --focus-ring-inset: inset 0 0 0 3px var(--color-accent);
   }

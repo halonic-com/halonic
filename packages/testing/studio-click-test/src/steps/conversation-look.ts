@@ -44,10 +44,26 @@ export function chatHeaderLook(context: StepContext, header: string): Promise<St
 
 /**
  * Reads the box around a chat's message box (`kit.prompt-look`): 26px corners and at least 52px
- * high. `textarea` is the message box's own XPath.
+ * high. `textarea` is the message box's own XPath. The box is found by its `rounded-composer`
+ * class, so a box that lost it fails as a look, not as a missing box.
  */
-export function composerLook(context: StepContext, textarea: string): Promise<StepOutcome> {
-  return drawnAs(context, "The message box", composerBoxOf(textarea), conversationLook.composer);
+export async function composerLook(context: StepContext, textarea: string): Promise<StepOutcome> {
+  if ((await context.driver.count(textarea)) === 0) {
+    return {
+      passed: false,
+      code: "NO_CONVERSATION_PART",
+      note: "The message box isn't on screen.",
+    };
+  }
+  const box = composerBoxOf(textarea);
+  if ((await context.driver.count(box)) === 0) {
+    return {
+      passed: false,
+      code: "CONVERSATION_LOOK",
+      note: "The message box is on screen, but not in the kit's rounded-composer box.",
+    };
+  }
+  return drawnAs(context, "The message box", box, conversationLook.composer);
 }
 
 /**

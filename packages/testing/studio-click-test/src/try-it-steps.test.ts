@@ -1,7 +1,7 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import { button, drawStyles, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
-import { conversationLook, ownBubbleWith } from "./steps/conversation-look.ts";
+import { ownBubbleWith } from "./steps/conversation-look.ts";
 import { probeMessage } from "./steps/engine-answers.ts";
 import { chatComesBack, keyHeld, keyMessage, writerBox } from "./steps/try-it.ts";
 import { clickTestSteps } from "./steps.ts";
@@ -35,7 +35,10 @@ function showAgents(studio: FakeStudio, saved: string) {
 function studioOnWriter(saved: string): FakeStudio {
   const studio = fakeStudio("");
   showWriter(studio, probeMessage, () => showAgents(studio, saved));
-  drawStyles(studio, ownBubbleWith(probeMessage), conversationLook.bubble);
+  drawStyles(studio, ownBubbleWith(probeMessage), {
+    "border-top-left-radius": "7.5px",
+    "background-color": "rgb(219, 231, 254)",
+  });
   return studio;
 }
 
@@ -142,6 +145,18 @@ verifies("studio-click-test.try-it-steps", () => {
         button(held, "main", sendAnyway.text);
       });
       await expect(keyHeld.run(studio.context)).resolves.toMatchObject({ code: "NOT_SENT" });
+    });
+  });
+});
+
+verifies("studio-click-test.conversation-look", () => {
+  it("fails as BUBBLE_LOOK when step 1's message comes back with no bubble fill", async () => {
+    const studio = studioOnWriter(probeMessage);
+    studio.styles.set(`${ownBubbleWith(probeMessage)} background-color`, "rgba(0, 0, 0, 0)");
+    await expect(chatComesBack.run(studio.context)).resolves.toEqual({
+      passed: false,
+      code: "BUBBLE_LOOK",
+      note: "Your message's bubble has no fill.",
     });
   });
 });

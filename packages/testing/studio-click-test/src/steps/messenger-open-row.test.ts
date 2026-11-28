@@ -1,8 +1,14 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { expect, it } from "vitest";
-import { drawRow, drawStyles, type FakeStudio, fakeStudio } from "../fake-studio.test-helper.ts";
+import {
+  drawComposer,
+  drawRow,
+  drawStyles,
+  type FakeStudio,
+  fakeStudio,
+} from "../fake-studio.test-helper.ts";
 import { seedNames } from "../test-paperclip.ts";
-import { composerBoxOf, conversationLook } from "./conversation-look.ts";
+import { composerBoxOf } from "./conversation-look.ts";
 import {
   agentChatHeader,
   agentChatRow,
@@ -33,8 +39,8 @@ function studioWithOpenRow(tileFill: string, shown = true): FakeStudio {
   });
   for (const xpath of Object.values(agentPictureIn)) studio.elements.set(xpath, 1);
   drawRow(studio, { row: openRowFillOf.row, picture: openRowFillOf.tile });
-  drawStyles(studio, agentChatHeader, conversationLook.header);
-  drawStyles(studio, composerBoxOf(agentComposer), conversationLook.composer);
+  drawStyles(studio, agentChatHeader, { height: "64px", "border-bottom-width": "0px" });
+  drawComposer(studio, { textarea: agentComposer, box: composerBoxOf(agentComposer) });
   if (shown) studio.elements.set(agentChatRow, 1);
   studio.backgrounds.set(openRowFillOf.row, rowFill);
   studio.backgrounds.set(openRowFillOf.tile, tileFill);
@@ -59,5 +65,27 @@ verifies("studio-click-test.messenger-open-row", () => {
   it("compares nothing in a narrow window, which shows the open chat without the list", async () => {
     const studio = studioWithOpenRow(rowFill, false);
     await expect(messengerSend.run(studio.context)).resolves.toEqual({ passed: true });
+  });
+});
+
+verifies("studio-click-test.conversation-look", () => {
+  it("fails the Messenger step as CONVERSATION_LOOK when the chat header has a line", async () => {
+    const studio = studioWithOpenRow("rgb(255, 255, 255)");
+    studio.styles.set(`${agentChatHeader} border-bottom-width`, "1px");
+    await expect(messengerSend.run(studio.context)).resolves.toEqual({
+      passed: false,
+      code: "CONVERSATION_LOOK",
+      note: "The chat header: border-bottom-width 1px, not 0px.",
+    });
+  });
+
+  it("fails the Messenger step as CONVERSATION_LOOK when the message box has 24px corners", async () => {
+    const studio = studioWithOpenRow("rgb(255, 255, 255)");
+    studio.styles.set(`${composerBoxOf(agentComposer)} border-top-left-radius`, "24px");
+    await expect(messengerSend.run(studio.context)).resolves.toEqual({
+      passed: false,
+      code: "CONVERSATION_LOOK",
+      note: "The message box: border-top-left-radius 24px, not 26px.",
+    });
   });
 });

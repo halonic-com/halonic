@@ -214,12 +214,31 @@ export function drawRowFit(
   studio.heights.set(parts.badge, styles.badgeHeight ?? "20px");
 }
 
-/** Draws an element at `xpath` with the computed values given, such as a part of a conversation. */
+/** Draws an element at `xpath` with the computed values given, keyed by CSS property. */
 export function drawStyles(
   studio: FakeStudio,
   xpath: string,
-  values: readonly { readonly property: string; readonly value: string }[],
+  values: Readonly<Record<string, string>>,
 ): void {
   studio.elements.set(xpath, 1);
-  for (const { property, value } of values) studio.styles.set(`${xpath} ${property}`, value);
+  for (const [property, value] of Object.entries(values)) {
+    studio.styles.set(`${xpath} ${property}`, value);
+  }
+}
+
+/**
+ * Draws a chat's message box at `textarea` inside its kit box at `box`, with the kit's 26px corners
+ * and 52px least height unless `values` says otherwise.
+ */
+export function drawComposer(
+  studio: FakeStudio,
+  parts: { readonly textarea: string; readonly box: string },
+  values: Readonly<Record<string, string>> = {},
+): void {
+  studio.elements.set(parts.textarea, 1);
+  drawStyles(studio, parts.box, {
+    "border-top-left-radius": "26px",
+    "min-height": "52px",
+    ...values,
+  });
 }

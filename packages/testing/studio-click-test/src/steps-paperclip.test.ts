@@ -2,6 +2,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
   button,
+  drawComposer,
   drawRow,
   drawRowFit,
   drawStyles,
@@ -9,7 +10,7 @@ import {
   fakeStudio,
 } from "./fake-studio.test-helper.ts";
 import { placesList } from "./screen.ts";
-import { composerBoxOf, conversationLook } from "./steps/conversation-look.ts";
+import { composerBoxOf } from "./steps/conversation-look.ts";
 import { cardRowParts, inboxAnswer } from "./steps/inbox-answer.ts";
 import {
   agentChatHeader,
@@ -178,8 +179,8 @@ verifies("studio-click-test.paperclip-steps", () => {
       });
       for (const place of where) studio.elements.set(agentPictureIn[place], 1);
       drawRow(studio, { row: openRowFillOf.row, picture: openRowFillOf.tile });
-      drawStyles(studio, agentChatHeader, conversationLook.header);
-      drawStyles(studio, composerBoxOf(agentComposer), conversationLook.composer);
+      drawStyles(studio, agentChatHeader, { height: "64px", "border-bottom-width": "0px" });
+      drawComposer(studio, { textarea: agentComposer, box: composerBoxOf(agentComposer) });
       return studio;
     }
 
@@ -187,16 +188,6 @@ verifies("studio-click-test.paperclip-steps", () => {
       const studio = studioSending(["chat row", "header"]);
       await expect(messengerSend.run(studio.context)).resolves.toEqual({ passed: true });
       expect(studio.typed).toEqual([messengerProbe]);
-    });
-
-    it("fails as CONVERSATION_LOOK when the chat header draws a line under it", async () => {
-      const studio = studioSending(["chat row", "header"]);
-      studio.styles.set(`${agentChatHeader} border-bottom-width`, "1px");
-      await expect(messengerSend.run(studio.context)).resolves.toEqual({
-        passed: false,
-        code: "CONVERSATION_LOOK",
-        note: "The chat header: border-bottom-width 1px, not 0px.",
-      });
     });
 
     it("fails as NO_AGENT_PICTURE when the Messenger shows only the agent's initial", async () => {
