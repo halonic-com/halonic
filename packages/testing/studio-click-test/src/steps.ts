@@ -24,6 +24,7 @@ import { restartKeepsSignIn } from "./steps/restart-sign-in.ts";
 import { overviewRecap, searchTask } from "./steps/search-overview.ts";
 import { settingsFormats, settingsTheme } from "./steps/settings-display.ts";
 import { settingsHostSections } from "./steps/settings-host.ts";
+import { settingsTwoColumns } from "./steps/settings-two-columns.ts";
 import { disconnect, startMenuShortcuts } from "./steps/shortcuts-disconnect.ts";
 import { chatComesBack, keyHeld } from "./steps/try-it.ts";
 import { waitCardAnswers } from "./steps/wait-card.ts";
@@ -73,6 +74,7 @@ export const clickTestSteps: readonly Step[] = [
   closeWorkspace,
   settingsTheme,
   settingsFormats,
+  settingsTwoColumns,
   settingsHostSections,
   chatComesBack,
   keyHeld,

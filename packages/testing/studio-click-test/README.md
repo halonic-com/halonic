@@ -76,13 +76,14 @@ The steps, in `src/steps/`:
 | 24 | Close workspace | `workspace.workspace-window`, `shell.welcome-open`, `shell.welcome-recent`, `shell.welcome-sample` | the workspace menu's Close workspace shows Welcome, with the demo under Recent with the Demo tag, and Open demo |
 | 25 | Theme | `settings.feature`, `settings.appearance-section`, `settings.appearance-theme` | Settings › Appearance › Theme Dark sets the window's `data-theme="dark"`, and System takes it off again |
 | 26 | Formats | `settings.formats-section`, `settings.formats-format` | Settings › Formats' example turns Dutch (`12.345,60`) after Dutch (Netherlands), and back after Follow this computer |
-| 27 | Agent sandbox and About Halonic | `settings.agent-sandbox-section`, `settings.agent-sandbox-state`, `settings.about-section` | Agent sandbox shows a state chip without a button pressed, and About Halonic shows Check now and Update Halonic automatically |
-| 28 | Writer's Try it chat comes back | `agents.chat.saved`, `agents.chat.first-load`, `kit.chat-message`, `kit.chat-message-corner` | in the demo the Settings steps opened again, Writer opened from the Agents list shows step 1's message, in a filled bubble with 7.5px corners (`studio-click-test.conversation-look`) |
-| 29 | A key in a Try it message is held | `agents.chat.box-lines` | a message with a made-up key stays out of the chat while the key line shows, and Send anyway sends it |
-| 30 | The Model page checks the harness | `agents.configuration.harness-model` | on Writer's page, Configuration (after the panel's button in the 800 px window) › Harness › Codex, then Model › `default` (the demo's test model) shows "This model can't be used with Codex. Choose another.", and Writer goes back to Halonic |
-| 31 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
-| 32 | The focus ring after a click | `shell.focus-ring-after-pointer` | from Welcome (the demo closed first), Open demo leaves the page's title focused with no ring and `<html data-input="pointer">`; Shift alone keeps that mark and Tab turns it to `keyboard`; then Enter on Runs in Places opens that page, whose title takes focus with the ring |
-| 33 | A wait step's answers | `inbox.wait-card` | in a 1280 × 800 window, the demo's Support reply, started from New request with an invented email, waits at its review step, and that card's Reject and Approve sit in one right-aligned row at their natural width, Approve at the right end |
+| 27 | Settings' two columns | `shell.settings-two-columns`, `kit.list-column` | Settings › Appearance's list column ("Settings sections") is 34% of the dialog's row, between 208px and 380px, and only the current row has a fill, in Light and in Dark; System again after (`studio-click-test.settings-two-columns-look`) |
+| 28 | Agent sandbox and About Halonic | `settings.agent-sandbox-section`, `settings.agent-sandbox-state`, `settings.about-section` | Agent sandbox shows a state chip without a button pressed, and About Halonic shows Check now and Update Halonic automatically |
+| 29 | Writer's Try it chat comes back | `agents.chat.saved`, `agents.chat.first-load`, `kit.chat-message`, `kit.chat-message-corner` | in the demo the Settings steps opened again, Writer opened from the Agents list shows step 1's message, in a filled bubble with 7.5px corners (`studio-click-test.conversation-look`) |
+| 30 | A key in a Try it message is held | `agents.chat.box-lines` | a message with a made-up key stays out of the chat while the key line shows, and Send anyway sends it |
+| 31 | The Model page checks the harness | `agents.configuration.harness-model` | on Writer's page, Configuration (after the panel's button in the 800 px window) › Harness › Codex, then Model › `default` (the demo's test model) shows "This model can't be used with Codex. Choose another.", and Writer goes back to Halonic |
+| 32 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
+| 33 | The focus ring after a click | `shell.focus-ring-after-pointer` | from Welcome (the demo closed first), Open demo leaves the page's title focused with no ring and `<html data-input="pointer">`; Shift alone keeps that mark and Tab turns it to `keyboard`; then Enter on Runs in Places opens that page, whose title takes focus with the ring |
+| 34 | A wait step's answers | `inbox.wait-card` | in a 1280 × 800 window, the demo's Support reply, started from New request with an invented email, waits at its review step, and that card's Reject and Approve sit in one right-aligned row at their natural width, Approve at the right end |
 
 Steps 4 to 8 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
 They and steps 9 to 21 come straight after Connect Paperclip: the restart after a failing step used
@@ -94,15 +95,15 @@ failing (`connections.list-retry`), a signed-out or expiring key, and a keychain
 Steps 9 to 21 are the rest of the phase 1 list on the connected Paperclip (HAL-18354), which the
 suite seeds itself, with quick ask's box (step 14, HAL-20826) and the card kinds (steps 15 to 20,
 HAL-19002) after the Start menu shortcuts, and Disconnect last. Steps 22 to 24 are the Studio basics
-(HAL-18866), steps 25 to 27 Settings
+(HAL-18866), steps 25 to 28 Settings
 (HAL-18867). Close workspace
 ends the basics because it leaves the window on Welcome; a later step that needs a workspace, such
-as each Settings step, opens the demo again from there. Steps 28 and 29 are Try it (HAL-18869);
+as each Settings step, opens the demo again from there. Steps 29 and 30 are Try it (HAL-18869);
 they come straight after Settings so they find step 1's chat in that reopened demo. The Build chat
-has no step: the desktop app doesn't load the Assistant feature. Step 30 puts Writer in Codex
-for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 31
+has no step: the desktop app doesn't load the Assistant feature. Step 31 puts Writer in Codex
+for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 32
 opens the other places (HAL-18870), so its page visits come after Try it has read the chat.
-Steps 32 and 33 come last (HAL-20621): step 32 closes and reopens the demo, and step 33 leaves
+Steps 33 and 34 come last (HAL-20621): step 33 closes and reopens the demo, and step 34 leaves
 its run waiting in the Inbox.
 The app opens at 800 × 600, a narrow window
 where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step

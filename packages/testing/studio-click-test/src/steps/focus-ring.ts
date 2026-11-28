@@ -14,7 +14,7 @@ const focusWaitMs = 30_000;
 const root = "/html";
 
 /**
- * Step 32 (HAL-20621): after a click on Open demo, the title of the page the demo opens on has
+ * Step 33 (HAL-20621): after a click on Open demo, the title of the page the demo opens on has
  * focus but no ring, and the window is marked `data-input="pointer"`; Shift alone leaves that
  * mark, and the next key, Tab, marks it `keyboard`. Then Enter on Runs in Places opens that page,
  * and its title takes focus with the ring (`shell.focus-ring-after-pointer`). It closes the demo

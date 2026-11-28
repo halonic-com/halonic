@@ -68,7 +68,8 @@ export async function openSection(context: StepContext, row: string): Promise<St
   return failure("NO_SETTINGS", text, `No ${row} row in Settings.`);
 }
 
-async function pickTheme(
+/** Picks a Theme option, then waits for the window's `data-theme` to read `theme`. */
+export async function pickTheme(
   context: StepContext,
   option: string,
   theme: string | null,
