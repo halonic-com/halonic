@@ -298,7 +298,9 @@ function FramedContent(props: {
       className={desktopPanelClass(desktop, props.besideSidebar)}
     >
       {desktop && frame.tabs !== undefined ? (
-        <div data-panel-tabs="" className="flex shrink-0 items-end gap-0.5 ps-1 pt-1">
+        // Over the panel's 1px start border, so the active tab starts where the panel does and
+        // joins it (the approved mockup, v26 on HAL-20617).
+        <div data-panel-tabs="" className="-ms-px flex shrink-0 items-end gap-0.5 pt-1">
           {frame.tabs}
         </div>
       ) : null}

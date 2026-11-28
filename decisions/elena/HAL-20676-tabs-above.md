@@ -5,7 +5,7 @@
 
 ## What changes
 
-`shell.frame`: the framed panel's first row is the window tabs, then the page (`main`), over the status bar. The tabs sit above the content pane, not in the title bar. The clause that the tabs start at the framed panel's start edge, so the active tab joins it, goes: the tabs are now inside the panel.
+`shell.frame`: the framed panel's first row is the window tabs, then the page (`main`), over the status bar. The tabs sit above the content pane, not in the title bar. They still start at the framed panel's start edge, so the active tab joins it: the row sits over the panel's 1px start border, which the browser test `e2e/rail-frame.spec.ts` checks at 1280px.
 
 `shell.title-bar`: the title bar shows the mark, "Halonic Studio", Back and Forward, and the panel button and the features' items at its right end. It no longer shows the window tabs, which `shell.frame` places above the content pane.
 
