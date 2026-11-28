@@ -12,6 +12,7 @@ import {
   type RailEntryContribution,
   settingsRailEntry,
 } from "../points/rail.ts";
+import { searchPageLocation } from "../search/search-page-names.ts";
 import { createShell } from "../shell.ts";
 import { ShellError } from "../shell-error.ts";
 import { currentLocation, type TabLocation, TabSet } from "../tabs/tab-set.ts";
@@ -20,6 +21,8 @@ import { IconRail } from "./icon-rail.tsx";
 import { type PlaceOfKind, selectedRailEntry } from "./rail-selection.ts";
 
 afterEach(unmountAll);
+
+const load = async () => ({ View: () => "view" });
 
 function entry(fields: Partial<RailEntry> & Pick<RailEntry, "id" | "holds">): RailEntry {
   return {
@@ -36,18 +39,22 @@ function shown(railEntry: RailEntry): Registered<RailEntry> {
   return { ...railEntry, featureId: "test" };
 }
 
-const library = entry({ id: "library", label: "Library", holds: ["library", "agents"] });
+const library = entry({
+  id: "library",
+  label: "Library",
+  holds: ["library", "agents", "workflows"],
+});
 const messenger = entry({ id: "messenger", label: "Messenger", holds: ["team"], opens: undefined });
 const inbox = entry({ id: "inbox", label: "Inbox", holds: ["inbox"] });
 // Settings first, so the tests show the rail puts it at the bottom.
 const entries = [settingsRailEntry, homeRailEntry, library, messenger, inbox].map(shown);
 
-/** The kinds the tests know: an agent is in Agents, and a made-up kind in Agents too. */
-const placeOfKind: PlaceOfKind = (kind) =>
-  kind === "agent" || kind === "persona" ? "agents" : undefined;
+/** The kinds the tests know: an agent is in Agents, and a made-up kind in Workflows. */
+const kindPlaces: Readonly<Record<string, string>> = { agent: "agents", persona: "workflows" };
+const placeOfKind: PlaceOfKind = (kind) => kindPlaces[kind];
 
 const sorter: TabLocation = { key: "agent/acme/sorter", title: "Sorter", kind: "agent" };
-const search: TabLocation = { key: "search", title: "Search" };
+const search: TabLocation = searchPageLocation("invoices");
 
 /** A page as the frame shows it: a `main` whose `h1` is the active tab's title. */
 function Page({ tabs }: { readonly tabs: TabSet }) {
@@ -193,6 +200,40 @@ verifies("shell.rail", () => {
       const second = entry({ id: "runs", holds: ["runs", "inbox"] }) as RailEntryContribution;
       expect(adding(first, second)).toThrow(ShellError);
       expect(adding(first, second)).toThrow(/holds "inbox" in the entry "runs".*"feature-0"/);
+    });
+
+    it("rejects an entry holding a kind whose place another entry holds", () => {
+      const kinds = defineFeature({
+        id: "kinds",
+        title: "Kinds",
+        register: (studio) =>
+          studio.itemKinds.add({
+            kind: "note",
+            label: "Note",
+            icon: "note",
+            place: "inbox",
+            open: { view: "View", load },
+          }),
+      });
+      const inboxEntry = entry({ id: "inbox", holds: ["inbox"] }) as RailEntryContribution;
+      const runsEntry = entry({ id: "runs", holds: ["runs", "note"] }) as RailEntryContribution;
+      const create = () =>
+        createShell({
+          features: [
+            kinds,
+            defineFeature({
+              id: "a",
+              title: "A",
+              register: (studio) => studio.rail.add(inboxEntry),
+            }),
+            defineFeature({
+              id: "b",
+              title: "B",
+              register: (studio) => studio.rail.add(runsEntry),
+            }),
+          ],
+        });
+      expect(create).toThrow(/"runs" holds the kind "note", whose place "inbox" the entry "inbox"/);
     });
 
     it("rejects an entry that holds Home's place", () => {

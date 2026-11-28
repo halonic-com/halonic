@@ -161,3 +161,4 @@ export const ServedHomeHintService: ServiceKey<ServedHomeHint> =
  */
 export const AgentNotifierService: ServiceKey<Notifier> =
   serviceKey<Notifier>("inbox.agent-notifier");
+export { waitingCount } from "./inbox-count.ts";

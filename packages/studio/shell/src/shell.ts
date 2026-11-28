@@ -97,6 +97,8 @@ export function createShell(options: ShellOptions): Shell {
   }
   layout.check();
   commands.check();
+  const itemKinds = layout.contributions().itemKinds;
+  frame.check((kind) => itemKinds.get(kind)?.place);
   const announcer =
     options.timers === undefined ? createAnnouncer() : createAnnouncer({ timers: options.timers });
   const engine = createShellEngine(announcer, options.timers ?? systemTimers, options.host);

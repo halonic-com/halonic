@@ -219,6 +219,11 @@ export class FrameStores {
     };
   }
 
+  /** Checks what only makes sense once every feature has registered, such as the rail's places. */
+  check(placeOfKind: (kind: string) => string | undefined): void {
+    this.rail.check(placeOfKind);
+  }
+
   /** The read side, for the shell's frame. */
   contributions(): FrameContributions {
     return {

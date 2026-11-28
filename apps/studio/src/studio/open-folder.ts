@@ -48,6 +48,7 @@ import { provideRunNotifications } from "../runs/run-notifications-watch.ts";
 import { provideAssistant } from "./assistant-workspace.ts";
 import type { DeviceMemory } from "./device-memory.ts";
 import { firstRunDeviceOf } from "./first-run-device.ts";
+import { folderFactsOf } from "./folder-facts.ts";
 import { unfencedRunsOf } from "./integration-runs-status.ts";
 import { provideLoginItem } from "./login-item.ts";
 import { openFolderScope, savingOf } from "./open-folder-scope.ts";
@@ -190,6 +191,9 @@ export async function openFolder(
     services,
     name,
     engineReady: backgroundEngine,
+    folderFacts: folderFactsOf(services, (error) =>
+      console.error("The rail couldn't read the folder's history", error),
+    ),
   });
   const outside = showFilesOutside(services, shell.toasts, workspace);
   const saving = scope === undefined ? undefined : savingOf(scope, workspace, name, outside.onHeld);

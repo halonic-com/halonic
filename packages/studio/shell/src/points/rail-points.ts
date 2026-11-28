@@ -47,6 +47,28 @@ export class RailStore {
     };
   }
 
+  /**
+   * Checks, once every feature has registered, that no entry holds an item kind whose place
+   * another entry holds: the tab would then belong to both (`shell.rail`).
+   *
+   * @throws ShellError naming both entries
+   */
+  check(placeOfKind: (kind: string) => string | undefined): void {
+    const all: readonly RailEntry[] = [homeRailEntry, ...this.entries.all()];
+    for (const entry of all) {
+      for (const key of entry.holds) {
+        const place = placeOfKind(key);
+        if (place === undefined) continue;
+        const holder = all.find((other) => other !== entry && other.holds.includes(place));
+        if (holder !== undefined) {
+          throw new ShellError(
+            `rail.add: the entry "${entry.id}" holds the kind "${key}", whose place "${place}" the entry "${holder.id}" holds. Hold the place in one entry only.`,
+          );
+        }
+      }
+    }
+  }
+
   /** The read side, for the shell's frame. */
   contributions(): RailContributions {
     const home = Object.freeze({ ...homeRailEntry, featureId: shellId });
@@ -71,7 +93,10 @@ export class RailStore {
     }
   }
 
-  /** A tab can be in one entry only, so two entries holding a key would make the selection a guess. */
+  /**
+   * A tab can be in one entry only, so two entries holding a key would make the selection a
+   * guess.
+   */
   private rejectHeldKeys(entry: RailEntryContribution, featureId: string): void {
     const others = [homeRailEntry, ...this.entries.all()];
     for (const key of entry.holds) {
@@ -86,7 +111,10 @@ export class RailStore {
   }
 }
 
-/** The rail's entries are fixed by design, so a feature can't make one up or add Home or Settings. */
+/**
+ * The rail's entries are fixed by design, so a feature can't make one up or add Home or
+ * Settings.
+ */
 function rejectUnknownEntry(entry: RailEntryContribution, featureId: string): void {
   const id: string = entry.id;
   if (id === homeRailEntry.id || id === settingsRailEntry.id) {

@@ -58,7 +58,7 @@ verifies("studio.desktop-rail-selection", () => {
   });
 
   it("puts the Search page in no entry", () => {
-    expect(entryFor("search")).toBeUndefined();
+    expect(entryFor("search:invoices")).toBeUndefined();
   });
 
   it("opens only pages a desktop feature adds", () => {
