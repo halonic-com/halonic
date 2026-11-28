@@ -245,7 +245,7 @@ const MAX_KEPT_SEGMENT_CHARS: usize = 64;
 /// A kept field's name: up to [`MAX_KEPT_SEGMENTS`] object keys joined by
 /// `.`, each a plain name. A segment can't start with a digit, so no name
 /// reaches into a list.
-fn is_kept_name(name: &str) -> bool {
+pub(crate) fn is_kept_name(name: &str) -> bool {
     let segments: Vec<&str> = name.split('.').collect();
     segments.len() <= MAX_KEPT_SEGMENTS
         && segments

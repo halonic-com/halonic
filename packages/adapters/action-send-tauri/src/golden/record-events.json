@@ -47,6 +47,19 @@
       }
     },
     {
+      "case": "dotted kept names of 2 and 3 segments",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "triggering_actor.login": "acme-dev",
+          "environment.protection.wait_timer": 30
+        }
+      }
+    },
+    {
       "case": "a kept value of 1000 two-byte characters",
       "event": {
         "type": "action.step.succeeded",
@@ -218,14 +231,38 @@
       }
     },
     {
-      "case": "a dotted kept name: taken once #6725 (HAL-20271) lands, then both sides move it to taken together",
+      "case": "a kept name of 4 dotted segments",
       "event": {
         "type": "action.step.succeeded",
         "request": "req-1",
         "at": "2026-11-25T09:00:00.000Z",
         "step": 1,
         "kept": {
-          "triggering_actor.login": "acme-dev"
+          "a.b.c.d": "acme"
+        }
+      }
+    },
+    {
+      "case": "a kept name that reaches into a list",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "jobs.0.name": "acme"
+        }
+      }
+    },
+    {
+      "case": "a kept name with an empty segment",
+      "event": {
+        "type": "action.step.succeeded",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "kept": {
+          "triggering_actor..login": "acme"
         }
       }
     },
