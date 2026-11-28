@@ -206,6 +206,74 @@ verifies("remote.phone-messenger", () => {
       expect(scene.tunnel.sentOf("msg-read")).toEqual([]);
     });
   });
+
+  describe("who wrote a message and where the focus goes (HAL-19086)", () => {
+    it("says You to a screen reader before the person's own message", async () => {
+      await openChannel([{ ...message("Ship it"), author: { kind: "me" } }]);
+      const own = document.querySelector('[data-chat-message="you"]');
+      expect(own?.querySelector(".sr-only")?.textContent).toBe("You: ");
+      expect(own?.textContent).toBe("You: Ship it");
+    });
+
+    it("focuses the chat's title when it opens", async () => {
+      await openChannel();
+      const title = document.querySelector("h2");
+      expect(title?.textContent).toBe("Engineering");
+      expect(document.activeElement).toBe(title);
+    });
+
+    it("leaves the focus alone on the list's first draw", async () => {
+      const { scene } = renderMessenger();
+      answer(scene, "conversations", [channel, direct]);
+      answer(scene, "agents", []);
+      answer(scene, "sources", []);
+      await settle();
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it("lets go of the row once the focus has left it, on later reads", async () => {
+      const scene = await backFromEngineering();
+      rowNamed("Engineering")?.blur();
+      answer(scene, "sources", []);
+      await settle();
+      answer(scene, "conversations", [channel, direct]);
+      answer(scene, "agents", []);
+      await settle();
+      expect(rowNamed("Engineering")).toBeDefined();
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it("leaves the focus on the row the person moved it to when the chat's row leaves", async () => {
+      const scene = await backFromEngineering();
+      const chief = rowNamed("Chief");
+      chief?.focus();
+      answer(scene, "conversations", [direct]);
+      answer(scene, "agents", []);
+      await settle();
+      expect(rowNamed("Engineering")).toBeUndefined();
+      expect(document.activeElement).toBe(chief);
+    });
+
+    it("gives the focus back to the chat's row, and to the chips once the row has left", async () => {
+      const { scene } = renderMessenger();
+      answer(scene, "conversations", [channel, direct]);
+      answer(scene, "agents", []);
+      await settle();
+      const waitingChip = () => chips()?.querySelectorAll("input")[1];
+      await act(async () => waitingChip()?.click());
+      await act(async () => rowNamed("Engineering")?.click());
+      answer(scene, "messages", []);
+      await settle();
+      await act(async () => buttonNamed("Messenger")?.click());
+      expect(document.activeElement).toBe(rowNamed("Engineering"));
+      // The person answered: on the next read the chat no longer waits, so it leaves the list.
+      answer(scene, "conversations", [{ ...channel, waitingForMe: false }, direct]);
+      answer(scene, "agents", []);
+      await settle();
+      expect(rowNamed("Engineering")).toBeUndefined();
+      expect(document.activeElement).toBe(waitingChip());
+    });
+  });
 });
 
 /** A row of the box's list of members, by the member's name. */
@@ -213,6 +281,20 @@ function optionNamed(name: string): HTMLElement | undefined {
   return [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((option) =>
     option.textContent?.startsWith(name),
   );
+}
+
+/** Opens Engineering from the full list and goes Back: its row has the focus. */
+async function backFromEngineering(): Promise<ReturnType<typeof renderMessenger>["scene"]> {
+  const { scene } = renderMessenger();
+  answer(scene, "conversations", [channel, direct]);
+  answer(scene, "agents", []);
+  await settle();
+  await act(async () => rowNamed("Engineering")?.click());
+  answer(scene, "messages", []);
+  await settle();
+  await act(async () => buttonNamed("Messenger")?.click());
+  expect(document.activeElement).toBe(rowNamed("Engineering"));
+  return scene;
 }
 
 /** A Messenger tab over a version 4 host that hasn't answered anything yet. */

@@ -7,7 +7,7 @@ import {
   ChatMessage,
   SheetFrame,
 } from "@halonicjs/studio-kit";
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import { messageParts, openChecked } from "./message-links.ts";
 import type { ChatAgents, SourceLabels } from "./phone-messenger.tsx";
 import { dayLabel, phoneMessengerWords as words } from "./phone-messenger-words.ts";
@@ -62,6 +62,9 @@ export function ChatHeader({
 }) {
   const channel = isChannel(conversation);
   const status = statusLine(conversation, agents, sources);
+  // The chat opens in the list's place, so focus starts on its name, not the page (WCAG 2.4.3).
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => titleRef.current?.focus(), []);
   return (
     <header className="flex min-h-14 items-center gap-2 border-b border-border px-2 py-1">
       <Button
@@ -77,7 +80,9 @@ export function ChatHeader({
         size="header"
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <h2 className="truncate text-heading text-fg">{conversation.title}</h2>
+        <h2 ref={titleRef} tabIndex={-1} className="truncate text-heading text-fg focus-ring">
+          {conversation.title}
+        </h2>
         {status === "" ? null : <p className="truncate text-small text-fg-muted">{status}</p>}
       </div>
       {channel ? (
@@ -143,6 +148,8 @@ function Line({
   if (author.kind === "me") {
     return (
       <ChatMessage from="you">
+        {/* The box on the right says whose it is to the eye only; this says it to a screen reader. */}
+        <span className="sr-only">{words.you}</span>
         <MessageBody body={message.body} onOpenLink={onOpenLink} />
       </ChatMessage>
     );
