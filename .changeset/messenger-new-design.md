@@ -1,0 +1,5 @@
+---
+"@halonicjs/app-studio": patch
+---
+
+The Messenger has its new look: the chat list and the open chat share one rounded panel, split by a thin line, with the activity panel beside the chat.
