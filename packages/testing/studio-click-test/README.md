@@ -88,6 +88,7 @@ The steps, in `src/steps/`:
 | 36 | A file's menu opens and closes, and Copy path shows a toast | `kit.menu`, `kit.toast` | in a wide window, the sidebar's Files view opens its first file; the ⋮ in the file's header opens its menu (`aria-expanded="true"`, the menu shown) and Escape closes it; Copy path shows "Copied …" or "Couldn't copy the path." in the Notifications region, and the toast's close button removes it |
 | 37 | New file opens a dialog, and Escape closes it | `kit.dialog` | in a wide window, the sidebar's Files view's New file opens a `<dialog>` headed "New file", and Escape closes it |
 | 38 | A tab's tooltip shows on keyboard focus, and Escape hides it | `kit.tooltip` | in a wide window with a second tab from New tab, ArrowLeft from the clicked last tab shows the tooltip of the tab before it, Escape hides it, and Ctrl W closes a tab again |
+| 39 | The rail is named Apps, and a picked Messenger isn't the current page | `shell.rail-current`, `messenger.rail-entry` | in a 1280 × 800 window, one `nav` named "Apps" (the rail) and one named "Places" (the sidebar); after Home then Messenger on the rail, Messenger is `aria-current="true"` within 5 s and no rail button is `aria-current="page"`; Home is clicked again |
 
 Steps 4 to 8 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
 They and steps 9 to 21 come straight after Connect Paperclip: the restart after a failing step used
@@ -117,6 +118,8 @@ Not covered: a toast with two actions on one row (`action` and `secondAction`, H
 shows one only after a failure the click test can't bring about on a real install (a save that
 failed, a routine that couldn't start, an update that didn't install), so the kit's own tests check
 that row.
+Step 39 checks the rail in the wide window (HAL-20944) last, and clicks Home again so the window is
+left as it found it.
 The app opens at 800 × 600, a narrow window
 where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step
 sizes the window to 1280 × 800 first and gives it its size back afterwards (HAL-19048).

@@ -32,13 +32,15 @@ verifies("studio-click-test.affected-steps", () => {
   describe("chooseSteps on the real steps and requirement files", () => {
     it("runs the short check and the Messenger steps for a change only to Messenger", () => {
       const changed = ["packages/studio/features/messenger/src/view.tsx"];
-      // Sending a message needs a connected Paperclip, so Connect Paperclip runs too.
+      // Sending a message needs a connected Paperclip, so Connect Paperclip runs too. The rail step
+      // picks Messenger (`messenger.rail-entry`).
       const run = [
         ...shortCheck,
         "messenger-empty",
         "connect-paperclip",
         "messenger-send",
         ...cardSteps,
+        "rail-current",
       ];
       expect(idsRun(changed)).toEqual(run);
       // Every other step is named as left out, whatever steps main has added since.

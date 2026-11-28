@@ -8,7 +8,12 @@ import type { FolderFacts, FolderFactsSource, RailEntryContribution } from "../p
 import { searchPageLocation } from "../search/search-page-names.ts";
 import { createShell } from "../shell.ts";
 import { currentLocation, TabSet } from "../tabs/tab-set.ts";
+import { FakeMediaQueries } from "../test-support/fake-media-query.ts";
+import { FakeTimers } from "../test-support/fake-timers.ts";
+import { MapTarget } from "../test-support/map-target.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
+import { StudioWindow } from "../window/studio-window.tsx";
+import { StudioWorkspace } from "../window/studio-workspace.ts";
 import { placesOfOtherEntries, useWindowRailParts, workspaceProjectFacts } from "./window-rail.tsx";
 
 afterEach(unmountAll);
@@ -42,26 +47,24 @@ function entry(fields: Pick<RailEntryContribution, "id" | "holds" | "order">) {
   } satisfies RailEntryContribution;
 }
 
-const rail = createShell({
-  features: [
-    defineFeature({
-      id: "acme-places",
-      title: "Acme places",
-      register(studio) {
-        studio.rail.add(entry({ id: "library", holds: ["library", "agents"], order: 20 }));
-        studio.rail.add({
-          ...entry({ id: "messenger", holds: ["team"], order: 30 }),
-          opens: undefined,
-        });
-        studio.rail.add(entry({ id: "inbox", holds: ["inbox"], order: 40 }));
-        studio.rail.add({
-          ...entry({ id: "runs", holds: ["runs"], order: 50 }),
-          shows: (facts) => facts.runsRecorded,
-        });
-      },
-    }),
-  ],
-}).contributions.rail;
+const acmePlaces = defineFeature({
+  id: "acme-places",
+  title: "Acme places",
+  register(studio) {
+    studio.rail.add(entry({ id: "library", holds: ["library", "agents"], order: 20 }));
+    studio.rail.add({
+      ...entry({ id: "messenger", holds: ["team"], order: 30 }),
+      opens: undefined,
+    });
+    studio.rail.add(entry({ id: "inbox", holds: ["inbox"], order: 40 }));
+    studio.rail.add({
+      ...entry({ id: "runs", holds: ["runs"], order: 50 }),
+      shows: (facts) => facts.runsRecorded,
+    });
+  },
+});
+
+const rail = createShell({ features: [acmePlaces] }).contributions.rail;
 
 /** The sidebar's places in its order: `routines` is a place no entry holds. */
 const places = ["home", "inbox", "agents", "routines", "library", "runs", "team"];
@@ -104,6 +107,7 @@ function renderWindowRail(source?: FolderFactsSource) {
     />,
   );
   return {
+    container,
     tabs,
     settingsOpened,
     shown: () =>
@@ -111,6 +115,10 @@ function renderWindowRail(source?: FolderFactsSource) {
         button.getAttribute("aria-label"),
       ),
     selected: () =>
+      [...container.querySelectorAll("nav [aria-current]")].map((button) =>
+        button.getAttribute("aria-label"),
+      ),
+    pages: () =>
       [...container.querySelectorAll('nav [aria-current="page"]')].map((button) =>
         button.getAttribute("aria-label"),
       ),
@@ -169,6 +177,7 @@ verifies("shell.rail-frame", () => {
       const window = renderWindowRail();
       window.click("Inbox");
       expect(window.selected()).toEqual(["Inbox"]);
+      expect(window.pages()).toEqual(["Inbox"]);
       expect(window.listed()).toEqual(["inbox", "routines"]);
     });
   });
@@ -194,6 +203,46 @@ verifies("shell.rail-frame", () => {
       expect(window.shown()).toContain("Runs");
       expect(window.selected()).toEqual(["Runs"]);
     });
+  });
+});
+
+verifies("shell.rail-current", () => {
+  it("names the rail apart from the sidebar, so no two navigation landmarks share a name", () => {
+    const restoreMedia = new FakeMediaQueries(1280).install();
+    try {
+      const shell = createShell({ features: [acmePlaces], timers: new FakeTimers() });
+      const services = new MapTarget();
+      shell.services.instantiate(services);
+      const workspace = new StudioWorkspace({ toasts: shell.toasts, services });
+      const container = render(
+        <StudioWindow
+          shell={shell}
+          workspace={workspace}
+          host="desktop-app"
+          platform="windows"
+          language="en"
+        />,
+      );
+      const names = [...container.querySelectorAll("nav")].map((nav) =>
+        nav.getAttribute("aria-label"),
+      );
+      expect(names).toEqual(expect.arrayContaining(["Apps", "Places"]));
+      expect(new Set(names).size).toBe(names.length);
+    } finally {
+      unmountAll();
+      restoreMedia();
+    }
+  });
+
+  it("keeps the current page on the entry that holds it when one with no page is picked", () => {
+    const window = renderWindowRail();
+    expect(window.pages()).toEqual(["Home"]);
+    window.click("Messenger");
+    expect(window.selected()).toEqual(["Messenger"]);
+    expect(window.pages()).toEqual([]);
+    expect(
+      window.container.querySelector('nav [aria-label="Messenger"]')?.getAttribute("aria-current"),
+    ).toBe("true");
   });
 });
 

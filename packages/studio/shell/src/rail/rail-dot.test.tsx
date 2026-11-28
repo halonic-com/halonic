@@ -9,6 +9,7 @@ import { searchPageLocation } from "../search/search-page-names.ts";
 import { TabSet } from "../tabs/tab-set.ts";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { IconRail } from "./icon-rail.tsx";
+import { useRailColumn } from "./rail-column.ts";
 import { railDotMotionAttribute } from "./rail-dot-motion.ts";
 
 function entry(id: RailEntry["id"], label: string): Registered<RailEntry> {
@@ -103,6 +104,12 @@ function renderRail(entries = [settings, home, library, inbox]) {
   return { container, tabs, dot, ring, go, at };
 }
 
+/** The rail as the window shows it, with the list column's selection, so a pick with no page selects. */
+function RailWithColumn({ entries, tabs }: { entries: Registered<RailEntry>[]; tabs: TabSet }) {
+  const column = useRailColumn(entries, tabs, () => undefined);
+  return <IconRail entries={entries} tabs={tabs} placeOfKind={() => undefined} column={column} />;
+}
+
 verifies("shell.rail-dot", () => {
   describe("the rail's white dot", () => {
     it("rests on the selected button's centre, unseen by screen readers, without a motion", () => {
@@ -131,6 +138,22 @@ verifies("shell.rail-dot", () => {
       expect(rail.dot.hidden).toBe(false);
       expect(rail.at(rail.dot)).toEqual(["32px", "76px"]);
       expect(played).toEqual([]);
+    });
+
+    it("travels to an entry picked with no page, as the window's rail selects it", () => {
+      const messenger: Registered<RailEntry> = {
+        ...entry("messenger", "Messenger"),
+        opens: undefined,
+      };
+      const container = render(
+        <RailWithColumn entries={[home, library, messenger]} tabs={new TabSet()} />,
+      );
+      const dot = container.querySelector("nav [data-rail-dot]") as HTMLElement;
+      expect([dot.style.left, dot.style.top]).toEqual(["32px", "28px"]);
+      act(() => (container.querySelector('nav [aria-label="Messenger"]') as HTMLElement).click());
+      expect(dot.hidden).toBe(false);
+      expect([dot.style.left, dot.style.top]).toEqual(["32px", "124px"]);
+      expect(played.map((one) => one.part)).toEqual(["dot", "dot"]);
     });
 
     it("starts again from where it is when the selection moves mid-way", () => {

@@ -22,6 +22,7 @@ import { messengerEmpty } from "./steps/messenger-empty.ts";
 import { messengerSend } from "./steps/messenger-send.ts";
 import { placesOpen } from "./steps/places-open.ts";
 import { quickAskBoxLook } from "./steps/quick-ask-look.ts";
+import { railCurrent } from "./steps/rail-current.ts";
 import { restartKeepsSignIn } from "./steps/restart-sign-in.ts";
 import { overviewRecap, searchTask } from "./steps/search-overview.ts";
 import { settingsFormats, settingsTheme } from "./steps/settings-display.ts";
@@ -47,7 +48,8 @@ import { windowTabs } from "./steps/window-tabs.ts";
  * after Open demo, which closes and reopens the demo, and the wait card's answers, which
  * leave their run waiting in the Inbox (HAL-20621), then the file tree (HAL-20764), which
  * switches the sidebar from the places to Files and back, then the kit's menu, toast and dialog in
- * that Files view and its tooltip in the window tabs (HAL-20752). The
+ * that Files view and its tooltip in the window tabs (HAL-20752), and the rail in the wide
+ * window last (HAL-20944). The
  * Paperclip steps come straight after Connect Paperclip because a restart after a failing step
  * signed step 3's connection out (runs 45722257989 to 45733391864, HAL-19027), so a failure in
  * between would fail them too; the restart step now checks that this no longer happens.
@@ -91,4 +93,5 @@ export const clickTestSteps: readonly Step[] = [
   fileMenuToast,
   newFileDialog,
   tabTooltip,
+  railCurrent,
 ];

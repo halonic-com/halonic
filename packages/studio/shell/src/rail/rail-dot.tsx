@@ -25,8 +25,9 @@ const part = "pointer-events-none absolute rounded-full";
 /**
  * The rail's one point of light (`shell.rail-dot`): a 6px white dot that rests on the selected
  * icon and travels to a newly selected one, and the ring Pulse opens round it. The rail renders
- * it last inside its `nav`, which must be positioned. The dot finds the selected button by
- * `aria-current="page"`, so it follows the selection however it changed. Which motion plays is
+ * it last inside its `nav`, which must be positioned. The dot finds the selected button by its
+ * `aria-current`, `"page"` or `"true"` for an entry picked with no page (`shell.rail-current`), so
+ * it follows the selection however it changed. Which motion plays is
  * read from the window's root element at each move (`railDotMotionAttribute`), so a new choice in
  * Settings shows on the next click. Where the engine has no `element.animate`, the dot is at the
  * new icon at once.
@@ -123,7 +124,7 @@ function play(parts: Parts, from: RailPoint, to: RailPoint, playing: Animation[]
 
 /** The centre of the selected button, in the rail's own coordinates. */
 function selectedPoint(rail: HTMLElement): RailPoint | undefined {
-  const button = rail.querySelector('[aria-current="page"]');
+  const button = rail.querySelector("[aria-current]");
   return button === null ? undefined : centreIn(button, rail);
 }
 

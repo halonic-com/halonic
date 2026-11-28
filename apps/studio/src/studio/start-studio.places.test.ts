@@ -175,7 +175,8 @@ verifies("studio.entry", () => {
     for (let index = 0; index < entryCount; index++) {
       const entry = railEntries(element)[index];
       entry?.click();
-      await vi.waitFor(() => expect(entry?.getAttribute("aria-current")).toBe("page"), {
+      // Any `aria-current` says the pick took: an entry with no page, as Messenger, is "true".
+      await vi.waitFor(() => expect(entry?.hasAttribute("aria-current")).toBe(true), {
         timeout: 4_000,
       });
       const labels = placeLinks(element).map((link) => link.textContent ?? "");

@@ -125,6 +125,13 @@ const tryItFile = "packages/studio/features/agents/src/chat/try-it-words.ts";
  */
 export const screenText = {
   places: { text: "Places", file: "packages/studio/shell/src/sidebar/places-list.tsx" },
+  // The icon rail's `nav` and two entries the demo always shows on it (HAL-20944).
+  apps: { text: "Apps", file: "packages/studio/shell/src/rail/icon-rail.tsx" },
+  homeEntry: { text: "Home", file: "packages/studio/shell/src/points/rail.ts" },
+  messengerEntry: {
+    text: "Messenger",
+    file: "packages/studio/features/messenger/src/rail-entry.ts",
+  },
   agents: { text: "Agents", file: "packages/studio/shell/src/points/frame.ts" },
   inbox: { text: "Inbox", file: "packages/studio/shell/src/points/frame.ts" },
   // The Inbox row names a Paperclip approval by its type in words (paperclip-client.approval-fields).

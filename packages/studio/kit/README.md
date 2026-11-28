@@ -2637,6 +2637,7 @@ draws the travelling point of light; this is one button.
 | Hover | `surface-muted` circle, the drawing at 110% in 180ms |
 | Pressed | The same circle, the drawing at 90% in 60ms |
 | Selected | `aria-current="page"`, the circle and the selected drawing; it doesn't scale |
+| Picked, no page | With `current="true"`: `aria-current="true"` and the same look as Selected, for an app picked that opened no page |
 | Focus | The focus ring round the circle |
 | Count | A 20px `accent` badge 3px above and 5px beyond the circle, ringed in `canvas`; read after the name |
 
