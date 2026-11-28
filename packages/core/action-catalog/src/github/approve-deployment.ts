@@ -85,6 +85,8 @@ export const definition: StepperDefinition<DeploymentParameters> = {
         { name: "comment", kind: "constant", value: "Approved in Halonic." },
       ],
       keep: [],
+      // The name the user types in the shell's native dialog before the approval is sent.
+      target: "{owner}/{repo} run {run_id}",
       manual: {
         url: runPage,
         instructions: [

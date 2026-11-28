@@ -167,6 +167,7 @@ verifies("action-catalog.github-approve-deployment", () => {
             { name: "state", kind: "constant", value: "approved" },
             { name: "comment", kind: "constant", value: "Approved in Halonic." },
           ],
+          target: "{owner}/{repo} run {run_id}",
         },
       ]);
     });
