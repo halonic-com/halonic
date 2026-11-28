@@ -1,6 +1,7 @@
 import type { CardRecord } from "./card-seed.ts";
 import type { StepContext } from "./runner.ts";
 import type { TestPaperclip } from "./test-paperclip.ts";
+import type { KeyboardFocus } from "./top-level-windows.ts";
 import type { Driver, Focused, Rect, WindowSize } from "./webdriver.ts";
 
 /** A window of the fake Studio: its text, and what each button click does to it. */
@@ -19,6 +20,8 @@ export interface FakeStudio {
   readonly shortcuts: string[];
   /** How many visible top-level windows each exe has; one it doesn't name has one. */
   readonly topLevel: Map<string, number>;
+  /** Where typing goes; by default the page in the frame of the shortcut opened last. */
+  focus?: KeyboardFocus;
   /** The page root's attributes, such as `data-theme`. */
   readonly rootAttributes: Map<string, string>;
   current: string;
@@ -176,6 +179,8 @@ export function fakeStudio(text = ""): FakeStudio {
       },
       topLevelWindows: async (exe: string) =>
         Array.from({ length: studio.topLevel.get(exe) ?? 1 }, () => exe),
+      keyboardFocus: async () =>
+        studio.focus ?? { image: `${studio.shortcuts.at(-1) ?? "Halonic"}.exe`, focus: "page" },
       mainWindow: "main",
       approveSignIn: async () => studio.approval,
       paperclip,

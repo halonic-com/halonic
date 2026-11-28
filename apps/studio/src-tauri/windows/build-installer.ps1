@@ -164,21 +164,6 @@ if ($Step -ne 'pack') {
   # anything else until an arm64 installer exists (HAL-8151).
   & (Join-Path $PSScriptRoot 'fetch-vcruntime.ps1') -Target $triple
 
-  # The frames of Halonic Inbox and Halonic Messenger (crates/app-frame,
-  # HAL-20468): an exe per app, so window managers such as FancyZones keep each
-  # app's place apart from Studio's. Tauri ships them next to Halonic.exe
-  # under the names Halonic looks for, `Halonic Inbox.exe` and `Halonic
-  # Messenger.exe`. Like Halonic.exe, they are not signed on their own: the
-  # release signs the installer around them.
-  Push-Location $shell
-  try {
-    cargo build --locked --release -p halonic-app-frame --target $triple
-    if ($LASTEXITCODE -ne 0) { throw 'the app frames did not build' }
-  } finally { Pop-Location }
-  foreach ($frame in @{ 'halonic-inbox' = 'Halonic Inbox'; 'halonic-messenger' = 'Halonic Messenger' }.GetEnumerator()) {
-    Copy-Item (Join-Path $shell "target/$triple/release/$($frame.Key).exe") (Join-Path $bin "$($frame.Value)-$triple.exe") -Force
-  }
-
   # The licences of the npm libraries the app and the agent host bundle
   # (HAL-6225) and of the Rust crates the app links for $triple (HAL-6962).
   # Built for the whole workspace, like the CLI release, so a library either

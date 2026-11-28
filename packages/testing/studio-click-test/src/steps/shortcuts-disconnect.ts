@@ -1,6 +1,7 @@
 import type { Step, StepContext, StepOutcome } from "../runner.ts";
 import { buttonNamed, lastWords, waitForText } from "../screen.ts";
 import { seedNames } from "../test-paperclip.ts";
+import type { KeyboardFocus } from "../top-level-windows.ts";
 import { screenText, words } from "../words.ts";
 import { openAppWindow } from "./app-window.ts";
 import { closeDialogs, onWorkspace, openConnections, openDialog } from "./open-demo.ts";
@@ -46,6 +47,24 @@ export const startMenuShortcuts: Step = {
 const halonicExe = "Halonic.exe";
 /** How long a second start gets to open a second window, if it wrongly would. */
 const secondStartWaitMs = 5_000;
+/** How long the page in a frame that just started gets to take the keyboard focus. */
+const focusWaitMs = 3_000;
+const focusPollMs = 250;
+
+/**
+ * Where typing goes once the page in `frameExe` has the keyboard focus, or after
+ * {@link focusWaitMs}: the frame shares its input queue with Halonic's page (HAL-20468),
+ * so a person typing as soon as the window shows must reach the page.
+ */
+async function focusInPage(context: StepContext, frameExe: string): Promise<KeyboardFocus> {
+  let typing = await context.keyboardFocus();
+  for (let waited = 0; waited < focusWaitMs; waited += focusPollMs) {
+    if (typing.image === frameExe && typing.focus === "page") return typing;
+    await context.sleep(focusPollMs);
+    typing = await context.keyboardFocus();
+  }
+  return typing;
+}
 
 /**
  * Checks that the page `shortcut` showed is in its frame: exactly one top-level window of
@@ -67,6 +86,12 @@ async function inItsFrame(
   if (halonicWindows > halonicWindowsBefore) {
     const note = `${shortcut} opened a top-level window of ${halonicExe}, not one in ${frameExe}.`;
     return { passed: false, code: "NOT_IN_FRAME", note };
+  }
+  const typing = await focusInPage(context, frameExe);
+  if (typing.image !== frameExe || typing.focus !== "page") {
+    const where = typing.image === "" ? "no window" : `${typing.image} (${typing.focus})`;
+    const note = `Right after ${shortcut} started, typing went to ${where}, not its page in ${frameExe}.`;
+    return { passed: false, code: "NO_FOCUS", note };
   }
   await context.openShortcut(shortcut);
   await context.sleep(secondStartWaitMs);

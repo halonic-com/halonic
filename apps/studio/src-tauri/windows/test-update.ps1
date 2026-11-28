@@ -251,6 +251,13 @@ try {
   if ($entry.DisplayVersion -ne '0.1.1') { throw "the uninstall entry says $($entry.DisplayVersion)" }
   Assert-StartMenu $dir 'the update to 0.1.1'
   if ($frame -and (Get-Process -Id $frame.Id -ErrorAction SilentlyContinue)) { throw "0.1.0's Inbox frame is still running after the update" }
+  # The frames are made again as hard links to 0.1.1's Halonic.exe, not left
+  # as 0.1.0's (the runner's disk is NTFS, so no copy is needed).
+  $halonicExe = Join-Path $dir 'Halonic.exe'
+  $links = @(fsutil hardlink list $halonicExe | ForEach-Object { Split-Path $_ -Leaf })
+  foreach ($name in @('Halonic Inbox.exe', 'Halonic Messenger.exe')) {
+    if ($links -notcontains $name) { throw "$name isn't a hard link to Halonic.exe after the update (links: $($links -join ', '))" }
+  }
   # The new version's first start reads the install record and clears it,
   # then proves it starts, and the installer kept for 0.1.0 goes.
   Wait-Until { $saved = Get-Record; $saved -and -not $saved.install } 60 "0.1.1 clearing the install record"

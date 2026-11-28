@@ -54,13 +54,34 @@ verifies("studio.installer-focused-apps", () => {
     expect(body).toContain('"${BUNDLEID}.${app}"');
   });
 
-  it("ships the frames next to Halonic.exe under the names the shortcuts start", () => {
-    const config = JSON.parse(
-      readFileSync(join(shellFolder, "tauri.installer.conf.json"), "utf8"),
-    ) as { bundle: { externalBin: string[] } };
+  it("makes the frames next to Halonic.exe as hard links to it, or copies, on every install", () => {
+    const make = macro("MakeAppFrame");
+    // A frame left by the version before goes first, so the link is to this Halonic.exe.
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+    expect(make.indexOf('Delete "$INSTDIR\\${title}.exe"')).toBeGreaterThan(-1);
+    expect(make).toContain(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+      'kernel32::CreateHardLinkW(w "$INSTDIR\\${title}.exe", w "$INSTDIR\\${MAINBINARYNAME}.exe", p 0)',
+    );
+    expect(make).toContain(
+      // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+      'CopyFiles /SILENT "$INSTDIR\\${MAINBINARYNAME}.exe" "$INSTDIR\\${title}.exe"',
+    );
+    const frames = block("Function", "MakeAppFrames");
     for (const { title } of apps) {
-      // Tauri installs `binaries/<name>` as `<name>.exe` next to Halonic.exe.
-      expect(config.bundle.externalBin).toContain(`binaries/Halonic ${title}`);
+      expect(frames).toContain(`!insertmacro MakeAppFrame "\${PRODUCTNAME} ${title}"`);
+    }
+    const install = block("Section", "Install");
+    // biome-ignore lint/suspicious/noTemplateCurlyInString: NSIS defines, written literally
+    const copied = install.indexOf('File "${MAINBINARYSRCPATH}"');
+    expect(copied).toBeGreaterThan(-1);
+    expect(install.indexOf("Call MakeAppFrames")).toBeGreaterThan(copied);
+  });
+
+  it("removes the frames when Halonic is uninstalled", () => {
+    const uninstall = block("Section", "Uninstall");
+    for (const { title } of apps) {
+      expect(uninstall).toContain(`Delete "$INSTDIR\\\${PRODUCTNAME} ${title}.exe"`);
     }
   });
 

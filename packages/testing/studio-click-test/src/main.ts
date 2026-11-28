@@ -25,7 +25,13 @@ import { allPassed, type LeftOut, resultsMarkdown } from "./results.ts";
 import { runSteps, type StepContext } from "./runner.ts";
 import { clickTestSteps } from "./steps.ts";
 import { seedPaperclip, testPaperclip } from "./test-paperclip.ts";
-import { parseTopLevelWindows, topLevelWindowsScript } from "./top-level-windows.ts";
+import {
+  type KeyboardFocus,
+  keyboardFocusScript,
+  parseKeyboardFocus,
+  parseTopLevelWindows,
+  topLevelWindowsScript,
+} from "./top-level-windows.ts";
 import { type Driver, openSession } from "./webdriver.ts";
 
 const environment = process.env;
@@ -106,6 +112,7 @@ async function contextFor(current: Driver): Promise<StepContext> {
     shellLog,
     openShortcut,
     topLevelWindows,
+    keyboardFocus,
     mainWindow,
     approveSignIn: () => board.approveSignIn(30_000, sleep),
     paperclip,
@@ -187,6 +194,11 @@ async function openShortcut(name: string, args: readonly string[] = []): Promise
 /** The process images of the visible top-level windows whose image is named `exe`. */
 async function topLevelWindows(exe: string): Promise<string[]> {
   return parseTopLevelWindows(await powershell(topLevelWindowsScript, { CLICK_TEST_EXE: exe }));
+}
+
+/** Where typing goes now: the foreground window's image and whether its page has the focus. */
+async function keyboardFocus(): Promise<KeyboardFocus> {
+  return parseKeyboardFocus(await powershell(keyboardFocusScript));
 }
 
 /**

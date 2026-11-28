@@ -1078,6 +1078,9 @@ Section Install
     File /a "/oname={{this}}" "{{no-escape @key}}"
   {{/each}}
 
+  ; Halonic change (HAL-20480): the frames of the Inbox and the Messenger.
+  Call MakeAppFrames
+
   ; Create file associations
   {{#each file_associations as |association| ~}}
     {{#each association.ext as |ext| ~}}
@@ -1634,6 +1637,9 @@ Section Uninstall
   ; Delete the app directory and its content from disk
   ; Copy main executable
   Delete "$INSTDIR\${MAINBINARYNAME}.exe"
+  ; Halonic change (HAL-20480): the frames of the Inbox and the Messenger.
+  Delete "$INSTDIR\${PRODUCTNAME} Inbox.exe"
+  Delete "$INSTDIR\${PRODUCTNAME} Messenger.exe"
 
   ; Delete resources
   {{#each resources}}
@@ -1917,10 +1923,30 @@ FunctionEnd
   !define FOCUSEDAPPFOLDER "$SMPROGRAMS"
 !endif
 
+; Halonic change (HAL-20480): the app's frame, `${title}.exe` next to
+; Halonic.exe, a hard link to Halonic.exe. Started under that name, Halonic.exe
+; runs only the app's frame (src/main.rs, crates/app-frame), so window managers
+; such as FancyZones keep the app's place apart from Studio's. Made again on
+; every install and update, so it is always this version's Halonic.exe; where
+; the folder can't hold a hard link, a copy does the same.
+!macro MakeAppFrame title
+  Delete "$INSTDIR\${title}.exe"
+  System::Call 'kernel32::CreateHardLinkW(w "$INSTDIR\${title}.exe", w "$INSTDIR\${MAINBINARYNAME}.exe", p 0) i .r0'
+  ${If} $0 = 0
+    CopyFiles /SILENT "$INSTDIR\${MAINBINARYNAME}.exe" "$INSTDIR\${title}.exe"
+  ${EndIf}
+!macroend
+
+Function MakeAppFrames
+  Push $0
+  !insertmacro MakeAppFrame "${PRODUCTNAME} Inbox"
+  !insertmacro MakeAppFrame "${PRODUCTNAME} Messenger"
+  Pop $0
+FunctionEnd
+
 ; The shortcut `${title}.lnk` for the focused app `${app}`. Halonic change
-; (HAL-20480): it starts the app's frame, `${title}.exe` next to Halonic.exe,
-; which asks Halonic for the page, so window managers such as FancyZones keep
-; the app's place apart from Studio's (crates/app-frame).
+; (HAL-20480): it starts the app's frame, `${title}.exe`, which asks Halonic
+; for the page.
 !macro FocusedAppShortcut title app
   CreateShortcut "${FOCUSEDAPPFOLDER}\${title}.lnk" "$INSTDIR\${title}.exe" "" "$INSTDIR\icons\${app}.ico" 0
   !insertmacro SetLnkAppUserModelIdTo "${FOCUSEDAPPFOLDER}\${title}.lnk" "${BUNDLEID}.${app}"
@@ -1983,8 +2009,9 @@ Function CopyVersionedIcons
 FunctionEnd
 
 ; $R0: a shortcut. When it starts this install's Halonic, its icon becomes this
-; version's copy of its app's icon: Inbox's for `--app inbox`, Messenger's for
-; `--app messenger`, Halonic's otherwise. Any other shortcut is left as it is.
+; version's copy of its app's icon: Inbox's for `--app inbox` or the Inbox's
+; frame, Messenger's for `--app messenger` or the Messenger's frame (HAL-20480),
+; Halonic's otherwise. Any other shortcut is left as it is.
 Function PointShortcutAtVersionedIcon
   !insertmacro ComHlpr_CreateInProcInstance ${CLSID_ShellLink} ${IID_IShellLink} r0 ""
   ${If} $0 P= 0
@@ -1994,6 +2021,7 @@ Function PointShortcutAtVersionedIcon
   ${If} $1 P<> 0
     ${IPersistFile::Load} $1 '("$R0", ${STGM_READWRITE})'
     ${IShellLink::GetPath} $0 '(.r2, ${NSIS_MAX_STRLEN}, 0, 0)'
+    StrCpy $4 ""
     ${If} $2 == "$INSTDIR\${MAINBINARYNAME}.exe"
       ${IShellLink::GetArguments} $0 '(.r3, ${NSIS_MAX_STRLEN})'
       StrCpy $4 "halonic"
@@ -2002,6 +2030,12 @@ Function PointShortcutAtVersionedIcon
       ${ElseIf} $3 == "--app messenger"
         StrCpy $4 "messenger"
       ${EndIf}
+    ${ElseIf} $2 == "$INSTDIR\${PRODUCTNAME} Inbox.exe"
+      StrCpy $4 "inbox"
+    ${ElseIf} $2 == "$INSTDIR\${PRODUCTNAME} Messenger.exe"
+      StrCpy $4 "messenger"
+    ${EndIf}
+    ${If} $4 != ""
       ${IShellLink::SetIconLocation} $0 '("$INSTDIR\icons\$4-${VERSION}.ico", 0)'
       ${IPersistFile::Save} $1 '("$R0", 1)'
     ${EndIf}

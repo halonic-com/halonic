@@ -332,6 +332,15 @@ verifies("studio-click-test.paperclip-steps", () => {
       });
     });
 
+    it("fails as NO_FOCUS when typing right after the frame starts stops at the frame", async () => {
+      const studio = studioWithInbox();
+      studio.focus = { image: "Halonic Inbox.exe", focus: "window" };
+      await expect(startMenuShortcuts.run(studio.context)).resolves.toMatchObject({
+        code: "NO_FOCUS",
+        note: expect.stringContaining("Halonic Inbox.exe (window)"),
+      });
+    });
+
     it("doesn't take an Inbox window that was open before for the shortcut's", async () => {
       const studio = fakeStudio("Acme");
       studio.windows.set("old", {
