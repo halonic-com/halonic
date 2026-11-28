@@ -67,6 +67,8 @@ verifies("action-catalog.github-merge-release-pr", () => {
         merged: false,
         "head.ref": "release/1.4.0",
         "base.ref": "main",
+        "head.user.login": "acme",
+        "head.repo.name": "app",
       });
       expect(kept.get(2)).toEqual({ sha: approvedHead });
       expect(checkStepGate(definition, 3, expected, kept, parameters)).toEqual({ ok: true });
@@ -78,8 +80,8 @@ verifies("action-catalog.github-merge-release-pr", () => {
       expect(sender.sent).toEqual(recorded);
       expect(definition.preview(parameters, { ...kept.get(1), ...kept.get(2) })).toEqual([
         "Pull request #12 of acme/app: `release/1.4.0` into `main`.",
-        "Its head commit is `4f2c9e1`, the commit release card `ACME-12` approved.",
-        "Merges pull request #12 of acme/app as one squashed commit, at commit `4f2c9e1` only, as release card `ACME-12` approved; GitHub refuses the merge if the head moved. A merge can't be undone.",
+        "Its head commit is `4f2c9e1b7a3d5c8e0f6a2b4d9c1e7f3a5b8d0c2e`. Check that release card `ACME-12` names this commit.",
+        "Merges pull request #12 of acme/app directly, as one squashed commit, at head commit `4f2c9e1b7a3d5c8e0f6a2b4d9c1e7f3a5b8d0c2e` only. Check that release card `ACME-12` names this commit. GitHub refuses the merge if the head moved, and on a branch that requires a merge queue unless you may bypass its rules, which skips the queue's checks. A merge can't be undone.",
       ]);
     });
 
@@ -120,7 +122,7 @@ verifies("action-catalog.github-merge-release-pr", () => {
 
     it("is refused when the request doesn't say which head it saw", () => {
       const kept = new Map([
-        [1, { state: "open" }],
+        [1, { state: "open", "head.user.login": "acme", "head.repo.name": "app" }],
         [2, { sha: approvedHead }],
       ]);
       expect(checkStepGate(definition, 3, {}, kept, parameters)).toMatchObject({
@@ -142,11 +144,39 @@ verifies("action-catalog.github-merge-release-pr", () => {
       expect(sender.sent).toEqual(recorded);
     });
 
+    it("stops at the first check when the pull request comes from a fork", async () => {
+      const { sender, recorded, kept } = await runChecks("fork");
+      expect(sender.sent).toEqual(recorded);
+      expect(kept.get(1)).toMatchObject({
+        "head.user.login": "acme-fork",
+        "head.repo.name": "app",
+      });
+      expect(checkStepGate(definition, 3, expected, kept, parameters)).toEqual({
+        ok: false,
+        check: 1,
+        cause: "requires",
+        changes: [],
+        message: "This pull request comes from another repository, so it isn't a release.",
+      });
+    });
+
+    it("shows GitHub's refusal on a branch that requires a merge queue", async () => {
+      const { sender, recorded, kept } = await runChecks("merge-queue-405");
+      expect(checkStepGate(definition, 3, expected, kept, parameters)).toEqual({ ok: true });
+      expect(await merge(sender)).toMatchObject({
+        outcome: "answered",
+        status: 405,
+        kept: {},
+        error: expect.stringContaining("Changes must be made through the merge queue"),
+      });
+      expect(sender.sent).toEqual(recorded);
+    });
+
     it("names the release card in the preview before anything is read", () => {
       expect(definition.preview(parameters)).toEqual([
-        "Reads pull request #12 of acme/app on GitHub. It stops unless the pull request is still open.",
-        "Reads the pull request's head commit, and stops unless it is `4f2c9e1`, the commit release card `ACME-12` approved.",
-        "Merges pull request #12 of acme/app as one squashed commit, at commit `4f2c9e1` only, as release card `ACME-12` approved; GitHub refuses the merge if the head moved. A merge can't be undone.",
+        "Reads pull request #12 of acme/app on GitHub. It stops unless the pull request is still open and merges a branch of acme/app.",
+        "Reads the pull request's head commit, and stops unless it is `4f2c9e1b7a3d5c8e0f6a2b4d9c1e7f3a5b8d0c2e`.",
+        "Merges pull request #12 of acme/app directly, as one squashed commit, at head commit `4f2c9e1b7a3d5c8e0f6a2b4d9c1e7f3a5b8d0c2e` only. Check that release card `ACME-12` names this commit. GitHub refuses the merge if the head moved, and on a branch that requires a merge queue unless you may bypass its rules, which skips the queue's checks. A merge can't be undone.",
       ]);
       expect(definition.targets(parameters)).toEqual([
         { service: "github", kind: "pull request", name: "acme/app pull 12" },
@@ -188,12 +218,12 @@ verifies("action-catalog.github-merge-release-pr", () => {
           "",
           "Do these steps in order, signed in with your own account:",
           "1. Open https://github.com/acme/app/pull/12",
-          "2. Check that the pull request says **Open**.",
+          "2. Check that the pull request says **Open** and that it merges a branch of `acme`/`app`, not of a fork.",
           "3. Open https://github.com/acme/app/pull/12/commits",
-          `4. Check that the newest commit is \`${approvedHead}\`.`,
+          `4. Check that the newest commit is \`${approvedHead}\`, and that release card \`ACME-12\` names this commit.`,
           "5. Open https://github.com/acme/app/pull/12",
-          "6. Choose **Squash and merge** on the merge button, then click it.",
-          "7. Click **Confirm squash and merge**.",
+          "6. Choose **Squash and merge** on the merge button, click it, then click **Confirm squash and merge**.",
+          "7. If the button says **Merge when ready** instead, the branch merges through a merge queue: click it, then **Confirm merge when ready**. GitHub merges once the queue's checks pass.",
           "",
         ].join("\n"),
       );

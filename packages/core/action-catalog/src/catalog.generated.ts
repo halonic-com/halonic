@@ -83,7 +83,7 @@ export const catalogEntries = {
   },
   "github/merge-release-pr": {
     definition: githubMergeReleasePr,
-    sourceHash: "f26141f309077223fd0bf2dc66d58d5d91b0a44c25836d00f9c6e26b8b27634e",
+    sourceHash: "aa63a777c7a98109e2eeb54b131b6c01965b2ebf4dd401149e016968852324be",
   },
   "github/remove-runner": {
     definition: githubRemoveRunner,
@@ -127,7 +127,7 @@ export const catalogEntries = {
   },
   "npm/approve-staged-version": {
     definition: npmApproveStagedVersion,
-    sourceHash: "6ffbb1c9eb61ce139638fc96bfda4dba1a23ee89ac0b9c332ff073700fee52fa",
+    sourceHash: "8bea620119726b4477f6dee1c1de489c921c132847efa3c2148f902cffc5d853",
   },
   "npm/claim-placeholder": {
     definition: npmClaimPlaceholder,
