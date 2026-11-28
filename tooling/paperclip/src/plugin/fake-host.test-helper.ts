@@ -34,6 +34,21 @@ export type HostWrite =
   | { readonly kind: "postpone"; readonly issueId: string; readonly until: string }
   | { readonly kind: "unlink"; readonly issueId: string; readonly blockerIds: readonly string[] };
 
+/** The statuses a task may keep a monitor in. */
+const monitorStatuses: ReadonlySet<string> = new Set(["in_progress", "in_review"]);
+
+/**
+ * The task after a plugin's update, as Paperclip stores it: a change that leaves the task
+ * where it may no longer have a monitor clears it, as the route does (HAL-21217, server#134).
+ */
+function afterUpdate(issue: FakeIssue, patch: Partial<FakeIssue>): FakeIssue {
+  const updated = { ...issue, ...patch };
+  if (monitorStatuses.has(updated.status) && updated.assigneeAgentId !== null) {
+    return updated;
+  }
+  return { ...updated, monitorNextCheckAt: null };
+}
+
 /** A task in another's "blocked by", as the fake host lists it. */
 export interface FakeBlocker {
   readonly id: string;
@@ -110,6 +125,25 @@ export function fakeHost(
     },
   };
   return { host: fake as unknown as HostApi, writes };
+}
+
+/**
+ * A fake host whose updates are stored on the task, as Paperclip stores them, so a test can read
+ * the task back after a change. `fakeHost` itself keeps its tasks as given, for tests that run
+ * several passes over the same tasks.
+ */
+export function fakeHostStoringUpdates(issues: FakeIssue[]) {
+  const { host, writes } = fakeHost(issues);
+  const update: HostApi["issues"]["update"] = async (issueId, patch, companyId) => {
+    const result = await host.issues.update(issueId, patch, companyId);
+    const index = issues.findIndex((issue) => issue.id === issueId);
+    const issue = issues[index];
+    if (issue !== undefined) {
+      issues[index] = afterUpdate(issue, patch as Partial<FakeIssue>);
+    }
+    return result;
+  };
+  return { host: { ...host, issues: { ...host.issues, update } } as HostApi, writes };
 }
 
 /** A metrics client that records every value, or refuses every write when `fail` is set. */
