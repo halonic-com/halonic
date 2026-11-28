@@ -69,6 +69,14 @@ export const messengerWords = {
   markReadFor: (name: string) => `Mark as read: ${name}`,
   /** A row's Mark as unread for a screen reader or a voice user. */
   markUnreadFor: (name: string) => `Mark as unread: ${name}`,
+  /** In the chat's ··· menu: puts the chat at the top of the list (`messenger.pinned-chats`). */
+  pinChat: "Pin chat",
+  /** In a pinned chat's ··· menu. */
+  unpinChat: "Unpin chat",
+  /** Over the pinned chats at the top of the list, and their list's name for a screen reader. */
+  pinned: "Pinned",
+  /** Under the list's header when a fourth chat is pinned (Sofia's flows on HAL-20673, line 23). */
+  pinsFull: "You can pin up to 3 chats.",
   /** The chat header's ··· button, for a screen reader and as its tooltip. */
   moreActions: (name: string) => `More actions for ${name}`,
   /** Before the person's own message in a row's preview. */

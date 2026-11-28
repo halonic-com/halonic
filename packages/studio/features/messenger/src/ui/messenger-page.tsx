@@ -14,6 +14,7 @@ import {
 import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ChatOpensService, MessengerService } from "../api.ts";
+import type { ChatPins } from "../chat-pins.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
@@ -24,12 +25,15 @@ import { useFadeIn } from "./load-states.tsx";
 import { NeedsYouPanel, useWaiting } from "./needs-you.tsx";
 import { NewMenu } from "./new-menu.tsx";
 import { useChatOpens } from "./use-chat-opens.ts";
+import { ChatPinsProvider } from "./use-chat-pins.tsx";
 import { useLeft } from "./use-left.ts";
 import { useShownChat } from "./use-shown-chat.ts";
 
 /** The props of {@link MessengerPage}. */
 export interface MessengerPageProps {
   readonly messenger: Messenger;
+  /** The pinned chats; kept on this device by default (`messenger.pinned-chats`). */
+  readonly pins?: ChatPins | undefined;
   /** Opens Settings › Connections; without it, the page with nothing connected has no button. */
   readonly onConnect?: () => void;
   /** How a failed read says the engine isn't answering, worded for where the Studio runs. */
@@ -62,6 +66,7 @@ export function MessengerPage({
   onConnect,
   words = engineWords["desktop-app"],
   opens,
+  pins,
 }: MessengerPageProps) {
   const { rows, connected, failure, changed, readAgain } = useChats(messenger);
   const [selected, setSelected] = useState<MessagingId | undefined>(undefined);
@@ -123,70 +128,72 @@ export function MessengerPage({
     back();
   };
   return (
-    <div className={pageClass}>
-      {/* The page's heading and status come first, so they read before the list, and stay while
+    <ChatPinsProvider pins={pins}>
+      <div className={pageClass}>
+        {/* The page's heading and status come first, so they read before the list, and stay while
           one pane shows the chat; both are out of the flow, so they take no room. */}
-      <h1 className="sr-only">{messengerWords.title}</h1>
-      <p role="status" className="sr-only" data-page-status>
-        <span key={said.count}>{said.text}</span>
-      </p>
-      {onePane && panelFirst ? null : (
-        <ListColumn listRef={list} onePane={onePane} connected={connected}>
-          <ChatsColumn
-            messenger={messenger}
-            rows={rows}
-            connected={connected}
-            failure={failure}
-            words={words}
-            onRetry={readAgain}
-            selected={selected}
-            onSelect={select}
-            pictures={pictures}
-            waiting={waiting?.waiting}
-            needsYou={needsYou}
-            onNeedsYou={openNeedsYou}
-            newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
-          />
-        </ListColumn>
-      )}
+        <h1 className="sr-only">{messengerWords.title}</h1>
+        <p role="status" className="sr-only" data-page-status>
+          <span key={said.count}>{said.text}</span>
+        </p>
+        {onePane && panelFirst ? null : (
+          <ListColumn listRef={list} onePane={onePane} connected={connected}>
+            <ChatsColumn
+              messenger={messenger}
+              rows={rows}
+              connected={connected}
+              failure={failure}
+              words={words}
+              onRetry={readAgain}
+              selected={selected}
+              onSelect={select}
+              pictures={pictures}
+              waiting={waiting?.waiting}
+              needsYou={needsYou}
+              onNeedsYou={openNeedsYou}
+              newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
+            />
+          </ListColumn>
+        )}
 
-      {onePane && !panelFirst ? null : (
-        <WithActivity messenger={messenger} row={open} words={words}>
-          <main ref={chat} data-part="content-pane" className={contentPaneClass}>
-            {onePane && (open !== undefined || needsYou) ? (
-              <div className="px-2 pt-2">
-                <Button variant="ghost" size="sm" onClick={back}>
-                  {messengerWords.backToChats}
-                </Button>
-              </div>
-            ) : null}
-            {needsYou ? (
-              <NeedsYouPanel
-                messenger={messenger}
-                read={waiting}
-                pictureOf={(agent) => pictureOfAgent(pictures, rows ?? [], agent)}
-                onOpenChat={select}
-                onAnswered={readAgain}
-              />
-            ) : (
-              <Panel
-                messenger={messenger}
-                loaded={rows !== undefined}
-                words={words}
-                connected={connected}
-                open={open}
-                changed={changed}
-                pictures={pictures}
-                onConnect={onConnect}
-                onLeft={left}
-                onChanged={readAgain}
-                onMarkUnread={markUnread}
-              />
-            )}
-          </main>
-        </WithActivity>
-      )}
-    </div>
+        {onePane && !panelFirst ? null : (
+          <WithActivity messenger={messenger} row={open} words={words}>
+            <main ref={chat} data-part="content-pane" className={contentPaneClass}>
+              {onePane && (open !== undefined || needsYou) ? (
+                <div className="px-2 pt-2">
+                  <Button variant="ghost" size="sm" onClick={back}>
+                    {messengerWords.backToChats}
+                  </Button>
+                </div>
+              ) : null}
+              {needsYou ? (
+                <NeedsYouPanel
+                  messenger={messenger}
+                  read={waiting}
+                  pictureOf={(agent) => pictureOfAgent(pictures, rows ?? [], agent)}
+                  onOpenChat={select}
+                  onAnswered={readAgain}
+                />
+              ) : (
+                <Panel
+                  messenger={messenger}
+                  loaded={rows !== undefined}
+                  words={words}
+                  connected={connected}
+                  open={open}
+                  changed={changed}
+                  pictures={pictures}
+                  onConnect={onConnect}
+                  onLeft={left}
+                  onChanged={readAgain}
+                  onMarkUnread={markUnread}
+                />
+              )}
+            </main>
+          </WithActivity>
+        )}
+      </div>
+    </ChatPinsProvider>
   );
 }
 

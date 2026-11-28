@@ -19,6 +19,7 @@ import { ChatMenu } from "./chat-menu.tsx";
 import { FindBar, FindButton, useFind } from "./find-bar.tsx";
 import { MembersPanel } from "./members-panel.tsx";
 import { Transcript } from "./transcript.tsx";
+import { useChatPins } from "./use-chat-pins.tsx";
 import { useReactions } from "./use-reactions.ts";
 import { WaitingBar } from "./waiting-bar.tsx";
 
@@ -71,6 +72,7 @@ export function ConversationView({
   pictures = noPictures,
   words,
 }: ConversationViewProps) {
+  const pins = useChatPins();
   const picture = pictureOf(pictures, row);
   // What the chat's status region reads out: a new message, or the option that answered a card.
   // Each gets its own key, so the same words twice are read twice (HAL-18316 MS8).
@@ -115,9 +117,15 @@ export function ConversationView({
         pictures={pictures}
         find={<FindButton find={find} />}
         menu={
-          onMarkUnread === undefined || !messenger.canMarkUnread(row) ? null : (
-            <ChatMenu name={chatName(row)} onMarkUnread={onMarkUnread} />
-          )
+          <ChatMenu
+            name={chatName(row)}
+            onMarkUnread={messenger.canMarkUnread(row) ? onMarkUnread : undefined}
+            pin={
+              pins === undefined
+                ? undefined
+                : { pinned: pins.isPinned(row), onToggle: () => pins.toggle(row) }
+            }
+          />
         }
       >
         {isChannel(row) ? (

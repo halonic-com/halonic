@@ -114,13 +114,16 @@ verifies("messenger.read-marks", () => {
     expect(chiefRow(page).querySelectorAll("button")).toHaveLength(1);
   });
 
-  it("offers no ··· menu once the board wrote last", async () => {
+  it("offers no Mark as unread in the ··· menu once the board wrote last", async () => {
     const messaging = acme();
     const [chat] = await messaging.listConversations();
     messaging.addMessage(chat?.id ?? "", { body: "Yes", author: { kind: "me" } });
     const page = await openMessenger(messaging);
     await openChat(page, "Chief");
+    // The menu stays for Pin chat (`messenger.pinned-chats`).
+    await press(button("More actions for Chief", page.querySelector("main header") ?? page));
 
-    expect(page.querySelector('main header button[aria-label^="More actions"]')).toBeNull();
+    expect(byText(page, "[role=menuitem]", "Pin chat")).toBeDefined();
+    expect(byText(page, "[role=menuitem]", "Mark as unread")).toBeUndefined();
   });
 });
