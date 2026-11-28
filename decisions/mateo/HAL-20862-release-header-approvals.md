@@ -2,6 +2,7 @@
 
 - Approval: HAL-20862 (the A0 release review for 0.2.0 found it); Liam approves this note in review on HAL-20862 and signs it
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:KalFAdUKIB3OtoFxNtuvEoc7FxFNrheNl0XfsPO26yDnTaKLPGY3erHjGp3Rn7TR1L3kTf0MCVsE3MP1I+++Dg==
 
 The header of `.github/workflows/release.yml` and the comment on its `sign-windows` job said the
 `release` jobs each wait for an approval, and that `npm-publish-cli` allows `v*` tags. The GitHub
