@@ -8,9 +8,10 @@
 //! value the user types never reach the page.
 
 use std::collections::BTreeMap;
-use std::sync::{Arc, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use halonic_action_send::account::Account;
+use halonic_action_send::ask_page::WINDOW as ACTION_DIALOG;
 use halonic_action_send::paperclip_admin::admin_session;
 use halonic_action_send::{
     ApprovalScreen, Operation, OperationRoute, PAPERCLIP, PaperclipSignIn, Refusal, SendResult,
@@ -21,12 +22,59 @@ use tauri_plugin_opener::OpenerExt;
 use url::Url;
 
 use super::{ActionCommandRefusal, ActionState, RunningSignIn, keychain, log};
-use crate::action_parts::{ShellClock, ShellDialogs, ShellTransport, now_seconds};
+use crate::action_parts::{PaperclipTransport, ShellClock, ShellDialogs, now_seconds};
 use crate::http_fetch::HttpFetchState;
 
 /// The open limit's name for the admin sign-in's approval page: one page
 /// per click, as for GitHub's device page.
 const APPROVAL_PAGE: &str = "paperclip:admin-sign-in";
+
+/// Whose page ending signs the admin key out.
+enum KeyPage {
+    /// The shell just started: a key a quit left behind is still stored.
+    LeftOver,
+    /// No page signed in since the last sign-out.
+    Nobody,
+    /// The page that signed in last.
+    SignedIn(String),
+}
+
+/// Which page's end signs the admin key out: the page that signed in, or,
+/// at the first page end after the shell starts, a key the last quit left
+/// behind. Never the value dialog's window: set-secret opens it while the
+/// key is in use (Julian's review of #6946).
+pub(super) struct AdminKeyPage(Mutex<KeyPage>);
+
+impl Default for AdminKeyPage {
+    fn default() -> Self {
+        Self(Mutex::new(KeyPage::LeftOver))
+    }
+}
+
+impl AdminKeyPage {
+    /// `page` started a sign-in; its end signs the new key out.
+    pub(super) fn signed_in(&self, page: &str) {
+        *self.0.lock().unwrap_or_else(PoisonError::into_inner) = KeyPage::SignedIn(page.to_owned());
+    }
+
+    /// Whether `page` ending signs the key out. When it does, no other
+    /// page's end signs it out again until the next sign-in.
+    pub(super) fn ends_with(&self, page: &str) -> bool {
+        if page == ACTION_DIALOG {
+            return false;
+        }
+        let mut held = self.0.lock().unwrap_or_else(PoisonError::into_inner);
+        let ends = match &*held {
+            KeyPage::LeftOver => true,
+            KeyPage::Nobody => false,
+            KeyPage::SignedIn(signed_in) => signed_in == page,
+        };
+        if ends {
+            *held = KeyPage::Nobody;
+        }
+        ends
+    }
+}
 
 /// Opens Paperclip's approval page in the user's browser.
 struct ShellBrowser<R: Runtime> {
@@ -35,16 +83,21 @@ struct ShellBrowser<R: Runtime> {
 
 impl<R: Runtime> ApprovalScreen for ShellBrowser<R> {
     fn show(&self, page: &Url) {
-        if let Err(error) = self.app.opener().open_url(page.as_str(), None::<&str>) {
-            log(format!(
-                "the browser didn't open Paperclip's approval page: {error}"
-            ));
+        // Not the opener's error: on macOS and Linux it holds the launcher's
+        // command line, so the address with its challenge token.
+        if self
+            .app
+            .opener()
+            .open_url(page.as_str(), None::<&str>)
+            .is_err()
+        {
+            log("the browser didn't open Paperclip's approval page".to_owned());
         }
     }
 }
 
-fn transport<R: Runtime>(app: &AppHandle<R>) -> ShellTransport {
-    ShellTransport {
+fn transport<R: Runtime>(app: &AppHandle<R>) -> PaperclipTransport {
+    PaperclipTransport {
         proxy: app.state::<HttpFetchState>().proxy(),
     }
 }
@@ -62,12 +115,7 @@ pub async fn action_paperclip_sign_in<R: Runtime>(
     connection: String,
 ) -> Result<SignInResult, ActionCommandRefusal> {
     let state = app.state::<ActionState>();
-    let listed = state
-        .routes
-        .operations
-        .values()
-        .any(|route| route.operation.service() == PAPERCLIP);
-    if !listed {
+    if !state.paperclip_listed() {
         return Ok(SignInResult::NotAvailable);
     }
     if !state.limiter.allow(APPROVAL_PAGE, state.now_ms()) {
@@ -78,6 +126,7 @@ pub async fn action_paperclip_sign_in<R: Runtime>(
     }
     let cancel = Arc::new(SignInCancel::default());
     state.cancel_sign_in(None);
+    state.admin_page.signed_in(webview.label());
     *state.sign_in.lock().unwrap_or_else(PoisonError::into_inner) = Some(RunningSignIn {
         page: webview.label().to_owned(),
         cancel: Arc::clone(&cancel),
@@ -149,9 +198,11 @@ pub(super) async fn account<R: Runtime>(
         })
 }
 
-/// Signs the admin key out when the page that may have used it reloads or
-/// closes, so it never outlives its stepper (note, 6.7). Off the UI thread:
-/// the keychain may ask to be unlocked.
+/// Signs the admin key out when the page that signed in reloads or closes,
+/// so it never outlives its stepper (note, 6.7); `AdminKeyPage` says when.
+/// Off the UI thread: the keychain may ask to be unlocked. At quit nothing
+/// waits for it, so a key can stay stored until the first page end of the
+/// next start, which signs it out (`KeyPage::LeftOver`).
 pub(super) fn end_page<R: Runtime>(app: &AppHandle<R>) {
     // An app without the keychain or the network has no admin key to end.
     let ready = app.try_state::<crate::secrets::SecretsState>().is_some()

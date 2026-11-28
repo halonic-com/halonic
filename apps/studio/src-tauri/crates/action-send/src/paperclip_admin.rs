@@ -1,8 +1,8 @@
 //! The separate Paperclip admin key of rows C1 and C5 (architecture note on
 //! HAL-17491, 2.4 and 6.8, condition 3; HAL-20275). It is kept apart from the
-//! everyday key of row 15: its own keychain entries under the `action__`
+//! everyday key of row 15: its own keychain entry under the `action__`
 //! prefix, which the page's `secret_*` commands refuse and its `token_*`
-//! commands can't build, so no page command reads or writes them.
+//! commands can't build, so no page command reads or writes it.
 //!
 //! Paperclip has no fixed origin: the user connects whatever address they
 //! run. The shell takes it from the connection's own keychain entry, the one
@@ -58,6 +58,7 @@ struct AdminRecord {
     user: String,
     /// Seconds since 1970 when the shell stops using the key.
     expires: u64,
+    key: String,
 }
 
 /// The origin of `address` when an admin key may be sent there: `https`, or
@@ -77,6 +78,12 @@ pub fn admin_origin(address: &str) -> Option<String> {
         && url.query().is_none()
         && url.fragment().is_none();
     (allowed && bare).then(|| url.origin().ascii_serialization())
+}
+
+/// Whether `address` is plain `http` on a loopback address: the one kind
+/// of address the shell's Paperclip calls send to without `https`.
+pub fn is_local_http(address: &Url) -> bool {
+    address.scheme() == "http" && address.host().is_some_and(|host| is_loopback(&host))
 }
 
 fn is_loopback(host: &Host<&str>) -> bool {
@@ -120,21 +127,32 @@ pub fn connection_of(
     }))
 }
 
+/// The one entry that holds the key and its record together, so a write
+/// or a removal never leaves a record pointing at another key.
 fn record_name() -> Result<SecretName, SecretError> {
     SecretName::parse("action__paperclip")
-}
-
-fn key_name() -> Result<SecretName, SecretError> {
-    SecretName::parse("action__paperclip__admin_key")
 }
 
 fn read_record(backend: &dyn SecretBackend) -> Result<Option<AdminRecord>, SecretError> {
     let Some(text) = backend.get(&record_name()?)? else {
         return Ok(None);
     };
+    let text = Wiped::text(text);
     // A record the shell can't read counts as signed out; the next sign-in
     // replaces it.
-    Ok(serde_json::from_str(&text).ok())
+    Ok(serde_json::from_str(text.as_str()).ok())
+}
+
+impl AdminRecord {
+    /// The origin and company the key was made for, and the key.
+    fn made_for(self) -> (PaperclipConnection, String) {
+        let made_for = PaperclipConnection {
+            connection: self.connection,
+            origin: self.origin,
+            company: self.company,
+        };
+        (made_for, self.key)
+    }
 }
 
 /// The admin key for `connection`, or `None` when there is none, it has
@@ -146,16 +164,13 @@ pub fn admin_key(
     connection: &PaperclipConnection,
     now: u64,
 ) -> Result<Option<String>, SecretError> {
-    let usable = read_record(backend)?.is_some_and(|record| {
+    let usable = read_record(backend)?.filter(|record| {
         record.connection == connection.connection
             && record.origin == connection.origin
             && record.company == connection.company
             && record.expires > now
     });
-    if !usable {
-        return Ok(None);
-    }
-    backend.get(&key_name()?)
+    Ok(usable.map(|record| record.key))
 }
 
 /// The admin key's sign-in: the connection it was made for, as that
@@ -178,55 +193,45 @@ pub fn admin_session(
     Ok(key.map(|key| (connection, record.user, key)))
 }
 
-/// The stored admin key and the origin and company its record says it was
-/// made for, whether or not it has expired: only to revoke it there, so a
-/// sign-out never sends it to an address the connection names later.
-pub fn stored_admin_key(
+/// Takes the stored admin key out of the keychain, whether or not it has
+/// expired, with the origin and company its record says it was made for:
+/// the caller then revokes it there, so a sign-out never sends it to an
+/// address the connection names later. Taking it out first means a key a
+/// sign-in stores meanwhile stays stored, for the next sign-out to revoke.
+pub fn take_admin_key(
     backend: &dyn SecretBackend,
 ) -> Result<Option<(PaperclipConnection, String)>, SecretError> {
-    let Some(record) = read_record(backend)? else {
-        return Ok(None);
-    };
-    let key = backend.get(&key_name()?)?;
-    Ok(key.map(|key| {
-        let made_for = PaperclipConnection {
-            connection: record.connection,
-            origin: record.origin,
-            company: record.company,
-        };
-        (made_for, key)
-    }))
+    let record = read_record(backend)?;
+    backend.delete(&record_name()?)?;
+    Ok(record.map(AdminRecord::made_for))
 }
 
-/// Stores a new admin key for `connection`, approved by `user`: the key
-/// first, then the record that points at it, so a failure halfway never
-/// leaves a record without its key.
+/// Stores a new admin key for `connection`, approved by `user`, in place of
+/// the stored one, and answers the key it replaced, which the caller
+/// revokes: a replaced key would otherwise stay valid in Paperclip with no
+/// copy left to revoke. When the write fails, the stored key stays.
 pub fn store_admin_key(
     backend: &dyn SecretBackend,
     connection: &PaperclipConnection,
     user: &str,
     key: &str,
     now: u64,
-) -> Result<(), SecretError> {
+) -> Result<Option<(PaperclipConnection, String)>, SecretError> {
     check_value(key)?;
-    backend.set(&key_name()?, key)?;
-    let record = serde_json::to_string(&AdminRecord {
-        connection: connection.connection.clone(),
-        origin: connection.origin.clone(),
-        company: connection.company.clone(),
-        user: user.to_owned(),
-        expires: now.saturating_add(ADMIN_KEY_SECONDS),
-    })
-    .map_err(|error| SecretError::Backend {
-        message: error.to_string(),
-    })?;
-    backend.set(&record_name()?, &record)
-}
-
-/// Forgets the admin key: the key first, then the record. The caller revokes
-/// it in Paperclip before, while it still has it. Doing nothing when there
-/// is none.
-pub fn forget_admin_key(backend: &dyn SecretBackend) -> Result<(), SecretError> {
-    backend.delete(&key_name()?)?;
-    backend.delete(&record_name()?)
+    let record = Wiped::text(
+        serde_json::to_string(&AdminRecord {
+            connection: connection.connection.clone(),
+            origin: connection.origin.clone(),
+            company: connection.company.clone(),
+            user: user.to_owned(),
+            expires: now.saturating_add(ADMIN_KEY_SECONDS),
+            key: key.to_owned(),
+        })
+        .map_err(|error| SecretError::Backend {
+            message: error.to_string(),
+        })?,
+    );
+    let replaced = read_record(backend)?;
+    backend.set(&record_name()?, record.as_str())?;
+    Ok(replaced.map(AdminRecord::made_for))
 }

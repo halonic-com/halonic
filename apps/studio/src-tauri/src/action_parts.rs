@@ -9,6 +9,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use halonic_action_send::account::{self, Account};
+use halonic_action_send::paperclip_admin::is_local_http;
 use halonic_action_send::{
     Answer, AskSheet, Clock, CodeScreen, ConfirmSheet, Dialogs, Keychain, Outgoing, SignInCancel,
     Tokens, Transport, Typed, UserCode,
@@ -52,6 +53,30 @@ impl Transport for ShellTransport {
     fn send(&self, call: Outgoing) -> impl Future<Output = Result<Answer, String>> + Send {
         let proxy = Arc::clone(&self.proxy);
         async move { send_call(call, &proxy).await }
+    }
+}
+
+/// The network for the Paperclip admin key's calls: as [`ShellTransport`],
+/// but a Paperclip on this computer is reached over plain `http`, directly
+/// (Julian's review of #6946). `admin_origin` takes `http` only on a
+/// loopback address, and every other address still needs `https`.
+pub struct PaperclipTransport {
+    pub proxy: Arc<ProxySetting>,
+}
+
+impl Transport for PaperclipTransport {
+    fn send(&self, call: Outgoing) -> impl Future<Output = Result<Answer, String>> + Send {
+        let proxy = Arc::clone(&self.proxy);
+        async move {
+            if !is_local_http(&call.address) {
+                return send_call(call, &proxy).await;
+            }
+            let client = action_client()
+                .no_proxy()
+                .build()
+                .map_err(|_| "the HTTP client couldn't be made".to_owned())?;
+            send_with(&client, call).await
+        }
     }
 }
 

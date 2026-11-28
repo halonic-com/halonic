@@ -5,12 +5,14 @@
 
 use std::io::{ErrorKind, Read, Write};
 use std::net::TcpListener;
+use std::sync::Arc;
 use std::thread;
 
-use halonic_action_send::Outgoing;
+use halonic_action_send::{Outgoing, Transport};
+use halonic_http_guard::ProxySetting;
 use url::Url;
 
-use super::{action_client, send_with};
+use super::{PaperclipTransport, action_client, send_with};
 
 /// Answers one request with `response`, and returns the port and what the
 /// request said.
@@ -61,4 +63,42 @@ fn the_action_client_doesnt_follow_a_redirect() {
         Err(error) if error.kind() == ErrorKind::WouldBlock => {}
         other => panic!("the redirect was followed: {other:?}"),
     }
+}
+
+fn paperclip_call(address: &str) -> Outgoing {
+    Outgoing {
+        method: "GET",
+        address: Url::parse(address).expect("a URL"),
+        headers: Vec::new(),
+        body: None,
+    }
+}
+
+fn paperclip_transport() -> PaperclipTransport {
+    PaperclipTransport {
+        proxy: Arc::new(ProxySetting::None),
+    }
+}
+
+#[test]
+fn a_paperclip_on_this_computer_is_reached_over_http() {
+    // Julian's review of #6946: `admin_origin` takes a loopback `http`
+    // origin, so its calls must not fail on `https_only`.
+    let (port, served) = serve_once(
+        "HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}".to_owned(),
+    );
+    let call = paperclip_call(&format!("http://127.0.0.1:{port}/api/cli-auth/me"));
+    let answer =
+        tauri::async_runtime::block_on(paperclip_transport().send(call)).expect("an answer");
+    assert_eq!(answer.status, 200);
+    let request = served.join().expect("the server ran");
+    assert!(request.starts_with("GET /api/cli-auth/me "), "{request}");
+}
+
+#[test]
+fn a_paperclip_elsewhere_still_needs_https() {
+    // Refused before any lookup or connection, so no network is needed.
+    let call = paperclip_call("http://paperclip.acme.example/api/cli-auth/me");
+    let sent = tauri::async_runtime::block_on(paperclip_transport().send(call));
+    assert!(sent.is_err(), "{sent:?}");
 }

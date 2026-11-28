@@ -1,4 +1,4 @@
-//! Requirement `studio.src-tauri.crates.action-send.action-sign-in`.
+//! Requirement `studio.src-tauri.crates.action-send.paperclip-admin-key`.
 //!
 //! The Paperclip admin key's sign-in (note on HAL-17491, 6.8, condition 3)
 //! against invented answers: no network, no real keychain and no real
@@ -10,7 +10,7 @@ use std::collections::VecDeque;
 use std::future::Future;
 use std::sync::{Arc, Mutex};
 
-use halonic_action_send::paperclip_admin::{PaperclipConnection, admin_key};
+use halonic_action_send::paperclip_admin::{PaperclipConnection, admin_key, store_admin_key};
 use halonic_action_send::{
     Answer, ApprovalScreen, Clock, Keychain, Outgoing, PaperclipSignIn, SignInCancel, SignInResult,
     Transport,
@@ -284,6 +284,9 @@ fn the_approval_page_opens_only_on_the_connections_own_origin() {
         "https://paperclip.evil.example/cli-auth/approve/ch-1",
         "/settings/secrets",
         "/cli-auth/../settings",
+        // Julian's review of #6946: the parsed path is what counts.
+        "/cli-auth/%2e%2e/settings",
+        "/cli-auth/.\t./settings",
         "//paperclip.evil.example/cli-auth/x",
     ] {
         let outcome = sign_in(connected(ORIGIN), vec![challenge(path)], None);
@@ -399,4 +402,33 @@ fn signing_out_revokes_the_admin_key_and_forgets_it() {
         Some(format!("Bearer {ADMIN_KEY}"))
     );
     assert_eq!(stored_key(&signed_in.keys), None);
+}
+
+#[test]
+fn a_second_sign_in_revokes_the_key_it_replaces() {
+    // Julian's review of #6946: Paperclip keeps a CLI key for 30 days, so
+    // the replaced key is revoked, not only overwritten.
+    let keys = connected(ORIGIN);
+    store_admin_key(&keys.0, &acme(), "user-1", "acme-first-key", NOW).expect("stores");
+    let outcome = sign_in(
+        keys,
+        vec![
+            challenge("/cli-auth/approve/ch-1"),
+            status("approved"),
+            me(&[COMPANY]),
+            ok(),
+        ],
+        None,
+    );
+    assert!(matches!(outcome.result, SignInResult::SignedIn { .. }));
+    assert_eq!(stored_key(&outcome.keys).as_deref(), Some(ADMIN_KEY));
+    let routes = outcome.network.routes();
+    assert_eq!(
+        routes.last().map(String::as_str),
+        Some("POST /api/cli-auth/revoke-current")
+    );
+    assert_eq!(
+        outcome.network.authorization_of(routes.len() - 1),
+        Some("Bearer acme-first-key".to_owned())
+    );
 }

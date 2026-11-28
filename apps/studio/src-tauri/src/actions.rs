@@ -55,6 +55,7 @@ pub struct ActionState {
     /// Counts the open limit's milliseconds; it only goes forward.
     started: Instant,
     sign_in: Mutex<Option<RunningSignIn>>,
+    admin_page: paperclip::AdminKeyPage,
     records: records::RecordsState,
 }
 
@@ -65,6 +66,7 @@ impl Default for ActionState {
             limiter: OpenLimiter::default(),
             started: Instant::now(),
             sign_in: Mutex::default(),
+            admin_page: paperclip::AdminKeyPage::default(),
             records: records::RecordsState::default(),
         }
     }
@@ -73,6 +75,20 @@ impl Default for ActionState {
 impl ActionState {
     fn now_ms(&self) -> u64 {
         u64::try_from(self.started.elapsed().as_millis()).unwrap_or(u64::MAX)
+    }
+
+    /// Whether the route list has a Paperclip operation; without one there
+    /// is no admin key to sign in or out.
+    fn paperclip_listed(&self) -> bool {
+        self.routes
+            .operations
+            .values()
+            .any(|route| route.operation.service() == PAPERCLIP)
+    }
+
+    /// Whether `page` ending signs the Paperclip admin key out.
+    fn admin_key_ends_with(&self, page: &str) -> bool {
+        self.paperclip_listed() && self.admin_page.ends_with(page)
     }
 
     /// Cancels the running sign-in if `page` started it, or any when `None`.
@@ -276,7 +292,9 @@ pub fn action_sign_in_cancel<R: Runtime>(app: AppHandle<R>, webview: Webview<R>)
 pub fn end_page<R: Runtime>(app: &AppHandle<R>, page: &str) {
     if let Some(state) = app.try_state::<ActionState>() {
         state.cancel_sign_in(Some(page));
-        paperclip::end_page(app);
+        if state.admin_key_ends_with(page) {
+            paperclip::end_page(app);
+        }
     }
 }
 

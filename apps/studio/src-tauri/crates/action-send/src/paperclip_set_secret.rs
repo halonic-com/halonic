@@ -32,6 +32,9 @@ pub const SET_SECRET: &str = "paperclip.set-secret";
 /// The status Paperclip answers a create with when the secret already exists.
 const CONFLICT: u16 = 409;
 
+/// What the value dialog says when the write replaces a value in use.
+const REPLACES: &str = "the value this secret has now, for everyone using it";
+
 /// What the step names, from its placeholders after their patterns passed.
 #[derive(Debug, Clone, Copy)]
 pub struct SetSecretStep<'a> {
@@ -97,12 +100,17 @@ impl<T: Transport, K: Keychain, C: Clock, D: Dialogs> SetSecret<'_, T, K, C, D> 
         if let Err(result) = self.check_company(&admin, step.company).await {
             return result;
         }
-        let value = match self.ask(&admin, step).await {
+        // Looked up before the dialog, so it shows the call the shell makes.
+        let existing = match self.find(&admin, step.name).await {
+            Ok(existing) => existing,
+            Err(result) => return result,
+        };
+        let value = match self.ask(&admin, step, existing.as_deref()).await {
             Ok(value) => value,
             Err(result) => return result,
         };
         let hidden = [admin.key.as_str(), value.as_str()];
-        match self.set(&admin, step.name, &value).await {
+        match self.set(&admin, step.name, existing, &value).await {
             Ok(answer) => self.answered(&answer, &hidden),
             Err(result) => result,
         }
@@ -142,22 +150,35 @@ impl<T: Transport, K: Keychain, C: Clock, D: Dialogs> SetSecret<'_, T, K, C, D> 
     }
 
     /// Asks for the value in the native dialog, showing the account, the
-    /// address and the secret's name. Nothing is sent when the user closes
-    /// it or leaves the value empty.
-    async fn ask(&self, admin: &Admin, step: SetSecretStep<'_>) -> Result<TypedText, SendResult> {
+    /// call the shell will make and the secret's name: a rotate of
+    /// `existing`, which replaces a value others may be using, or a create.
+    /// Nothing is sent when the user closes it or leaves the value empty.
+    async fn ask(
+        &self,
+        admin: &Admin,
+        step: SetSecretStep<'_>,
+        existing: Option<&str>,
+    ) -> Result<TypedText, SendResult> {
         let company = &admin.connection.company;
-        let address = PaperclipCall::Create
+        let call = existing.map_or(PaperclipCall::Create, |secret| PaperclipCall::Rotate {
+            secret: secret.to_owned(),
+        });
+        let address = call
             .address(&admin.connection.origin, company)
             .map_or_else(String::new, |address| address.to_string());
+        let mut fields = vec![
+            ("name".to_owned(), Value::from(step.name).to_string()),
+            ("company".to_owned(), Value::from(step.company).to_string()),
+        ];
+        if existing.is_some() {
+            fields.push(("replaces".to_owned(), REPLACES.to_owned()));
+        }
         let sheet = AskSheet {
             confirm: ConfirmSheet {
                 account: admin.user.clone(),
-                method: "POST",
+                method: call.method(),
                 address,
-                fields: vec![
-                    ("name".to_owned(), Value::from(step.name).to_string()),
-                    ("company".to_owned(), Value::from(step.company).to_string()),
-                ],
+                fields,
             },
             target: None,
             secrets: vec!["value".to_owned()],
@@ -179,16 +200,18 @@ impl<T: Transport, K: Keychain, C: Clock, D: Dialogs> SetSecret<'_, T, K, C, D> 
             .ok_or(SendResult::Cancelled)
     }
 
-    /// Rotates the secret when the catalog has it, and creates it when not.
-    /// A create that finds the secret made meanwhile reads the catalog once
-    /// more and rotates what it finds; it never loops.
+    /// Rotates `existing`, the secret the catalog had before the dialog, and
+    /// creates it when there was none. A create that finds the secret made
+    /// meanwhile reads the catalog once more and rotates what it finds; it
+    /// never loops.
     async fn set(
         &self,
         admin: &Admin,
         name: &str,
+        existing: Option<String>,
         value: &TypedText,
     ) -> Result<Answer, SendResult> {
-        if let Some(secret) = self.find(admin, name).await? {
+        if let Some(secret) = existing {
             return self.rotate(admin, &secret, value).await;
         }
         let body = json_body(&[("name", name), ("key", name), ("value", value.as_str())]);

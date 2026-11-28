@@ -1,4 +1,4 @@
-//! Requirement `studio.src-tauri.crates.action-send.action-send`.
+//! Requirement `studio.src-tauri.crates.action-send.paperclip-admin-key`.
 //!
 //! The Paperclip admin key's list of calls (note on HAL-17491, row C1; plan
 //! OK on HAL-21110): it refuses any secrets call other than creating or

@@ -4,7 +4,7 @@
 //! keychain entry: it starts a challenge, opens the approval page in the
 //! user's browser, polls until a board member approves it, checks with
 //! `/api/cli-auth/me` that the key works for the connection's company, and
-//! stores it with [`paperclip_admin::store_admin_key`]. The key never reaches
+//! stores it with [`crate::paperclip_admin::store_admin_key`]. The key never reaches
 //! the page: the sign-in answers only the account.
 //!
 //! It runs only while its stepper is open (note, 6.7): it checks its
@@ -21,9 +21,7 @@ use serde_json::json;
 use url::Url;
 
 use crate::account::Account;
-use crate::paperclip_admin::{
-    self, PaperclipConnection, connection_of, forget_admin_key, store_admin_key,
-};
+use crate::paperclip_admin::{PaperclipConnection, connection_of, store_admin_key, take_admin_key};
 use crate::send::{Answer, Outgoing, Transport};
 use crate::sign_in::{Clock, Keychain, SignInCancel, SignInResult};
 use crate::wipe::Wiped;
@@ -117,23 +115,19 @@ impl<T: Transport, K: Keychain, C: Clock, S: ApprovalScreen> PaperclipSignIn<'_,
         result
     }
 
-    /// Revokes the stored admin key in Paperclip, then forgets it, also when
-    /// the revoke fails, so the key never stays on this computer. The key is
-    /// found through its own record, also once it has expired, and revoked
-    /// only at the origin it was made for, so closing any stepper's page
-    /// signs it out.
+    /// Takes the stored admin key out of the keychain, then revokes it in
+    /// Paperclip; a failed revoke still leaves it off this computer. The key
+    /// is found through its own record, also once it has expired, and
+    /// revoked only at the origin it was made for.
     pub async fn sign_out(&self) -> Result<(), halonic_secrets::SecretError> {
-        let found = self
+        let taken = self
             .keychain
-            .with_backend(|backend| {
-                let stored = paperclip_admin::stored_admin_key(backend)?;
-                Ok(stored.map(|(made_for, key)| (made_for, Wiped::text(key))))
-            })
+            .with_backend(|backend| Ok(take_admin_key(backend)?.map(wiped_key)))
             .await?;
-        if let Some((connection, key)) = found {
+        if let Some((connection, key)) = taken {
             self.revoke(&connection, &key).await;
         }
-        self.keychain.with_backend(forget_admin_key).await
+        Ok(())
     }
 
     async fn run(&self) -> SignInResult {
@@ -256,9 +250,10 @@ impl<T: Transport, K: Keychain, C: Clock, S: ApprovalScreen> PaperclipSignIn<'_,
         (reaches && is_id(&owner.user_id)).then_some(owner.user_id)
     }
 
-    /// Stores the key, unless the stepper closed first. A cancel that comes
-    /// while the write waits on an unlock prompt takes the write back once it
-    /// is through, and the key is revoked.
+    /// Stores the key, unless the stepper closed first, and revokes the key
+    /// it replaced. A cancel that comes while the write waits on an unlock
+    /// prompt takes the write back once it is through, and the key is
+    /// revoked.
     async fn store(
         &self,
         connection: &PaperclipConnection,
@@ -270,20 +265,33 @@ impl<T: Transport, K: Keychain, C: Clock, S: ApprovalScreen> PaperclipSignIn<'_,
         let account = user.clone();
         let key = Wiped::text(challenge.key.as_str().to_owned());
         let now = self.clock.now();
-        let stored = self
+        let written = self
             .keychain
             .with_backend(move |backend| {
                 if cancel.is_cancelled() {
-                    return Ok(false);
+                    return Ok((None, Ok(false)));
                 }
-                store_admin_key(backend, &record, &account, key.as_str(), now)?;
-                if cancel.is_cancelled() {
-                    forget_admin_key(backend)?;
-                    return Ok(false);
-                }
-                Ok(true)
+                let replaced =
+                    store_admin_key(backend, &record, &account, key.as_str(), now)?.map(wiped_key);
+                // The replaced key comes back even when taking the new one
+                // back fails, so it is still revoked.
+                let kept = if cancel.is_cancelled() {
+                    take_admin_key(backend).map(|_| false)
+                } else {
+                    Ok(true)
+                };
+                Ok((replaced, kept))
             })
             .await;
+        let stored = match written {
+            Ok((replaced, kept)) => {
+                if let Some((made_for, replaced)) = replaced {
+                    self.revoke(&made_for, &replaced).await;
+                }
+                kept
+            }
+            Err(error) => Err(error),
+        };
         match stored {
             Ok(true) => SignInResult::SignedIn {
                 account: Account {
@@ -378,12 +386,20 @@ fn challenge_path(id: &str, rest: &str) -> String {
 /// The approval page on the connection's own origin. Only a path under
 /// `/cli-auth/` is taken from Paperclip's answer, so the page always opens
 /// on the address the user connected, even when Paperclip names another.
+/// The parsed path is checked, not the text, so `%2e%2e` or a tab inside
+/// `..` can't climb out of `/cli-auth/`.
 fn approval_page(connection: &PaperclipConnection, path: &str) -> Option<Url> {
-    if !path.starts_with("/cli-auth/") || path.contains("..") || path.contains('\\') {
+    if !path.starts_with('/') || path.contains('\\') {
         return None;
     }
     let page = address(connection, path)?;
-    (page.origin().ascii_serialization() == connection.origin).then_some(page)
+    let same_origin = page.origin().ascii_serialization() == connection.origin;
+    (same_origin && page.path().starts_with("/cli-auth/")).then_some(page)
+}
+
+/// A key taken from the keychain, wiped once it has been revoked.
+fn wiped_key((made_for, key): (PaperclipConnection, String)) -> (PaperclipConnection, Wiped) {
+    (made_for, Wiped::text(key))
 }
 
 /// Whether `text` can be an id in a path or a name: letters, digits, `-`
