@@ -217,6 +217,10 @@ export const settingsText = {
   themeDark: { text: "Dark", file: appearanceFile },
   themeSystem: { text: "System", file: appearanceFile },
   formats: { text: "Formats", file: `${settingsFolder}/src/feature.ts` },
+  sectionsList: {
+    text: "Settings sections",
+    file: "packages/studio/shell/src/settings/settings-nav.tsx",
+  },
   formatExample: { text: "Example:", file: `${settingsFolder}/src/formats/formats-text.ts` },
   dutch: { text: "Dutch (Netherlands)", file: `${settingsFolder}/requirements/formats-section.md` },
   dutchNumber: { text: "12.345,60", file: `${settingsFolder}/requirements/formats-section.md` },
