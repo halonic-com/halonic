@@ -13,6 +13,12 @@ can't start with a digit), and the value must still be plain. Request
 parameters and expected state keep plain names only. One example is added; no
 example or test is removed or weakened, and `x-header` is still refused.
 
+The shell's record check (`record_check.rs`) takes the same grammar, so its
+shared golden `record-events.json` changes too. The dotted case it held as
+refused until this change ("taken once #6725 lands") moves to taken, with 2
+and 3 segments. Three refused cases take its place: 4 segments, a segment
+that reaches into a list, and an empty segment. No taken case is removed.
+
 ## Why
 
 `github.approve-deployment@1` (HAL-17522) must show who started the run,
@@ -24,3 +30,4 @@ values under the dotted name. Without this change the step's
 ## Covers
 
 - events.action-events
+- packages/adapters/action-send-tauri/src/golden/record-events.json
