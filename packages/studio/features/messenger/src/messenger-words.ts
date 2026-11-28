@@ -77,6 +77,10 @@ export const messengerWords = {
   pinned: "Pinned",
   /** Under the list's header when a fourth chat is pinned (Sofia's flows on HAL-20673, line 23). */
   pinsFull: "You can pin up to 3 chats.",
+  /** Read out by the page's status after Pin chat; not shown (HAL-21136). */
+  chatPinned: "Chat pinned.",
+  /** Read out by the page's status after Unpin chat; not shown. */
+  chatUnpinned: "Chat unpinned.",
   /** The chat header's ··· button, for a screen reader and as its tooltip. */
   moreActions: (name: string) => `More actions for ${name}`,
   /** Before the person's own message in a row's preview. */

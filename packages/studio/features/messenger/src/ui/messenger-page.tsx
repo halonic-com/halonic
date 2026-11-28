@@ -204,7 +204,8 @@ export function MessengerPage({
 }
 
 /**
- * The page's status region: what Leave said, and "You can pin up to 3 chats." on every pin that
+ * The page's status region: what Leave said, "Chat pinned." or "Chat unpinned." after the ··· menu
+ * (focus goes back to ···, so nothing else says it), and "You can pin up to 3 chats." on every pin that
  * finds them all taken, except a pin whose toast said it (one pane), even once the list is back.
  */
 function PageStatus({
@@ -222,11 +223,20 @@ function PageStatus({
 }) {
   const sayPinsFull = pinning.full && !silent && pinning.fullCount !== toasted;
   return (
-    <p role="status" className="sr-only" data-page-status>
+    // Not atomic: the region keeps earlier lines, so only the newly keyed line is read.
+    <p role="status" aria-atomic="false" className="sr-only" data-page-status>
       <span key={said.count}>{said.text}</span>
+      <span key={`pin-${pinning.doneCount}`}>{pinWords(pinning.done)}</span>
       <span key={`pins-${pinning.fullCount}`}>{sayPinsFull ? messengerWords.pinsFull : ""}</span>
     </p>
   );
+}
+
+/** What the page's status says after a pin or unpin worked. */
+function pinWords(done: ChatPinning["done"]): string {
+  if (done === "pinned") return messengerWords.chatPinned;
+  if (done === "unpinned") return messengerWords.chatUnpinned;
+  return "";
 }
 
 /**
