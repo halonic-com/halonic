@@ -1,13 +1,19 @@
 import type { Conversation, MessagingAgent, MessagingId, MessagingSource } from "@halonicjs/ports";
 import { EmptyState, FilterChips } from "@halonicjs/studio-kit";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useChatDrafts } from "./chat-drafts.ts";
 import type { MessagingClient } from "./messaging-client.ts";
 import { OlderComputerPanel } from "./older-computer-note.tsx";
 import { PhoneChat } from "./phone-chat.tsx";
-import { ChatRows, ChatsSkeleton, type ReturnTo, useFocusOnReturn } from "./phone-chat-rows.tsx";
+import {
+  ChatRows,
+  ChatsSkeleton,
+  type ReturnTo,
+  useFocusInsteadOfList,
+  useFocusOnReturn,
+} from "./phone-chat-rows.tsx";
 import { type ReadFailure, phoneMessengerWords as words } from "./phone-messenger-words.ts";
-import { ReadFailedLine } from "./read-failed-line.tsx";
+import { ReadFailedLine, type ReadFailedLineProps } from "./read-failed-line.tsx";
 
 /** What the Messenger tab asks of the computer: the client's reads, its send and reactions. */
 export type PhoneMessaging = Pick<
@@ -149,13 +155,19 @@ function MessengerLists({
   // No chips and no "No chats yet" until the computer has answered: a list still on its way or
   // one that couldn't be read isn't an empty one (HAL-20039).
   if (!listed.read || conversations.length === 0) {
-    if (failure !== undefined) return failedLine;
+    if (failure !== undefined) {
+      return (
+        <ChatsFailed
+          messaging={messaging}
+          failure={failure}
+          computer={computer}
+          onTryAgain={retry}
+          returnTo={returnTo}
+        />
+      );
+    }
     if (!listed.read) return <ChatsSkeleton onRetry={reload} />;
-    return (
-      <div className="flex flex-1 flex-col justify-center">
-        <EmptyState title={words.emptyTitle} description={words.emptyText(computer)} />
-      </div>
-    );
+    return <NoChats computer={computer} returnTo={returnTo} />;
   }
   return (
     <div ref={listRef} className="flex flex-col gap-3">
@@ -182,6 +194,33 @@ function MessengerLists({
           onOpen={openChat}
         />
       )}
+    </div>
+  );
+}
+
+/** Where the focus goes back to after Back, for a screen drawn instead of the list. */
+interface ReturnsFocus {
+  readonly returnTo: RefObject<ReturnTo | undefined>;
+}
+
+/** The list couldn't be read: why, with Try again, which takes the focus after Back. */
+function ChatsFailed({ returnTo, ...line }: ReadFailedLineProps & ReturnsFocus) {
+  const tryAgain = useRef<HTMLButtonElement>(null);
+  useFocusInsteadOfList(tryAgain, returnTo);
+  return <ReadFailedLine {...line} tryAgainRef={tryAgain} />;
+}
+
+/** "No chats yet", whose title takes the focus after Back. */
+function NoChats({ computer, returnTo }: { readonly computer: string } & ReturnsFocus) {
+  const title = useRef<HTMLElement>(null);
+  useFocusInsteadOfList(title, returnTo);
+  return (
+    <div className="flex flex-1 flex-col justify-center">
+      <EmptyState
+        title={words.emptyTitle}
+        description={words.emptyText(computer)}
+        titleRef={title}
+      />
     </div>
   );
 }

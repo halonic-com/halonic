@@ -1,6 +1,6 @@
 import type { MessagingSource } from "@halonicjs/ports";
 import { Button } from "@halonicjs/studio-kit";
-import { useEffect, useState } from "react";
+import { type Ref, useEffect, useState } from "react";
 import { asOfText } from "./phone-forms.ts";
 import type { PhoneMessaging } from "./phone-messenger.tsx";
 import {
@@ -18,6 +18,8 @@ export interface ReadFailedLineProps {
   readonly computer: string;
   /** Reads again what failed. */
   readonly onTryAgain: () => void;
+  /** The Try again button, for a screen that gives it the focus. */
+  readonly tryAgainRef?: Ref<HTMLButtonElement>;
 }
 
 /**
@@ -27,7 +29,13 @@ export interface ReadFailedLineProps {
  * region stays in place while nothing failed, since some screen readers skip one that appears
  * with its text already in it.
  */
-export function ReadFailedLine({ messaging, failure, computer, onTryAgain }: ReadFailedLineProps) {
+export function ReadFailedLine({
+  messaging,
+  failure,
+  computer,
+  onTryAgain,
+  tryAgainRef = null,
+}: ReadFailedLineProps) {
   // `undefined` while the sources read is out, so the generic line never shows first.
   const [offline, setOffline] = useState<readonly OfflineSource[] | undefined>(undefined);
   const sourceOffline = failure?.kind === "refused" && failure.code === "offline";
@@ -58,7 +66,7 @@ export function ReadFailedLine({ messaging, failure, computer, onTryAgain }: Rea
         ))}
       </div>
       {failure === undefined ? null : (
-        <Button variant="secondary" size="touch" onClick={onTryAgain}>
+        <Button ref={tryAgainRef} variant="secondary" size="touch" onClick={onTryAgain}>
           {words.tryAgain}
         </Button>
       )}

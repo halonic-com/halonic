@@ -108,6 +108,23 @@ export function useFocusOnReturn(
   }, [list, returnTo, rows]);
 }
 
+/**
+ * After Back, when a later read leaves no list to return to (it failed on its first page, or there
+ * are no chats), gives the focus to `target` instead, once and only if it fell to the page, as the
+ * Inbox's `EmptyInbox` gives it to its title. Runs when the screen holding `target` first draws.
+ */
+export function useFocusInsteadOfList(
+  target: RefObject<HTMLElement | null>,
+  returnTo: RefObject<ReturnTo | undefined>,
+) {
+  useEffect(() => {
+    if (returnTo.current === undefined) return;
+    returnTo.current = undefined;
+    const node = target.current;
+    if (node !== null && focusFell(node)) node.focus();
+  }, [target, returnTo]);
+}
+
 /** Whether the focus is on nothing but the page: in `node`'s own document (B7 item 12). */
 function focusFell(node: Element): boolean {
   const page = node.ownerDocument;

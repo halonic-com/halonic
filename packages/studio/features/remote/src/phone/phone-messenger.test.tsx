@@ -250,6 +250,37 @@ verifies("remote.phone-messenger", () => {
       expect(document.activeElement).toBe(document.body);
     });
 
+    it("leaves the focus on the page when the row it let go of leaves later", async () => {
+      const scene = await backFromEngineering();
+      rowNamed("Engineering")?.blur();
+      answer(scene, "conversations", [{ ...channel, waitingForMe: false }, direct]);
+      answer(scene, "agents", []);
+      await settle();
+      await act(async () => chips()?.querySelectorAll("input")[1]?.click());
+      expect(rowNamed("Engineering")).toBeUndefined();
+      expect(document.activeElement).toBe(document.body);
+    });
+
+    it("gives the focus to Try again when the read after Back is refused", async () => {
+      const scene = await backFromEngineering();
+      const reads = scene.tunnel.sentOf("msg-read").filter((read) => read.what === "conversations");
+      scene.host({ type: "error", replyTo: reads.at(-1)?.id ?? "", code: "signed-out" });
+      answer(scene, "agents", []);
+      await settle();
+      expect(rowNamed("Engineering")).toBeUndefined();
+      expect(document.activeElement).toBe(buttonNamed("Try again"));
+    });
+
+    it("gives the focus to the No chats yet title when the read after Back is empty", async () => {
+      const scene = await backFromEngineering();
+      answer(scene, "conversations", []);
+      answer(scene, "agents", []);
+      await settle();
+      const title = document.activeElement;
+      expect(title?.tagName).toMatch(/^H\d$/);
+      expect(title?.textContent).toBe("No chats yet");
+    });
+
     it("leaves the focus on the row the person moved it to when the chat's row leaves", async () => {
       const scene = await backFromEngineering();
       const chief = rowNamed("Chief");
