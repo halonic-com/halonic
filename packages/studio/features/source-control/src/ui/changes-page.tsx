@@ -21,6 +21,7 @@ import { type ChangesList, ChangesListService, type ChangesListState } from "../
 import { pageWords, stateWords } from "../changes-words.ts";
 import { AddShareAddressDialog } from "./add-share-address-dialog.tsx";
 import { ChangeList, orderItems } from "./change-list.tsx";
+import { ChangesColumns, ChangesPane } from "./changes-columns.tsx";
 import { GetUpdates } from "./get-updates.tsx";
 import { History } from "./history.tsx";
 import { LeftToGitCallout } from "./left-to-git-callout.tsx";
@@ -76,9 +77,10 @@ export interface ChangesViewProps {
 }
 
 /**
- * The Changes page on the desktop (checklist part 2, 2.2 and 2.10): "Changes" over what the
- * folder's history says: a first read's skeleton, why it couldn't load, "Keep a history of your
- * work", "Halonic needs git to keep versions.", or "Nothing has changed since your last version.".
+ * The Changes page on the desktop (checklist part 2, 2.2 and 2.10), in a list column beside a
+ * content pane (`source-control.list-column`): "Changes" over what the folder's history says: a
+ * first read's skeleton, why it couldn't load, "Keep a history of your work", "Halonic needs git to
+ * keep versions.", or "Nothing has changed since your last version.".
  * A later read that fails keeps what the page showed (states D1).
  *
  * On a phone (2.12) it is the same page in one column with a 16px inset: the top bar says
@@ -110,11 +112,11 @@ export function ChangesView({
   const nav = useOpenItem(items, () => heading.current?.focus());
   const opening = usePhoneOpening(pages, items, state.history.versions);
   useFocusAfterChoices(state.choosing, () => heading.current?.focus());
-  const pageClass = `flex w-full flex-col gap-4 ${phone ? "p-4" : "px-6 py-5"}`;
-  const pushed = pushedPage({ list, pages, items, nav, developer, openItem, phone, pageClass });
+  const pageClass = "flex w-full flex-col gap-4 p-4";
+  const pushed = pushedPage({ list, pages, items, nav, openItem, phone });
   if (pushed !== undefined) return pushed;
-  return (
-    <div ref={page} className={pageClass}>
+  const content = (
+    <>
       <header className="flex items-center gap-3">
         <h1 ref={heading} tabIndex={-1} className={phone ? "sr-only flex-1" : "text-title flex-1"}>
           {pageWords.title}
@@ -127,9 +129,6 @@ export function ChangesView({
       </header>
       <LeftToGitCallout shown={state.hasRemote && leftToGit} />
       {state.merge !== undefined && !state.choosing ? <MergeStrip list={list} /> : null}
-      {state.merge !== undefined && state.choosing && !phone ? (
-        <MergeChoices list={list} phone={false} />
-      ) : null}
       <SharingLine list={list} phone={phone} onAdd={() => setAddingAddress(true)} />
       <PageBody
         list={list}
@@ -157,7 +156,31 @@ export function ChangesView({
         returnFocus={() => heading.current}
         onCreated={focusNewVersion}
       />
-    </div>
+    </>
+  );
+  if (phone) {
+    return (
+      <div ref={page} className={pageClass}>
+        {content}
+      </div>
+    );
+  }
+  return (
+    <ChangesColumns
+      listRef={page}
+      pane={
+        <ChangesPane
+          list={list}
+          state={state}
+          items={items}
+          open={nav.open}
+          developer={developer}
+          openItem={openItem}
+        />
+      }
+    >
+      {content}
+    </ChangesColumns>
   );
 }
 
@@ -182,28 +205,26 @@ function focusIsLost(): boolean {
 }
 
 /**
- * The page drawn instead of the Changes page, if one is open: on a phone a page on the stack above
- * it (`sub`) or the Get updates choices, or an item's What changed opened in place.
+ * The page drawn instead of the Changes page on a phone, if one is open: a page on the stack above
+ * it (`sub`), the Get updates choices, or an item's What changed opened in place. The desktop
+ * draws these in the content pane beside the list (`source-control.list-column`).
  */
 function pushedPage({
   list,
   pages,
   items,
   nav,
-  developer,
   openItem,
   phone,
-  pageClass,
 }: {
   readonly list: ChangesList;
   readonly pages: ChangesPhonePages | undefined;
   readonly items: readonly ChangeItem[];
   readonly nav: OpenItem;
-  readonly developer: boolean;
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly phone: boolean;
-  readonly pageClass: string;
 }): ReactNode | undefined {
+  if (!phone) return undefined;
   if (pages?.sub !== undefined) {
     return (
       <PhonePushedPage
@@ -213,25 +234,25 @@ function pushedPage({
         openItem={openItem}
         close={pages.close}
         sub={pages.sub}
-        pageClass={pageClass}
       />
     );
   }
   if (nav.open !== undefined) {
     return (
-      <WhatChangedFrame phone={phone} pageClass={pageClass}>
+      // The page draws its own inset, so its bottom bar can run edge to edge.
+      <div className="flex min-h-full w-full flex-col">
         <WhatChangedPage
           list={list}
           item={nav.open}
-          developer={developer}
+          developer={false}
           openItem={openItem}
           onBack={nav.back}
-          phone={phone}
+          phone
         />
-      </WhatChangedFrame>
+      </div>
     );
   }
-  if (phone && list.state.merge !== undefined && list.state.choosing) {
+  if (list.state.merge !== undefined && list.state.choosing) {
     return (
       // The page draws its own inset, so its bottom bar can run edge to edge.
       <div className="flex min-h-full w-full flex-col">
@@ -240,22 +261,6 @@ function pushedPage({
     );
   }
   return undefined;
-}
-
-/**
- * Where What changed is drawn: in the page's inset, or on a phone edge to edge, as the page draws
- * its own inset so its bottom bar can run from edge to edge.
- */
-function WhatChangedFrame({
-  phone,
-  pageClass,
-  children,
-}: {
-  readonly phone: boolean;
-  readonly pageClass: string;
-  readonly children: ReactNode;
-}) {
-  return <div className={phone ? "flex min-h-full w-full flex-col" : pageClass}>{children}</div>;
 }
 
 /**
@@ -270,7 +275,6 @@ function PhonePushedPage({
   openItem,
   close,
   sub,
-  pageClass,
 }: {
   readonly list: ChangesList;
   readonly items: readonly ChangeItem[];
@@ -278,7 +282,6 @@ function PhonePushedPage({
   readonly openItem: ((item: ItemRef) => void) | undefined;
   readonly close: (sub: string) => void;
   readonly sub: string;
-  readonly pageClass: string;
 }) {
   const page = pushedPageOf(sub);
   const item = page?.kind === "item" ? items.find((each) => each.id === page.id) : undefined;
@@ -290,10 +293,10 @@ function PhonePushedPage({
   }, [gone, close, sub]);
   if (item !== undefined) {
     return (
-      <WhatChangedFrame phone pageClass={pageClass}>
+      <div className="flex min-h-full w-full flex-col">
         {/* The phone's What changed has no developer view: its changes are in words only. */}
         <WhatChangedPage list={list} item={item} developer={false} openItem={openItem} phone />
-      </WhatChangedFrame>
+      </div>
     );
   }
   if (version !== undefined) {
@@ -389,6 +392,7 @@ function ReadBody({
           items={items}
           onOpen={opening?.openItem ?? nav.show}
           openItem={openItem}
+          current={nav.open?.id}
           returnFocus={opening === undefined ? nav.returnFocus : opening.itemFocus}
           onFocusPlaced={nav.focusPlaced}
           phone={phone}

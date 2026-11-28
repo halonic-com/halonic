@@ -24,6 +24,11 @@ export interface WhatChangedPageProps {
   readonly onBack?: (() => void) | undefined;
   /** On a phone (2.13) the page is pushed, with Open as a row and Undo in the bottom bar. */
   readonly phone?: boolean;
+  /**
+   * In the desktop's content pane beside the Changes list (`source-control.list-column`): the
+   * item's name is a visible `h2` under the list's `h1`, and there is no Back to Changes.
+   */
+  readonly inPane?: boolean;
 }
 
 /**
@@ -42,6 +47,7 @@ export function WhatChangedPage({
   openItem,
   onBack,
   phone = false,
+  inPane = false,
 }: WhatChangedPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
@@ -53,15 +59,16 @@ export function WhatChangedPage({
     openItem !== undefined && isOpenable(item)
       ? () => openItem({ kind: item.kind ?? "", hub: item.hub, id: item.itemId })
       : undefined;
+  const Title = inPane ? "h2" : "h1";
   const title = (
-    <h1
+    <Title
       id={headingId}
       ref={heading}
       tabIndex={-1}
-      className={onBack === undefined ? "sr-only" : "text-title flex-1"}
+      className={onBack === undefined && !inPane ? "sr-only" : "text-title flex-1"}
     >
       {item.name}
-    </h1>
+    </Title>
   );
   if (phone) {
     return (
@@ -101,7 +108,7 @@ export function WhatChangedPage({
       </header>
       <WaitingNote list={list} id={waitingId} />
       <UndoPartialCallout undoing={undoing} />
-      <ItemChanges list={list} item={item} developer={developer} />
+      <ItemChanges list={list} item={item} developer={developer} titleLevel={inPane ? 2 : 1} />
       <UndoWithoutCopyDialog undoing={undoing} />
     </section>
   );

@@ -1,10 +1,12 @@
 import type { ChangeLine } from "@halonicjs/app";
 import type { LineChange } from "@halonicjs/std";
 import { Button, StatusChip, useToastStore } from "@halonicjs/studio-kit";
-import { useId, useMemo, useRef, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { ChangeItem } from "../change-items.ts";
 import type { ChangedFile, ChangesList } from "../changes-list.ts";
 import { discardWords, listWords, mergeWords, undoWords } from "../changes-words.ts";
+import { type ChangeHeadingLevel, headingTag, levelBelow } from "./heading-level.ts";
+import { LineDiff } from "./line-diff.tsx";
 import { fieldsOfNew, NewFileLines, NewItemFields, WholeFile } from "./new-file.tsx";
 import { PartChanges } from "./part-change.tsx";
 import { type DiscardToasts, useDiscardToasts } from "./use-discard-toasts.ts";
@@ -17,15 +19,23 @@ export interface ItemChangesProps {
   readonly developer: boolean;
   /** On a phone (2.13) the changes are in words only: no Advanced and no line diff. */
   readonly phone?: boolean;
+  /** The level of the item's name above the changes: 1 on a page, 2 in the content pane. */
+  readonly titleLevel?: 1 | 2;
 }
 
 /**
  * The body of What changed: each file of the item with the Important changes first, each as
  * before → after, then the others. Every change that can be undone on its own has Undo this
- * change. The page's `h1` is the item's name, so a file's path, when shown, is the `h2`, and the
- * groups and parts under it go one level down.
+ * change. The item's name is the heading above, so a file's path, when shown, is one level below
+ * it, and the groups and parts under the path one level further.
  */
-export function ItemChanges({ list, item, developer, phone = false }: ItemChangesProps) {
+export function ItemChanges({
+  list,
+  item,
+  developer,
+  phone = false,
+  titleLevel = 1,
+}: ItemChangesProps) {
   return (
     <div className="flex flex-col gap-4">
       {item.files.map((file) => (
@@ -36,6 +46,7 @@ export function ItemChanges({ list, item, developer, phone = false }: ItemChange
           developer={developer}
           showPath={developer || item.files.length > 1}
           showLineDiff={!phone}
+          pathLevel={titleLevel === 1 ? 2 : 3}
         />
       ))}
     </div>
@@ -48,6 +59,7 @@ function FileChanges({
   developer,
   showPath,
   showLineDiff,
+  pathLevel,
 }: {
   readonly list: ChangesList;
   readonly file: ChangedFile;
@@ -56,14 +68,16 @@ function FileChanges({
   readonly showPath: boolean;
   /** Whether Advanced and its line diff are offered; a phone has no file diff. */
   readonly showLineDiff: boolean;
+  /** One level below the item's name: the path's, or the groups' without a path. */
+  readonly pathLevel: 2 | 3;
 }) {
   const hunks = useMemo(() => list.hunks(file), [list, file]);
   const fields = useMemo(() => fieldsOfNew(file), [file]);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string>();
   const discarding = useDiscardToasts();
-  // Headings in the file sit under its path, or straight under the page's h1 without one (a11y C3).
-  const level = showPath ? 3 : 2;
+  // Headings in the file sit under its path, or straight under the item's name without one (a11y C3).
+  const level = showPath ? levelBelow(pathLevel) : pathLevel;
 
   async function discardFile() {
     setBusy(true);
@@ -80,6 +94,7 @@ function FileChanges({
       {showPath ? (
         <FileBar
           path={file.path}
+          level={pathLevel}
           onDiscard={developer ? () => void discardFile() : undefined}
           busy={busy}
           list={list}
@@ -126,7 +141,7 @@ function Advanced({
   readonly hunks: readonly LineChange[];
   readonly newItem: boolean;
   /** The level of the line diff's part headings, as the file's groups' headings. */
-  readonly level: 2 | 3;
+  readonly level: ChangeHeadingLevel;
   readonly discarding: DiscardToasts | undefined;
 }) {
   const [open, setOpen] = useState(!file.description.described && !newItem);
@@ -157,7 +172,7 @@ function ChangedItemLines({
 }: {
   readonly list: ChangesList;
   readonly file: ChangedFile;
-  readonly level: 2 | 3;
+  readonly level: ChangeHeadingLevel;
 }) {
   return (
     <>
@@ -179,7 +194,7 @@ function DescribedLines({
 }: {
   readonly list: ChangesList;
   readonly file: ChangedFile;
-  readonly level: 2 | 3;
+  readonly level: ChangeHeadingLevel;
 }) {
   const important = file.description.lines.filter((line) => line.important);
   const other = file.description.lines.filter((line) => !line.important);
@@ -250,11 +265,14 @@ export function WaitingNote({ list, id }: { readonly list: ChangesList; readonly
 /** A file's path as the heading of its changes, with the developer view's Discard. */
 function FileBar({
   path,
+  level,
   onDiscard,
   busy,
   list,
 }: {
   readonly path: string;
+  /** One level below the item's name. */
+  readonly level: 2 | 3;
   /** Only the developer view discards a single file. */
   readonly onDiscard: (() => void) | undefined;
   readonly busy: boolean;
@@ -262,10 +280,11 @@ function FileBar({
   readonly list: ChangesList;
 }) {
   const waitingId = useId();
+  const Heading = headingTag(level);
   return (
     <>
       <div className="flex items-center gap-3">
-        <h2 className="text-label flex-1 break-all">{path}</h2>
+        <Heading className="text-label flex-1 break-all">{path}</Heading>
         {onDiscard === undefined ? null : (
           <Button
             variant="ghost"
@@ -283,101 +302,6 @@ function FileBar({
   );
 }
 
-/** What tells one part of a file from the others. */
-function partKey(part: LineChange): string {
-  return `${part.beforeStart}:${part.afterStart}`;
-}
-
-/** "Lines 12 to 18": where the part is in the file now, or where it was when it only removed lines. */
-function partHeading(part: LineChange): string {
-  if (part.added.length > 0) {
-    return discardWords.partLines(part.afterStart + 1, part.afterStart + part.added.length);
-  }
-  return discardWords.partLines(part.beforeStart + 1, part.beforeEnd);
-}
-
-/**
- * The line diff of one file, shown under Advanced. With `discarding`, which only the developer view
- * passes, each part has its own "Discard this part".
- */
-function LineDiff({
-  list,
-  file,
-  hunks,
-  level,
-  discarding,
-}: {
-  readonly list: ChangesList;
-  readonly file: ChangedFile;
-  readonly hunks: readonly LineChange[];
-  /** The level of each part's heading, "Line 3": as the file's groups' headings. */
-  readonly level: 2 | 3;
-  readonly discarding: DiscardToasts | undefined;
-}) {
-  const PartHeading = level === 2 ? "h2" : "h3";
-  const [failure, setFailure] = useState<string>();
-  // The part being discarded: a second press on it, or on another part, would find the file changed.
-  const [busyPart, setBusyPart] = useState<string>();
-  // A ref too, since a second press can come before the page has drawn the busy state.
-  const working = useRef(false);
-  async function discardPart(part: LineChange) {
-    if (working.current || discarding === undefined) return;
-    working.current = true;
-    setBusyPart(partKey(part));
-    setFailure(undefined);
-    try {
-      const reason = await discarding.run(await list.discardPart(file, part), {
-        title: discardWords.partDiscarded,
-        text: file.path,
-      });
-      setFailure(reason);
-    } finally {
-      working.current = false;
-      setBusyPart(undefined);
-    }
-  }
-  return (
-    <section aria-label={discardWords.lines(file.path)} className="flex flex-col gap-2">
-      {hunks.map((part) => (
-        <div key={partKey(part)} className="flex items-start gap-3">
-          <div className="flex-1">
-            <PartHeading className="text-small text-fg-muted">{partHeading(part)}</PartHeading>
-            <pre className="text-small overflow-x-auto rounded-md border border-border p-2">
-              {part.removed.map((line, index) => (
-                <span key={`-${index}`} className="block text-danger">
-                  <span className="sr-only">{discardWords.removedLine} </span>
-                  {`- ${line.replace(/\n$/u, "")}`}
-                </span>
-              ))}
-              {part.added.map((line, index) => (
-                <span key={`+${index}`} className="block text-success">
-                  <span className="sr-only">{discardWords.addedLine} </span>
-                  {`+ ${line.replace(/\n$/u, "")}`}
-                </span>
-              ))}
-            </pre>
-          </div>
-          {discarding === undefined ? null : (
-            <Button
-              variant="ghost"
-              size="sm"
-              busy={busyPart !== undefined}
-              onClick={() => void discardPart(part)}
-            >
-              {discardWords.discardThisPart}
-            </Button>
-          )}
-        </div>
-      ))}
-      {failure === undefined ? null : (
-        <span role="alert" className="text-small text-danger">
-          {discardWords.partFailed}. {failure}
-        </span>
-      )}
-    </section>
-  );
-}
-
 function Group({
   title,
   level,
@@ -386,8 +310,8 @@ function Group({
   lines,
 }: {
   readonly title: string | undefined;
-  /** The heading level of the title: under the file's path, or straight under the page's `h1`. */
-  readonly level: 2 | 3;
+  /** The heading level of the title: under the file's path, or straight under the item's name. */
+  readonly level: ChangeHeadingLevel;
   readonly list: ChangesList;
   readonly file: ChangedFile;
   readonly lines: readonly ChangeLine[];
@@ -406,8 +330,14 @@ function Group({
   );
 }
 
-function GroupHeading({ level, children }: { readonly level: 2 | 3; readonly children: string }) {
-  const Heading = level === 2 ? "h2" : "h3";
+function GroupHeading({
+  level,
+  children,
+}: {
+  readonly level: ChangeHeadingLevel;
+  readonly children: string;
+}) {
+  const Heading = headingTag(level);
   return <Heading className="text-label text-fg-muted">{children}</Heading>;
 }
 

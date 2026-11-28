@@ -80,7 +80,8 @@ verifies("source-control.change-list", () => {
     it("lists each changed file with its Important changes first and Undo this change on the ones with parts", async () => {
       const { root } = await openPage();
       const section = openItem(root, "Triage");
-      expect(section.querySelector("h2")?.textContent).toBe("Important");
+      // Under the item's name, the content pane's h2.
+      expect(section.querySelector("h3")?.textContent).toBe("Important");
       const rows = [...section.querySelectorAll("li")].map((row) => row.textContent);
       expect(rows[0]).toContain("Instructions");
       expect(rows[1]).toContain("Model");
@@ -129,7 +130,7 @@ verifies("source-control.change-list", () => {
         first?.focus();
         first?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
       });
-      expect(root.querySelector("h1")?.textContent).toBe("Triage");
+      expect(root.querySelector('[data-pane="content"] h2')?.textContent).toBe("Triage");
       expect(document.activeElement?.textContent).toBe("Triage");
     });
 

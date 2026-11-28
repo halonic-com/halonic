@@ -31,7 +31,12 @@ export interface ChangeListProps {
   readonly onOpen: (id: string) => void;
   /** Opens the item itself, from the row's ⋮; without it the ⋮ has no Open entry. */
   readonly openItem?: ((item: ItemRef) => void) | undefined;
-  /** Where focus goes when the list comes back from a page; `undefined` leaves it alone. */
+  /** The item open in the content pane beside the list, marked as the current row. */
+  readonly current?: string | undefined;
+  /**
+   * Where focus goes when the list comes back from a page, or when the item open beside it is
+   * gone; `undefined` leaves it alone.
+   */
   readonly returnFocus?: ReturnFocus | undefined;
   /** Called once focus is placed from `returnFocus`, so the caller can forget it. */
   readonly onFocusPlaced?: (() => void) | undefined;
@@ -79,6 +84,7 @@ export function ChangeList({
   items,
   onOpen,
   openItem,
+  current,
   returnFocus,
   onFocusPlaced,
   phone = false,
@@ -87,20 +93,24 @@ export function ChangeList({
   const waitingId = useId();
   const waiting = list.merging;
   const region = useRef<HTMLElement>(null);
-  const placeFocus = useRef(returnFocus);
   const focusPlaced = useRef(onFocusPlaced);
   focusPlaced.current = onFocusPlaced;
   const latestItems = useRef(items);
   latestItems.current = items;
+  const target = useRef(returnFocus);
+  target.current = returnFocus;
+  // Each target once, by what it names, as a caller may pass an equal one on every draw: on the
+  // list's first draw after a page, or while the list stays beside the content pane.
+  const targetKey = returnFocus === undefined ? "" : `${returnFocus.id}:${returnFocus.index}`;
   useEffect(() => {
-    const target = placeFocus.current;
-    if (target === undefined) return;
+    const returnTo = target.current;
+    if (targetKey === "" || returnTo === undefined) return;
     const next =
-      latestItems.current.find((item) => item.id === target.id) ??
-      latestItems.current[target.index];
+      latestItems.current.find((item) => item.id === returnTo.id) ??
+      latestItems.current[returnTo.index];
     focusRowOrHeading(region.current, next);
     focusPlaced.current?.();
-  }, []);
+  }, [targetKey]);
 
   const [menu, setMenu] = useState<{ readonly id: string; readonly target: ContextMenuTarget }>();
   const undoing = useUndoItem(list);
@@ -167,6 +177,7 @@ export function ChangeList({
           },
         ]}
         onOpen={onOpen}
+        {...(current === undefined ? {} : { current })}
       />
       <UndoPartialCallout undoing={undoing} />
       {hidden > 0 ? <p className="text-small text-fg-muted">{itemWords.andMore(hidden)}</p> : null}
