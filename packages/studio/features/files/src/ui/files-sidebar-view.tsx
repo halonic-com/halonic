@@ -8,7 +8,15 @@ import {
   useWriteClipboard,
 } from "@halonicjs/studio-kit";
 import { errorReasonFor, type WorkspaceContext } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { copyPath } from "../copy-path.ts";
 import { FILE_KIND, fileItem, fileName } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
@@ -19,11 +27,13 @@ import { removeFile } from "../remove-file.ts";
 import { renamedPath, renameFile, typedNameProblem } from "../rename-file.ts";
 import { type RenameAsks, windowRenameAsks } from "../rename-request.ts";
 import { type FilesRevealTaken, takeFilesRevealRequests } from "../reveal-request.ts";
+import { filteredListing, type TreeFilter } from "../tree/tree-filter.ts";
 import { emptyTreeState, type TreeIntent, type TreeState } from "../tree/tree-keyboard.ts";
 import { deepestRow, revealFile, revealRow, visibleRows } from "../tree/visible-rows.ts";
 import { FilesTree } from "./files-tree.tsx";
 import { NewFileDialog } from "./new-file-dialog.tsx";
 import { TitleLine } from "./title-line.tsx";
+import { TreeBody } from "./tree-body.tsx";
 import { TreeSearchStatus } from "./tree-search-status.tsx";
 import { useTreeSearch } from "./use-tree-search.ts";
 
@@ -39,6 +49,12 @@ export interface FilesSidebarViewProps {
    * (`files.code-page`).
    */
   readonly pageAsks?: RenameAsks;
+  /** Code's list column only: the chips drawn under the search field. */
+  readonly chips?: ReactNode;
+  /** Which files the tree lists, as the chips say (`files.code-list-chips`); all by default. */
+  readonly filter?: TreeFilter;
+  /** Called when a row the filter may hide must show, such as a renamed file: the chips show all. */
+  readonly showAll?: () => void;
 }
 
 type Loaded =
@@ -59,7 +75,14 @@ function searchWrapClass(title: string | undefined): string {
  * states. It lists again whenever the host says a file or a mark changed, and keeps the opened
  * folders and the focused row while it does.
  */
-export function FilesSidebarView({ context, title, pageAsks }: FilesSidebarViewProps) {
+export function FilesSidebarView({
+  context,
+  title,
+  pageAsks,
+  chips,
+  filter = "all",
+  showAll,
+}: FilesSidebarViewProps) {
   const host = context.services.get(FilesHostService);
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const [state, setState] = useState<TreeState>(emptyTreeState);
@@ -124,23 +147,27 @@ export function FilesSidebarView({ context, title, pageAsks }: FilesSidebarViewP
   );
   const activePath = activeFile === "" ? undefined : activeFile;
 
-  // The rows to draw: the whole tree, or only what the search field asks for.
-  const search = useTreeSearch(
-    loaded.kind === "ready" ? loaded.listing : undefined,
-    state,
-    setState,
+  // The rows to draw: the files the chips leave, then only what the search field asks for.
+  const listing = loaded.kind === "ready" ? loaded.listing : undefined;
+  const shown = useMemo(
+    () => (listing === undefined ? undefined : filteredListing(listing, filter)),
+    [listing, filter],
   );
+  const search = useTreeSearch(shown, state, setState);
   const { roots, allRoots, type: typeSearch } = search;
 
   // A tab's ⋮ or F2 asks for its file's name to be edited here; the ask waits until this view is
   // shown. A search could hide the file's row, and its name field with it, so the search ends,
   // and the folders above the file open, as the search may have been all that showed its row.
-  // Code's list column takes only its own page's asks.
+  // Code's list column takes only its own page's asks, and its chips show every file again.
   const renames = pageAsks ?? windowRenameAsks;
+  const showAllNow = useRef(showAll);
+  showAllNow.current = showAll;
   useEffect(() => {
     const takeAsk = () => {
       const path = renames.take();
       if (path === undefined) return;
+      showAllNow.current?.();
       typeSearch("");
       setState((was) => ({ ...was, expanded: revealFile(was.expanded, path) }));
       setRenaming(path);
@@ -156,6 +183,8 @@ export function FilesSidebarView({ context, title, pageAsks }: FilesSidebarViewP
   hidesNow.current = search.hides;
   const showFile = useCallback(
     (path: string) => {
+      // The file may have no problem at its new place, so the chips show every file again.
+      showAllNow.current?.();
       if (!hidesNow.current(path)) return;
       typeSearch("");
       setState((was) => ({ ...was, expanded: revealFile(was.expanded, path) }));
@@ -352,19 +381,14 @@ export function FilesSidebarView({ context, title, pageAsks }: FilesSidebarViewP
       {...(activePath === undefined ? {} : { activePath })}
     />
   );
-  // `workspace.yaml` alone stays a row, with a quiet line under it and no button: the + is the way in.
-  const onlyWorkspaceFile = files.every((path) => path === "workspace.yaml");
-  const nothingFound = search.searching && search.matches === 0;
-  const body = nothingFound ? null : (
-    <>
-      {tree}
-      {onlyWorkspaceFile && (
-        <p className="px-3 py-2 text-small text-fg-muted">
-          {filesWords.emptyTitle} {filesWords.emptyDescription}
-        </p>
-      )}
-    </>
-  );
+  const body =
+    search.searching && search.matches === 0 ? null : (
+      <TreeBody
+        tree={tree}
+        files={files}
+        noProblems={filter === "problems" && roots.length === 0}
+      />
+    );
   return (
     <div ref={root} className="flex min-h-0 flex-col">
       <TitleLine title={title}>
@@ -391,6 +415,7 @@ export function FilesSidebarView({ context, title, pageAsks }: FilesSidebarViewP
           }}
         />
       </div>
+      {chips}
       <TreeSearchStatus
         searching={search.searching}
         typed={search.typed}

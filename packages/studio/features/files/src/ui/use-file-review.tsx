@@ -31,7 +31,7 @@ export interface FileReviewParts {
   readonly toasts: ToastStore | null;
   /** Opens Compare, for a decision held because the file changed outside Halonic. */
   readonly onCompare: () => void;
-  /** The tab's `h1` (`tabIndex={-1}`): it takes the focus once the last part is decided. */
+  /** The file's heading (`tabIndex={-1}`): it takes the focus once the last part is decided. */
   readonly title: RefObject<HTMLElement | null>;
 }
 
@@ -109,7 +109,7 @@ export function useFileReview(parts: FileReviewParts): FileReviewView {
   }, [editor, review]);
 
   // The pressed Accept or Reject is gone with its part, so the focus goes to the part that took its
-  // place, or the last one; with none left, to the tab's `h1` (a11y check RV1). Focus the person
+  // place, or the last one; with none left, to the file's heading (a11y check RV1). Focus the person
   // moved elsewhere while the decision ran stays where they put it.
   useEffect(() => {
     const lost = document.activeElement === null || document.activeElement === document.body;

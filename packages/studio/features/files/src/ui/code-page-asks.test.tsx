@@ -22,9 +22,11 @@ afterEach(() => {
   takeOpenAtLineRequests("README.md", () => {})();
 });
 
-/** The name field a row shows while its name is edited, if any. */
+/** The name field a row shows while its name is edited, if any: not the search field or a chip. */
 function nameField(root: HTMLElement | null): HTMLInputElement | null {
-  return root?.querySelector<HTMLInputElement>('input:not([type="search"])') ?? null;
+  return (
+    root?.querySelector<HTMLInputElement>('input:not([type="search"], [type="radio"])') ?? null
+  );
 }
 
 async function openInPane(page: HTMLElement, path: string): Promise<void> {

@@ -6,6 +6,7 @@ import { paneFile, treeContext } from "../code-page.ts";
 import { fileItem } from "../file-item.ts";
 import { filesWords } from "../files-words.ts";
 import { renameAsks } from "../rename-request.ts";
+import { CodeListColumn } from "./code-list-column.tsx";
 import { type BesideList, FileView } from "./file-view.tsx";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
@@ -56,8 +57,11 @@ export function CodePage({ context }: ItemViewProps) {
   const list: BesideList = useMemo(
     () => ({
       rename: (path) => asks.ask(path),
+      // The tree's Tab stop, or the line in its place when the chips leave no row.
       focusTree: () =>
-        listColumn.current?.querySelector<HTMLElement>('[data-path][tabindex="0"]')?.focus(),
+        listColumn.current
+          ?.querySelector<HTMLElement>('[data-path][tabindex="0"], [data-tree-note]')
+          ?.focus(),
     }),
     [asks],
   );
@@ -66,7 +70,7 @@ export function CodePage({ context }: ItemViewProps) {
   return (
     <div className="flex h-full min-h-0 w-full">
       <div ref={listColumn} className={codeListColumnClass} data-pane="list">
-        <FilesSidebarView context={paneContext} title={filesWords.codeTitle} pageAsks={asks} />
+        <CodeListColumn context={context} open={path} setOpen={pane.show} renames={asks} />
       </div>
       {path === undefined ? (
         <NoFilePane />
