@@ -1,14 +1,17 @@
 import type { MessagingId } from "@halonicjs/ports";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useReducer, useState } from "react";
+import { pinnedFirst } from "../chat-pins.ts";
 import type { FoundChat } from "../chat-search.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
+import { messengerWords } from "../messenger-words.ts";
 import type { WaitingCard } from "../needs-you.ts";
 import type { AgentPictures } from "./agent-pictures.ts";
 import { ListHeader, useChatSearch } from "./chat-search.tsx";
 import { ConversationList, type RowMarks } from "./conversation-list.tsx";
 import { ChatsLoad } from "./load-states.tsx";
 import { NeedsYouEntry } from "./needs-you.tsx";
+import { useChatPins } from "./use-chat-pins.tsx";
 
 /**
  * The chats the Messenger lists, read when it opens and whenever a source says it changed, whether
@@ -98,6 +101,10 @@ export function ChatsColumn({
     },
   };
   const found = chatSearch.search === undefined ? undefined : chatSearch.found;
+  const pins = useChatPins();
+  // A search lists what it found in its own order; otherwise the pinned chats come first.
+  const split =
+    found === undefined && rows !== undefined ? pinnedFirst(rows, pins?.pinned ?? []) : undefined;
   return (
     <>
       {/* Also while the chats load, so the list doesn't move once they arrive (motion 7); not over
@@ -111,6 +118,7 @@ export function ChatsColumn({
           newMenu={newMenu}
         />
       )}
+      <PinsFullNote full={pins?.full === true} />
       {rows === undefined || chatSearch.search !== undefined ? null : (
         <div className="mx-2 mt-2 border-b border-border pb-2">
           <NeedsYouEntry count={waiting?.length ?? 0} current={needsYou} onOpen={onNeedsYou} />
@@ -121,7 +129,8 @@ export function ChatsColumn({
       <div data-chats-scroll="" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pt-2">
         <ChatsLoad loaded={rows !== undefined} error={failure} words={words} onRetry={onRetry}>
           <ConversationList
-            rows={found === undefined ? rows : found.map((each) => each.row)}
+            rows={found === undefined ? (split?.others ?? rows) : found.map((each) => each.row)}
+            pinned={split?.pinned ?? []}
             {...(found === undefined
               ? {}
               : { search: { text: chatSearch.search ?? "", lines: linesOf(found) } })}
@@ -146,5 +155,18 @@ function linesOf(found: readonly FoundChat[]): ReadonlyMap<MessagingId, string> 
     found.flatMap((each) =>
       each.line === undefined ? [] : [[each.row.conversation.id, each.line] as const],
     ),
+  );
+}
+
+/**
+ * "You can pin up to 3 chats." under the list's header, while the last pin found them all taken.
+ * The page's status region reads it out, so this line isn't read again.
+ */
+function PinsFullNote({ full }: { readonly full: boolean }) {
+  if (!full) return null;
+  return (
+    <p aria-hidden="true" className="px-5 pt-1 text-small text-fg-muted">
+      {messengerWords.pinsFull}
+    </p>
   );
 }

@@ -1,5 +1,5 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Button, useNarrow } from "@halonicjs/studio-kit";
+import { Button, useNarrow, useToastStore } from "@halonicjs/studio-kit";
 import { listColumnClass } from "@halonicjs/studio-kit/list-column";
 import type { ChatOpens } from "@halonicjs/studio-services";
 import {
@@ -11,9 +11,10 @@ import {
   NoConnections,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
-import { type ReactNode, type RefObject, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ChatOpensService, MessengerService } from "../api.ts";
+import { type ChatPins, type PinnedChat, pinnedFirst } from "../chat-pins.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
 import { messengerWords } from "../messenger-words.ts";
 import { WithActivity } from "./activity-host.tsx";
@@ -24,12 +25,15 @@ import { useFadeIn } from "./load-states.tsx";
 import { NeedsYouPanel, useWaiting } from "./needs-you.tsx";
 import { NewMenu } from "./new-menu.tsx";
 import { useChatOpens } from "./use-chat-opens.ts";
+import { type ChatPinning, ChatPinsProvider, useChatPinning } from "./use-chat-pins.tsx";
 import { useLeft } from "./use-left.ts";
 import { useShownChat } from "./use-shown-chat.ts";
 
 /** The props of {@link MessengerPage}. */
 export interface MessengerPageProps {
   readonly messenger: Messenger;
+  /** The pinned chats; kept on this device by default (`messenger.pinned-chats`). */
+  readonly pins?: ChatPins | undefined;
   /** Opens Settings › Connections; without it, the page with nothing connected has no button. */
   readonly onConnect?: () => void;
   /** How a failed read says the engine isn't answering, worded for where the Studio runs. */
@@ -62,6 +66,7 @@ export function MessengerPage({
   onConnect,
   words = engineWords["desktop-app"],
   opens,
+  pins,
 }: MessengerPageProps) {
   const { rows, connected, failure, changed, readAgain } = useChats(messenger);
   const [selected, setSelected] = useState<MessagingId | undefined>(undefined);
@@ -110,7 +115,10 @@ export function MessengerPage({
     readAgain();
     select(channel);
   };
-  const { said, leave } = useLeft(list, rows);
+  const pinning = useChatPinning(pins, rows);
+  const toasted = usePinsFullToast(pinning.fullCount, onePane && panelFirst);
+  // Leaving finds the row that takes the channel's place in the order the list shows it.
+  const { said, leave } = useLeft(list, shownOrder(rows, pinning.pinned));
   const left = () => {
     if (open !== undefined) leave(open);
     setSelected(undefined);
@@ -123,71 +131,133 @@ export function MessengerPage({
     back();
   };
   return (
-    <div className={pageClass}>
-      {/* The page's heading and status come first, so they read before the list, and stay while
+    <ChatPinsProvider value={pinning}>
+      <div className={pageClass}>
+        {/* The page's heading and status come first, so they read before the list, and stay while
           one pane shows the chat; both are out of the flow, so they take no room. */}
-      <h1 className="sr-only">{messengerWords.title}</h1>
-      <p role="status" className="sr-only" data-page-status>
-        <span key={said.count}>{said.text}</span>
-      </p>
-      {onePane && panelFirst ? null : (
-        <ListColumn listRef={list} onePane={onePane} connected={connected}>
-          <ChatsColumn
-            messenger={messenger}
-            rows={rows}
-            connected={connected}
-            failure={failure}
-            words={words}
-            onRetry={readAgain}
-            selected={selected}
-            onSelect={select}
-            pictures={pictures}
-            waiting={waiting?.waiting}
-            needsYou={needsYou}
-            onNeedsYou={openNeedsYou}
-            newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
-          />
-        </ListColumn>
-      )}
+        <h1 className="sr-only">{messengerWords.title}</h1>
+        <PageStatus
+          said={said}
+          pinning={pinning}
+          silent={onePane && panelFirst}
+          toasted={toasted}
+        />
+        {onePane && panelFirst ? null : (
+          <ListColumn listRef={list} onePane={onePane} connected={connected}>
+            <ChatsColumn
+              messenger={messenger}
+              rows={rows}
+              connected={connected}
+              failure={failure}
+              words={words}
+              onRetry={readAgain}
+              selected={selected}
+              onSelect={select}
+              pictures={pictures}
+              waiting={waiting?.waiting}
+              needsYou={needsYou}
+              onNeedsYou={openNeedsYou}
+              newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
+            />
+          </ListColumn>
+        )}
 
-      {onePane && !panelFirst ? null : (
-        <WithActivity messenger={messenger} row={open} words={words}>
-          <main ref={chat} data-part="content-pane" className={contentPaneClass}>
-            {onePane && (open !== undefined || needsYou) ? (
-              <div className="px-2 pt-2">
-                <Button variant="ghost" size="sm" onClick={back}>
-                  {messengerWords.backToChats}
-                </Button>
-              </div>
-            ) : null}
-            {needsYou ? (
-              <NeedsYouPanel
-                messenger={messenger}
-                read={waiting}
-                pictureOf={(agent) => pictureOfAgent(pictures, rows ?? [], agent)}
-                onOpenChat={select}
-                onAnswered={readAgain}
-              />
-            ) : (
-              <Panel
-                messenger={messenger}
-                loaded={rows !== undefined}
-                words={words}
-                connected={connected}
-                open={open}
-                changed={changed}
-                pictures={pictures}
-                onConnect={onConnect}
-                onLeft={left}
-                onChanged={readAgain}
-                onMarkUnread={markUnread}
-              />
-            )}
-          </main>
-        </WithActivity>
-      )}
-    </div>
+        {onePane && !panelFirst ? null : (
+          <WithActivity messenger={messenger} row={open} words={words}>
+            <main ref={chat} data-part="content-pane" className={contentPaneClass}>
+              {onePane && (open !== undefined || needsYou) ? (
+                <div className="px-2 pt-2">
+                  <Button variant="ghost" size="sm" onClick={back}>
+                    {messengerWords.backToChats}
+                  </Button>
+                </div>
+              ) : null}
+              {needsYou ? (
+                <NeedsYouPanel
+                  messenger={messenger}
+                  read={waiting}
+                  pictureOf={(agent) => pictureOfAgent(pictures, rows ?? [], agent)}
+                  onOpenChat={select}
+                  onAnswered={readAgain}
+                />
+              ) : (
+                <Panel
+                  messenger={messenger}
+                  loaded={rows !== undefined}
+                  words={words}
+                  connected={connected}
+                  open={open}
+                  changed={changed}
+                  pictures={pictures}
+                  onConnect={onConnect}
+                  onLeft={left}
+                  onChanged={readAgain}
+                  onMarkUnread={markUnread}
+                />
+              )}
+            </main>
+          </WithActivity>
+        )}
+      </div>
+    </ChatPinsProvider>
   );
+}
+
+/**
+ * The page's status region: what Leave said, and "You can pin up to 3 chats." on every pin that
+ * finds them all taken, except a pin whose toast said it (one pane), even once the list is back.
+ */
+function PageStatus({
+  said,
+  pinning,
+  silent,
+  toasted,
+}: {
+  readonly said: { readonly text: string; readonly count: number };
+  readonly pinning: ChatPinning;
+  /** One pane shows the chat, so a toast says it. */
+  readonly silent: boolean;
+  /** The last full pin a toast said. */
+  readonly toasted: number;
+}) {
+  const sayPinsFull = pinning.full && !silent && pinning.fullCount !== toasted;
+  return (
+    <p role="status" className="sr-only" data-page-status>
+      <span key={said.count}>{said.text}</span>
+      <span key={`pins-${pinning.fullCount}`}>{sayPinsFull ? messengerWords.pinsFull : ""}</span>
+    </p>
+  );
+}
+
+/**
+ * While one pane shows the chat, the list's "You can pin up to 3 chats." isn't on screen, so a
+ * pin that finds them all taken says it in a toast instead (Noah's look check on HAL-21047),
+ * closing the last one first so two never stack. Gives the full pin the last toast said.
+ */
+function usePinsFullToast(fullCount: number, listHidden: boolean): number {
+  const toasts = useToastStore();
+  const seen = useRef(fullCount);
+  const open = useRef<string | undefined>(undefined);
+  const [toasted, setToasted] = useState(0);
+  useEffect(() => {
+    if (fullCount === seen.current) return;
+    seen.current = fullCount;
+    if (!listHidden || toasts === undefined || toasts === null) return;
+    if (open.current !== undefined) toasts.close(open.current);
+    open.current = toasts.show({ tone: "info", title: messengerWords.pinsFull });
+    setToasted(fullCount);
+  }, [fullCount, listHidden, toasts]);
+  return toasted;
+}
+
+/** The rows in the order the list shows them: the pinned ones first (`messenger.pinned-chats`). */
+function shownOrder(
+  rows: readonly ConversationRow[] | undefined,
+  pinned: readonly PinnedChat[],
+): readonly ConversationRow[] | undefined {
+  if (rows === undefined) return undefined;
+  const split = pinnedFirst(rows, pinned);
+  return [...split.pinned, ...split.others];
 }
 
 /**

@@ -14,6 +14,11 @@ import { ChatsSkeleton, useFadeIn } from "./load-states.tsx";
 export interface ConversationListProps {
   /** The conversations, newest first; undefined until the first read landed. */
   readonly rows: readonly ConversationRow[] | undefined;
+  /**
+   * The pinned conversations, the most recently pinned first, shown above `rows` under "Pinned"
+   * (`messenger.pinned-chats`); none by default.
+   */
+  readonly pinned?: readonly ConversationRow[];
   /** Reads the chats again: the skeleton's Try again. */
   readonly onRetry: () => void;
   readonly selected: MessagingId | undefined;
@@ -55,6 +60,7 @@ export interface RowMarks {
  */
 export function ConversationList({
   rows,
+  pinned = [],
   onRetry,
   selected,
   onSelect,
@@ -66,34 +72,42 @@ export function ConversationList({
   search,
 }: ConversationListProps) {
   // The rows fade in once they arrive in the skeleton's place.
-  const list = useRef<HTMLUListElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   useFadeIn(list, rows !== undefined);
   if (rows === undefined) return <ChatsSkeleton onRetry={onRetry} />;
-  if (rows.length === 0) {
+  if (rows.length === 0 && pinned.length === 0) {
     return <p className="px-2 py-4 text-small text-fg-muted">{messengerWords.noChats}</p>;
   }
+  const rowOf = (row: ConversationRow) => {
+    const current = row.conversation.id === selected;
+    const count = current ? 0 : unread(row);
+    return (
+      <Row
+        key={row.conversation.id}
+        row={row}
+        current={current}
+        onSelect={onSelect}
+        pictures={pictures}
+        now={now}
+        unread={count}
+        action={current ? undefined : rowAction(row, count, marks)}
+        named={manySources}
+        line={search?.lines.get(row.conversation.id) ?? rowLine(row)}
+        highlight={search?.text ?? ""}
+      />
+    );
+  };
   return (
-    <PlainList listRef={list} label={messengerWords.chatsLabel}>
-      {rows.map((row) => {
-        const current = row.conversation.id === selected;
-        const count = current ? 0 : unread(row);
-        return (
-          <Row
-            key={row.conversation.id}
-            row={row}
-            current={current}
-            onSelect={onSelect}
-            pictures={pictures}
-            now={now}
-            unread={count}
-            action={current ? undefined : rowAction(row, count, marks)}
-            named={manySources}
-            line={search?.lines.get(row.conversation.id) ?? rowLine(row)}
-            highlight={search?.text ?? ""}
-          />
-        );
-      })}
-    </PlainList>
+    // One wrapper, so the pinned chats fade in with the others (motion 7, HAL-18481).
+    <div ref={list} className="flex flex-col">
+      {pinned.length === 0 ? null : (
+        <div data-pinned-chats="" className="mb-2 flex flex-col border-b border-border pb-2">
+          <h3 className="px-3 pb-1 text-small text-fg-muted">{messengerWords.pinned}</h3>
+          <PlainList label={messengerWords.pinned}>{pinned.map(rowOf)}</PlainList>
+        </div>
+      )}
+      <PlainList label={messengerWords.chatsLabel}>{rows.map(rowOf)}</PlainList>
+    </div>
   );
 }
 
