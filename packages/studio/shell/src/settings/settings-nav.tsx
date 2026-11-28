@@ -1,4 +1,5 @@
 import { ListHeading, SectionIcon, type SectionIconName, WarningIcon } from "@halonicjs/studio-kit";
+import { listColumnClass } from "@halonicjs/studio-kit/list-column";
 import { type FocusEvent, type KeyboardEvent, type RefObject, useId, useState } from "react";
 import { listedSections, type SettingsGroup } from "./settings-groups.ts";
 
@@ -53,7 +54,7 @@ export function SettingsNav({ groups, current, attention, onShow, navRef }: Sett
       ref={navRef}
       aria-label="Settings sections"
       data-part="list-column"
-      className={listColumnClass}
+      className={settingsListColumnClass}
       onKeyDown={onKeyDown}
       onBlur={onBlur}
     >
@@ -158,11 +159,11 @@ export function rowAfterKey(
   }
 }
 
-// The list column of the two-column layout (`shell.settings-two-columns`, HAL-20617): 34% of the
-// dialog, never under the old 208px nor over 380px, on the panel colour as the part recipe's list
-// (HAL-20672), past a 1px line from the content pane. The theme's tokens carry light and dark.
-const listColumnClass =
-  "w-[34%] min-w-52 max-w-95 shrink-0 overflow-y-auto border-e border-border bg-app-panel p-2";
+// The list column of the two-column layout (`shell.settings-two-columns`, HAL-20617): the kit's one
+// list-column size (`kit.list-column`), on the panel colour as the part recipe's list (HAL-20672),
+// past a 1px line from the content pane. The theme's tokens carry light and dark. Noah checked the
+// look (HAL-20766) and kept the 32px rows with no search field (HAL-20793).
+const settingsListColumnClass = `${listColumnClass} shrink-0 overflow-y-auto border-e border-border bg-app-panel p-2`;
 
 // A divided group (HAL-19539): a 1px hairline in the border token above every group but the
 // first, with 8px on each side of it, and no heading.
