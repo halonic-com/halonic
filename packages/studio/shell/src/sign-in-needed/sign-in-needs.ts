@@ -68,6 +68,8 @@ export class SignInNeeds {
   private readonly listeners = new Set<() => void>();
   private stopWatches: (() => void)[] = [];
   private stopChannel: (() => void) | undefined;
+  /** False once stopped: a sign-in that ends later must not post on a closed channel or watch again. */
+  private running = false;
   private lastRead = Number.NEGATIVE_INFINITY;
   private shown: SignInPrompt = nothingShown;
 
@@ -78,12 +80,14 @@ export class SignInNeeds {
 
   /** Starts watching the sign-ins and listening to the other windows. */
   start(): void {
+    this.running = true;
     this.stopChannel ??= this.options.channel.subscribe(() => this.readAgain());
     this.readAgain();
   }
 
   /** Stops every watch and the channel listener. */
   stop(): void {
+    this.running = false;
     this.stopChannel?.();
     this.stopChannel = undefined;
     this.stopEveryWatch();
@@ -104,6 +108,9 @@ export class SignInNeeds {
 
   /** Runs every sign-in's `watch` again, as **Try again** does. */
   readAgain(): void {
+    if (!this.running) {
+      return;
+    }
     this.lastRead = this.options.timers.now();
     this.stopEveryWatch();
     this.stopWatches = this.options.signIns.map((signIn) => this.watch(signIn));
@@ -134,6 +141,9 @@ export class SignInNeeds {
     } catch (error) {
       this.log(`The ${signIn.provider} sign-in "${signIn.id}" couldn't finish.`, error);
       outcome = "failed";
+    }
+    if (!this.running) {
+      return;
     }
     this.setProgress(key, outcome === "failed" ? { kind: "failed" } : { kind: "idle" });
     this.options.channel.post();

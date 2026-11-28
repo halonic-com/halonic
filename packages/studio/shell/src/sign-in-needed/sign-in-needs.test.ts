@@ -267,6 +267,50 @@ verifies("shell.sign-in-needed", () => {
       expect(names(window.current().blocking)).toEqual(["Acme team"]);
     });
 
+    it("does nothing more for a sign-in that ends after the window stopped", async () => {
+      const host = new FakeHost();
+      host.needs.set("paperclip", [{ id: "acme", name: "Acme team" }]);
+      let finish: (outcome: SignInOutcome) => void = () => undefined;
+      const finished = new Promise<SignInOutcome>((resolve) => {
+        finish = resolve;
+      });
+      let watches = 0;
+      const contribution: Registered<SignInContribution> = {
+        ...signIn(host, "paperclip", "Paperclip", ["inbox"], async () => ({
+          phrase: undefined,
+          finished,
+        })),
+        watch: (_context, listener) => {
+          watches++;
+          listener(host.reading("paperclip"));
+          return () => undefined;
+        },
+      };
+      // As a real BroadcastChannel does, a closed channel throws on post.
+      let closed = false;
+      const channel: SignInChannel = {
+        post: () => {
+          if (closed) throw new Error("InvalidStateError: the channel is closed.");
+        },
+        subscribe: () => () => undefined,
+        close: () => {
+          closed = true;
+        },
+      };
+      const log = vi.fn();
+      const window = needs("inbox", [contribution], { channel, log });
+      const signingIn = window.signIn("paperclip/acme");
+      await vi.waitFor(() => expect(window.current().blocking[0]?.progress.kind).toBe("waiting"));
+
+      window.stop();
+      channel.close();
+      finish("signed-in");
+
+      await expect(signingIn).resolves.toBeUndefined();
+      expect(watches).toBe(1);
+      expect(log).not.toHaveBeenCalled();
+    });
+
     it("keeps the row open and says it failed when the sign-in can't begin or doesn't finish", async () => {
       const host = new FakeHost();
       host.needs.set("paperclip", [{ id: "acme", name: "Acme team" }]);
