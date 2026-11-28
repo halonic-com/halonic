@@ -94,17 +94,36 @@ function fitsField(field: ActionBodyField, value: ActionValue | readonly number[
   }
 }
 
-/** Only the route's kept fields that the answer had as plain values. */
+/**
+ * Only the route's kept fields that the answer had as plain values. A dotted
+ * name such as `triggering_actor.login` reads one object key per segment, as
+ * the shell's `kept_fields` does: a missing key, a list or any other
+ * non-object on the way leaves the field out, and so does a literal top-level
+ * key that holds the dots.
+ */
 export function keptFields(
   route: ActionCallRoute,
   fields: Readonly<Record<string, unknown>> = {},
 ): Record<string, ActionValue> {
   const kept: Record<string, ActionValue> = {};
   for (const name of route.keep) {
-    const value = Object.hasOwn(fields, name) ? fields[name] : undefined;
+    const value = valueAt(fields, name.split("."));
     if (isPlainValue(value)) kept[name] = value;
   }
   return kept;
+}
+
+function valueAt(fields: Readonly<Record<string, unknown>>, segments: readonly string[]): unknown {
+  let value: unknown = fields;
+  for (const segment of segments) {
+    if (!isObject(value) || !Object.hasOwn(value, segment)) return undefined;
+    value = value[segment];
+  }
+  return value;
+}
+
+function isObject(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isPlainValue(value: unknown): value is ActionValue {

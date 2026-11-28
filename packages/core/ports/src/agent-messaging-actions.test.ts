@@ -106,6 +106,17 @@ verifies("ports.agent-messaging-actions", () => {
       }
     });
 
+    it("takes a kept name of up to 3 plain names joined by `.`, and no other", () => {
+      const keeping = (name: string) => ({
+        ...succeeded,
+        steps: [{ step: 1, outcome: "succeeded", status: 200, kept: { [name]: "acme-dev" } }],
+      });
+
+      expect(checkActionResultAnswer(keeping("triggering_actor.login")).ok).toBe(true);
+      expect(problemsOf(keeping("pull_requests.0"))).toHaveLength(1);
+      expect(problemsOf(keeping("a.b.c.d"))).toHaveLength(1);
+    });
+
     it("refuses error text over 300 characters, or not marked untrusted", () => {
       const withError = (error: unknown) =>
         problemsOf({ ...failed, steps: [{ ...failed.steps[0], error }] });
