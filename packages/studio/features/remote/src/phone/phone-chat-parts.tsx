@@ -48,6 +48,16 @@ export function statusLine(
     .join(" · ");
 }
 
+/*
+ * The title takes the focus when the chat opens, and the kit's base rule rings a focused heading.
+ * Opened from the last-chat shortcut no tap came first, so the browser counts that focus as
+ * visible (HAL-21236): under a coarse pointer the title draws no ring, as it is not a control and
+ * the first Tab lands on one that does. For a keyboard the ring hugs the title with no gap, so it
+ * stays clear of the status line under it.
+ */
+const TITLE_CLASS =
+  "truncate text-heading text-fg focus-visible:shadow-[0_0_0_2px_var(--color-accent)] touch:focus-visible:shadow-none";
+
 /** A chat's header (p04a): Back, the agent's picture, the name over its status line, Members. */
 export function ChatHeader({
   conversation,
@@ -82,7 +92,7 @@ export function ChatHeader({
         size="header"
       />
       <div className="flex min-w-0 flex-1 flex-col">
-        <h2 ref={titleRef} tabIndex={-1} className="truncate text-heading text-fg focus-ring">
+        <h2 ref={titleRef} tabIndex={-1} className={TITLE_CLASS}>
           {conversation.title}
         </h2>
         {status === "" ? null : <p className="truncate text-small text-fg-muted">{status}</p>}

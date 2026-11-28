@@ -119,7 +119,10 @@ function SignInRow({ signIn, label, onSignIn }: SignInRowProps) {
         {signIn.logo === undefined ? (
           <LetterTile name={signIn.provider} />
         ) : (
-          <img src={signIn.logo} alt={signIn.provider} className="size-6 shrink-0" />
+          // The 24px logo sits in the letter tile's 28px box, so every row's label starts at one x.
+          <span className="flex size-7 shrink-0 items-center justify-center">
+            <img src={signIn.logo} alt={signIn.provider} className="size-6" />
+          </span>
         )}
         <p className="min-w-0 flex-1 text-body wrap-break-word">{label}</p>
         <Button

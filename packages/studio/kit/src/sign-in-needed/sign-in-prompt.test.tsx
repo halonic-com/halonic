@@ -145,6 +145,23 @@ verifies("kit.sign-in-prompt", () => {
     expect(dialog.querySelector('[aria-hidden="true"]')?.textContent).toBe("P");
   });
 
+  it("puts a logo and a letter tile in the same 28px box, so the labels line up (HAL-21236)", () => {
+    const { container } = render(
+      <SignInModal
+        app="Inbox"
+        signIns={[row("Acme mail"), row("Acme team", { logo: undefined })]}
+        onSignIn={() => undefined}
+      />,
+    );
+    const dialog = dialogOf(container);
+    const logoBox = dialog.querySelector("img")?.parentElement;
+    const tile = [...dialog.querySelectorAll('[aria-hidden="true"]')].find(
+      (element) => element.textContent === "P",
+    );
+    expect(logoBox?.classList.contains("size-7")).toBe(true);
+    expect(tile?.classList.contains("size-7")).toBe(true);
+  });
+
   it("draws no band while there is nothing to say", () => {
     const { container } = render(
       <SignInBand
