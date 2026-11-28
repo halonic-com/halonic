@@ -88,7 +88,9 @@ verifies("ports.action-records", () => {
     const requested: ActionRecordEvent = { ...started, type: "action.requested" };
     expect([started, requested]).toHaveLength(2);
   });
+});
 
+verifies("ports.action-operation-route", () => {
   it("runs an operation route by its name and service, never by a method or a path", () => {
     expect(actionOperations).toEqual({ "paperclip.set-secret": "paperclip" });
     const route: ActionOperationRoute = {
@@ -107,7 +109,9 @@ verifies("ports.action-records", () => {
     const unknown: ActionOperationRoute = { ...route, operation: "paperclip.read-secret" };
     // @ts-expect-error: an operation route has no path for the sender to call
     const withPath: ActionOperationRoute = { ...route, path: "/api/secrets" };
+    // @ts-expect-error: an operation belongs to one service, so it can't be sent to another
+    const otherService: ActionOperationRoute = { ...route, service: "github" };
     const routes: ActionRoute[] = [route];
-    expect([unknown, withPath, routes]).toHaveLength(3);
+    expect([unknown, withPath, otherService, routes]).toHaveLength(4);
   });
 });

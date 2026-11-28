@@ -283,8 +283,9 @@ export class StepperRun {
       if (refusal !== undefined) throw new Error(refusal);
       this.markRunning(number);
       const request = stepRequest(item.action, route, this.definition().steps[number - 1]);
-      if (route.kind === "call") await steps.runStep(this.request, request);
-      else await steps.openGuidedStep(this.request, request);
+      // Only a guided step opens a page; a call or an operation is sent.
+      if (route.kind === "guided") await steps.openGuidedStep(this.request, request);
+      else await steps.runStep(this.request, request);
     });
     if (ran) await this.endIfDone();
   }

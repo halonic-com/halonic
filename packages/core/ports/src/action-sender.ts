@@ -84,16 +84,20 @@ export const actionOperations = { "paperclip.set-secret": "paperclip" } as const
 export type ActionOperation = keyof typeof actionOperations;
 
 /**
- * A step the sender runs as one of its own {@link actionOperations}, never as a method and a path.
- * Its `service` must be the one the operation belongs to, and a sender refuses the route otherwise.
+ * A step the sender runs as one of its own {@link actionOperations}, never as a method and a path
+ * (requirement `ports.action-operation-route`). Its `service` must be the one the operation belongs
+ * to: a route that names another doesn't compile, and a sender refuses one that reaches it anyway.
  */
-export interface ActionOperationRoute extends ActionRouteBase {
-  kind: "operation";
-  operation: ActionOperation;
-  body: readonly ActionBodyField[];
-  /** The fields of the operation's result the sender hands back, named one by one. */
-  keep: readonly string[];
-}
+export type ActionOperationRoute = {
+  [Operation in ActionOperation]: ActionRouteBase & {
+    kind: "operation";
+    operation: Operation;
+    service: (typeof actionOperations)[Operation];
+    body: readonly ActionBodyField[];
+    /** The fields of the operation's result the sender hands back, named one by one. */
+    keep: readonly string[];
+  };
+}[ActionOperation];
 
 /**
  * One reviewed step, as the sender's route list holds it. The list is
@@ -107,11 +111,14 @@ export interface ActionStepRef {
   definition: string;
   version: number;
   step: number;
-  /** A value for each of the step's placeholders, and nothing else. Each fills exactly one path segment. */
+  /**
+   * A value for each of the step's placeholders, and nothing else. For a call or a guided step, each
+   * fills exactly one path segment; for an operation, the sender's own code says where each goes.
+   */
   placeholders: Readonly<Record<string, string>>;
 }
 
-/** A request to send one reviewed call step. */
+/** A request to send one reviewed call or operation step. */
 export interface ActionSendRequest extends ActionStepRef {
   /** The step's body fields, except its `constant` and `secret-input` fields, which the sender fills. */
   body?: Readonly<Record<string, ActionValue | readonly number[]>>;
@@ -169,12 +176,17 @@ export type ActionSignInResult =
  * the agent host and the harness bridge never get an `ActionSender`; an
  * agent can only file a request.
  *
- * A call names a reviewed step, never an address. The sender takes the
- * method, the path, the body's fields and the fields to keep from its route
- * list, checks every placeholder and body field against it, fills each
- * placeholder with one percent-encoded path segment, sends to the service's
- * own origin with the user's token, follows no redirect, and hands back only
- * the route's kept fields. It asks for confirmation of `admin` and
+ * A call names a reviewed step, never an address. For a call step, the
+ * sender takes the method, the path, the body's fields and the fields to keep
+ * from its route list, checks every placeholder and body field against it,
+ * fills each placeholder with one percent-encoded path segment, sends to the
+ * service's own origin with the user's token, follows no redirect, and hands
+ * back only the route's kept fields. For an operation step, the route list
+ * names one of the sender's own {@link actionOperations} instead of a method
+ * and a path: the sender checks the placeholders and body fields the same
+ * way, refuses the route when its service isn't the operation's, runs the
+ * operation's calls from its own code, and hands back only the route's kept
+ * fields. It asks for confirmation of `admin` and
  * `irreversible` steps, and for `secret-input` values, in its own native
  * dialog. The token and secret values stay inside the sender: no call takes
  * or gives one.
@@ -194,7 +206,7 @@ export interface ActionSender {
   signIn(service: ActionService): Promise<ActionSignInResult>;
   /** Forgets the service's token. Does nothing when nobody is signed in. */
   signOut(service: ActionService): Promise<void>;
-  /** Sends one reviewed call step, or refuses it before sending. */
+  /** Sends one reviewed call or operation step, or refuses it before sending. */
   send(request: ActionSendRequest): Promise<ActionSendResult>;
   /** Opens one reviewed guided step's page in the user's browser, or refuses it. */
   openGuided(request: ActionStepRef): Promise<ActionOpenResult>;
