@@ -166,7 +166,7 @@ export const cardCheckbox = cardStep({
 export const cardVerdicts = cardStep({
   id: "card-verdicts",
   title: "Cards: item verdicts are given per item in the Inbox and the Messenger",
-  requirements: listCardRequirements,
+  requirements: [...listCardRequirements, "inbox.card-bar-reach"],
   fixture: verdictsCard,
   clicks: {
     Inbox: pickThenSubmit([answerRadio("teaser", "Approve"), answerRadio("recap", "Defer")]),

@@ -79,6 +79,20 @@ verifies("studio-click-test.list-card-steps", () => {
       });
     });
 
+    it("fails as NO_BUTTON with the driver's reason when Submit can't be clicked", async () => {
+      const studio = cardStudio(
+        verdictsCard,
+        submitting(["Approve", "Defer"], "answered", verdicts("approve", "defer")),
+        submitting(["Defer", "Approve"], "answered", verdicts("defer", "approve")),
+      );
+      // The real failure (HAL-21192): Submit is in the page text but past the card's clipped edge.
+      studio.shownWithin.set(buttonLabels.submit.text, "//dialog");
+      await expect(cardVerdicts.run(studio.context)).resolves.toMatchObject({
+        code: "NO_BUTTON",
+        note: expect.stringMatching(/^Inbox: No Submit: element not interactable/),
+      });
+    });
+
     it("finds an item's radio inside that item's question only", () => {
       expect(answerRadio("recap", "Defer")).toMatch(/^\/\/fieldset\[@data-question='recap'\]\/\//);
     });
