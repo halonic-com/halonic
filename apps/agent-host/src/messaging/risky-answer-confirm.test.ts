@@ -65,6 +65,8 @@ verifies("agent-host.risky-answer-confirm", () => {
             },
           },
         });
+        // `toMatchObject` alone would pass a host that marks every item as the person's own.
+        expect(reply.body).not.toHaveProperty("confirmation.fromYou");
         expect(on.answer).not.toHaveBeenCalled();
       });
     }
@@ -79,6 +81,28 @@ verifies("agent-host.risky-answer-confirm", () => {
         status: 409,
         body: { confirmation: { title: "Hire an agent", from: "you", fromYou: true } },
       });
+    });
+
+    it("leaves another person's item unmarked", async () => {
+      const theirs = risky("theirs", "Hire an agent", { from: { kind: "person", name: "Board" } });
+      const on = await listing([theirs]);
+
+      const reply = await on.send("POST /v1/messaging/answer", theirs.id, approve);
+
+      expect(reply).toMatchObject({ status: 409, body: { confirmation: { from: "Board" } } });
+      expect(reply.body).not.toHaveProperty("confirmation.fromYou");
+    });
+
+    it("leaves an agent that calls itself you unmarked", async () => {
+      const named = risky("named-you", "Hire an agent", {
+        from: { kind: "agent", agent: "paperclip:halonic:agent:you", name: "you" },
+      });
+      const on = await listing([named]);
+
+      const reply = await on.send("POST /v1/messaging/answer", named.id, approve);
+
+      expect(reply).toMatchObject({ status: 409, body: { confirmation: { from: "you" } } });
+      expect(reply.body).not.toHaveProperty("confirmation.fromYou");
     });
 
     it("sends a reject, and any answer to a normal item, at once", async () => {
