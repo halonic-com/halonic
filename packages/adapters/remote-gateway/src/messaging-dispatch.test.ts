@@ -210,6 +210,14 @@ verifies("remote-gateway.messaging-allow-list", () => {
       expect(t.fake.calls).not.toContain("send");
       expect(t.transport.closed).toBe(false);
     });
+
+    it("refuses a pull request read over the phone's reactions reads before the hub is asked", async () => {
+      const t = await connect();
+      t.fake.left.reactions = 0;
+      await t.say({ type: "team-read", id: "t6", what: "pull-request", pullRequest: "pr-1" });
+      expect(t.sent.at(-1)).toEqual({ type: "error", replyTo: "t6", code: "rate-limited" });
+      expect(t.fake.calls).not.toContain("pullRequest");
+    });
   });
 
   describe("pages and pushes", () => {
