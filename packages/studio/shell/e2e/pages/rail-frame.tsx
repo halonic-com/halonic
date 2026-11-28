@@ -33,6 +33,25 @@ const placesFeature = defineFeature({
       opens: "inbox",
       shows: () => true,
     });
+    // Runs and Changes have inner marks, which must read in dark while selected (HAL-21085).
+    studio.rail.add({
+      id: "runs",
+      label: "Runs",
+      icon: "runs",
+      order: 30,
+      holds: ["runs"],
+      opens: "runs",
+      shows: () => true,
+    });
+    studio.rail.add({
+      id: "changes",
+      label: "Changes",
+      icon: "changes",
+      order: 40,
+      holds: ["changes"],
+      opens: "changes",
+      shows: () => true,
+    });
   },
 });
 

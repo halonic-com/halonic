@@ -148,3 +148,48 @@ test("at 1280px in dark the selected drawing's edge reads at 3:1 or more on its 
   expect(circle).toBe("rgb(13, 28, 62)");
   expect(contrast(edge, circle)).toBeGreaterThanOrEqual(3);
 });
+
+/** Selects an entry, then switches the window to a theme and finishes the colours' easing. */
+async function selected(page: Page, name: string, theme: "light" | "dark") {
+  const rail = await openWindow(page, wide);
+  const button = rail.getByRole("button", { name, exact: true });
+  await button.click();
+  await page.evaluate((chosen) => {
+    document.documentElement.setAttribute("data-theme", chosen);
+    getComputedStyle(document.documentElement).color;
+    for (const animation of document.getAnimations()) {
+      animation.finish();
+    }
+  }, theme);
+  const glass = button.locator("[data-rail-glass]");
+  await expect(glass).toBeVisible();
+  return {
+    fill: await glass
+      .locator('path[fill="currentColor"]')
+      .evaluate((path) => getComputedStyle(path).fill),
+    marks: await glass
+      .locator("[data-rail-marks] path")
+      .evaluate((path) => getComputedStyle(path).stroke),
+  };
+}
+
+/**
+ * `shell.rail-inner-mark`: in dark the selected drawing's inner marks are drawn in the text
+ * colour over the glass, not left as cut-outs that show the equally dark circle (HAL-21085);
+ * in light the line over them is see-through, so light looks as before. The jsdom test in
+ * `icon-rail.test.tsx` names the requirement.
+ */
+for (const name of ["Runs", "Changes", "Inbox"]) {
+  test(`at 1280px in dark the inner mark of ${name} reads at 3:1 or more on the glass`, async ({
+    page,
+  }) => {
+    const { fill, marks } = await selected(page, name, "dark");
+    expect(fill).toBe("rgb(10, 22, 48)");
+    expect(contrast(marks, fill)).toBeGreaterThanOrEqual(3);
+  });
+}
+
+test("at 1280px in light the line over the selected drawing is see-through", async ({ page }) => {
+  const { marks } = await selected(page, "Inbox", "light");
+  expect(marks).toBe("rgba(0, 0, 0, 0)");
+});
