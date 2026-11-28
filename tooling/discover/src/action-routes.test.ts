@@ -37,7 +37,7 @@ const listKeys = new Set(["format", "webOrigins", "routes"]);
 const webOriginKeys = new Set(["service", "host", "pathPrefixes"]);
 const routeKeys = new Set([
   ...["kind", "definition", "version", "step", "service", "risk", "placeholders"],
-  ...["method", "path", "body", "keep", "address", "target"],
+  ...["method", "path", "body", "keep", "address", "target", "operation"],
 ]);
 const bodyFieldKeys = new Set(["name", "kind", "pattern", "value"]);
 
@@ -57,7 +57,13 @@ function shapeProblems(routes: readonly ActionRoute[]): string[] {
     const where = whereOf(route);
     const unknown = unknownKeys(route, routeKeys, where);
     if (route.kind === "operation") {
-      return [...unknown, `${where}: the shell's reader takes no operation route yet`];
+      // The shell's reader (`operation_route.rs`) checks the operation's own placeholders and body.
+      const extra = ["method", "path", "address", "target"].filter((field) =>
+        Object.hasOwn(route, field),
+      );
+      return extra.length > 0
+        ? [...unknown, `${where}: an operation has no method, path, address or target`]
+        : unknown;
     }
     if (route.kind === "guided") {
       const extra = callOnlyFields.filter((field) => Object.hasOwn(route, field));

@@ -95,6 +95,7 @@ fn served_page_test_sees_the_action_commands_granted_to_the_local_windows_only()
             "allow-action-send",
             "allow-action-sign-in",
             "allow-action-sign-in-cancel",
+            "allow-action-paperclip-sign-in",
             "allow-action-sign-out",
             "allow-action-account",
             "allow-action-open-guided",

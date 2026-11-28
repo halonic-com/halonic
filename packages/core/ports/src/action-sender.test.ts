@@ -1,6 +1,7 @@
 import type { ActionRecordEvent } from "@halonicjs/events";
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { expect, expectTypeOf, it } from "vitest";
+import operationsGolden from "./golden/action-operations.json" with { type: "json" };
 import {
   type ActionAccount,
   type ActionOpenResult,
@@ -93,6 +94,8 @@ verifies("ports.action-records", () => {
 verifies("ports.action-operation-route", () => {
   it("runs an operation route by its name and service, never by a method or a path", () => {
     expect(actionOperations).toEqual({ "paperclip.set-secret": "paperclip" });
+    // The desktop shell's Rust list of operations is checked against the same file.
+    expect(actionOperations).toEqual(operationsGolden);
     const route: ActionOperationRoute = {
       kind: "operation",
       definition: "paperclip.set-secret",

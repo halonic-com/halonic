@@ -1,6 +1,6 @@
 {
   "identifier": "desktop-actions",
-  "description": "On desktop, the app's own page may run a user-only action stepper's steps through the action_* commands (HAL-17525, HAL-18084): send a reviewed call step from the compiled route list with the user's own token, which stays in the OS keychain; sign in to GitHub with its device flow while the stepper is open, cancel it, sign out and name the signed-in account; open a reviewed guided page or a checked browser block's address; and append to and read each request's record, one user-only file per request in the app data folder, holding only events the allow-list takes (HAL-18125). It is local only, so the Studio the computer serves gets none of it.",
+  "description": "On desktop, the app's own page may run a user-only action stepper's steps through the action_* commands (HAL-17525, HAL-18084): send a reviewed call step from the compiled route list with the user's own token, which stays in the OS keychain; sign in to GitHub with its device flow while the stepper is open, sign in for the separate Paperclip admin key through Paperclip's own approval page while a stepper with a Paperclip operation is open (HAL-20275), cancel either, sign out and name the signed-in account; open a reviewed guided page or a checked browser block's address; and append to and read each request's record, one user-only file per request in the app data folder, holding only events the allow-list takes (HAL-18125). It is local only, so the Studio the computer serves gets none of it.",
   "local": true,
   "windows": [
     "main",
@@ -16,6 +16,7 @@
     "allow-action-send",
     "allow-action-sign-in",
     "allow-action-sign-in-cancel",
+    "allow-action-paperclip-sign-in",
     "allow-action-sign-out",
     "allow-action-account",
     "allow-action-open-guided",

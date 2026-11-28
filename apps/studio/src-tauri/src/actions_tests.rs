@@ -6,7 +6,8 @@ use std::sync::{Arc, mpsc};
 use std::thread;
 use std::time::Duration;
 
-use halonic_action_send::{ConfirmSheet, SignInCancel};
+use halonic_action_send::ask_page::WINDOW as ACTION_DIALOG;
+use halonic_action_send::{ConfirmSheet, RouteList, SignInCancel};
 
 use super::{ActionState, RunningSignIn, compiled_routes};
 use crate::action_parts::step_question;
@@ -99,4 +100,62 @@ fn a_cancel_returns_while_a_keychain_write_holds_the_sign_in() {
     // Once through, the write sees the cancel; the device flow then takes
     // it back (`a_cancel_while_the_token_is_written_takes_it_back`).
     assert!(write.join().expect("the write ran"));
+}
+
+/// A route list with `paperclip.set-secret`, which compiled_routes doesn't
+/// have yet.
+fn with_set_secret() -> ActionState {
+    let file = r#"{"format":"halonic.action-routes/1","webOrigins":[],"routes":[{
+        "kind":"operation","definition":"paperclip.set-secret","version":1,"step":1,
+        "service":"paperclip","risk":"admin",
+        "placeholders":{"company":"^[A-Za-z0-9]{1,16}$","host":"^[a-z0-9.-]{1,253}$",
+            "name":"^[A-Z][A-Z0-9_]{0,63}$"},
+        "operation":"paperclip.set-secret",
+        "body":[{"name":"value","kind":"secret-input"}],"keep":[]}]}"#;
+    ActionState {
+        routes: RouteList::parse(file).expect("the list loads"),
+        ..ActionState::default()
+    }
+}
+
+#[test]
+fn the_value_dialog_opening_and_closing_keeps_the_admin_key() {
+    // Julian's review of #6946: set-secret opens the dialog while the key
+    // is in use, and every webview's page load and close reach `end_page`.
+    let state = with_set_secret();
+    state.admin_page.signed_in("main");
+    assert!(!state.admin_key_ends_with(ACTION_DIALOG));
+    assert!(!state.admin_key_ends_with(ACTION_DIALOG));
+    assert!(!state.admin_key_ends_with("inbox"));
+    assert!(state.admin_key_ends_with("main"));
+}
+
+#[test]
+fn the_page_that_signed_in_signs_the_admin_key_out_once() {
+    let state = with_set_secret();
+    state.admin_page.signed_in("inbox");
+    assert!(state.admin_key_ends_with("inbox"));
+    assert!(!state.admin_key_ends_with("inbox"));
+    state.admin_page.signed_in("main");
+    assert!(!state.admin_key_ends_with("inbox"));
+    assert!(state.admin_key_ends_with("main"));
+}
+
+#[test]
+fn the_first_page_end_after_a_start_signs_out_a_key_the_quit_left() {
+    let state = with_set_secret();
+    assert!(!state.admin_key_ends_with(ACTION_DIALOG));
+    assert!(state.admin_key_ends_with("main"));
+    assert!(!state.admin_key_ends_with("main"));
+}
+
+#[test]
+fn without_a_paperclip_operation_no_page_end_reads_the_keychain() {
+    let state = ActionState {
+        routes: RouteList::default(),
+        ..ActionState::default()
+    };
+    assert!(!state.admin_key_ends_with("main"));
+    state.admin_page.signed_in("main");
+    assert!(!state.admin_key_ends_with("main"));
 }
