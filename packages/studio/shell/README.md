@@ -566,8 +566,9 @@ title (`shell.place-new-signal`). A click opens the place in the active tab and 
 `SidebarResizeEdge` goes right after the sidebar, before the page. It's an 8px hit area over the
 sidebar's border that takes no room, with a 2px `accent` line on hover, while dragging and on
 keyboard focus. Drag it, or Tab to it and use the window-splitter keys: ← and → by 16px, Home
-180px, End 640px, Enter 264px (a double-click does the same). It's a `separator` named "Resize
-sidebar" whose value a screen reader reads, so it sends nothing to the announcer. The sidebar owns
+180px, End 380px, Enter the window's own width for the column, 34% of the window kept in 180 to
+380px, and the column follows the window again; with no window around it, Enter gives 264px (a
+double-click does the same). It's a `separator` named "Resize sidebar" whose value a screen reader reads, so it sends nothing to the announcer. The sidebar owns
 the width: `onResize` follows every move, `onResizeEnd` saves once the key or pointer is released.
 The narrow window has no edge.
 
