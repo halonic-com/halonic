@@ -23,11 +23,12 @@ export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) 
   const { listed, failure, retrying, retry } = useListedChats(chats, context, open, setOpen);
   const newChatButton = useRef<HTMLButtonElement>(null);
   const tryAgainPressed = useRef(false);
-  // Try again goes away once a read works; focus moves to New chat so it doesn't fall to the page.
+  // Try again goes away once its read works. If the focus fell to the page with it, it moves to
+  // New chat; someone who went elsewhere during a slow read keeps their place.
   useEffect(() => {
     if (!tryAgainPressed.current || retrying) return;
     tryAgainPressed.current = false;
-    if (failure === undefined) newChatButton.current?.focus();
+    if (failure === undefined && focusFellToPage()) newChatButton.current?.focus();
   }, [failure, retrying]);
   if (chats === undefined) return null;
   const newChat = async () => {
@@ -78,6 +79,11 @@ export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) 
   );
 }
 
+/** Whether nothing has the focus, as when the focused control left the page. */
+function focusFellToPage(): boolean {
+  return document.activeElement === null || document.activeElement === document.body;
+}
+
 /** The AI chats under "New chat", or "No chats yet." when there are none; nothing while they load. */
 function ChatList({
   chats,
@@ -111,9 +117,8 @@ function ChatList({
  * the pane (`keptOpenChat`). A failed read keeps what the list showed, announces what failed and
  * hands back its reason as `failure` until a read works; `retry` reads again, with `retrying` true
  * until that read is done. Each failure is a new object, so the same reason twice still changes
- * it. The subscription keys
- * on the service only: the context is a new object on each window draw, so it is read through
- * `latest`.
+ * it. The subscription keys on the service only: the context is a new object on each window draw,
+ * so it is read through `latest`.
  */
 function useListedChats(
   chats: AiChats | undefined,

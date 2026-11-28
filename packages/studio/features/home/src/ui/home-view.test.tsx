@@ -251,6 +251,62 @@ verifies("home.list-column", () => {
     expect(document.activeElement).toBe(button(page, "New chat"));
   });
 
+  it("leaves the focus where it is when a list change clears a failure", async () => {
+    const { service, change } = fakeChats([summary("triage", "Triage")]);
+    const list = service.list;
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    expect(document.activeElement).toBe(document.body);
+    service.list = list;
+    await change([summary("triage", "Triage")]);
+    expect(rowTitles(page)).toEqual([expect.stringContaining("Triage")]);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("keeps the focus on Try again when its read fails again", async () => {
+    const { service } = fakeChats([]);
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    const tryAgain = button(page, "Try again");
+    await act(async () => {
+      tryAgain?.focus();
+      tryAgain?.click();
+    });
+    expect(page.textContent).toContain("Couldn't load the chats. The engine isn't answering.");
+    expect(button(page, "Try again")).toBe(tryAgain);
+    expect(tryAgain?.hasAttribute("aria-busy")).toBe(false);
+    expect(document.activeElement).toBe(tryAgain);
+  });
+
+  it("doesn't move the focus when a Try again click that didn't focus it fails again", async () => {
+    // WebKit, which the desktop app uses on macOS, doesn't focus a button on click.
+    const { service } = fakeChats([]);
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    await act(async () => button(page, "Try again")?.click());
+    expect(button(page, "Try again")).toBeDefined();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("leaves the focus elsewhere when it moved away during a slow Try again", async () => {
+    const { service } = fakeChats([summary("triage", "Triage")]);
+    const list = service.list;
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    let answer = (_chats: readonly ChatSummary[]) => {};
+    service.list = () => new Promise((resolve) => (answer = resolve));
+    const promptBox = document.createElement("textarea");
+    page.append(promptBox);
+    await act(async () => {
+      button(page, "Try again")?.focus();
+      button(page, "Try again")?.click();
+    });
+    promptBox.focus();
+    await act(async () => answer(await list(contextWith(service))));
+    expect(rowTitles(page)).toEqual([expect.stringContaining("Triage")]);
+    expect(document.activeElement).toBe(promptBox);
+  });
+
   it("shows the failure line right under New chat", async () => {
     const { service } = fakeChats([]);
     service.list = async () => Promise.reject(new EngineNotAnswering());
