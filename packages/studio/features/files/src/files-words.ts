@@ -12,7 +12,7 @@ export const filesWords = {
   allChip: "All",
   problemsChip: "Problems",
   /** In place of the tree when the Problems chip is on and no file has a problem. */
-  noProblemFiles: "No file has a problem.",
+  noProblemFiles: "No problems in your files.",
   /** The search field above the tree: its name and what the empty field says. */
   search: "Search files",
   /** Under the search field while it holds text: how many files match. */
