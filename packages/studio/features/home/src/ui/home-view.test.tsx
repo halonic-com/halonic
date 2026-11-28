@@ -6,7 +6,7 @@ import {
   type ToastStore,
   ToastStoreProvider,
 } from "@halonicjs/studio-kit";
-import type { WorkspaceContext } from "@halonicjs/studio-shell";
+import { EngineNotAnswering, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -87,7 +87,7 @@ function Home({ context }: { readonly context: WorkspaceContext }) {
   );
 }
 
-/** Shows Home; with `toasts`, inside that toast store and with its region, as the shell has them. */
+/** Shows Home; with `toasts`, inside that store and with its region, as the shell has them. */
 async function show(context: WorkspaceContext, toasts?: ToastStore): Promise<HTMLElement> {
   element = document.createElement("div");
   document.body.append(element);
@@ -149,9 +149,9 @@ verifies("home.list-column", () => {
     expect(pane(page)).toBe("Chat new-chat");
   });
 
-  it("shows a toast with the reason when a new chat can't start, and doesn't announce it again", async () => {
+  it("shows a toast with the reason when a new chat can't start, and doesn't announce it", async () => {
     const { service } = fakeChats([]);
-    service.newChat = async () => Promise.reject(new Error("The engine isn't answering."));
+    service.newChat = async () => Promise.reject(new EngineNotAnswering());
     const context = contextWith(service);
     const page = await show(context, createToastStore());
     await act(async () => button(page, "New chat")?.click());
@@ -161,9 +161,19 @@ verifies("home.list-column", () => {
     expect(context.announcer.announce).not.toHaveBeenCalled();
   });
 
+  it("shows the generic sentence in the toast, not the text of an error with no kind", async () => {
+    const { service } = fakeChats([]);
+    service.newChat = async () => Promise.reject(new Error("TypeError at chats.ts:42"));
+    const page = await show(contextWith(service), createToastStore());
+    await act(async () => button(page, "New chat")?.click());
+    const toast = page.querySelector('[role="alert"]');
+    expect(toast?.textContent).toContain("Halonic ran into a problem it can't explain yet.");
+    expect(toast?.textContent).not.toContain("chats.ts:42");
+  });
+
   it("says why a new chat couldn't start where no toasts are shown", async () => {
     const { service } = fakeChats([]);
-    service.newChat = async () => Promise.reject(new Error("The engine isn't answering."));
+    service.newChat = async () => Promise.reject(new EngineNotAnswering());
     const context = contextWith(service);
     const page = await show(context);
     await act(async () => button(page, "New chat")?.click());
@@ -205,7 +215,7 @@ verifies("home.list-column", () => {
 
   it("says what failed when the chats can't be read", async () => {
     const { service } = fakeChats([]);
-    service.list = async () => Promise.reject(new Error("The engine isn't answering."));
+    service.list = async () => Promise.reject(new EngineNotAnswering());
     const context = contextWith(service);
     await show(context);
     expect(context.announcer.announce).toHaveBeenCalledWith(
@@ -217,22 +227,53 @@ verifies("home.list-column", () => {
   it("shows why the chats can't be read, and Try again reads them again", async () => {
     const { service } = fakeChats([summary("triage", "Triage")]);
     const list = service.list;
-    const failing = vi.fn(async () => Promise.reject(new Error("The engine isn't answering.")));
+    const failing = vi.fn(async () => Promise.reject(new EngineNotAnswering()));
     service.list = failing;
     const page = await show(contextWith(service));
     expect(page.textContent).toContain("Couldn't load the chats. The engine isn't answering.");
-    service.list = list;
-    await act(async () => button(page, "Try again")?.click());
+    let answer = (_chats: readonly ChatSummary[]) => {};
+    const reading = vi.fn(
+      () => new Promise<readonly ChatSummary[]>((resolve) => (answer = resolve)),
+    );
+    service.list = reading;
+    const tryAgain = button(page, "Try again");
+    await act(async () => {
+      tryAgain?.focus();
+      tryAgain?.click();
+    });
     expect(failing).toHaveBeenCalledOnce();
+    expect(reading).toHaveBeenCalledOnce();
+    expect(tryAgain?.getAttribute("aria-busy")).toBe("true");
+    await act(async () => answer(await list(contextWith(service))));
     expect(rowTitles(page)).toEqual([expect.stringContaining("Triage")]);
     expect(page.textContent).not.toContain("Couldn't load the chats.");
     expect(button(page, "Try again")).toBeUndefined();
+    expect(document.activeElement).toBe(button(page, "New chat"));
+  });
+
+  it("shows the failure line right under New chat", async () => {
+    const { service } = fakeChats([]);
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    const line = button(page, "New chat")?.nextElementSibling;
+    expect(line?.textContent).toContain("Couldn't load the chats. The engine isn't answering.");
+    expect(line?.contains(button(page, "Try again") ?? null)).toBe(true);
+  });
+
+  it("shows the generic sentence on the line, not the text of an error with no kind", async () => {
+    const { service } = fakeChats([]);
+    service.list = async () => Promise.reject(new Error("TypeError at chats.ts:42"));
+    const page = await show(contextWith(service));
+    expect(page.textContent).toContain(
+      "Couldn't load the chats. Halonic ran into a problem it can't explain yet.",
+    );
+    expect(page.textContent).not.toContain("chats.ts:42");
   });
 
   it("keeps the list it showed under the failure line when a later read fails", async () => {
     const { service, change } = fakeChats([summary("triage", "Triage")]);
     const page = await show(contextWith(service));
-    service.list = async () => Promise.reject(new Error("The engine isn't answering."));
+    service.list = async () => Promise.reject(new EngineNotAnswering());
     await change([]);
     const line = [...page.querySelectorAll("p")].find((each) =>
       each.textContent?.includes("Couldn't load the chats. The engine isn't answering."),
