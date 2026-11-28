@@ -52,9 +52,15 @@ function nonRelativeImports(start: string): Map<string, string[]> {
 
 test("the leak guard loads only relative files and node: modules", () => {
   const files = nonRelativeImports(entry);
-  expect(files.has("packages/core/std/src/secret-rules.ts")).toBe(true);
   const offending = [...files].filter(([, bad]) => bad.length > 0);
   expect(offending).toEqual([]);
+});
+
+test("the leak guard loads nothing from outside tooling/check/ but the secret rules", () => {
+  const outside = [...nonRelativeImports(entry).keys()].filter(
+    (file) => !file.startsWith("tooling/check/"),
+  );
+  expect(outside).toEqual(["packages/core/std/src/secret-rules.ts"]);
 });
 
 test("the import reader sees package names in every import form", () => {

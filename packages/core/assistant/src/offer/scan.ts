@@ -11,9 +11,9 @@ import { findRealEmails } from "./emails.ts";
  * (the integration's setting values, the profile name and e-mail, and any
  * e-mail address outside the example domains). A user value is also found
  * as it is written in a JSON or JS string and in a URL or form body; any
- * other address as written or with its `@` URL-encoded (`%40`). Stored key values are not checked here:
- * row 4 of the I6 plan (HAL-18392) adds a shell command for them, so they
- * never reach the page.
+ * other address as written or with its `@` URL-encoded (`%40`). Stored key
+ * values are not checked here: row 4 of the I6 plan (HAL-18392) adds a shell
+ * command for them, so they never reach the page.
  */
 
 /** One file of the offer, with the exact text that would be sent. */

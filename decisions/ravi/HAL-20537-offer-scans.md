@@ -17,6 +17,8 @@ to Halonic" scan run the same rules and can't drift apart.
   `leaks-imports.test.ts` fails if any file `leaks.ts` loads imports anything
   but a relative path or a `node:` module. `tooling/check/package.json` and
   `toolingUsesCore` stay as they are.
+- `turbo.json` lists `packages/core/std/src/secret-rules.ts` as an input of
+  `//#codegen`, because the leak guard now reads it from there.
 - Only `fingerprint` stays in `tooling/check/src/leaks/fingerprint.ts`,
   because core code can't use `node:crypto`.
 - The rules stay guarded after the move: `packages/core/std/src/secret-rules.ts`
@@ -40,4 +42,5 @@ leak guard. A copy would drift; one file both import can't.
 - tooling/check/
 - tooling/check/policy.json
 - packages/core/std/src/secret-rules.ts
+- turbo.json
 - check.guard-own-paths
