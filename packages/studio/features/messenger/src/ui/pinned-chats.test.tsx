@@ -171,14 +171,46 @@ verifies("messenger.pinned-chats", () => {
     expect(pageSaid(page)).not.toContain("You can pin up to 3 chats.");
   });
 
-  it("reads the note out in one pane, where the chat takes the list's place", async () => {
+  it("says the note in a toast in one pane, where the chat takes the list's place", async () => {
     const page = await openMessenger(acme(["Chief", "Mara", "Kim", "Leo"]), [], true);
-    for (const name of ["Chief", "Mara", "Kim", "Leo"]) {
+    for (const name of ["Chief", "Mara", "Kim"]) {
       await openChat(page, name);
       await chatMenu(page, name, "Pin chat");
       await press(byText(page, "main button", "Back to chats"));
     }
-    expect(pageSaid(page)).toContain("You can pin up to 3 chats.");
+    expect(document.body.textContent).not.toContain("You can pin up to 3 chats.");
+    await openChat(page, "Leo");
+    await chatMenu(page, "Leo", "Pin chat");
+
+    const toast = byText(
+      document.body as HTMLElement,
+      "[data-toast], [role=status], li",
+      "You can pin up to 3 chats.",
+    );
+    expect(toast).toBeDefined();
+    // The toast says it; the page's status doesn't read it a second time.
+    expect(pageSaid(page)).not.toContain("You can pin up to 3 chats.");
+    await press(byText(page, "main button", "Back to chats"));
+    expect(byText(page, "nav p", "You can pin up to 3 chats.")).toBeDefined();
+  });
+
+  it("puts Pin chat first in the ··· menu, before Mark as unread", async () => {
+    const page = await openMessenger(acme(["Chief"]));
+    await openChat(page, "Chief");
+    await press(button("More actions for Chief", page.querySelector("main header") ?? page));
+    const menu = byText(page, "[role=menuitem]", "Pin chat")?.closest("[role=menu]");
+    const entries = [...(menu?.querySelectorAll("[role=menuitem]") ?? [])].map(
+      (entry) => entry.textContent,
+    );
+    expect(entries).toEqual(["Pin chat", "Mark as unread"]);
+  });
+
+  it("ends the Pinned group with a line, as the Needs you entry ends", async () => {
+    const page = await openMessenger(acme(["Chief", "Mara"]));
+    await openChat(page, "Chief");
+    await chatMenu(page, "Chief", "Pin chat");
+    const group = page.querySelector("[data-pinned-chats]")?.className.split(" ") ?? [];
+    expect(group).toEqual(expect.arrayContaining(["border-b", "border-border", "pb-2", "mb-2"]));
   });
 
   it("lists what a search found in its own order, with no Pinned group", async () => {

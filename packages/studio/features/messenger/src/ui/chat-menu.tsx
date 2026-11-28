@@ -17,13 +17,14 @@ export function ChatMenu({
   /** Whether the chat is pinned, and what pins or unpins it. */
   readonly pin?: { readonly pinned: boolean; readonly onToggle: () => void } | undefined;
 }) {
+  // Pin chat first, so it keeps its place whether Mark as unread shows or not.
   const entries: MenuEntry[] = [];
-  if (onMarkUnread !== undefined) {
-    entries.push({ id: "mark-unread", label: messengerWords.markUnread, onSelect: onMarkUnread });
-  }
   if (pin !== undefined) {
     const label = pin.pinned ? messengerWords.unpinChat : messengerWords.pinChat;
     entries.push({ id: "pin", label, onSelect: pin.onToggle });
+  }
+  if (onMarkUnread !== undefined) {
+    entries.push({ id: "mark-unread", label: messengerWords.markUnread, onSelect: onMarkUnread });
   }
   if (entries.length === 0) return null;
   return (

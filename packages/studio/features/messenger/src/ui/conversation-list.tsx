@@ -101,7 +101,7 @@ export function ConversationList({
     // One wrapper, so the pinned chats fade in with the others (motion 7, HAL-18481).
     <div ref={list} className="flex flex-col">
       {pinned.length === 0 ? null : (
-        <div data-pinned-chats="" className="flex flex-col pb-2">
+        <div data-pinned-chats="" className="mb-2 flex flex-col border-b border-border pb-2">
           <h3 className="px-3 pb-1 text-small text-fg-muted">{messengerWords.pinned}</h3>
           <PlainList label={messengerWords.pinned}>{pinned.map(rowOf)}</PlainList>
         </div>

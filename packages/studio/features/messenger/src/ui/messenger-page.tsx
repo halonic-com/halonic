@@ -1,5 +1,5 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Button, useNarrow } from "@halonicjs/studio-kit";
+import { Button, useNarrow, useToastStore } from "@halonicjs/studio-kit";
 import { listColumnClass } from "@halonicjs/studio-kit/list-column";
 import type { ChatOpens } from "@halonicjs/studio-services";
 import {
@@ -11,7 +11,7 @@ import {
   NoConnections,
   type PlaceViewProps,
 } from "@halonicjs/studio-shell";
-import { type ReactNode, type RefObject, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { ChatOpensService, MessengerService } from "../api.ts";
 import { type ChatPins, type PinnedChat, pinnedFirst } from "../chat-pins.ts";
@@ -25,7 +25,7 @@ import { useFadeIn } from "./load-states.tsx";
 import { NeedsYouPanel, useWaiting } from "./needs-you.tsx";
 import { NewMenu } from "./new-menu.tsx";
 import { useChatOpens } from "./use-chat-opens.ts";
-import { ChatPinsProvider, useChatPinning } from "./use-chat-pins.tsx";
+import { type ChatPinning, ChatPinsProvider, useChatPinning } from "./use-chat-pins.tsx";
 import { useLeft } from "./use-left.ts";
 import { useShownChat } from "./use-shown-chat.ts";
 
@@ -116,6 +116,7 @@ export function MessengerPage({
     select(channel);
   };
   const pinning = useChatPinning(pins, rows);
+  usePinsFullToast(pinning.fullCount, onePane && panelFirst);
   // Leaving finds the row that takes the channel's place in the order the list shows it.
   const { said, leave } = useLeft(list, shownOrder(rows, pinning.pinned));
   const left = () => {
@@ -135,13 +136,7 @@ export function MessengerPage({
         {/* The page's heading and status come first, so they read before the list, and stay while
           one pane shows the chat; both are out of the flow, so they take no room. */}
         <h1 className="sr-only">{messengerWords.title}</h1>
-        <p role="status" className="sr-only" data-page-status>
-          <span key={said.count}>{said.text}</span>
-          {/* Read on every pin that finds them all taken, also while one pane shows the chat. */}
-          <span key={`pins-${pinning.fullCount}`}>
-            {pinning.full ? messengerWords.pinsFull : ""}
-          </span>
-        </p>
+        <PageStatus said={said} pinning={pinning} listHidden={onePane && panelFirst} />
         {onePane && panelFirst ? null : (
           <ListColumn listRef={list} onePane={onePane} connected={connected}>
             <ChatsColumn
@@ -201,6 +196,43 @@ export function MessengerPage({
       </div>
     </ChatPinsProvider>
   );
+}
+
+/**
+ * The page's status region: what Leave said, and "You can pin up to 3 chats." on every pin that
+ * finds them all taken, except while one pane shows the chat, where its toast says it.
+ */
+function PageStatus({
+  said,
+  pinning,
+  listHidden,
+}: {
+  readonly said: { readonly text: string; readonly count: number };
+  readonly pinning: ChatPinning;
+  readonly listHidden: boolean;
+}) {
+  return (
+    <p role="status" className="sr-only" data-page-status>
+      <span key={said.count}>{said.text}</span>
+      <span key={`pins-${pinning.fullCount}`}>
+        {pinning.full && !listHidden ? messengerWords.pinsFull : ""}
+      </span>
+    </p>
+  );
+}
+
+/**
+ * While one pane shows the chat, the list's "You can pin up to 3 chats." isn't on screen, so a
+ * pin that finds them all taken says it in a toast instead (Noah's look check on HAL-21047).
+ */
+function usePinsFullToast(fullCount: number, listHidden: boolean): void {
+  const toasts = useToastStore();
+  const shown = useRef(fullCount);
+  useEffect(() => {
+    if (fullCount === shown.current) return;
+    shown.current = fullCount;
+    if (listHidden) toasts?.show({ tone: "info", title: messengerWords.pinsFull });
+  }, [fullCount, listHidden, toasts]);
 }
 
 /** The rows in the order the list shows them: the pinned ones first (`messenger.pinned-chats`). */
