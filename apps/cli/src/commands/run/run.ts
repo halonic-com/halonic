@@ -13,8 +13,6 @@ import {
   type RunDetail,
   RunEvents,
   RunHistory,
-  type RunProposal,
-  shortRunId,
   WorkflowRuns,
   workflowIn,
 } from "@halonicjs/app";
@@ -30,10 +28,8 @@ import {
 import type { AddedPlugins } from "../../connector-plugin.ts";
 import { followUntilStopped } from "../../follow-run.ts";
 import { type HarnessProgram, nodeHarnessPrograms } from "../../harness-programs.ts";
-import { openLocalProposals } from "../../local-proposals.ts";
 import type { Message } from "../../messages/define.ts";
 import type { Phrase } from "../../messages/phrase.ts";
-import { proposalsMessages } from "../../messages/proposals.ts";
 import { runMessages } from "../../messages/run.ts";
 import { workflowMessages } from "../../messages/workflow.ts";
 import { nearMatch } from "../../near-match.ts";
@@ -59,12 +55,14 @@ import {
   checkEngineRuns,
   type EngineRunsTarget,
   openWorkspaceEngine,
+  type WorkspaceEngine,
   type WorkspaceEngineSetup,
 } from "../../workspace-engine.ts";
 import { misplacedFilesOf, refuseFileProblems } from "../../workspace-problems.ts";
 import { openWorkspaceRuns } from "../../workspace-runs.ts";
 import { workspaceNameOf } from "../../workspace-trust.ts";
 import { childEndings } from "../runs/child-endings.ts";
+import type { ConsoleTransport } from "../serve/serve-console.ts";
 import { connectorWarnings } from "./connector-warnings.ts";
 import { eventLines } from "./event-lines.ts";
 import { runHarnessOf } from "./harness.ts";
@@ -74,6 +72,8 @@ import { oneWorkflow } from "./one-workflow.ts";
 import { runResult } from "./result.ts";
 import { type RunPlace, sendEvent } from "./send-event.ts";
 import { checkRunTrust, type RunTrustMachine } from "./trust.ts";
+import { type HandedToServe, startInServe } from "./via-serve.ts";
+import { waitingProposal } from "./waiting-proposal.ts";
 import { profilePlugins, profileStudioYes, warnedConnectorsOf } from "./warned-connectors.ts";
 
 /** What `run` uses on this computer, so tests can fix the clock, the ids and the profile. */
@@ -91,6 +91,8 @@ export interface RunSetup extends WorkspaceEngineSetup {
   harnesses?(): readonly HarnessProgram[];
   /** The plugins added in `profile`, for a plugin connector's warning; the profile's own by default. */
   readonly plugins?: AddedPlugins;
+  /** How `serve` offers its console and `run` reaches it; the Unix socket by default. */
+  readonly console?: ConsoleTransport;
 }
 
 /**
@@ -117,12 +119,13 @@ export interface RunSetup extends WorkspaceEngineSetup {
  *   start here; nothing ran. No option skips this check
  * @throws OwnLineError when the run doesn't take an `--event` at its wait,
  *   or is gone when one is sent
+ * @throws what {@link startInServe} throws when another command holds the engine
  */
 export async function followWorkflow(
   input: CommandInput,
   context: CommandContext,
   setup: RunSetup,
-): Promise<FollowedResult | StoppedResult> {
+): Promise<FollowedResult | StoppedResult | HandedToServe> {
   const typed = await oneWorkflow(input, context, setup);
   const dir = await openWorkspaceDir(input, context);
   const typedDir = givenDir(input, dir);
@@ -164,16 +167,27 @@ export async function followWorkflow(
   if (definition !== undefined) {
     checkFirstStepInput(definition, runInput, givenInput !== undefined);
   }
-  const engine = await openWorkspaceEngine(context, setup, {
-    ...target,
-    trust,
-    ...(sandboxChecked === undefined ? {} : { sandboxChecked }),
-  });
+  let engine: WorkspaceEngine;
+  try {
+    engine = await openWorkspaceEngine(context, setup, {
+      ...target,
+      trust,
+      ...(sandboxChecked === undefined ? {} : { sandboxChecked }),
+    });
+  } catch (error) {
+    // `serve` holds the engine: it starts the run, which shows in the phone's Inbox (HAL-19396),
+    // with the lines this run would have given first, the engine's sandbox check among them.
+    const warnings = async () =>
+      runWarnings(
+        changesNotLive,
+        localOnlySaved,
+        sandboxChecked ?? (await checkEngineRuns(setup, target)),
+      );
+    const run = { workflow, input: runInput, options: input.options, typedDir, warnings };
+    return { handedToServe: await startInServe(error, setup, dir, run) };
+  }
   // Before the run's heading, and again first in the result, as print-ahead lines are.
-  const warnings: Phrase[] = [
-    ...(changesNotLive ? [runMessages.changesNotLive(localOnlySaved).phrase] : []),
-    ...engine.placed.map(placedWarning),
-  ];
+  const warnings = runWarnings(changesNotLive, localOnlySaved, engine.placed);
   for (const line of warnings) context.printAhead(line);
   // One clock for the lines printed while the run goes and the result that repeats them.
   const clock = setup.clock();
@@ -234,6 +248,18 @@ export async function followWorkflow(
     workspace,
     hubId: workflow.hubId,
   };
+}
+
+/** The `!` lines before a run: saved changes that aren't live, and each agent's place (`cli.sandbox-gate`). */
+function runWarnings(
+  changesNotLive: boolean,
+  localOnlySaved: boolean,
+  placed: readonly PlacedAgent[],
+): Phrase[] {
+  return [
+    ...(changesNotLive ? [runMessages.changesNotLive(localOnlySaved).phrase] : []),
+    ...placed.map(placedWarning),
+  ];
 }
 
 /** What a run that wasn't stopped ended with: its result, and the run, for a caller that looks at how it ended. */
@@ -369,35 +395,6 @@ async function checkHarnessAgents(
       throw error.withHint(runMessages.sandboxRefusedHarnessHint());
     }
     throw error;
-  }
-}
-
-/**
- * The line that says the run left a proposal and how to see it, after a
- * run that ended with changes (HAL-6477): nothing in the person's files
- * changed, so they decide with `halonic proposals`. Read once the engine
- * has closed, since the run's folder ends just after its last event.
- */
-async function waitingProposal(
-  dir: OpenWorkspaceDir,
-  run: RunDetail,
-  setup: RunSetup,
-  typedDir: string | undefined,
-): Promise<{ readonly lines: Phrase[]; readonly json: RunProposal } | undefined> {
-  const { status, id } = run.summary;
-  if (status !== "completed" && status !== "failed") return undefined;
-  const { proposals, close } = await openLocalProposals(dir.root, {
-    ...(setup.profile === undefined ? {} : { profile: setup.profile }),
-    ...(setup.engine?.git === undefined ? {} : { git: setup.engine.git }),
-  });
-  try {
-    const record = await proposals.get(id);
-    if (record === null || record.settled !== undefined) return undefined;
-    const files = record.proposal.files.length;
-    const line = proposalsMessages.waiting(shortRunId(id), files, typedDir).phrase;
-    return { lines: [[], line], json: record.proposal };
-  } finally {
-    await close();
   }
 }
 

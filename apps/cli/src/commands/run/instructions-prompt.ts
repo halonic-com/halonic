@@ -48,6 +48,7 @@ export async function runWorkflow(
   };
   const first = await followWorkflow(input, recording, setup);
   if ("stopped" in first) return first;
+  if ("handedToServe" in first) return first.handedToServe;
   const refused = refusedInstructions(first.run.events);
   if (refused === undefined || !(await trustedOnAsking(context, setup, first, refused))) {
     return first.result;
@@ -57,6 +58,7 @@ export async function runWorkflow(
   for (const line of between) context.printAhead(line);
   const again = await followWorkflow(input, context, setup);
   if ("stopped" in again) return again;
+  if ("handedToServe" in again) return again.handedToServe;
   return { ...again.result, lines: [...printed, ...between, ...again.result.lines] };
 }
 

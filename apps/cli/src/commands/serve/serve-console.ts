@@ -2,7 +2,7 @@
 // (`server.device-pairing`): a Unix socket in the profile folder, one per workspace, that only
 // the user who runs the server can open (`runtime.console-socket`). `serve` answers on it with the device
 // console over the engine's own coordination, so what the console allows or revokes is what the
-// server's routes see.
+// server's routes see. `halonic run` hands it a run to start while `serve` holds the engine.
 
 import { realpath } from "node:fs/promises";
 import type { RoutineEngine } from "@halonicjs/engine";
@@ -25,6 +25,10 @@ import { printable } from "../../output/printable.ts";
 import type { OpenWorkspaceDir } from "../../workspace-dir.ts";
 import { nodeProfileEnvironment, webCryptoDigest } from "../../workspace-runs.ts";
 import type { ServeSetup } from "./serve.ts";
+import { answerStartRun, type ServedRunStarts } from "./serve-run-start.ts";
+
+/** What finds the console: the profile it is in, and how it is reached. */
+type ConsoleSetup = Pick<ServeSetup, "profile" | "console">;
 
 /** How `serve` offers its console and the console commands reach it; the Unix socket by default. */
 export interface ConsoleTransport {
@@ -45,7 +49,7 @@ export const socketConsole: ConsoleTransport = {
 };
 
 /** Where the workspace's console socket is: in the profile, named by the workspace's key. */
-export async function consolePlace(setup: ServeSetup, dir: OpenWorkspaceDir): Promise<string> {
+export async function consolePlace(setup: ConsoleSetup, dir: OpenWorkspaceDir): Promise<string> {
   const profile = profileFolder(setup.profile ?? nodeProfileEnvironment());
   const folders = await workspaceFolders(profile, await realpath(dir.root), webCryptoDigest);
   return consoleSocketPath(profile.root, folders.key);
@@ -68,6 +72,7 @@ export async function openServeConsole(
   setup: ServeSetup,
   dir: OpenWorkspaceDir,
   engine: Pick<RoutineEngine, "coordination" | "clock">,
+  runStarts: ServedRunStarts,
 ): Promise<ServeConsole> {
   const console = createDeviceConsole({
     coordination: engine.coordination,
@@ -75,12 +80,15 @@ export async function openServeConsole(
     secrets: context.secrets,
   });
   const transport = setup.console ?? socketConsole;
+  // A failed console request goes to `--debug`, as a failed HTTP request does.
+  const logError = (error: unknown): void =>
+    context.debug(serveMessages.requestFailed(messageOf(error)).phrase);
+  // A run `halonic run` hands over starts here; every other request is the device console's.
+  const answer = async (request: unknown): Promise<unknown> =>
+    (await answerStartRun(runStarts, request, logError)) ?? (await console.answer(request));
   try {
     const place = await consolePlace(setup, dir);
-    // A failed console request goes to `--debug`, as a failed HTTP request does.
-    const logError = (error: unknown): void =>
-      context.debug(serveMessages.requestFailed(messageOf(error)).phrase);
-    const open = await transport.listen(place, (request) => console.answer(request), logError);
+    const open = await transport.listen(place, answer, logError);
     return { warning: null, close: () => open.close() };
   } catch (error) {
     // Any failure here, a refused folder or one the system won't let `serve` make (`EACCES`,
@@ -129,7 +137,7 @@ export type ServeAnswer = { readonly ok: boolean } & Readonly<Record<string, unk
  *   be used here; `invalid_input` when no `serve-password` is set
  */
 export async function askServe(
-  setup: ServeSetup,
+  setup: ConsoleSetup,
   place: string,
   request: object,
 ): Promise<ServeAnswer> {
