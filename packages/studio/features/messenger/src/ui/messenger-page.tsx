@@ -1,5 +1,6 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Button, FramedPanel, SidebarFrame, useNarrow } from "@halonicjs/studio-kit";
+import { Button, useNarrow } from "@halonicjs/studio-kit";
+import { listColumnClass } from "@halonicjs/studio-kit/list-column";
 import type { ChatOpens } from "@halonicjs/studio-services";
 import {
   connectFrom,
@@ -37,10 +38,10 @@ export interface MessengerPageProps {
 }
 
 /**
- * The Messenger (HAL-17421 render 4a): the list on the left, on the frame, and the open
- * conversation as the framed panel on the right, 8px from it: the kit's framed sidebar, the same
- * as the Inbox's and Studio's (`messenger.framed-list`, `kit.framed-sidebar`). It reads the list when it
- * opens and whenever a source says it changed.
+ * The Messenger in the new design (HAL-20730): the list column on the left and the open
+ * conversation in the content pane beside it, past a 1px line, both on the panel colour
+ * (`messenger.framed-list`, `kit.list-column`). It reads the list when it opens and whenever a
+ * source says it changed.
  *
  * A window narrower than 900px (`useNarrow`, such as 320px or 400 % zoom) shows one pane at a
  * time, as the Inbox does: the list, or the open chat with **Back to chats**, which puts focus
@@ -121,40 +122,36 @@ export function MessengerPage({
     back();
   };
   return (
-    <SidebarFrame
-      sidebar={
-        // The page's heading and status come first, so they read before the list, and stay while
-        // one pane shows the chat; both are out of the flow, so they take no room on the frame.
-        <>
-          <h1 className="sr-only">{messengerWords.title}</h1>
-          <p role="status" className="sr-only" data-page-status>
-            <span key={said.count}>{said.text}</span>
-          </p>
-          {onePane && panelFirst ? null : (
-            <ListColumn listRef={list} onePane={onePane} connected={connected}>
-              <ChatsColumn
-                messenger={messenger}
-                rows={rows}
-                connected={connected}
-                failure={failure}
-                words={words}
-                onRetry={readAgain}
-                selected={selected}
-                onSelect={select}
-                pictures={pictures}
-                waiting={waiting?.waiting}
-                needsYou={needsYou}
-                onNeedsYou={openNeedsYou}
-                newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
-              />
-            </ListColumn>
-          )}
-        </>
-      }
-    >
+    <div className="flex h-full min-h-0 min-w-0 flex-1 bg-app-panel">
+      {/* The page's heading and status come first, so they read before the list, and stay while
+          one pane shows the chat; both are out of the flow, so they take no room. */}
+      <h1 className="sr-only">{messengerWords.title}</h1>
+      <p role="status" className="sr-only" data-page-status>
+        <span key={said.count}>{said.text}</span>
+      </p>
+      {onePane && panelFirst ? null : (
+        <ListColumn listRef={list} onePane={onePane} connected={connected}>
+          <ChatsColumn
+            messenger={messenger}
+            rows={rows}
+            connected={connected}
+            failure={failure}
+            words={words}
+            onRetry={readAgain}
+            selected={selected}
+            onSelect={select}
+            pictures={pictures}
+            waiting={waiting?.waiting}
+            needsYou={needsYou}
+            onNeedsYou={openNeedsYou}
+            newMenu={<NewMenu messenger={messenger} onOpen={openChannel} />}
+          />
+        </ListColumn>
+      )}
+
       {onePane && !panelFirst ? null : (
         <WithActivity messenger={messenger} row={open} words={words}>
-          <FramedPanel as="main" ref={chat}>
+          <main ref={chat} data-part="content-pane" className={contentPaneClass}>
             {onePane && (open !== undefined || needsYou) ? (
               <div className="px-2 pt-2">
                 <Button variant="ghost" size="sm" onClick={back}>
@@ -185,12 +182,21 @@ export function MessengerPage({
                 onMarkUnread={markUnread}
               />
             )}
-          </FramedPanel>
+          </main>
         </WithActivity>
       )}
-    </SidebarFrame>
+    </div>
   );
 }
+
+/**
+ * The list column beside the chat in the new design (`messenger.framed-list`): the kit's one
+ * list-column size (`kit.list-column`), past a 1px line from the chat.
+ */
+const desktopListColumnClass = `${listColumnClass} flex shrink-0 flex-col border-e border-border`;
+
+/** The content pane that holds the open chat: the rest of the width, on the panel colour. */
+const contentPaneClass = "flex min-h-0 min-w-0 flex-1 flex-col bg-app-panel";
 
 /**
  * The list's column, the page's Messenger landmark. With nothing connected the panel's No
@@ -208,10 +214,15 @@ function ListColumn({
   readonly connected: boolean | undefined;
   readonly children: ReactNode;
 }) {
-  const className = onePane ? "flex min-w-0 flex-1 flex-col" : "flex w-80 shrink-0 flex-col";
+  const className = onePane ? "flex min-w-0 flex-1 flex-col" : desktopListColumnClass;
   if (connected === false) return <div className={className} />;
   return (
-    <nav ref={listRef} aria-label={messengerWords.title} className={className}>
+    <nav
+      ref={listRef}
+      aria-label={messengerWords.title}
+      data-part="list-column"
+      className={className}
+    >
       {children}
     </nav>
   );

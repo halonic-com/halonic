@@ -38,10 +38,10 @@ export const activityTitleId = `${activityPanelId}-title`;
 export type PanelPlace = "beside" | "sheet" | "place";
 
 const placeClass: Record<PanelPlace, string> = {
-  // A panel of its own beside the chat, as the chat is (`messenger.framed-list`).
-  beside: "w-80 shrink-0",
-  sheet: "absolute inset-y-0 end-0 z-10 w-80 shadow-2",
-  place: "min-w-0 flex-1",
+  // Beside the chat past a 1px line, as the list column is (`messenger.framed-list`).
+  beside: "w-80 shrink-0 border-s border-border bg-app-panel",
+  sheet: `absolute inset-y-0 end-0 z-10 w-80 shadow-2 ${focusedPanelClass}`,
+  place: `min-w-0 flex-1 ${focusedPanelClass}`,
 };
 
 /**
@@ -91,7 +91,7 @@ export function ActivityPanel({
       id={activityPanelId}
       aria-labelledby={activityTitleId}
       onKeyDown={onKeyDown}
-      className={`flex flex-col ${placeClass[place]} ${focusedPanelClass}`}
+      className={`flex flex-col ${placeClass[place]}`}
     >
       <PanelHeader title={title} chat={chat} place={place} onClose={close} />
       <div ref={body} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">

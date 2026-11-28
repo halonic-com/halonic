@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { listColumnClass } from "@halonicjs/studio-kit/list-column";
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
@@ -262,21 +264,21 @@ verifies("messenger.conversations", () => {
 });
 
 verifies("messenger.framed-list", () => {
-  it("keeps the list on the window's frame and the open chat on its own panel, 8px apart", async () => {
+  it("shows the list column at the kit's size and the open chat beside it past a 1px line", async () => {
     const { messaging } = twoChiefs();
     const page = await openMessenger(messaging);
     await openAcmeChat(page);
-    const list = page.querySelector("nav") as HTMLElement;
-    const chat = page.querySelector("main") as HTMLElement;
-    const listClasses = list.className.split(" ");
+    const list = page.querySelector('nav[data-part="list-column"]') as HTMLElement;
+    const chat = page.querySelector('main[data-part="content-pane"]') as HTMLElement;
     const pageClasses = (list.parentElement as HTMLElement).className.split(" ");
 
-    expect(pageClasses).toContain("gap-2");
-    expect(pageClasses).not.toContain("bg-app-panel");
-    expect(listClasses).not.toContain("bg-app-panel");
-    expect(listClasses.some((name) => name.startsWith("border"))).toBe(false);
-    expect(chat.className.split(" ")).toEqual(
-      expect.arrayContaining(["rounded-lg", "border", "border-border", "bg-app-panel"]),
+    expect(list.className.split(" ")).toEqual(
+      expect.arrayContaining([...listColumnClass.split(" "), "border-e", "border-border"]),
     );
+    expect(pageClasses).toContain("bg-app-panel");
+    expect(pageClasses).not.toContain("gap-2");
+    const chatClasses = chat.className.split(" ");
+    expect(chatClasses).toContain("bg-app-panel");
+    expect(chatClasses).not.toContain("rounded-lg");
   });
 });

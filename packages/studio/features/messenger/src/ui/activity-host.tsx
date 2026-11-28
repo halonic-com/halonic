@@ -80,7 +80,7 @@ export function ActivityHost({
   useCloseKey(host, opens);
   return (
     <ActivityToggleContext value={value}>
-      <div ref={host} className="relative flex min-w-0 flex-1 gap-2">
+      <div ref={host} className="relative flex min-w-0 flex-1">
         <p role="status" className="sr-only">
           <span key={said.count}>{said.text}</span>
         </p>

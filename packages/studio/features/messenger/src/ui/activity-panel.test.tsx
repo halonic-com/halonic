@@ -186,15 +186,15 @@ verifies("messenger.activity-panel", () => {
 });
 
 verifies("messenger.framed-list", () => {
-  it("shows the activity panel beside the chat as a panel of its own, 8px from it", async () => {
+  it("shows the activity panel beside the chat past a 1px line, on the panel colour", async () => {
     const { page } = await chiefsChat(working);
     const aside = panel(page) as HTMLElement;
     const classes = aside.className.split(" ");
 
     expect(classes).toEqual(
-      expect.arrayContaining(["w-80", "rounded-lg", "border", "border-border", "bg-app-panel"]),
+      expect.arrayContaining(["w-80", "border-s", "border-border", "bg-app-panel"]),
     );
-    expect(classes).not.toContain("border-s");
-    expect((aside.parentElement as HTMLElement).className.split(" ")).toContain("gap-2");
+    expect(classes).not.toContain("rounded-lg");
+    expect((aside.parentElement as HTMLElement).className.split(" ")).not.toContain("gap-2");
   });
 });
