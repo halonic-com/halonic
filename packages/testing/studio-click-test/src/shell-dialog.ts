@@ -9,10 +9,11 @@ import { spawn } from "node:child_process";
  * is looked for only inside it, so the search never walks the WebView's own tree.
  *
  * Run 46170065817 found the dialog, but a control-view search for a Button named Approve found
- * nothing in it. So the script walks the dialog's raw tree for any element of that name it can
- * invoke. If after 5 s it still has none, it presses Enter on the dialog: rfd's task dialog makes
- * its first button, the yes, the default. Then it prints what the dialog holds, which the job
- * log keeps, and the step's Paperclip check shows whether the yes went through.
+ * nothing in it. Run 46173800785 showed why: the task dialog's buttons are Win32 push buttons
+ * (CCPushButton) that UI Automation lists as panes without an Invoke pattern, and Enter on the
+ * dialog left it open. So the script walks the dialog's raw tree for the element of that name and
+ * invokes it if it can; otherwise it sends the button's own window BM_CLICK, as a mouse click
+ * would. If the dialog is still open after that, it prints what the dialog holds for the job log.
  */
 const pressScript = `
 Add-Type -AssemblyName UIAutomationClient
@@ -34,13 +35,14 @@ function Find-Dialog {
   }
   return $null
 }
+Add-Type -Namespace ClickTest -Name Native -MemberDefinition '[DllImport("user32.dll")] public static extern System.IntPtr SendMessage(System.IntPtr window, int message, System.IntPtr wParam, System.IntPtr lParam);'
+$buttonClick = 0x00F5
 function Find-Button($element, $depth) {
   $child = $walker.GetFirstChild($element)
   while ($null -ne $child) {
     $current = $child.Current
     $script:seen += "$($current.ControlType.ProgrammaticName) '$($current.Name)' ($($current.ClassName))"
-    $pattern = $null
-    if ($current.Name -eq $env:CLICK_TEST_BUTTON -and $child.TryGetCurrentPattern($invokable, [ref]$pattern)) { return $pattern }
+    if ($current.Name -eq $env:CLICK_TEST_BUTTON) { return $child }
     if ($depth -lt 8) {
       $inner = Find-Button $child ($depth + 1)
       if ($null -ne $inner) { return $inner }
@@ -49,31 +51,32 @@ function Find-Button($element, $depth) {
   }
   return $null
 }
+function Press($button) {
+  $pattern = $null
+  if ($button.TryGetCurrentPattern($invokable, [ref]$pattern)) {
+    $pattern.Invoke()
+    return
+  }
+  $handle = $button.Current.NativeWindowHandle
+  if ($handle -eq 0) { throw "$env:CLICK_TEST_BUTTON has neither an Invoke pattern nor a window to click." }
+  [void][ClickTest.Native]::SendMessage([System.IntPtr]$handle, $buttonClick, [System.IntPtr]::Zero, [System.IntPtr]::Zero)
+  [Console]::Out.WriteLine("Sent BM_CLICK to $env:CLICK_TEST_BUTTON's window.")
+}
 $deadline = (Get-Date).AddMilliseconds([int]$env:CLICK_TEST_WAIT_MS)
-$shownSince = $null
 do {
   $dialog = Find-Dialog
   if ($null -ne $dialog) {
     $script:seen = @()
     $button = Find-Button $dialog 0
-    if ($null -ne $button) {
-      $button.Invoke()
-      exit 0
-    }
-    if ($null -eq $shownSince) { $shownSince = Get-Date }
-    if (((Get-Date) - $shownSince).TotalSeconds -ge 5) {
-      [Console]::Out.WriteLine("No $env:CLICK_TEST_BUTTON to invoke; the dialog holds: " + ($script:seen -join '; '))
-      Add-Type -AssemblyName System.Windows.Forms
-      $dialog.SetFocus()
-      [System.Windows.Forms.SendKeys]::SendWait('{ENTER}')
-      Start-Sleep -Milliseconds 1000
-      if ($null -eq (Find-Dialog)) {
-        [Console]::Out.WriteLine("Pressed Enter on the dialog, its default button.")
-        exit 0
-      }
-      [Console]::Out.WriteLine("The dialog stayed open after Enter.")
+    if ($null -eq $button) {
+      [Console]::Out.WriteLine("No $env:CLICK_TEST_BUTTON; the dialog holds: " + ($script:seen -join '; '))
       exit 4
     }
+    Press $button
+    Start-Sleep -Milliseconds 1000
+    if ($null -eq (Find-Dialog)) { exit 0 }
+    [Console]::Out.WriteLine("The dialog stayed open after pressing $env:CLICK_TEST_BUTTON; it holds: " + ($script:seen -join '; '))
+    exit 4
   }
   Start-Sleep -Milliseconds 500
 } while ((Get-Date) -lt $deadline)
