@@ -95,7 +95,7 @@ verifies("source-control.list-column", () => {
       expect(choices?.classList.contains("@container")).toBe(true);
       const tiles = choices?.querySelector('[aria-label="x.md"] > div.flex.gap-4');
       expect([...(tiles?.classList ?? [])]).toEqual(
-        expect.arrayContaining(["flex-col", "@lg:flex-row", "@lg:items-stretch"]),
+        expect.arrayContaining(["flex-col", "@min-[32rem]:flex-row", "@min-[32rem]:items-stretch"]),
       );
       expect(tiles?.classList.contains("flex-row")).toBe(false);
     });
