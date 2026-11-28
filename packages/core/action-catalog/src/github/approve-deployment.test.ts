@@ -71,6 +71,7 @@ verifies("action-catalog.github-approve-deployment", () => {
         status: "waiting",
         head_sha: seenCommit,
         head_branch: "main",
+        "head_repository.full_name": "acme/app",
         "triggering_actor.login": "acme-dev",
       });
       expect(kept.get(2)).toEqual({ id: 42, name: "production" });
@@ -142,6 +143,44 @@ verifies("action-catalog.github-approve-deployment", () => {
       });
     });
 
+    it("names the fork a pull request's run comes from, whose branch the fork chose", async () => {
+      // outsider/app opened a pull request from its own branch called `main`.
+      const { kept } = await runChecks("fork-run");
+      expect(kept.get(1)?.["head_repository.full_name"]).toBe("outsider/app");
+      const current = { ...kept.get(1), ...kept.get(2) };
+      expect(definition.preview(parameters, current)[0]).toBe(
+        "Run 7001 of acme/app: commit `4f2c9e1` on `main` of the fork `outsider/app`, started by `outsider`.",
+      );
+    });
+
+    it("doesn't call the request's own repository a fork when only the case differs", () => {
+      const current = {
+        head_sha: seenCommit,
+        head_branch: "main",
+        "head_repository.full_name": "Acme/App",
+      };
+      expect(definition.preview(parameters, current)[0]).toBe(
+        "Run 7001 of acme/app: commit `4f2c9e1` on `main`.",
+      );
+    });
+
+    it("says so when GitHub names no repository for the commit, as for a deleted fork", () => {
+      const current = { head_sha: seenCommit, head_branch: "main" };
+      expect(definition.preview(parameters, current)[0]).toBe(
+        "Run 7001 of acme/app: commit `4f2c9e1` on `main` of a repository GitHub didn't name.",
+      );
+    });
+
+    it("doesn't pair GitHub's environment name with another environment's id", async () => {
+      const mismatched = { ...parameters, environment: "staging" };
+      const { kept } = await runChecks("environment-id-mismatch", mismatched);
+      const preview = definition.preview(mismatched, { ...kept.get(1), ...kept.get(2) });
+      expect(preview.slice(1)).toEqual([
+        "GitHub's environment `staging` has id 41, not 42, the id this request approves.",
+        "Approves run 7001 of acme/app for the environment id 42. This starts the deployment and can't be undone.",
+      ]);
+    });
+
     it("never shows the request's environment name before GitHub has read it", () => {
       const preview = definition.preview({ ...parameters, environment: "staging" }).join(" ");
       expect(preview).not.toContain("staging");
@@ -195,6 +234,8 @@ verifies("action-catalog.github-approve-deployment", () => {
       { environment_id: "42" },
       { environment: "prod/../main" },
       { environment: "two words" },
+      { environment: "." },
+      { environment: ".." },
       { state: "rejected" },
     ])("refuses %o", (change) => {
       expect(parse(definition.parameters, { ...parameters, ...change }).ok).toBe(false);

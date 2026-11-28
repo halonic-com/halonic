@@ -1,0 +1,124 @@
+{
+  "exchanges": [
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/actions/runs/7001"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "actor": {
+              "id": 2001,
+              "login": "outsider",
+              "type": "User"
+            },
+            "conclusion": null,
+            "event": "pull_request",
+            "head_branch": "main",
+            "head_repository": {
+              "full_name": "outsider/app",
+              "id": 5002,
+              "name": "app",
+              "fork": true,
+              "owner": {
+                "id": 2001,
+                "login": "outsider",
+                "type": "User"
+              }
+            },
+            "head_sha": "4f2c9e1b7a3d5c8e0f6a2b4d9c1e7f3a5b8d0c2e",
+            "html_url": "https://github.com/acme/app/actions/runs/7001",
+            "id": 7001,
+            "name": "release",
+            "repository": {
+              "full_name": "acme/app",
+              "id": 5001,
+              "name": "app",
+              "owner": {
+                "id": 1000,
+                "login": "acme",
+                "type": "Organization"
+              }
+            },
+            "run_number": 118,
+            "status": "waiting",
+            "triggering_actor": {
+              "id": 2001,
+              "login": "outsider",
+              "type": "User"
+            }
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    },
+    {
+      "request": {
+        "body": {
+          "kind": "empty"
+        },
+        "headers": {
+          "accept": "application/vnd.github+json",
+          "authorization": "Bearer <scrubbed:secret>",
+          "x-github-api-version": "2022-11-28"
+        },
+        "method": "GET",
+        "url": "https://api.github.com/repos/acme/app/environments/production"
+      },
+      "response": {
+        "body": {
+          "kind": "json",
+          "value": {
+            "can_admins_bypass": false,
+            "created_at": "2026-10-02T08:14:00Z",
+            "deployment_branch_policy": {
+              "custom_branch_policies": false,
+              "protected_branches": true
+            },
+            "html_url": "https://github.com/acme/app/deployments/activity_log?environments_filter=production",
+            "id": 42,
+            "name": "production",
+            "protection_rules": [
+              {
+                "id": 3755,
+                "prevent_self_review": false,
+                "reviewers": [
+                  {
+                    "reviewer": {
+                      "id": 1002,
+                      "login": "acme-lead"
+                    },
+                    "type": "User"
+                  }
+                ],
+                "type": "required_reviewers"
+              }
+            ],
+            "updated_at": "2026-11-20T16:40:12Z",
+            "url": "https://api.github.com/repos/acme/app/environments/production"
+          }
+        },
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "status": 200
+      },
+      "transport": "http"
+    }
+  ],
+  "format": "halonic.recording/1"
+}

@@ -25,10 +25,30 @@
             "conclusion": null,
             "event": "push",
             "head_branch": "main",
+            "head_repository": {
+              "full_name": "acme/app",
+              "id": 5001,
+              "name": "app",
+              "owner": {
+                "id": 1000,
+                "login": "acme",
+                "type": "Organization"
+              }
+            },
             "head_sha": "4f2c9e1b7a3d5c8e0f6a2b4d9c1e7f3a5b8d0c2e",
             "html_url": "https://github.com/acme/app/actions/runs/7001",
             "id": 7001,
             "name": "release",
+            "repository": {
+              "full_name": "acme/app",
+              "id": 5001,
+              "name": "app",
+              "owner": {
+                "id": 1000,
+                "login": "acme",
+                "type": "Organization"
+              }
+            },
             "run_number": 118,
             "status": "waiting",
             "triggering_actor": {
