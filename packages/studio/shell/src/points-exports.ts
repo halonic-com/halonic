@@ -97,3 +97,26 @@ export {
   settingsSectionToOpen,
 } from "./points/settings-sections.ts";
 export { type PlaceOfKind, selectedRailEntry } from "./rail/rail-selection.ts";
+export {
+  createBroadcastSignInChannel,
+  type SignInChannel,
+  signInChannelName,
+} from "./sign-in-needed/sign-in-channel.ts";
+export {
+  focusRefreshIntervalMs,
+  type ShownSignIn,
+  SignInNeeds,
+  type SignInNeedsOptions,
+  type SignInProgress,
+  type SignInPrompt,
+  type SignInWindow,
+} from "./sign-in-needed/sign-in-needs.ts";
+export type {
+  SignInAttempt,
+  SignInContribution,
+  SignInContributions,
+  SignInNeed,
+  SignInOutcome,
+  SignInPoints,
+  SignInReading,
+} from "./sign-in-needed/sign-ins.ts";
