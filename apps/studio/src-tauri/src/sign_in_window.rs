@@ -5,7 +5,8 @@
 //! one the page names. It answers `opened`, or `fallback` when the browser
 //! isn't Chromium, can't be found or didn't start, and then the page opens
 //! the address as every other link. An address that isn't `https`, or plain
-//! `http` to this computer, is refused as `invalid`. Studio's main window is
+//! `http` to this computer, or isn't on exactly the `origin` the page names
+//! for the service it signs in to, is refused as `invalid`. Studio's main window is
 //! granted it (capabilities/desktop-sign-in-window.json).
 
 use halonic_sign_in_window::{Rect, popup_rect, sign_in_url};
@@ -13,13 +14,15 @@ use tauri::{Runtime, WebviewWindow};
 
 const LOG: &str = "sign-in-window";
 
-/// Opens `url` as a sign-in window over the calling window.
+/// Opens `url`, which must be on `origin`, as a sign-in window over the
+/// calling window.
 #[tauri::command]
 pub async fn open_sign_in<R: Runtime>(
     window: WebviewWindow<R>,
     url: String,
+    origin: String,
 ) -> Result<&'static str, &'static str> {
-    let url = sign_in_url(&url).ok_or("invalid")?;
+    let url = sign_in_url(&url, &origin).ok_or("invalid")?;
     let Some((rect, scale_factor)) = sign_in_rect(&window) else {
         return Ok("fallback");
     };
@@ -93,6 +96,8 @@ fn sign_in_rect<R: Runtime>(window: &WebviewWindow<R>) -> Option<(Rect, f64)> {
 mod tests {
     use super::*;
 
+    const PAPERCLIP: &str = "https://paperclip.acme.test";
+
     fn app_window() -> WebviewWindow<tauri::test::MockRuntime> {
         let app = crate::shell(tauri::test::mock_builder())
             .build(tauri::generate_context!())
@@ -108,9 +113,13 @@ mod tests {
             "file:///C:/x.exe",
             "--app=x",
             "",
+            "https://other.acme.test/cli-auth/challenge-1",
         ] {
-            let answer =
-                tauri::async_runtime::block_on(open_sign_in(window.clone(), url.to_owned()));
+            let answer = tauri::async_runtime::block_on(open_sign_in(
+                window.clone(),
+                url.to_owned(),
+                PAPERCLIP.to_owned(),
+            ));
             assert_eq!(answer, Err("invalid"), "{url:?}");
         }
     }
@@ -121,6 +130,7 @@ mod tests {
         let answer = tauri::async_runtime::block_on(open_sign_in(
             app_window(),
             "https://paperclip.acme.test/cli-auth/challenge-1".to_owned(),
+            PAPERCLIP.to_owned(),
         ));
         assert_eq!(answer, Ok("fallback"));
     }

@@ -291,7 +291,7 @@ function SignInBlock({
       // The browser has to open its tab inside the click, so the address is handed over as a
       // promise. It opens only the approved sign-in page (`signInPage`).
       const address = signIns.start(plugin, name).then((answered) => signInPage(answered, facts));
-      await openSignIn(address);
+      await openSignIn(address, `https://${facts.authorizeHost}`);
       const page = await address;
       refocus.current = hasFocus(block.current);
       setWaiting({ from: status, page });
@@ -304,10 +304,10 @@ function SignInBlock({
   }
 
   function openAgain() {
-    if (waiting === undefined) return;
+    if (waiting === undefined || facts === undefined) return;
     // For a page already known the kit's `openSignIn` never rejects: the shell reports its own
     // errors, such as a system browser that didn't start.
-    void openSignIn(waiting.page);
+    void openSignIn(waiting.page, `https://${facts.authorizeHost}`);
   }
 
   async function cancel() {

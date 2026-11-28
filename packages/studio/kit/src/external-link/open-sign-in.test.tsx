@@ -5,20 +5,22 @@ import { render } from "../test/render.tsx";
 import {
   type OpenExternal,
   OpenExternalProvider,
+  type OpenSignIn,
   useOpenExternal,
   useOpenSignIn,
 } from "./open-external.tsx";
 
 const approvalPage = "https://paperclip.acme.test/cli-auth/challenge-1";
+const paperclip = "https://paperclip.acme.test";
 const taskPage = "https://paperclip.acme.test/HAL/issues/HAL-1";
 
 /** Renders a component that opens one page with each hook, and answers what each opener got. */
-function openBoth(provider: { openExternal: OpenExternal; openSignIn?: OpenExternal }) {
+function openBoth(provider: { openExternal: OpenExternal; openSignIn?: OpenSignIn }) {
   function Opener() {
     const openExternal = useOpenExternal();
     const openSignIn = useOpenSignIn();
     void openExternal(taskPage);
-    void openSignIn(approvalPage);
+    void openSignIn(approvalPage, paperclip);
     return null;
   }
   render(
@@ -29,12 +31,11 @@ function openBoth(provider: { openExternal: OpenExternal; openSignIn?: OpenExter
 }
 
 verifies("kit.open-sign-in", () => {
-  it("opens a sign-in page with the shell's openSignIn and any other page with openExternal", () => {
+  it("opens a sign-in page with the shell's openSignIn, with its origin, and any other page with openExternal", () => {
     const openExternal = vi.fn<OpenExternal>(async () => {});
-    const openSignIn = vi.fn<OpenExternal>(async () => {});
+    const openSignIn = vi.fn<OpenSignIn>(async () => {});
     openBoth({ openExternal, openSignIn });
-    expect(openSignIn).toHaveBeenCalledWith(approvalPage);
-    expect(openSignIn).not.toHaveBeenCalledWith(taskPage);
+    expect(openSignIn).toHaveBeenCalledExactlyOnceWith(approvalPage, paperclip);
     expect(openExternal).toHaveBeenCalledWith(taskPage);
     expect(openExternal).not.toHaveBeenCalledWith(approvalPage);
   });

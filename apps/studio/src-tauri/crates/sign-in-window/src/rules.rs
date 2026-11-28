@@ -76,9 +76,22 @@ fn is_drive_path(text: &str) -> bool {
 }
 
 /// The address a sign-in may open: an absolute `https` address, or plain
-/// `http` to this computer, with no user name or password in it. Anything
-/// else is `None`.
-pub fn sign_in_url(text: &str) -> Option<Url> {
+/// `http` to this computer, with no user name or password in it, on exactly
+/// the scheme, host and port of `allowed_origin`, the origin of the service
+/// the caller signs in to (HAL-20663). The origin must be such an address
+/// too. Anything else is `None`.
+pub fn sign_in_url(text: &str, allowed_origin: &str) -> Option<Url> {
+    let url = openable(text)?;
+    let allowed = openable(allowed_origin)?;
+    let same_origin = url.scheme() == allowed.scheme()
+        && url.host() == allowed.host()
+        && url.port_or_known_default() == allowed.port_or_known_default();
+    same_origin.then_some(url)
+}
+
+/// `text` as an absolute `https` address, or plain `http` to this computer,
+/// with no user name or password in it.
+fn openable(text: &str) -> Option<Url> {
     let url = Url::parse(text).ok()?;
     if !url.username().is_empty() || url.password().is_some() {
         return None;

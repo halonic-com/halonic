@@ -1,14 +1,22 @@
-# Decision: the sign-in window's size and place follow the display's scaling
+# Decision: the sign-in window opens only the named service's pages, at the size meant on scaled displays
 
-- Approval: Paperclip task HAL-20663 (Liam's follow-up of 28 Nov to #6814); Liam approves this note in review
+- Approval: Paperclip task HAL-20663, with Liam's choice of option A on HAL-20893; Liam approves this note in review
 - Kind: user-visible
 
-On a display scaled above 100 % the sign-in window started half again as big as meant and away from Halonic: the shell put physical pixels on the browser's command line, and Chromium reads `--window-size` and `--window-position` as device-independent pixels.
+Two follow-ups to the sign-in window of #6814.
 
-- The requirement now says the command line holds device-independent pixels, the physical ones divided by the monitor's scale factor, and gains an example at 150 %.
-- The size, the centring and the move of a window that shows elsewhere don't change: those stay in physical pixels.
-- The existing command-line test passes a scale of 1, so what it checks is unchanged.
+**The origin.** `open_sign_in` accepted a page on any `https` host. Now every feature that opens a sign-in page names the origin of the service it signs in to, and the shell opens the page only when its scheme, host and port are exactly that origin's. That catches a feature that hands over the wrong page, at little cost. The shell doesn't keep its own list of hosts, because that would duplicate state the features already hold.
+
+- `kit.open-sign-in`: `useOpenSignIn()` takes the origin. Without the shell's opener, the page opens as before and the origin is ignored.
+- `studio.desktop-sign-in-window`: the app passes the origin to `open_sign_in`. A refusal still opens the page in the default browser, as before.
+- `studio.src-tauri.crates.sign-in-window.sign-in-window`: an origin mismatch, or an origin that isn't an `https` address (or plain `http` to this computer), is refused as `invalid`.
+
+**Scaled displays.** On a display scaled above 100 % the window started half again as big as meant and away from Halonic. The shell gave the browser physical pixels, but Chromium reads `--window-size` and `--window-position` as device-independent pixels. The requirement now says the command line holds device-independent pixels, and it gains an example at 150 %. The size, the centring and the move of a window that shows elsewhere stay in physical pixels.
+
+Existing tests keep what they check: the address-only tests pass each address as its own origin, and the command-line test passes a scale of 1.
 
 ## Covers
 
+- kit.open-sign-in
+- studio.desktop-sign-in-window
 - studio.src-tauri.crates.sign-in-window.sign-in-window

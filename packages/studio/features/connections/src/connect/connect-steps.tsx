@@ -66,11 +66,14 @@ export function Countdown({ leftMs }: { readonly leftMs: number }) {
 export function WaitingStep({
   title,
   challenge,
+  origin,
   leftMs,
   onCancel,
 }: {
   readonly title: string;
   readonly challenge: SignInChallenge;
+  /** The origin of the connection's address, which the approval page is on (`kit.open-sign-in`). */
+  readonly origin: string;
   readonly leftMs: number;
   readonly onCancel: () => void;
 }) {
@@ -81,7 +84,7 @@ export function WaitingStep({
       title={title}
       closeLabel={`Close ${title}`}
       confirm={{ label: words.OPEN_APPROVAL, busyLabel: words.OPEN_APPROVAL }}
-      onConfirm={() => void openSignIn(challenge.approvalUrl)}
+      onConfirm={() => void openSignIn(challenge.approvalUrl, origin)}
       onCancel={onCancel}
     >
       <div className="flex flex-col gap-4">

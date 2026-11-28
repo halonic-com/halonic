@@ -18,8 +18,11 @@ import type { ServiceSignInView, StepOutcome, StepperView, StepView } from "../s
 /** What a stepper needs to run a sign-in: Studio's `ServiceSignIn` and the shell's way to open a page. */
 export interface StepperSignIn {
   readonly signIn: ServiceSignIn;
-  /** Opens the approval page in the browser; `ServiceSignIn` checked it is on the connection's address. */
-  readonly openPage: (url: string) => Promise<void>;
+  /**
+   * Opens the approval page in the browser, with the origin of the connection's address
+   * (`kit.open-sign-in`); `ServiceSignIn` checked the page is on it.
+   */
+  readonly openPage: (url: string, origin: string) => Promise<void>;
 }
 
 /** Paperclip's challenge lifetime: no countdown runs longer, whatever the host says (condition 4). */
@@ -170,7 +173,7 @@ export class SignInRun {
   async #approve(): Promise<readonly SignInPhase[]> {
     const live = await this.#waiting("approve");
     if (live === undefined) return [];
-    await this.#service.openPage(live.approvalUrl);
+    await this.#service.openPage(live.approvalUrl, `https://${this.#ref.host}`);
     this.#done.add("approve");
     return [];
   }
