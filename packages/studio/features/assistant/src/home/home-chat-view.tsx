@@ -20,8 +20,9 @@ export interface HomeChatViewProps {
 
 /**
  * A chat in Home's content pane (`assistant.home.chats`, `assistant.home.chat-look`): the new
- * design's chat header with its title, ⋮ with Rename and Delete chat…, and the chat, without the tab's Continue in the side panel or its items panel. Home holds
- * the chat; when the chat goes anywhere else, `onLeave` tells Home.
+ * design's chat header with its title, ⋮ with Rename and Delete chat…, and the chat, without the
+ * tab's Continue in the side panel or its items panel. Home holds the chat; when the chat goes
+ * anywhere else, `onLeave` tells Home.
  */
 export function HomeChatView({ chatId, context, onLeave }: HomeChatViewProps) {
   const host = context.services.get(AssistantHostService);

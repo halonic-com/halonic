@@ -63,7 +63,11 @@ verifies("assistant.home.chat-look", () => {
     await act(async () => rename?.click());
     expect(pane.querySelector("h2")).toBeNull();
     expect(pane.querySelector("button[aria-label='More actions for Triage']")).toBeNull();
-    expect(pane.querySelector(".h-16 input")).not.toBeNull();
+    const row = pane.querySelector(".h-16");
+    expect(row?.querySelector("input")).not.toBeNull();
+    expect(row?.className.split(" ")).toContain("shadow-header");
+    // No mark and no ⋮ in the row: the field replaces the whole header.
+    expect(row?.querySelector("svg")).toBeNull();
   });
 
   it("shows a new chat with the mark and its title, and no ⋮ until its first message", async () => {
