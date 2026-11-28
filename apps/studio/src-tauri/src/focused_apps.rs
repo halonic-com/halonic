@@ -169,10 +169,11 @@ pub fn show<R: Runtime>(handle: &AppHandle<R>, app: Option<FocusedApp>) -> tauri
 /// Halonic runs once (HAL-17903): a second start, such as the Start menu's
 /// Halonic Inbox, hands its arguments to the running Halonic and quits.
 /// Registered first, so the second start sets nothing else up. Not in
-/// `shell`, so the tests' apps don't claim the one instance.
+/// `shell`, so the tests' apps don't claim the one instance. The start runs
+/// from the event loop, after setup (`starts_after_setup.rs`).
 pub fn single_instance<R: Runtime>(builder: Builder<R>) -> Builder<R> {
     builder.plugin(tauri_plugin_single_instance::init(
-        |app, arguments, _folder| started_again(app, &arguments),
+        |app, arguments, _folder| crate::starts_after_setup::started_again(app, arguments),
     ))
 }
 

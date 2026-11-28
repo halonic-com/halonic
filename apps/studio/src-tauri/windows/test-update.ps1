@@ -14,7 +14,9 @@
 #   5. The 0.1.2 installer run by hand (`/S`) installs over 0.1.1.
 # The fresh install, the update in 1 and the install in 5 each leave exactly
 # Halonic, Halonic Inbox and Halonic Messenger in the Start menu; before 1
-# and 5 it gets an older version's shortcuts (HAL-18322).
+# and 5 it gets an older version's shortcuts (HAL-18322). In 1 the Inbox is
+# open before "Restart to update", so 0.1.1 reopens it while it starts: in
+# its frame, Halonic Inbox.exe, when the install has one (HAL-21117).
 # The updater is driven through the Studio page's own update_* commands
 # (update-driver.mjs), so the test takes the path a person takes.
 param(
@@ -90,7 +92,7 @@ function Start-Halonic {
 }
 
 function Stop-Halonic {
-  Get-Process Halonic, halonic-agent-host -ErrorAction SilentlyContinue | Stop-Process -Force
+  Get-Process Halonic, 'Halonic Inbox', 'Halonic Messenger', halonic-agent-host -ErrorAction SilentlyContinue | Stop-Process -Force
   Start-Sleep -Seconds 2
 }
 
@@ -218,6 +220,12 @@ try {
   Set-Manifest '0.1.1' $newName (Get-Signature (Join-Path $Serve $newName) '0.1.1' $Key)
   Start-Halonic
   Invoke-Driver wait ready 300
+  # The Inbox, through its frame where the installer made one, or else as
+  # an older shortcut starts it. Recorded open, so 0.1.1 reopens it at start.
+  $inboxFrame = Join-Path $dir 'Halonic Inbox.exe'
+  if (Test-Path $inboxFrame) { Start-Process $inboxFrame | Out-Null } else { Start-Process (Join-Path $dir 'Halonic.exe') -ArgumentList '--app', 'inbox' | Out-Null }
+  $openWindows = Join-Path $profileFolder 'studio\open-windows.json'
+  Wait-Until { (Get-Content $openWindows -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json).windows.label -contains 'inbox' } 60 'the Inbox opening and being recorded open'
   Invoke-Driver call update_restart
   $reopenFrom = Get-Date
   $reopened = $false
