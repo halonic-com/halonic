@@ -1,6 +1,6 @@
 import type { ChatMessage, SavedChatDocs } from "@halonicjs/ports";
 import { KindedError } from "@halonicjs/std";
-import { WorkspaceUntrusted } from "@halonicjs/studio-shell";
+import { type WorkspaceContext, WorkspaceUntrusted } from "@halonicjs/studio-shell";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type {
@@ -270,4 +270,24 @@ export function openDialogsInJsdom(): void {
       this.removeAttribute("open");
     },
   });
+}
+
+/** One question from the person, the start of a kept Build chat. */
+export const triageQuestion = [{ role: "user", content: "Make a triage agent" }] as const;
+
+/**
+ * A workspace context whose services give the fake host, as Home's pane gets it. `spy` makes its
+ * announcer and item openers, `vi.fn` in a test (this file can't import the test runner).
+ */
+export function hostContextOf(
+  fake: ReturnType<typeof fakeHost>,
+  spy: () => (...args: never[]) => unknown,
+): WorkspaceContext {
+  const services = { get: () => fake.host, find: () => fake.host };
+  return {
+    services,
+    announcer: { announce: spy() },
+    openItem: spy(),
+    openItemInNewTab: spy(),
+  } as unknown as WorkspaceContext;
 }

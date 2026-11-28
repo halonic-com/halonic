@@ -13,22 +13,17 @@ import { AiChatsService, AssistantHostService } from "../api.ts";
 import { buildChatsOf } from "../chat/build-chats.ts";
 import { chatTabItem } from "../chat/chat-tab-item.ts";
 import { assistantFeature } from "../feature.ts";
-import { chatOf, fakeHost, show, unmount } from "../test-support.tsx";
+import {
+  chatOf,
+  fakeHost,
+  hostContextOf,
+  show,
+  triageQuestion,
+  unmount,
+} from "../test-support.tsx";
 import { aiChats } from "./ai-chats.tsx";
 
 afterEach(unmount);
-
-const asked = [{ role: "user", content: "Make a triage agent" }] as const;
-
-function contextOf(fake: ReturnType<typeof fakeHost>): WorkspaceContext {
-  const services = { get: () => fake.host, find: () => fake.host };
-  return {
-    services,
-    announcer: { announce: vi.fn() },
-    openItem: vi.fn(),
-    openItemInNewTab: vi.fn(),
-  } as unknown as WorkspaceContext;
-}
 
 /**
  * A stand-in for the Home feature: like the real one, it lists `AiChatsService` but not the
@@ -53,24 +48,27 @@ function homeContext(fake: ReturnType<typeof fakeHost>): WorkspaceContext {
 }
 
 function triageHost() {
-  return fakeHost([chatOf("triage", asked, "Triage"), chatOf("digest", asked, "Digest")]);
+  return fakeHost([
+    chatOf("triage", triageQuestion, "Triage"),
+    chatOf("digest", triageQuestion, "Digest"),
+  ]);
 }
 
 verifies("assistant.home.chats", () => {
   it("lists the Build chats with a message, newest message first, and no agent chat", async () => {
     const fake = fakeHost([
-      { ...chatOf("older", asked, "Triage"), lastUsedAt: "2026-11-20T09:00:00.000Z" },
-      { ...chatOf("agent", asked, "Ask Ada"), kind: "agent:acme/ada" },
-      { ...chatOf("newer", asked, "Digest"), lastUsedAt: "2026-11-26T09:00:00.000Z" },
+      { ...chatOf("older", triageQuestion, "Triage"), lastUsedAt: "2026-11-20T09:00:00.000Z" },
+      { ...chatOf("agent", triageQuestion, "Ask Ada"), kind: "agent:acme/ada" },
+      { ...chatOf("newer", triageQuestion, "Digest"), lastUsedAt: "2026-11-26T09:00:00.000Z" },
       chatOf("draft"),
     ]);
-    const chats = await aiChats.list(contextOf(fake));
+    const chats = await aiChats.list(hostContextOf(fake, vi.fn));
     expect(chats.map((chat) => chat.title)).toEqual(["Digest", "Triage"]);
   });
 
   it("starts a new chat and only resolves to its id, leaving where it shows to Home", async () => {
     const fake = fakeHost();
-    const chatId = await aiChats.newChat(contextOf(fake));
+    const chatId = await aiChats.newChat(hostContextOf(fake, vi.fn));
     const chats = buildChatsOf(fake.host);
     expect(fake.kept().map((chat) => chat.id)).toContain(chatId);
     expect(chats.inTab(chatId)).toBe(false);
@@ -81,7 +79,7 @@ verifies("assistant.home.chats", () => {
     const fake = triageHost();
     const chats = buildChatsOf(fake.host);
     await chats.pick("triage");
-    aiChats.open("triage", contextOf(fake));
+    aiChats.open("triage", hostContextOf(fake, vi.fn));
     expect(chats.shown().kind).toBe("none");
     await chats.open();
     const shown = chats.shown();
@@ -91,7 +89,7 @@ verifies("assistant.home.chats", () => {
   it("gives the chat back as an ordinary panel chat once Home lets go", async () => {
     const fake = triageHost();
     const chats = buildChatsOf(fake.host);
-    const release = aiChats.open("triage", contextOf(fake));
+    const release = aiChats.open("triage", hostContextOf(fake, vi.fn));
     release();
     expect(chats.home.held()).toBeUndefined();
     await chats.pick("triage");
@@ -102,7 +100,7 @@ verifies("assistant.home.chats", () => {
   it("tells Home when its chat is shown in the panel, opened as a tab or deleted", async () => {
     for (const elsewhere of ["panel", "tab", "deleted"] as const) {
       const fake = triageHost();
-      const context = contextOf(fake);
+      const context = hostContextOf(fake, vi.fn);
       const chats = buildChatsOf(fake.host);
       const onLeave = vi.fn();
       aiChats.open("triage", context);
@@ -119,7 +117,7 @@ verifies("assistant.home.chats", () => {
 
   it("draws the chat with its title and box, without Continue in the side panel", async () => {
     const fake = triageHost();
-    const context = contextOf(fake);
+    const context = hostContextOf(fake, vi.fn);
     aiChats.open("triage", context);
     const pane = await show(aiChats.render("triage", context, () => {}));
     expect(pane.querySelector("h2")?.textContent).toBe("Triage");
@@ -129,7 +127,7 @@ verifies("assistant.home.chats", () => {
 
   it("opens the chat as its tab next to the active one", () => {
     const fake = triageHost();
-    const context = contextOf(fake);
+    const context = hostContextOf(fake, vi.fn);
     aiChats.openInTab("triage", context);
     expect(buildChatsOf(fake.host).inTab("triage")).toBe(true);
     expect(context.openItemInNewTab).toHaveBeenCalledWith(chatTabItem("triage"));
@@ -138,7 +136,7 @@ verifies("assistant.home.chats", () => {
   it("tells the listener when the list changes, not when the engine does, until it stops", async () => {
     const fake = fakeHost();
     const listener = vi.fn();
-    const stop = aiChats.subscribe(contextOf(fake), listener);
+    const stop = aiChats.subscribe(hostContextOf(fake, vi.fn), listener);
     await fake.setEngineAnswering(false);
     expect(listener).not.toHaveBeenCalled();
     await fake.host.newChat("build");
