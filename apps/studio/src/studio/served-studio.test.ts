@@ -80,7 +80,7 @@ afterEach(async () => {
 });
 
 /** The rail's Inbox, which opens the Inbox page, once the window has drawn it. */
-const railInbox = 'nav[aria-label="Places"] li button[aria-label^="Inbox"]';
+const railInbox = 'nav[aria-label="Apps"] li button[aria-label^="Inbox"]';
 
 /** The rail's Inbox button, once the window has drawn it. */
 function inboxLink(): Promise<HTMLElement> {

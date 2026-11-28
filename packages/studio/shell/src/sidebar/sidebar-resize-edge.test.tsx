@@ -65,7 +65,7 @@ verifies("shell.sidebar-resize", () => {
     expect(edge.getAttribute("aria-orientation")).toBe("vertical");
     expect(edge.getAttribute("aria-controls")).toBe("places");
     expect(edge.getAttribute("aria-valuemin")).toBe("180");
-    expect(edge.getAttribute("aria-valuemax")).toBe("640");
+    expect(edge.getAttribute("aria-valuemax")).toBe("380");
     expect(edge.getAttribute("aria-valuenow")).toBe("264");
     expect(edge.getAttribute("aria-valuetext")).toBe("264 pixels");
   });
@@ -81,23 +81,23 @@ verifies("shell.sidebar-resize", () => {
     expect(saved).toEqual([280, 264, 248]);
   });
 
-  it("goes to 180px with Home, 640px with End, and back to 264px with Enter", () => {
-    const { edge, saved } = renderEdge(400);
+  it("goes to 180px with Home, 380px with End, and back to 264px with Enter", () => {
+    const { edge, saved } = renderEdge(300);
 
     press(edge, "Home");
     expect(edge.getAttribute("aria-valuenow")).toBe("180");
     press(edge, "End");
-    expect(edge.getAttribute("aria-valuenow")).toBe("640");
+    expect(edge.getAttribute("aria-valuenow")).toBe("380");
     press(edge, "Enter");
     expect(edge.getAttribute("aria-valuenow")).toBe("264");
-    expect(saved).toEqual([180, 640, 264]);
+    expect(saved).toEqual([180, 380, 264]);
   });
 
-  it("stops at 180px and 640px, with no wrap", () => {
+  it("stops at 180px and 380px, with no wrap", () => {
     expect(sidebarWidthForKey("ArrowLeft", 188)).toBe(180);
     expect(sidebarWidthForKey("ArrowLeft", 180)).toBe(180);
-    expect(sidebarWidthForKey("ArrowRight", 632)).toBe(640);
-    expect(sidebarWidthForKey("ArrowRight", 640)).toBe(640);
+    expect(sidebarWidthForKey("ArrowRight", 372)).toBe(380);
+    expect(sidebarWidthForKey("ArrowRight", 380)).toBe(380);
   });
 
   it("leaves other keys alone and saves nothing for them", () => {
@@ -142,7 +142,7 @@ verifies("shell.sidebar-resize", () => {
     expect(saved).toEqual([]);
   });
 
-  it("follows a drag, kept within 180 to 640px, and saves when the pointer is released", () => {
+  it("follows a drag, kept within 180 to 380px, and saves when the pointer is released", () => {
     const { edge, saved } = renderEdge();
 
     pointer(edge, "pointerdown", 264);
@@ -150,11 +150,11 @@ verifies("shell.sidebar-resize", () => {
     expect(edge.getAttribute("aria-valuenow")).toBe("300");
     expect(edge.hasAttribute("data-dragging")).toBe(true);
     pointer(edge, "pointermove", 900);
-    expect(edge.getAttribute("aria-valuenow")).toBe("640");
+    expect(edge.getAttribute("aria-valuenow")).toBe("380");
     expect(saved).toEqual([]);
 
     pointer(edge, "pointerup", 900);
-    expect(saved).toEqual([640]);
+    expect(saved).toEqual([380]);
     expect(edge.hasAttribute("data-dragging")).toBe(false);
   });
 

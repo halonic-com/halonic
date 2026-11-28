@@ -298,9 +298,7 @@ verifies("shell.studio-window", () => {
 
   describe("when Settings closes", () => {
     const railSettings = (container: HTMLElement) =>
-      container.querySelector<HTMLButtonElement>(
-        'nav[aria-label="Places"] [aria-label="Settings"]',
-      );
+      container.querySelector<HTMLButtonElement>('nav[aria-label="Apps"] [aria-label="Settings"]');
     const pressEscape = (container: HTMLElement) =>
       act(() => {
         container

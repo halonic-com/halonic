@@ -13,7 +13,7 @@ const widths = [
 ];
 
 function railSettings(page: Page) {
-  return page.getByRole("navigation", { name: "Places" }).getByRole("button", { name: "Settings" });
+  return page.getByRole("navigation", { name: "Apps" }).getByRole("button", { name: "Settings" });
 }
 
 async function openSettings(page: Page) {

@@ -183,9 +183,8 @@ function StudioWindowBody(props: StudioWindowProps) {
   // A page opened from a dialog that closes as it opens it, such as Ctrl K's palette or a Settings
   // section: the dialog's focus return mustn't win over the `h1`.
   const focusPageOpenedFromDialog = usePageHeadingFocusAfterDialog();
-  // Settings closes as one of its sections opens a page. Its focus return, to its opener or to
-  // Places when the opener is hidden, must come before the page's `h1` takes it, at every width
-  // (C383 SP1).
+  // Settings closes as one of its sections opens a page. Its focus return to the rail's Settings
+  // must come before the page's `h1` takes it, at every width (C383 SP1).
   const focusOpenedPage = () =>
     settings.opening === undefined ? focusNewPage() : focusPageOpenedFromDialog();
   const { openPlaceHere, openHere, openItemInNewTab } = useWindowOpeners({

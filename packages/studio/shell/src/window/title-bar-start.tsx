@@ -1,6 +1,6 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useCallback, useState, useSyncExternalStore } from "react";
 import { useNarrowWindow } from "../frame/frame-effects.ts";
-import { SIDEBAR_DEFAULT_WIDTH } from "../sidebar/sidebar-width.ts";
+import { columnWidthFor } from "../sidebar/sidebar-width.ts";
 
 /**
  * How far the title bar's start reaches past the sidebar's width, so the window tabs after it
@@ -33,8 +33,28 @@ export function TitleBarStart({ sidebarWidth, children }: TitleBarStartProps) {
   );
 }
 
-/** The sidebar's width as the window keeps it: for the title bar's start and the sidebar itself. */
+/**
+ * The list column's width as the window keeps it, for the title bar's start and the column itself
+ * (`shell.sidebar-resize`): 34% of the window, at most 380px, following the window as it resizes,
+ * until the person sets a width with the edge. Enter or a double-click on the edge give the
+ * window's width back, so the column follows the window again.
+ */
 export function useSidebarWidth() {
-  const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
-  return { width, sidebar: { width, onWidthChange: setWidth } };
+  const following = columnWidthFor(useWindowWidth());
+  const [chosen, setChosen] = useState<number | undefined>(undefined);
+  const onWidthChange = useCallback(
+    (width: number) => setChosen(width === following ? undefined : width),
+    [following],
+  );
+  const width = chosen ?? following;
+  return { width, sidebar: { width, onWidthChange, resetWidth: following } };
+}
+
+function subscribeToResize(listener: () => void): () => void {
+  window.addEventListener("resize", listener);
+  return () => window.removeEventListener("resize", listener);
+}
+
+function useWindowWidth(): number {
+  return useSyncExternalStore(subscribeToResize, () => window.innerWidth);
 }
