@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20676 (the follow-ups Julian and Liam agreed in their reviews of #6873, to land before the rail subscribes to the facts). Liam approves the change in review on HAL-20676.
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:iUQtyhQcgOfilxgmK+SObn3bWA3Ye/5snBza5Irk9Eumt4dXSBYOdcIV/mVVwWIaW54oKplw7aeTIl8chMEtAA==
 
 ## What changes
 
