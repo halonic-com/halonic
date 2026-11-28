@@ -1,8 +1,7 @@
 import { parse } from "@halonicjs/schema-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { addressesOffOrigin, guidedAddresses } from "../guided-test-support.ts";
-import { acceptedValueNames } from "../value-fields.test-helper.ts";
+import { acceptedValueNames, addressesOffOrigin, guidedAddresses } from "../guided-test-support.ts";
 import { definition } from "./add-project-repository.ts";
 
 const parameters = {

@@ -157,7 +157,7 @@ export const catalogEntries = {
   },
   "paperclip/add-project-repository": {
     definition: paperclipAddProjectRepository,
-    sourceHash: "af82f33be855aad09ebd9dcefeec5f7b6953adf3677b2a9abb3cc51d0ce047ba",
+    sourceHash: "a085d2955d27d473edc6cb2bdf0fefe5bf54681b08a708f72d91c02b83c49d30",
   },
   "paperclip/bind-secret": {
     definition: paperclipBindSecret,
