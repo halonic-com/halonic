@@ -2,7 +2,6 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20676 (P3 of the HAL-20617 build plan, approved by Liam on the task: "the list column is about 34% of the window, at most 380 px"; Liam's review of #6908 asked for one of the two `nav`s named "Places" to be renamed). Liam approves the change in review on HAL-20676.
 - Kind: user-visible
-- Signature:
 
 ## What changes
 
