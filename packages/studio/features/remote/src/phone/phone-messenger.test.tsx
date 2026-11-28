@@ -222,6 +222,13 @@ verifies("remote.phone-messenger", () => {
       expect(document.activeElement).toBe(title);
     });
 
+    it("draws no ring on the focused title under a coarse pointer (HAL-21236)", async () => {
+      await openChannel();
+      const classes = document.querySelector("h2")?.className.split(" ") ?? [];
+      expect(classes).toContain("touch:focus-visible:shadow-none");
+      expect(classes).toContain("focus-visible:shadow-[0_0_0_2px_var(--color-accent)]");
+    });
+
     it("leaves the focus alone on the list's first draw", async () => {
       const { scene } = renderMessenger();
       answer(scene, "conversations", [channel, direct]);
