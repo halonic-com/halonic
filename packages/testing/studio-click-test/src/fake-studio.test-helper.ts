@@ -181,3 +181,18 @@ export function drawRow(
   studio.heights.set(parts.row, rowHeight);
   studio.heights.set(parts.picture, pictureHeight);
 }
+
+/**
+ * Draws an Inbox row's title, meta line and avatar badge at `parts` with the heights given, the
+ * kit's by default: one 20px title line, one 20px meta line and a 20px badge.
+ */
+export function drawRowFit(
+  studio: FakeStudio,
+  parts: { readonly title: string; readonly meta: string; readonly badge: string },
+  heights: { readonly title?: string; readonly meta?: string; readonly badge?: string } = {},
+): void {
+  for (const part of ["title", "meta", "badge"] as const) {
+    studio.elements.set(parts[part], 1);
+    studio.heights.set(parts[part], heights[part] ?? "20px");
+  }
+}
