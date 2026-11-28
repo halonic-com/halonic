@@ -18,7 +18,8 @@ export interface ContentHeaderProps {
 /**
  * The header over an open item in a two-pane app, the Messenger's chat and the Inbox's item alike
  * (HAL-19192, `kit.content-header`): a 40px picture, the title as a level-2 heading over one muted
- * line, and the item's actions at the end, 16px apart, over a soft shadow.
+ * line, and the item's actions at the end, 16px apart (12px on a phone), over a soft shadow with a
+ * line in dark.
  *
  * @example
  * <ContentHeader
@@ -30,11 +31,13 @@ export interface ContentHeaderProps {
  */
 export function ContentHeader({ picture, title, line, actions }: ContentHeaderProps) {
   return (
-    // 64px tall with a soft shadow instead of a line, the new design's chat header (HAL-20728).
-    <header className="relative z-(--layer-sticky) flex h-16 shrink-0 items-center gap-4 bg-surface px-4 shadow-header">
+    // 64px tall over a soft shadow, the new design's chat header (HAL-20728), with a line in dark,
+    // where the shadow doesn't show (HAL-20776).
+    <header className="relative z-(--layer-sticky) flex h-16 shrink-0 items-center gap-4 phone:gap-3 bg-surface px-4 shadow-header">
       {picture}
-      {/* 16px apart like the actions, less 1px: the recipe's 15px from picture to name. */}
-      <div className="-ml-px flex min-w-0 flex-1 flex-col">
+      {/* 16px apart like the actions, less 1px: the recipe's 15px from picture to name. On a phone
+          12px, so a one-pane header's title keeps the room it had (HAL-20776). */}
+      <div className="-ml-px phone:ml-0 flex min-w-0 flex-1 flex-col">
         <h2 className="truncate text-chat-title">
           <bdi>{title}</bdi>
         </h2>

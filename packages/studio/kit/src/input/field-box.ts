@@ -124,8 +124,8 @@ export function fieldBoxClasses(
  */
 export type FieldLook = "field" | "prompt";
 
-// Its edge is see-through, so under More contrast it takes the 3:1 edge every other edge has.
-const composerEdge = "border-transparent contrast-more:border-border-control";
+// Its edge is see-through in light and faint in dark, so under More contrast it takes the 3:1 edge every other edge has.
+const composerEdge = "border-border-composer contrast-more:border-border-control";
 
 const promptStateClasses: Record<FieldBoxState, string> = {
   default: "border-border-prompt bg-surface-prompt shadow-prompt focus-prompt",
@@ -149,12 +149,13 @@ const composerStateClasses: Record<FieldBoxState, string> = {
   default: `${composerEdge} bg-surface-raised shadow-composer focus-prompt`,
   invalid: "border-danger bg-surface-raised shadow-composer focus-field-danger",
   "read-only": `${composerEdge} bg-surface-subtle shadow-composer focus-prompt`,
-  disabled: "cursor-not-allowed border-transparent bg-surface-subtle text-fg-disabled",
+  disabled: "cursor-not-allowed border-border-composer bg-surface-subtle text-fg-disabled",
 };
 
 /**
  * The chat composer's box for a state: a prompt box with 26px corners at least 52px tall, on the
- * raised surface, its 1px edge see-through until focus or an error (`kit.prompt-look`).
+ * raised surface, its 1px edge see-through in light and the divider's in dark until focus or an
+ * error (`kit.prompt-look`).
  */
 export function composerBoxClasses(state: FieldBoxState, align: FieldBoxAlign = "center"): string {
   const box = "flex w-full gap-2 min-h-composer rounded-composer border transition";

@@ -4,6 +4,7 @@ import { seedNames } from "../test-paperclip.ts";
 import { keys } from "../webdriver.ts";
 import { words } from "../words.ts";
 import { openAppWindow } from "./app-window.ts";
+import { chatHeaderLook, composerLook } from "./conversation-look.ts";
 import { onWorkspace } from "./open-demo.ts";
 import { sidebarRowSize } from "./plain-row-size.ts";
 
@@ -16,10 +17,16 @@ const drawnPicture = "//*[@data-picture='drawn']";
 /** The seeded agent's row in the chat list, a kit `PlainRow`. */
 export const agentChatRow = `//li[@data-row-id][contains(normalize-space(), '${seedNames.agent}')]`;
 
+/** The open chat's header, a kit `ContentHeader`. */
+export const agentChatHeader = `//header[.//h2[contains(normalize-space(), '${seedNames.agent}')]]`;
+
+/** The open chat's message box. */
+export const agentComposer = `//textarea[@aria-label='${words.messengerComposer(seedNames.agent)}']`;
+
 /** Where step 9 looks for the seeded agent's picture: its chat row and the open chat's header. */
 export const agentPictureIn = {
   "chat row": `${agentChatRow}${drawnPicture}`,
-  header: `//header[.//h2[contains(normalize-space(), '${seedNames.agent}')]]${drawnPicture}`,
+  header: `${agentChatHeader}${drawnPicture}`,
 } as const;
 
 /** The open chat's row, filled `surface-muted`, and its picture's tile on that fill. */
@@ -37,7 +44,8 @@ const pictureWaitMs = 10_000;
  * chat's row and its header show Acme Clicky's picture, which Paperclip gives
  * every agent, not its initials (HAL-19151). On the open chat's filled row,
  * the picture's tile keeps a fill of its own, so its circle shows (HAL-19751). The row is exactly
- * 72px high and its picture 48px (HAL-20558, HAL-20675).
+ * 72px high and its picture 48px (HAL-20558, HAL-20675). The chat's header and message box
+ * have the new design's sizes (HAL-20763).
  */
 export const messengerSend: Step = {
   id: "messenger-send",
@@ -50,6 +58,8 @@ export const messengerSend: Step = {
     "kit.avatar-picture",
     "kit.avatar-on-row-fill",
     "kit.plain-row-size",
+    "kit.content-header",
+    "kit.prompt-look",
   ],
   needs: ["connect-paperclip"],
   run: async (context) => {
@@ -73,6 +83,10 @@ export const messengerSend: Step = {
     await clickRow(context, seedNames.agent, 10_000);
     const sent = await sendProbe(context);
     if (!sent.passed) return sent;
+    const header = await chatHeaderLook(context, agentChatHeader);
+    if (!header.passed) return header;
+    const composer = await composerLook(context, agentComposer);
+    if (!composer.passed) return composer;
     const headerPicture = await pictureShows(context, agentPictureIn.header);
     const missing = [rowPicture ? [] : ["chat row"], headerPicture ? [] : ["header"]].flat();
     if (missing.length > 0) {
@@ -107,7 +121,7 @@ async function tileOnOpenRow(context: StepContext): Promise<StepOutcome> {
 
 /** Types the probe in the open chat, sends it, and waits for it as a comment on Paperclip. */
 async function sendProbe(context: StepContext): Promise<StepOutcome> {
-  const box = `//textarea[@aria-label='${words.messengerComposer(seedNames.agent)}']`;
+  const box = agentComposer;
   const typed = await context.driver.type(box, messengerProbe).then(
     () => true,
     () => false,

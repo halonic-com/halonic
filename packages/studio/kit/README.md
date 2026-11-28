@@ -100,9 +100,9 @@ The same minimum holds for every script the Studio page loads, not only for CSS.
 
 The desktop start screen and Welcome on a computer put one `aria-hidden` element with
 `bg-halo-spot` behind their heading and box: the halo tints, fading out from the middle, so text on
-it keeps 4.5:1. `shadow-halo-glow` is the app's one glow. Put it on a `rounded-lg` wrapper round
-the composer, never on the box itself, whose focus look is a box shadow too. It's a utility, not a
-`--shadow-*` token, so it can't turn up elsewhere. The halo comes from `--halo-blue` and
+it keeps 4.5:1. `shadow-halo-glow` is the app's one glow. Put it on a `rounded-composer` wrapper
+round the composer, with the box's 26px corners, never on the box itself, whose focus look is a box
+shadow too. It's a utility, not a `--shadow-*` token, so it can't turn up elsewhere. The halo comes from `--halo-blue` and
 `--halo-violet`; the tints are `color-mix()` of those two, so all six halo utilities follow. The
 four presets in `haloPresets`, each as its `--halo-blue` and `--halo-violet` hex, keep every text
 colour at 4.5:1 on the spot and the frame.
@@ -655,7 +655,7 @@ hold no chat logic: each feature turns its `ChatService` answer into these rows 
 | `ChatText` | A text step of a reply, in `text-reading`, keeping its line breaks. Its Markdown never becomes HTML and loads no image. A link shows its words and its address as text that opens nothing; with `openLink` (such as `useOpenExternal()`, for an agent's message) the words are an `ExternalLink` that opens outside the app |
 | `ChatToolLine` | One quiet line per tool call: spinner while `running`, tick when `done`, alert mark in `danger` when `failed` |
 | `ChatEndLine` | The line that ends a reply: `danger` for a failure, `plain` for "Stopped by you." and the like, with its actions (a `button`, or a `link` for a way to another place). A `button` given `unavailable` waits in its place with a visible reason, as Try again does while the engine isn't answering |
-| `ChatComposer` | The new design's message box (HAL-20728): a floating pill with 26px corners (`rounded-composer`), at least 52px tall (`min-h-composer`), on the raised surface with `shadow-composer`, its edge see-through until focus turns it `accent` (`border-control` under More contrast), with its round Send inside it at the right, grey while blank and blue once there's text, and an optional round `leading` button at the left. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box. A `picker` (such as a channel's `@` members) opens a list above the box: the box is then a combobox naming the active row with `aria-activedescendant`, ↑↓ move it, Enter picks it instead of sending, Esc calls `onClose`, and focus stays in the box |
+| `ChatComposer` | The new design's message box (HAL-20728): a floating pill with 26px corners (`rounded-composer`), at least 52px tall (`min-h-composer`), on the raised surface with `shadow-composer`, its edge (`border-composer`) see-through in light and the old divider's `#1B2638` in dark until focus turns it `accent` (`border-control` under More contrast), with its round Send inside it at the right, grey while blank and blue once there's text, and an optional round `leading` button at the left. Enter sends, Shift Enter adds a line; while `answering` the button is **Stop**, the same button, so focus stays. `sendUnavailable` makes Send wait with a visible reason. `line` goes under the box. A `picker` (such as a channel's `@` members) opens a list above the box: the box is then a combobox naming the active row with `aria-activedescendant`, ↑↓ move it, Enter picks it instead of sending, Esc calls `onClose`, and focus stays in the box |
 | `ChatBoxLine` | The line under the box: `warning` (triangle) for what stops a message, such as no key or a key in the message, `muted` for a calm fact; its actions follow the sentence |
 
 Nothing in the transcript is a live region: a reply isn't read while it streams in. The composer's line under the box sits in a status region, so it's read once when it appears. The feature announces the

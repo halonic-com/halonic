@@ -44,7 +44,7 @@ export function ChatMessage(props: ChatMessageProps) {
       <div className="flex justify-end" data-chat-message="you">
         {/* The new design's bubble (HAL-20728): 7.5px corners, padding 6 / 7 / 8 / 9px and its
             one-pixel shadow, at most 65% wide (`kit.chat-message-corner`). */}
-        <p className="max-w-[65%] rounded-bubble bg-surface-own-message pt-[6px] pr-[7px] pb-2 pl-[9px] text-body text-fg shadow-bubble whitespace-pre-wrap wrap-break-word">
+        <p className="max-w-13/20 rounded-bubble bg-surface-own-message pt-1.5 pr-1.75 pb-2 pl-2.25 text-body text-fg shadow-bubble whitespace-pre-wrap wrap-break-word">
           {props.children}
         </p>
       </div>

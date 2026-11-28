@@ -36,12 +36,12 @@ function frameOf(container: HTMLElement): string[] {
 }
 
 verifies("kit.prompt-look", () => {
-  it("draws the composer as the new design's pill, its edge see-through but 3:1 under More contrast", () => {
+  it("draws the composer as the new design's pill, its edge the composer's but 3:1 under More contrast", () => {
     const frame = frameOf(render(composer()).container);
     for (const name of [
       "rounded-composer",
       "min-h-composer",
-      "border-transparent",
+      "border-border-composer",
       "contrast-more:border-border-control",
       "bg-surface-raised",
       "shadow-composer",

@@ -217,6 +217,8 @@ describe("the start screen", () => {
       expect(halo?.className).toContain("bg-halo-spot");
       expect(halo?.className).toContain("pointer-events-none");
       expect(page.querySelector(".shadow-halo-glow textarea")).not.toBeNull();
+      // The glow's corners follow the message box's 26px, so no sliver shows between (HAL-20776).
+      expect(page.querySelector(".shadow-halo-glow")?.className).toContain("rounded-composer");
       await sendMessage(page, "Add a routine");
       expect(page.querySelector(".shadow-halo-glow")).toBeNull();
       const box = page.querySelector("textarea");

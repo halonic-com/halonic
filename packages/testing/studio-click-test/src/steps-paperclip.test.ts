@@ -2,14 +2,19 @@ import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
 import {
   button,
+  drawComposer,
   drawRow,
   drawRowFit,
+  drawStyles,
   type FakeStudio,
   fakeStudio,
 } from "./fake-studio.test-helper.ts";
 import { placesList } from "./screen.ts";
+import { composerBoxOf } from "./steps/conversation-look.ts";
 import { cardRowParts, inboxAnswer } from "./steps/inbox-answer.ts";
 import {
+  agentChatHeader,
+  agentComposer,
   agentPictureIn,
   messengerProbe,
   messengerSend,
@@ -174,6 +179,8 @@ verifies("studio-click-test.paperclip-steps", () => {
       });
       for (const place of where) studio.elements.set(agentPictureIn[place], 1);
       drawRow(studio, { row: openRowFillOf.row, picture: openRowFillOf.tile });
+      drawStyles(studio, agentChatHeader, { height: "64px", "border-bottom-width": "0px" });
+      drawComposer(studio, { textarea: agentComposer, box: composerBoxOf(agentComposer) });
       return studio;
     }
 

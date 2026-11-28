@@ -273,6 +273,7 @@ describe("theme.css with more contrast", () => {
       "--color-border-strong",
       "--color-border-prompt",
       "--shade-edge",
+      "--shade-header-line",
     ]) {
       expect(moreContrast.get(edge), edge).toBe("var(--color-border-control)");
     }
@@ -296,6 +297,7 @@ describe("theme.css with more contrast", () => {
       "--color-border-strong",
       "--color-border-prompt",
       "--shade-edge",
+      "--shade-header-line",
       "--focus-ring",
       "--focus-ring-inset",
     ]);

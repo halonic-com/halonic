@@ -22,11 +22,11 @@ verifies("kit.chat-message-corner", () => {
     const names = box.className.split(" ");
     for (const name of [
       "rounded-bubble",
-      "pt-[6px]",
-      "pr-[7px]",
+      "pt-1.5",
+      "pr-1.75",
       "pb-2",
-      "pl-[9px]",
-      "max-w-[65%]",
+      "pl-2.25",
+      "max-w-13/20",
       "shadow-bubble",
       "bg-surface-own-message",
     ]) {
