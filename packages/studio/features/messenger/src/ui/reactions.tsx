@@ -72,9 +72,9 @@ export function ReactionChips({ reactions, canReact, onToggle }: MessageReaction
  * pointer is on the message or focus is in it, and opens a row of the six: a menu of
  * `menuitemcheckbox` items that the arrows, Home and End move through. A pick or Escape closes it
  * and focus goes back to the button; Tab or a click elsewhere closes it too. The row opens above
- * the message, or below where the transcript has no room above it. It starts at the button's start
- * beside the person's own bubble and ends at its end beside an agent's text, so it opens over the
- * message and a narrow window never cuts it off.
+ * the message, or below where the transcript has no room above it. It hangs from the message's
+ * line, not the button (the line is `relative`): it ends where the person's own bubble ends and
+ * starts where an agent's bubble starts, so it stays inside any transcript of about 250 px or more.
  */
 export function AddReaction({
   reactions,
@@ -104,7 +104,7 @@ export function AddReaction({
   return (
     <div
       data-add-reaction
-      className={`relative shrink-0 ${open ? "" : "opacity-0 group-hover/message:opacity-100 focus-within:opacity-100"}`}
+      className={`shrink-0 ${open ? "" : "opacity-0 group-hover/message:opacity-100 focus-within:opacity-100"}`}
     >
       <Tooltip text={reactionWords.add} isName>
         {(trigger) => (
@@ -136,7 +136,7 @@ export function AddReaction({
           aria-orientation="horizontal"
           onKeyDown={(event) => onRowKey(event, close)}
           onBlur={onBlur}
-          className={`absolute ${author === undefined ? "start-0" : "end-0"} z-10 flex gap-0.5 rounded-full border border-transparent bg-surface-raised p-1 shadow-2 ${below ? "top-full mt-1" : "bottom-full mb-1"}`}
+          className={`absolute ${author === undefined ? "end-0" : "start-9"} z-10 flex gap-0.5 rounded-full border border-transparent bg-surface-raised p-1 shadow-2 ${below ? "top-full mt-1" : "bottom-full mb-1"}`}
         >
           {reactionEmoji.map((emoji) => {
             const mine = isMine(reactions, emoji);

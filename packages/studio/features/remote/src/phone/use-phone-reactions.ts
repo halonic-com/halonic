@@ -30,7 +30,7 @@ export interface PhoneReactionChip {
   readonly names: readonly string[];
 }
 
-/** Pages of reactions read at most, so a host that always says `more` can't keep the phone reading. */
+/** Pages of reactions read at most, so a host that always says `more` can't keep it reading. */
 const maxPages = 10;
 
 const none: PhoneReactionsByMessage = new Map();

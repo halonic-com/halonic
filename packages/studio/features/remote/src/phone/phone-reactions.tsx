@@ -19,10 +19,11 @@ const MOVE_SLOP_PX = 10;
 
 /**
  * A message the person can react to (sketch section 4 on HAL-19139): a long-press with a finger
- * (about half a second, without moving) calls `onLongPress`, and the chips show under it. A
- * finger that moves, a mouse and a pen open nothing. The long-press takes over the system's text
- * selection on the message, which is why the sheet has "Copy text". Android's own long-press, and
- * a screen reader's double-tap-and-hold, arrive as a context menu, which opens the sheet too.
+ * or a pen (about half a second, without moving) calls `onLongPress`, and the chips show under it.
+ * A finger that moves and a mouse open nothing. On a touch screen the long-press takes over the
+ * system's text selection on the message, which is why the sheet has "Copy text"; a mouse still
+ * selects text. Android's own long-press, and a screen reader's double-tap-and-hold, arrive as a
+ * context menu, which opens the sheet too.
  */
 export function Reactable({
   reactions,
@@ -40,7 +41,7 @@ export function Reactable({
 }) {
   const press = useLongPress(onLongPress);
   return (
-    <div {...press} className="select-none [-webkit-touch-callout:none]">
+    <div {...press} className="pointer-coarse:select-none [-webkit-touch-callout:none]">
       {children}
       <ReactionChips reactions={reactions} end={end} onToggle={onToggle} />
     </div>
@@ -157,7 +158,10 @@ export function ReactionSheet({
   );
 }
 
-/** The pointer handlers of a long-press by a finger: `LONG_PRESS_MS` at rest, or a context menu. */
+/**
+ * The pointer handlers of a long-press by a finger or a pen: `LONG_PRESS_MS` at rest, or a
+ * context menu.
+ */
 function useLongPress(onLongPress: () => void) {
   const rest = useRef<{ x: number; y: number; timer: ReturnType<typeof setTimeout> }>(undefined);
   // The last pointer down was a mouse's: its right click keeps the browser's own menu.
@@ -172,7 +176,7 @@ function useLongPress(onLongPress: () => void) {
   return {
     onPointerDown: (event: PointerEvent) => {
       cancel();
-      mouse.current = event.pointerType !== "touch";
+      mouse.current = event.pointerType === "mouse";
       if (mouse.current) return;
       const timer = setTimeout(() => {
         rest.current = undefined;

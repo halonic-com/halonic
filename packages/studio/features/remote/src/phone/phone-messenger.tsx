@@ -9,7 +9,7 @@ import { ChatRows, ChatsSkeleton } from "./phone-chat-rows.tsx";
 import { type ReadFailure, phoneMessengerWords as words } from "./phone-messenger-words.ts";
 import { ReadFailedLine } from "./read-failed-line.tsx";
 
-/** What the Messenger tab asks of the computer: the messaging client's reads, its send and reactions. */
+/** What the Messenger tab asks of the computer: the client's reads, its send and reactions. */
 export type PhoneMessaging = Pick<
   MessagingClient,
   "readList" | "readMessages" | "send" | "readReactions" | "react"

@@ -33,6 +33,8 @@ afterEach(() => {
   unmountAll();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  Reflect.deleteProperty(navigator, "clipboard");
+  Reflect.deleteProperty(document, "execCommand");
 });
 
 const yesterday = "2026-11-24T09:00:00.000Z";
@@ -196,6 +198,86 @@ verifies("remote.phone-reactions", () => {
       await settle();
       expect(chipsUnder("m1")).toEqual(["👍 1 (mine)", "👀 1"]);
       expect(line()).toBe("Couldn't save the reaction. Try again.");
+    });
+
+    it("keeps a later saved reaction when an earlier one, still saving, is refused", async () => {
+      const scene = await openReacted();
+      rest("m1");
+      await act(async () => buttonNamed("Heart")?.click());
+      const heart = scene.tunnel.lastOf("msg-react").id;
+      await act(async () => chip("m1", "👀")?.click());
+      const eyes = { emoji: "👀", by: { kind: "me" }, at: yesterday } as const;
+      scene.host({
+        type: "msg-result",
+        replyTo: scene.tunnel.lastOf("msg-react").id,
+        result: { outcome: "saved", reactions: [...onMorning, eyes] },
+      });
+      await settle();
+      scene.host({ type: "error", replyTo: heart, code: "not-found" });
+      await settle();
+      expect(chipsUnder("m1")).toEqual(["👍 1 (mine)", "👀 2 (mine)"]);
+    });
+
+    it("says so and keeps the sheet open when the clipboard refuses the text", async () => {
+      const writeText = vi.fn(async (_text: string) => {
+        throw new DOMException("Write permission denied.", "NotAllowedError");
+      });
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+      Object.defineProperty(document, "execCommand", { value: () => false, configurable: true });
+      await openReacted();
+      rest("m1");
+      await act(async () => buttonNamed("Copy text")?.click());
+      await settle();
+      expect(writeText).toHaveBeenCalledWith("Morning");
+      expect(sheetTitle()).toBe("React to Elena's message");
+      expect(sheet()?.querySelector('[role="status"]')?.textContent).toBe(
+        "Couldn't copy the text.",
+      );
+    });
+
+    it("opens the sheet on a finger's context menu, and not on a mouse's", async () => {
+      await openReacted();
+      pointer("m1", "pointerdown", 10, 10, "mouse");
+      pointer("m1", "contextmenu", 10, 10, "mouse");
+      expect(sheet()).toBeNull();
+      pointer("m1", "pointerdown");
+      pointer("m1", "contextmenu");
+      expect(sheetTitle()).toBe("React to Elena's message");
+    });
+
+    it("opens the sheet on a pen's rest, as on a finger's", async () => {
+      await openReacted();
+      rest("m1", { kind: "pen" });
+      expect(sheetTitle()).toBe("React to Elena's message");
+    });
+
+    it("reads every page of the chat's reactions", async () => {
+      const { scene } = await openChannel(messages);
+      const first = scene.tunnel.sentOf("msg-read").findLast((each) => each.what === "reactions");
+      scene.host({
+        type: "msg-data",
+        replyTo: first?.id ?? "",
+        what: "reactions",
+        items: [{ message: "m2", reactions: [onMorning[1]] }],
+        more: "40",
+      });
+      await settle();
+      answer(scene, "reactions", [{ message: "m1", reactions: onMorning }]);
+      await settle();
+      expect(scene.tunnel.sentOf("msg-read").at(-1)).toMatchObject({ cursor: "40" });
+      expect(chipsUnder("m2")).toEqual(["👀 1"]);
+      expect(chipsUnder("m1")).toEqual(["👍 1 (mine)", "👀 1"]);
+    });
+
+    it("shows the chat as before when the computer's source keeps no reactions", async () => {
+      const { scene } = await openChannel(messages);
+      const read = scene.tunnel.sentOf("msg-read").findLast((each) => each.what === "reactions");
+      scene.host({ type: "error", replyTo: read?.id ?? "", code: "not-supported" });
+      await settle();
+      expect(messageLi("m1")?.textContent).toContain("Morning");
+      expect(document.querySelector("[data-reactions]")).toBeNull();
+      rest("m1");
+      expect(sheet()).toBeNull();
     });
 
     it("shows the chat as before on a computer that speaks version 4 (A2.7)", async () => {

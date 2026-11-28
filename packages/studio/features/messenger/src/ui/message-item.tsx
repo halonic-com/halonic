@@ -130,7 +130,8 @@ export function MessageItem({
           visualOnly
         />
       ) : null}
-      <div className="flex items-start gap-2 ps-9">
+      {/* `relative`: the reaction row hangs from the line, starting where the bubble starts. */}
+      <div className="relative flex items-start gap-2 ps-9">
         <div data-bubble className={agentBubble(automatic, tint)}>
           {automatic ? <span className="sr-only">{messengerWords.automatic(author)} </span> : null}
           {body}
@@ -300,7 +301,8 @@ function Bubble({
       className={`group/message ms-auto flex max-w-[80%] flex-col items-end gap-1 ${foundRing}`}
     >
       {above}
-      <div className="flex items-start gap-2">
+      {/* `relative`: the reaction row hangs from the line, ending where the bubble ends. */}
+      <div className="relative flex items-start gap-2">
         {add}
         <div data-bubble className="rounded-lg bg-surface-muted px-3 py-2 wrap-break-word">
           {children}

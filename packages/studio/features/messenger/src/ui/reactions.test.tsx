@@ -164,10 +164,14 @@ verifies("messenger.reactions", () => {
       const row = () => page.querySelector('main [data-add-reaction] [role="menu"]');
       await press(addButton(page, "Thanks"));
       const mine = row()?.className.split(" ") ?? [];
-      expect(mine).toContain("start-0");
+      // It hangs from the message's line, not the 28 px button, so a short bubble can't push it out.
+      const line = () => row()?.closest(".relative");
+      expect(line()?.querySelector("[data-bubble]")?.textContent).toContain("Thanks");
+      expect(mine).toContain("end-0");
       await press(addButton(page, "Morning"));
       const chiefs = row()?.className.split(" ") ?? [];
-      expect(chiefs).toContain("end-0");
+      expect(line()?.querySelector("[data-bubble]")?.textContent).toContain("Morning");
+      expect(chiefs).toContain("start-9");
       // Right-to-left mirrors it, high contrast draws its edge, and nothing scales in.
       for (const classes of [mine, chiefs]) {
         expect(classes.filter((name) => /^(left|right)-|^-?m[lr]-/.test(name))).toEqual([]);
