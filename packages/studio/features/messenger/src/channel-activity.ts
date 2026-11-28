@@ -7,8 +7,8 @@ import type { ConversationRow } from "./messenger.ts";
 export interface ChannelAgentLine {
   readonly agent: MessagingId;
   readonly name: string;
-  /** "Working on HAL-18592", "Working", "Starting" or "Idle". */
-  readonly status: string;
+  /** "Working on HAL-18592", "Working", "Starting" or "Idle"; none until the first read is back. */
+  readonly status: string | undefined;
   readonly working: boolean;
 }
 
@@ -35,6 +35,19 @@ export function channelAgentLines(
       working: view.kind === "working",
     };
   });
+}
+
+/**
+ * The channel's agents before the first read is back: their names, which the row already has, and
+ * no status yet, so nobody shows as "Idle" before a read says so (Noah's design check, HAL-20156).
+ */
+export function unreadAgentLines(row: ConversationRow): readonly ChannelAgentLine[] {
+  return row.agents.map((agent) => ({
+    agent: agent.id,
+    name: agent.name,
+    status: undefined,
+    working: false,
+  }));
 }
 
 /**

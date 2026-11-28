@@ -14,10 +14,10 @@ import { flushSync } from "react-dom";
 import type { ActivityTask, ActivityView } from "../activity.ts";
 import { activityWords } from "../activity-words.ts";
 import { isChannel } from "../channel.ts";
-import { agentRow, type ChannelAgentLine, channelAgentLines } from "../channel-activity.ts";
+import { agentRow, channelAgentLines, unreadAgentLines } from "../channel-activity.ts";
 import { chatAgent } from "../chat-name.ts";
 import type { ConversationRow, Messenger } from "../messenger.ts";
-import { ChannelAgents } from "./activity-channel.tsx";
+import { ChannelAgents, type ChannelList } from "./activity-channel.tsx";
 import { ActivityBody, ActivityPanel, type PanelPlace, panelCloseId } from "./activity-panel.tsx";
 import {
   ActivityToggleContext,
@@ -68,16 +68,17 @@ export function ActivityHost({
   const host = useRef<HTMLDivElement>(null);
   const place = placeIn[width];
   const { go, opens } = usePlaceMotion(host, place, toggle);
+  const title = shown.buttonTitle;
   const value = useMemo(
-    () => ({ open, working, name, toggle: opens }),
-    [open, working, name, opens],
+    () => ({ open, working, title, toggle: opens }),
+    [open, working, title, opens],
   );
-  const close = () => {
+  const close = useCallback(() => {
     // The panel is gone; focus goes back to the button that opens it.
     go("back");
     host.current?.querySelector<HTMLElement>("button[aria-controls][aria-pressed]")?.focus();
-  };
-  useCloseKey(host, opens);
+  }, [go]);
+  useCloseKey(host, open, opens, close);
   return (
     <ActivityToggleContext value={value}>
       <div ref={host} className="relative flex min-w-0 flex-1">
@@ -104,14 +105,21 @@ export function ActivityHost({
 
 /**
  * **Ctrl+I**: closes through the panel's own **×** or **‹ Chief**, so it moves and puts focus back
- * as they do (HAL-18567 review); opens as the header button does.
+ * as they do (HAL-18567 review); where neither shows (a narrow window's channel agent view, led by
+ * **‹ Channel**), it closes as **‹ Chief** would. Opens as the header button does.
  */
-function useCloseKey(host: RefObject<HTMLDivElement | null>, opens: () => void): void {
+function useCloseKey(
+  host: RefObject<HTMLDivElement | null>,
+  open: boolean,
+  opens: () => void,
+  close: () => void,
+): void {
   const press = useCallback(() => {
     const closes = host.current?.querySelector<HTMLElement>(`#${panelCloseId}`);
     if (closes) closes.click();
+    else if (open) close();
     else opens();
-  }, [host, opens]);
+  }, [host, open, opens, close]);
   useActivityKey(press);
 }
 
@@ -126,7 +134,7 @@ function ShownBody({
   readonly words: EngineWords;
 }) {
   if (shown.activity === undefined) {
-    return <ChannelAgents lines={shown.lines} onPick={shown.pick} />;
+    return <ChannelAgents list={shown.list} words={words} onPick={shown.pick} />;
   }
   return <ActivityBody name={shown.name} activity={shown.activity} now={now} words={words} />;
 }
@@ -139,9 +147,12 @@ interface ShownAgent {
   readonly title: string;
   /** The shown agent's activity; none while a channel lists its agents. */
   readonly activity: ActivityRead | undefined;
+  /** The header button's name: the chat's heading, "Chief's activity" or "Activity in Launch". */
+  readonly buttonTitle: string;
   /** The header button's dot: the agent, or one of the channel's agents, is working. */
   readonly working: boolean;
-  readonly lines: readonly ChannelAgentLine[];
+  /** A channel's agents, for its list; empty outside a channel. */
+  readonly list: ChannelList;
   readonly pick: (agent: MessagingId) => void;
   /** Back to the channel's agents; none outside a channel's agent view. */
   readonly back: (() => void) | undefined;
@@ -150,40 +161,59 @@ interface ShownAgent {
 /**
  * Whose activity the panel shows: a chat's agent; in a channel, its agents' lines until the
  * person picks one, then that agent, with `back` to the lines. A channel reads every agent's runs
- * at once. Its header button's dot shows while any of its agents works.
+ * at once. Its header button's dot shows while any of its agents works, and its name is the
+ * channel's heading, "Activity in Launch", whichever agent shows (HAL-18567 review).
  */
 function useShownAgent(messenger: Messenger, row: ConversationRow, open: boolean): ShownAgent {
   const channel = isChannel(row);
   const agents = channel ? row.agents.map((agent) => agent.id) : [row.conversation.agent];
-  const reads = useActivityReads(messenger, agents, open);
   const [picked, setPicked] = useState<MessagingId | undefined>(undefined);
+  const reads = useActivityReads(messenger, agents, open, picked);
   const now = messenger.now();
   const pick = useCallback((agent: MessagingId) => setPicked(agent), []);
   const back = useCallback(() => setPicked(undefined), []);
   if (!channel) {
     const activity = activityFor(reads, row, now);
     const name = chatAgent(row)?.name ?? row.conversation.title;
+    const title = activityWords.title(name);
     return {
       name,
-      title: activityWords.title(name),
+      title,
+      buttonTitle: title,
       activity,
       working: activity.view?.kind === "working",
-      lines: [],
+      list: {
+        channel: name,
+        lines: [],
+        loading: false,
+        failure: undefined,
+        readNow: reads.readNow,
+      },
       pick,
       back: undefined,
     };
   }
-  const lines =
-    reads.read === undefined ? [] : channelAgentLines(row, reads.read.runs, reads.read.pulls, now);
-  const working = lines.some((line) => line.working);
+  const channelTitle = activityWords.activityIn(row.conversation.title);
+  const list: ChannelList = {
+    channel: row.conversation.title,
+    lines:
+      reads.read === undefined
+        ? unreadAgentLines(row)
+        : channelAgentLines(row, reads.read.runs, reads.read.pulls, now),
+    loading: reads.read === undefined,
+    failure: reads.failure,
+    readNow: reads.readNow,
+  };
+  const working = list.lines.some((line) => line.working);
   const agent = row.agents.find((each) => each.id === picked);
   if (agent === undefined) {
     return {
       name: row.conversation.title,
-      title: activityWords.activityIn(row.conversation.title),
+      title: channelTitle,
+      buttonTitle: channelTitle,
       activity: undefined,
       working,
-      lines,
+      list,
       pick,
       back: undefined,
     };
@@ -192,9 +222,10 @@ function useShownAgent(messenger: Messenger, row: ConversationRow, open: boolean
   return {
     name: agent.name,
     title: activityWords.title(agent.name),
+    buttonTitle: channelTitle,
     activity,
     working,
-    lines,
+    list,
     pick,
     back,
   };

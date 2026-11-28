@@ -47,11 +47,13 @@ export function useActivity(
 
 /**
  * Reads the activity of `agents`: one chat's agent, or a channel's agents, as `useActivity` says.
+ * In a channel, `picked` is the agent whose view the panel shows, if any.
  */
 export function useActivityReads(
   messenger: Messenger,
   agents: readonly MessagingId[],
   open: boolean,
+  picked?: MessagingId,
 ): ActivityReads {
   // The same agents in a new array mustn't start a new read.
   const agentsKey = agents.join("\n");
@@ -66,7 +68,9 @@ export function useActivityReads(
     reads.current += 1;
     const thisRead = reads.current;
     const since = startOfToday(messenger.now()).toISOString();
-    const runs = readRuns(activity, agentsKey.split("\n"), since);
+    // A channel with no agents listed reads no runs (HAL-18567 review).
+    const ids = agentsKey === "" ? [] : agentsKey.split("\n");
+    const runs = readRuns(activity, ids, since, picked);
     Promise.all([runs, activity.pullRequests()]).then(
       ([runs, pulls]) => {
         if (thisRead !== reads.current) return;
@@ -87,7 +91,7 @@ export function useActivityReads(
         if (thisRead === reads.current) setWork([]);
       },
     );
-  }, [activity, messenger, agentsKey]);
+  }, [activity, messenger, agentsKey, picked]);
 
   useEffect(() => {
     readNow();
@@ -115,21 +119,29 @@ export function activityFor(reads: ActivityReads, row: ConversationRow, now: Dat
 
 /**
  * The runs of `agents` since `since`. One agent's are read on their own; several agents' are read
- * in one call, the workspace's newest runs, unless a source says that call left some out: then
- * each agent's are read on its own, so a busy day never shows a working agent as Idle (HAL-18567
- * review).
+ * in one call, the workspace's newest runs. A source always lists its live runs, so that call only
+ * leaves out older finished ones on a busy day: the channel's lines stay right, but the picked
+ * agent's "Idle · last run ended …" and **Earlier today** could miss a run. So when a source says
+ * it left some out, only the `picked` agent's runs are read on their own as well, and take the
+ * place of theirs in the workspace's: two reads at most (HAL-18567 review).
  */
 async function readRuns(
   activity: NonNullable<Messenger["activity"]>,
   agents: readonly MessagingId[],
   since: string,
+  picked: MessagingId | undefined,
 ): Promise<readonly TeamRuns[]> {
   const [only, ...others] = agents;
-  if (only !== undefined && others.length === 0) return activity.runs({ agent: only, since });
+  if (only === undefined) return [];
+  if (others.length === 0) return activity.runs({ agent: only, since });
   const all = await activity.runs({ since });
-  if (all.every((each) => each.complete)) return all;
-  const each = await Promise.all(agents.map((agent) => activity.runs({ agent, since })));
-  return each.flat();
+  if (picked === undefined || all.every((each) => each.complete)) return all;
+  const own = await activity.runs({ agent: picked, since });
+  const withoutPicked = all.map((each) => ({
+    ...each,
+    runs: each.runs.filter((run) => run.agent !== picked),
+  }));
+  return [...withoutPicked, ...own];
 }
 
 function startOfToday(now: Date): Date {

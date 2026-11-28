@@ -16,7 +16,8 @@ export const activityWords = {
   activityIn: (channel: string) => `Activity in ${channel}`,
   /** The chat header's button: its tooltip, and its name while the agent works. */
   button: "Activity (Ctrl+I)",
-  buttonWorking: (name: string) => `${name}'s activity, working`,
+  /** The header button's name while the agent works: the panel's heading, "…, working". */
+  buttonWorking: (title: string) => `${title}, working`,
   close: "Close activity",
   /** A narrow window's way back from the panel to the chat: "‹ Chief", named "Back to Chief". */
   backTo: (name: string) => `Back to ${name}`,
@@ -71,6 +72,8 @@ export const activityWords = {
   >,
   /** The Messenger's own failed-read words (design review HAL-18481, improvement 3). */
   cantRead: (name: string) => `Couldn't read ${name}'s activity`,
+  /** A channel's failed read; a channel's title takes no 's (Noah's design check, HAL-20156). */
+  cantReadIn: (channel: string) => `Couldn't read the activity in ${channel}`,
   tryAgain: "Try again",
   pullRequestState: {
     draft: "Draft",
