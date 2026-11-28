@@ -1,0 +1,456 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://halonic.com/spec/format/deployments/v1.schema.json",
+  "type": "object",
+  "properties": {
+    "version": {
+      "default": 1,
+      "type": "number",
+      "const": 1
+    },
+    "default": {
+      "type": "string"
+    },
+    "deployments": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64,
+        "pattern": "^[a-z0-9][a-z0-9-_]*$",
+        "not": {
+          "pattern": "^(?:con|prn|aux|nul|com[0-9]|lpt[0-9])$"
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string"
+          },
+          "host": {
+            "default": "local",
+            "type": "string",
+            "enum": [
+              "local",
+              "cloudflare"
+            ]
+          },
+          "stage": {
+            "default": "development",
+            "type": "string",
+            "enum": [
+              "development",
+              "production"
+            ]
+          },
+          "shadow": {
+            "default": false,
+            "type": "boolean"
+          },
+          "cloudflare": {
+            "type": "object",
+            "properties": {
+              "account": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{32}$"
+              },
+              "worker": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 63,
+                "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+              },
+              "domain": {
+                "type": "string",
+                "maxLength": 253,
+                "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+              },
+              "location": {
+                "type": "string",
+                "enum": [
+                  "eu"
+                ]
+              }
+            },
+            "required": [
+              "worker"
+            ],
+            "additionalProperties": false
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "dailyRequests": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "scopeDailyRequests": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "additionalProperties": false
+          },
+          "users": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "default": "owner",
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "many"
+                ]
+              },
+              "meter": {
+                "default": "none",
+                "type": "string",
+                "enum": [
+                  "none",
+                  "config",
+                  "cloud"
+                ]
+              },
+              "config": {
+                "type": "object",
+                "properties": {
+                  "limits": {
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "unit": {
+                          "type": "string",
+                          "enum": [
+                            "runs",
+                            "steps",
+                            "tokens",
+                            "cost",
+                            "harnessMinutes"
+                          ]
+                        },
+                        "amount": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        },
+                        "period": {
+                          "type": "string",
+                          "enum": [
+                            "day",
+                            "month",
+                            "run",
+                            "step"
+                          ]
+                        },
+                        "action": {
+                          "default": "stop",
+                          "type": "string",
+                          "enum": [
+                            "stop",
+                            "notify"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "unit",
+                        "amount",
+                        "period"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "organisations": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^org_[A-Za-z0-9]{16,40}$"
+                        },
+                        "limits": {
+                          "default": [],
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "unit": {
+                                "type": "string",
+                                "enum": [
+                                  "runs",
+                                  "steps",
+                                  "tokens",
+                                  "cost",
+                                  "harnessMinutes"
+                                ]
+                              },
+                              "amount": {
+                                "type": "number",
+                                "exclusiveMinimum": 0
+                              },
+                              "period": {
+                                "type": "string",
+                                "enum": [
+                                  "day",
+                                  "month",
+                                  "run",
+                                  "step"
+                                ]
+                              },
+                              "action": {
+                                "default": "stop",
+                                "type": "string",
+                                "enum": [
+                                  "stop",
+                                  "notify"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "unit",
+                              "amount",
+                              "period"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "concurrency": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "members": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "actor": {
+                                "type": "string",
+                                "pattern": "^eu_[A-Za-z0-9]{16,40}$"
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "owner",
+                                  "admin",
+                                  "member"
+                                ]
+                              },
+                              "limits": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "unit": {
+                                      "type": "string",
+                                      "enum": [
+                                        "runs",
+                                        "steps",
+                                        "tokens",
+                                        "cost",
+                                        "harnessMinutes"
+                                      ]
+                                    },
+                                    "amount": {
+                                      "type": "number",
+                                      "exclusiveMinimum": 0
+                                    },
+                                    "period": {
+                                      "type": "string",
+                                      "enum": [
+                                        "day",
+                                        "month",
+                                        "run",
+                                        "step"
+                                      ]
+                                    },
+                                    "action": {
+                                      "default": "stop",
+                                      "type": "string",
+                                      "enum": [
+                                        "stop",
+                                        "notify"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "unit",
+                                    "amount",
+                                    "period"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "concurrency": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "actor",
+                              "role"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "members"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "cloud": {
+                "type": "object",
+                "properties": {
+                  "product": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9_-]+$"
+                  }
+                },
+                "required": [
+                  "product"
+                ],
+                "additionalProperties": false
+              },
+              "exposed": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "workflow": {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "^[a-z0-9][a-z0-9-_]*$"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "description": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "chat",
+                        "form"
+                      ]
+                    },
+                    "inputs": {
+                      "default": {},
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64,
+                        "pattern": "^[A-Za-z0-9_][A-Za-z0-9_-]*$"
+                      },
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "help": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          }
+                        },
+                        "required": [
+                          "label"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "shows": {
+                      "default": {
+                        "answers": [],
+                        "results": [],
+                        "approvals": {}
+                      },
+                      "type": "object",
+                      "properties": {
+                        "answers": {
+                          "default": [],
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64,
+                            "pattern": "^[A-Za-z0-9_][A-Za-z0-9_-]*$"
+                          }
+                        },
+                        "results": {
+                          "default": [],
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64,
+                            "pattern": "^[A-Za-z0-9_][A-Za-z0-9_-]*$"
+                          }
+                        },
+                        "approvals": {
+                          "default": {},
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "maxLength": 129,
+                            "pattern": "^[a-z0-9][a-z0-9-_]*\\/[A-Za-z0-9_][A-Za-z0-9_.-]*$"
+                          },
+                          "additionalProperties": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "workflow",
+                    "name",
+                    "kind"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "deployments"
+  ],
+  "additionalProperties": false
+}

@@ -1,5 +1,510 @@
 # @halonicjs/app-studio
 
+## 0.2.0
+
+### Minor Changes
+
+- 043ce57: Halonic 0.2.0 brings the Studio Assistant, an engine that keeps running in the background, formatted text in replies, streaming replies as they are written, and Remote, which lets you pair a phone with your Studio.
+
+### Patch Changes
+
+- 3b46b76: Settings › About Halonic has an Update track setting: Stable, released versions, or Preview, every build that passes our tests. A Preview build follows Preview until you pick Stable.
+- 2f93585: A served Studio with many users signed in through Halonic Cloud shows the customer's account menu at the title bar's right end: their name, plan and usage, Account and Sign out.
+- 99c3770: A menu at the sidebar's bottom left lists your linked Paperclip accounts by name, marks the one the Inbox and Messenger show, and switches between them.
+- 05e6274: With more than one Paperclip account linked, the Inbox and Messenger show one account at a time, in every window.
+- 515650c: Open demo now names the new folder Acme demo; a demo you already made keeps its name and still opens.
+- e6796aa: The Acme example now has three tools in `library/tools`, so `halonic build paperclip-plugin` can build a Paperclip plugin from a copy of it.
+- 1c9bd42: An action request Halonic can't read shows the stepper's name in code type instead of with backticks, and Decline looks the same on that card and in the stepper.
+- 885f70d: An agent's action request now opens in the Inbox as a stepper: what it touches, each step in plain words, who asked and why, with a warning before a step that can't be undone and the whole guide to do it by hand when the service is down.
+- 9e7d13a: Settings › Connections offers "Add another account" on a connected Paperclip, so you can sign in to the same Paperclip with a second account without replacing the first.
+- 6262901: Studio's banner for an agent answer that isn't one of its options links to the how-to for giving the agent a second try.
+- 41c0c43: An agent file can set `chatUi: { components: [card, table, form, buttons] }` to say which components the agent may draw in its chat replies; without it, replies stay text only.
+- 06ef0d0: An agent's initials now sit on the agent's own colour in the Messenger's chat list, header and messages, matching its bubbles.
+- 76ce5c5: An agent's Configuration now shows how many errors each page has, such as a model that isn't an alias in the workspace, and the Configuration tab shows their total.
+- 05e3198: An agent's file may now say `harness: opencode`; OpenCode runs only at the exact version Halonic has tested.
+- c12fae6: An agent's Harness page shows and changes its Working folder and Allowed sites, and refuses a folder or site the sandbox can't give.
+- 51ddfd1: On a computer with Tailscale installed, the desktop agent host now offers remote, so the remote switch appears in Studio. Remote stays off until you turn it on, it is reachable only on your own tailnet (never through Tailscale Funnel), and each new phone still needs your Allow on the desktop.
+- 70c717e: The agent map shows its sides one under the other whenever its panel is too narrow for all three columns, so nothing is cut off at the right, and Pick a model opens with the focus on its heading.
+- 4f51472: An agent's Model page shows the picked alias's provider, model and price under the picker, and the alias name opens it in Models.
+- 50c4362: The desktop app shows a notification when an agent sends you a new card or question, or finishes work you asked for, and clicking a card's notification opens the Inbox on it.
+- ae3f6ea: An agent's page now shows the assistant's changes to review: a bar under the header with Previous, Next, Accept all and Reject all, and a mark at each changed setting with its own Accept and Reject, each with Undo.
+- 05723b7: While you rename an agent, the line under its name now says which workflow steps and routines use it: "Also updates 3 places: …".
+- 8f9e4c8: A routine that starts an agent now says it won't start until it runs a workflow, with Pick what it runs, and its Run now and Runs on its own are unavailable.
+- ce195f5: An agent's Tools page now shows which key each connector uses, by its name, with **Change key**, which asks before the new key replaces the old one, and the approval hand on connectors whose tools ask first.
+- daa9060: On an agent's Model page, the line under the picker now says "On your Claude subscription, not priced" (or ChatGPT) for an agent on Claude Code or Codex, instead of a price.
+- 4638fec: Pressing Cancel in Halonic's own "Allow plugins and integrations to run without the sandbox?" window now leaves the trust check or Allow dialog open as it was, without an error message.
+- 526a3db: On Android, a long press of the Halonic icon shows Inbox and Messenger shortcuts.
+- 1d9b257: On Android, the last chat you opened on your phone shows when you long-press the Halonic icon and opens straight into that chat; forgetting its computer removes it.
+- b66512f: The Home screen group on Paired computers now has space above it, and the Android shortcut icons match the app logos.
+- ca5266d: On Android, the Inbox and Messenger shortcuts open the phone app on that tab, also after pairing, and Paired computers can add either one to the home screen.
+- 90338b5: On a deployment with many users, an end user now answers a waiting run with the answer handle the run shows, instead of naming the run's events.
+- e37c8cd: Each Halonic app now has its own logo: Halonic Inbox shows a tray and Halonic Messenger a message bubble inside the halo, in its Start menu entry, window and taskbar entry, and Studio shows its point of light.
+- 6e85514: Approval cards in the Inbox and the Messenger stand out with a light shadow, and a card from Paperclip has an Open in Paperclip link that opens its task or approval in your browser.
+- ae3e665: Paperclip approvals in the Inbox and Messenger now say what they are, such as "Hire an agent", show their details, and offer Request changes.
+- 59ccad4: In the desktop app, an Inbox card waiting for your answer now says which workflow it comes from, with "Sample answers" when the test model wrote it ("Support reply · Sample answers"), quotes the email the run started with above the draft, and shows the step's closing line, such as "Approving finishes the run. Nothing is sent.", next to the buttons instead of inside the draft.
+- cf040ea: A chat opened with "Ask about this skill…" shows "What should change in {skill name}?" in its message box.
+- 569ef62: A skill's page has "Ask about this skill…", which opens the Assistant on a chat about it, and New workflow's "Describe it to the Assistant instead ›" starts a chat with "Make a workflow called {name} that " in the box, keeping anything you had typed there.
+- 1dc918a: In the Assistant, focus no longer drops to the page after Continue, Try again, Undo or removing a shown item, and screen readers now hear when a chat is deleted or a change waits for Compare.
+- 26f4fef: The trust check in Studio and in `halonic trust` marks "added by the assistant" after each address the Assistant added to a local integration that you didn't name in the chat.
+- 326d212: In the Assistant, each agent now shows as its own coloured orb: in the Chat with menu and the recent chats, and at the top of a chat with that agent, next to what it's doing ("thinking…", "using send reply…", "replying…").
+- 9420e85: In a workspace you haven't trusted yet, the Assistant now answers on your own Settings › Assistant model with its authoring tools only, under the line "Not trusted yet · it can read and propose, but not run anything." with Review.
+- 1a40aba: The Assistant panel's Build chat now answers on your workspace's engine: it reads your files and writes its changes for you to review, and if Halonic's engine stops mid-answer it says so, with Try again when no tool ran.
+- bc7d80e: The Assistant's change cards say how each change ended (Accepted, Accepted 2 of 3, Rejected or Replaced by a newer change), and wait for Compare when the file changed outside Halonic.
+- 09976ad: The Assistant panel's title opens your recent chats, and its ⋮ menu renames or deletes the chat shown.
+- 261b0d1: An Assistant chat can open as a tab, with a start screen for a new chat and a side panel for the items it shows, and Continue in the side panel moves it back.
+- 378be3e: Build and agent chats are kept when you close Studio and come back when you open the workspace again, up to the 40 most recently used.
+- 02bcc36: The Build chat follows your workspace's own `halonic-authoring` skill, and "customize skill" under its box writes the built-in skill into your library for you to edit.
+- 7513099: When a chat has changes to review in two or more items, the Assistant shows "3 items to review" above the box with Accept all and Reject all for the whole chat, which wait while the chat answers.
+- 8de0b44: The Assistant's chat holds a message that looks like an API key, asks to trust the workspace before a workspace model answers, waits while the engine isn't answering, and offers Try again after a failure before any tool ran.
+- 3c784b0: The Assistant panel has Chat with and Model chips above the box: pick a model for one chat (a model you can't use yet is listed with its reason, such as "Needs a key for Anthropic"), or chat with one of your agents instead of Build, which starts a new chat and keeps the old one.
+- 1e80da7: When the Assistant can't reach its model, or a local model doesn't fit in memory, it now says what to do in the same words as the run page, with Open Models.
+- 1fa47a2: The Assistant now says under the box when its chat has no model, needs an API key or can't use a cloud model in a local-only workspace, and Continue and Try again wait while the engine isn't answering instead of going away.
+- b898899: On a phone, the top of Home, Inbox, Runs and More shows the Assistant's orb next to Search, and tapping it opens the Assistant as a full page; Back returns to where you were.
+- c812b80: On a phone, a change card shows Accept all, See what changes and Reject all, See what changes opens the sheet "What changes" with the diff and both decisions, the buttons wait with "Waiting for Halonic on your computer." while it isn't answering, and the strip above the box reads "2 to review" while the chat answers.
+- 4c79269: On a phone, the Assistant's top bar shows its orb, "Assistant" and the status line, and its ⋮ holds New chat, Recent chats, Rename and Delete chat, with Recent chats and Rename as sheets.
+- f28456e: The Assistant's chat shows a card for each change it makes in your files, with Review, Accept all and Reject all, and a toast with Undo after each decision.
+- 8fd3cc6: On a phone, the Assistant's Recent chats show a violet dot for a chat with items to review, as the Messenger does, and Needs you shows who asked a question in a channel in their own colour.
+- 99a1cf8: A chat without a picture keeps its round initials tile when its row is hovered, focused or open in the Messenger.
+- e29db6b: In the Messenger's chat list and the Inbox, a picture's round tile stays visible on the open chat or item and on the row under the pointer.
+- 84dcff2: Profile pictures have a little room inside their circle, and an open Inbox item shows a larger picture of who's asking.
+- c30cea7: The Inbox's and the Messenger's sidebar lists have bigger rows: 72px high, with a 48px picture and slightly larger text.
+- 25c63bd: A connector file with a mistake keeps its row in Library › Connectors, with its problem and a way to open the file at that line, and the Connectors chip shows how many such files there are.
+- f837ad4: In Studio, a routine file with a problem no longer drops off the Routines list: it keeps a red row with the line and the reason, which opens the file at the first problem.
+- e1c2271: Approving a Paperclip budget override in the Inbox now asks for the new limit, raises it and resumes the paused work; rejecting keeps the work paused.
+- a2cca52: The Build chat follows a `halonic-authoring` skill the assistant proposed only after you accept it.
+- f0ff7cd: A Build chat about a local integration stops changing its code after two fixes you accepted were each followed by a failed call, and says so, so it doesn't keep rewriting the same integration.
+- c793a7d: When you ask the Build chat for an integration, it first offers a built-in one that fits, asks only for the service's address, its tools and how it signs in, never asks for your key in the chat, and stops to tell you what's wrong instead of leaving a half-working integration.
+- d3c9a11: The Build chat writes an integration's permission sheet or a connector only with the hosts and sign-ins you named in your own messages in that chat; anything else is refused before it becomes a change to review.
+- e410832: The Assistant's Build chat never reads, lists or changes common credential files, even in a trusted workspace: `.npmrc`, `.yarnrc.yml`, `.netrc`, `_netrc`, `.pypirc`, `.git-credentials`, `.pgpass`, SSH keys named `id_rsa`, `id_dsa`, `id_ecdsa`, `id_ed25519`, `id_ecdsa_sk` or `id_ed25519_sk`, files ending in `.pem`, `.key`, `.p12` or `.pfx`, `.aws/credentials`, `.docker/config.json`, `.kube/config`, and anything in a `.ssh` or `.gnupg` folder, in any folder and however the name is capitalised.
+- 3c3cb9a: In a trusted workspace, the Build chat can read a service's public docs page while it writes an integration, after you allow that site on a card in the chat; your answer holds for that chat only.
+- 652cb94: In a trusted workspace, the Build chat can show you a run, an agent or a workflow while you keep typing. It opens as a card on the page you're on when it belongs there, otherwise in its own tab. The item joins the chat's shown items, and the chat says "Showed run r42".
+- 12cbd17: The new command halonic build paperclip-plugin builds a Paperclip plugin from the workspace's tools at its current commit, and writes it with a release file that holds its SHA-256 and what changed since the build you name with --since. It never installs anything. It runs from a clone of the Halonic repository: the npm package doesn't include the plugin runtime yet.
+- 36a805b: Opening an Inbox bundle whose later card is an action request now puts the focus on the first card's title, not on the action request's.
+- 39a2273: The bundled Node runtime is updated with security fixes.
+- 47d5c2f: In the Messenger, a card decided here or in Paperclip, cancelled or expired now shows how it ended, such as "Approved by Ada · 14:02", then leaves the chat and Needs you.
+- f92e3ab: Submit on a card in Messenger and the Inbox now sends your answer to Paperclip, and a card whose answer can't be recorded says so instead of doing nothing.
+- 327b30a: Changes on the desktop now shows its list in a column beside a content pane. Opening a changed item or a version in History shows it in the pane, with the list still beside it. Get updates' choices show there too.
+- f6954fb: In the Messenger, a channel now shows its lead agent in front of one more member instead of its name's letters, and each notice in the Inbox starts with a bell.
+- b6ff8c2: A chat card now says when an option needs a note and has to be chosen in your Inbox, and rejecting a Paperclip secret proposal lets you say why.
+- 8499d98: The Assistant and an agent's Try it chat now say when a held message looks like a Google client secret, and point to the Google setup or a connector in the Library instead of the key field.
+- da0cb4a: Chat replies in the Assistant and in Try it show bold, code and lists instead of Markdown characters.
+- c620c17: Stopping a chat on the local engine now also stops the model's answer, instead of letting the model finish it unseen.
+- dce1f71: A checkbox's words are now the same size as a radio option's on a phone, and when they wrap onto more lines the box stays beside the first line, as a radio's circle does.
+- 5f0c994: On an agent's Model page, the refusal for a Claude Code or OpenCode agent whose model isn't an Anthropic one now ends with "Choose another.", like the Codex refusal and the CLI.
+- 3db317a: The command line now shows what an approval asks before you answer it.
+- e7f722a: `halonic proposals accept` now points to Compare in Halonic Studio for a file that changed since the run.
+- 4532bdb: Scheduled routines that start a workflow now run on a Cloudflare deployment. A routine that starts an agent is not supported there yet.
+- 2c93659: On a Cloudflare deployment, the usage banner now warns when any limited unit, such as agent time, reaches 80% of its limit this period.
+- 44fa550: Code's file list has All and Problems chips: Problems lists only the files with an error or a warning. The open file's name, folder and ⋮ menu sit in a header over the editor.
+- f08ae4e: The file tree has a search field: type part of a file's name or path and the tree shows only the matching files, with their folders open and a count. The tree's rows take the new design's look, with the open file's name in medium weight.
+- cdd4aa3: Code in the rail now opens Code's page: the file tree sits in a column of 34% of the width, at least 208px and at most 380px, and the file you pick opens beside it in place of the last one, with no file tabs. Ctrl-click (Cmd-click on a Mac) or middle-click a file, in Code or in the sidebar's tree, to open it in a new tab.
+- b333654: On a wide window, Compare shows your saved file and the run's file side by side, instead of one above the other.
+- 235d22a: The confirm dialog for an irreversible step now says when the name typed doesn't match, instead of closing as if cancelled.
+- be441cd: Connect Paperclip says "Connected" to a screen reader and puts focus on the new connection's Disconnect, and after a Disconnect focus moves to the next connection or to Connect Paperclip.
+- be57bf9: Connect Paperclip moves focus to the address when it can't use it, and its countdown bar stays visible in high contrast.
+- 5c57a0d: Connect Paperclip says when a server already has 8 sign-ins waiting, instead of asking you to try again.
+- a74d096: Disconnect on a connection with no key on this computer no longer says its key was revoked, and a screen reader now hears which connection each Sign in button belongs to.
+- b972bdf: Settings › Connections no longer says a Paperclip key "expired or revoked" when this computer just doesn't hold it yet, such as right after a restart or in a clone: the connection shows "Not connected · no key on this computer" with Sign in.
+- c2630a5: Settings › Connections, Inbox's agent cards and Messenger now work for a folder you open after Halonic started, and when the connections can't be read, Settings › Connections offers Try again.
+- 52ea78d: Screen readers now hear each failed Try again in Settings › Connections, focus moves to the first connection (or Connect Paperclip) once the list loads, and Run with Claude says that Claude Code started only once.
+- a55600c: A local integration whose code sends a request to a host its permission sheet doesn't list, or tries to send a secret where it may not, is now paused: that call fails, and the connector doesn't run again, in this run or a later one, until its code changes and you trust the workspace again.
+- dd892b6: A workspace connector starts without the sandbox only when this computer has no sandbox, and Halonic now says so each time it does. When the sandbox check fails for another reason, such as a timeout, it is tried once more, and then the connector doesn't start and says why.
+- eaf1554: A local integration's connector page says in one line why its last call failed, and **Let the assistant look** opens a Build chat about it.
+- eb97903: Your messages sit in blue bubbles, and the message box is a rounder floating pill.
+- dfcc25c: A harness run's sandbox now also keeps out OpenCode's own sign-in and settings, git's credential file under `.config/git` and GitHub Copilot's sign-in.
+- f12b714: halonic deploy without a name in a workspace with no deployments now says the workspace has none yet and how to add one in deployments.yaml, instead of asking which deployment to deploy.
+- 7e2b67b: `halonic deploy <deployment>` deploys the workspace's committed files to a Cloudflare deployment from `deployments.yaml`, and `halonic deploy <deployment> --plan` shows what it would create, upload and reach, without changing anything on Cloudflare.
+- dd41cb9: `halonic deploy <deployment>` deploys the workspace's last commit to your Cloudflare account, asking `Deploy? [y/N]` first when something is new, and Ctrl C during a deploy says which step it stopped after and which version is still live.
+- 18cf676: New `halonic deploy status <deployment>` shows what's live on a Cloudflare deployment: its address and live version, the Halonic version it runs next to yours, whether it's answering, how many runs it has, and the version a rollback would go back to.
+- c766ccd: `halonic deploy` now deploys a workspace that is a folder inside a git repository, and a git that ignores Halonic's git settings is named with its fix instead of an unexplained problem.
+- 63c6021: A `mode: many` deployment can list in `users.exposed` the workflows its end users may start, with the names, input labels, answers, results and approval texts they see. Nothing reads the list yet.
+- 07e046c: The desktop app refuses a few more addresses, trust files reached through a link, and plugin folder names that start with a dot. On macOS and Linux it also keeps your chats and changes to review readable by you only.
+- a8630bb: In the desktop app, Try it now shows a reply as the model writes it, as `halonic serve` already does.
+- b83c334: Studio's sidebar has an Overview under Team, with your recap and who works on what, and Ctrl K now finds your connected Paperclip's tasks, agents and inbox items.
+- d388f4e: When a service refuses an integration's call after an earlier step may already have done its work, the run's step in Studio and in `halonic runs show` now names the cause and says to check before you try again, and a tool that only reads no longer says "Nothing was sent twice.".
+- b45ca76: When a service refuses an integration's call (a token it doesn't accept, a token without permission, a request to slow down, or a host the integration doesn't list), the run's step in Studio and in `halonic runs show` now says which one and what to do next.
+- b311c2b: The Send feedback dialog shows the area you selected, instead of "Couldn't load the screenshot." The feedback selection overlay now also shows above an open dialog.
+- 247e6bb: Feedback now starts with Ctrl+Shift+F (⌘⇧F on macOS) in the focused Studio, Inbox or Messenger window only, never system-wide, and works while typing. The selection overlay shows inside that window, see-through over the live app, instead of a black full-screen window, and the box draws again.
+- 576df38: The Send feedback dialog names the window you pressed the shortcut in, and Select again lets you pick a new area while keeping what you typed.
+- ab5107d: Send feedback now opens as a dialog in the Studio window where the shortcut was pressed, instead of a separate window that couldn't be closed.
+- 56cd39b: Send feedback now creates a task in Paperclip and says "Feedback sent" with Open task. When Studio is offline or not connected, your feedback is saved and sends by itself later. The shortcut works in the main Studio window while Studio is connected to Paperclip.
+- 96f0f86: Settings has a Keyboard section, where you change the Send feedback shortcut, and a Feedback section, where you choose the project and the person feedback goes to.
+- 907d16d: The Send feedback shortcut now works in Halonic Inbox and Halonic Messenger too, not only in Studio's window.
+- 765cd1b: On Windows and Linux with X11, Ctrl+Alt+F freezes and dims the screen so you can drag a box around what you want to give feedback on; Esc cancels. On macOS and Wayland it says Studio can't take a screenshot there yet.
+- 45ae67e: Closing Send feedback with something written now shows "Feedback discarded" with Undo, which brings back your text and screenshot.
+- 5abcf9c: After you undo a file's delete in the Files tree, the focus stays on the restored row, even when the file is open beside it. A file that comes back from outside Halonic no longer takes the focus from the field you are typing in.
+- aff8091: First-run polish: a wait step's answers sit at their natural width on a computer, a page title no longer shows a focus ring after a click, Welcome hides "New here?" while Halonic starts and moves focus to the waiting line, the Demo tag sits right after its name, the phone's Inbox count stays inside its pill, and after an approve on a phone Studio says where to see what the run did.
+- 9eb01d3: Studio, the Messenger and the Inbox no longer show a window scrollbar. A long sidebar scrolls inside the sidebar while its search stays in place, and every scrollbar is the same slim one, shown when you point at or move into the region.
+- 21d69a4: After Show all in a chat table, or a publishing choice in the Google setup, focus moves to what appeared, and a failed Sign out is read out to screen readers.
+- 666f225: After "Show all" in a chat table, or a publishing choice in Google setup, the part that gets keyboard focus now shows Studio's focus ring.
+- c09a8ce: The sidebar is a little darker, so it stands apart from the content.
+- cf1dde3: Halonic Inbox and Halonic Messenger, opened with no workspace, now have an "Open Halonic" button that brings Halonic's main window forward so you can choose one.
+- 482ee3c: On Windows, the Start menu now has Halonic Inbox and Halonic Messenger beside Halonic, and Windows search finds them. Each opens in its own window with its own taskbar entry, and Halonic runs only once.
+- 72b23d7: Halonic Inbox and Halonic Messenger now show only the Inbox or the Messenger, for the workspace you last had open in Halonic, without Studio's tabs and sidebar.
+- 5d7cebd: In Halonic Inbox and Halonic Messenger, the folder picker and confirmations open over the window you're using, and a notification for an Inbox item or a conversation goes to that app's window when it's open.
+- 21b789d: Halonic Messenger and Halonic Inbox now show one pane at a time in a narrow window, the @ picker's rows use body text and a 48px row on a phone, and a picture or a reason opened with Show image or more shows a focus ring.
+- f61f301: The Inbox window and Studio now have a framed sidebar: the sidebar sits on the window's frame, beside the page's own panel.
+- 6e38522: In the Messenger, short automatic replies in a Paperclip chat now show as the agent's automatic messages instead of messages from "Board".
+- bb37126: While an agent works in a Paperclip chat, the Messenger shows its progress notes as plain text.
+- 46ce4fc: "Try again" on the Library's, Agents', Routines' and Workflows' retry lines no longer stands apart from its text: a ghost button that changes its label while busy keeps both labels at its start instead of centring them.
+- 9f5e6e4: Studio refuses to run git in a repository whose own config sets credential settings other than `credential.helper`, `credential.username` and `credential.useHttpPath`, or any `trace2.*` setting, because your credential helper reads them too; the same settings in your own git config still apply.
+- 52d9749: A new action stepper creates a GitHub repository the way ours are set up: private first, with squash merging, auto-merge and our label, then an environment with its protection, the ruleset, one Actions secret, the agents' access, and making it public if asked, and at the end it reads the settings back next to our defaults. You type the repository's full name before each change is sent. A second small stepper adds the repository to a Paperclip project.
+- c2c2208: Two new GitHub action steppers: approve a deployment that waits for you (it stops if the run is no longer waiting or its commit changed since the request, and the preview names the repository, environment, run, commit and who started it), and set up a deployment environment on GitHub's own settings page, with a check afterwards that it was saved.
+- 1d64951: Three new GitHub action steppers: remove a self-hosted runner (the stepper refuses while the runner is online, so stop it on its machine first), make a repository public or private (the preview says what becomes public), and change how pull requests merge (auto-merge and the three merge methods).
+- 7c590f7: Setting up Google with a personal account no longer asks you to publish your app: you add your own address as a test user and the app stays in Testing, so the setup has six steps, and you can still publish with your own pages instead.
+- 681a627: On a phone, the Google setup item in the Inbox no longer repeats its name under the top bar.
+- 32fff27: For a personal Google account whose app stays in Testing, the last step of the setup, where you sign in, shows the date Google ends the sign-in, Studio reminds you a day before with a "Sign-in ends soon" chip and a "Sign in again" item in the Inbox, and a sign-in Google ended after 7 days says "Your weekly sign-in ended." instead of a list of causes.
+- 1a50878: Alt-click (⌥-click on a Mac) or Alt Enter on an agent's or a workflow's row in its overview shows it in the Assistant's chat.
+- b7389b9: In a file's editor, Previous and Next move the focus to the assistant's change, and each change is named with what it changed, such as "Change 2 of 2: 1 line added at line 7".
+- 058ee99: After you accept or reject one of the assistant's changes, the focus moves to the next change, a screen reader says when a file changed outside Halonic, and a changed step card says in words that the assistant changed it.
+- 7414fc5: Studio's Assistant no longer sends you to a hidden Settings section when it has no model, and two messages read more clearly.
+- b8bfaf5: Two Studio messages now name the button or risk level they refer to.
+- f1a3c0a: Reaction buttons and the activity panel's agent lines show Studio's focus ring.
+- 535210b: A screen reader now hears which places a rename also updates, and each connector's Change key button names its key.
+- 4f4153c: A stepper that refuses a request missing what the agent saw now says to decline it and ask again.
+- 1b834ee: Studio takes new colours: a light grey-blue frame with white panels, and in dark mode a deep blue sidebar with darker panels.
+- d9b6fc9: Filter chips are a little larger, with bold labels and a lighter outline.
+- a6d2601: An agent that runs in Claude Code or Codex can set `harnessLimits.maxTokens` to stop a step once its model calls, sub-agents included, have used that many tokens.
+- bc8d550: The Model page and `halonic validate` now say when an agent's harness can't use its model: Claude Code and OpenCode use Anthropic models only, Codex only OpenAI's Responses API, and a Codex agent on an OpenAI-compatible provider is asked to check that the endpoint supports it.
+- d7d36c7: When OpenRouter is busy or down during a harness agent's model call, Halonic now sends the call to the next host its model alias falls back to, if that alias uses the same model and provider file and keeps your data at least as safe, and the run log shows which alias served each call.
+- 41db415: A Claude Code or Codex agent whose model alias is at OpenRouter now runs on the hosts the alias's `params.extra.provider` pins, the run log's `llm.request` shows that pin, and a models file whose pin has an unknown key or a wrong type no longer loads.
+- 11cdc2f: The Harness page's Working folder and Allowed sites labels match the page's other labels, and while the agent's program runs in its sandbox, an empty Allowed sites list says the program can't reach any site.
+- 1b93b3c: Studio's Assistant panel no longer offers Settings › when it has no model, while Settings hides its Assistant section.
+- 0826aa9: Studio's Settings no longer shows New agents run, the Assistant section, Agent characters or Panel opacity for now: they saved a choice that nothing used yet.
+- 596b039: Right after Studio opens, Run, Run now and an agent's Send wait with the line "Agent host is still starting" until the agent host can check the sandbox, instead of looking ready and waiting without a word. Settings › Agent sandbox also updates as soon as the host answers.
+- b879d60: When a model provider, an integration or a proxy in front of them answers with an unusual status or status text, Halonic now reports that answer, for example that the provider was busy, instead of saying it couldn't reach the server.
+- 504312b: The Studio window has an icon rail at its left edge: Home, Library, Messenger, Inbox, Runs and Changes, with the one you are in marked. Which icons show depends on the folder you opened.
+- f3f4a32: An agent's card in the Inbox no longer shows its title twice, and the feedback overlay's size label stays on one line.
+- 13dc34c: In a narrow window or on a phone, the Inbox opens an agent's cards.
+- cdc4742: When a source refuses an Inbox answer because it doesn't fit the card, the card now says to answer it in Paperclip instead of offering Try again.
+- c57064f: With a Paperclip connection, the Inbox shows the comments that mention you in Paperclip's mention picker, with a link to answer on the task in Paperclip, until you comment on that task, it closes or 14 days pass.
+- 887719a: The Inbox shows the Paperclip tasks assigned to you, with a link to answer each one in Paperclip.
+- d1196dc: The Inbox's rows now show how long an item has waited at their top right, amber with a dot once it is late, and an agent's row names who asks instead of its source; the list's header matches the Messenger's, and an open item has up and down buttons (K and J) to the items beside it.
+- bc8f18b: In the Inbox, a card that ends while you look now shows its final state in its own place instead of jumping to the top, and the open card's final-state line gets a focus ring that wraps just the line.
+- 5e1d30f: In the Inbox, a card decided, cancelled or expired anywhere now shows how it ended in its row for a few seconds, then leaves the list; cards that end together leave together.
+- e8d5500: In Studio's Inbox, an agent's picture shows only when the file really is a PNG, JPEG, GIF or WebP image of a sensible size; otherwise the card says it couldn't load the image. A card holding several agents' cards no longer names just one of them, and the open card's row stays highlighted when its bundle shrinks to one card.
+- 5c56886: An open Inbox item now has a header like a Messenger chat, with the item's picture or mark, its title, its details and where it is among what waits; on a phone or a narrow window, a back arrow takes you back to the list.
+- 5b856df: In the Inbox, the list now takes 34% of the Inbox's width, at most 380px, beside the open item.
+- 265b5a6: In the Inbox, new items glide into the list and, in a narrow window, opening an item or going back slides between the list and the item (only fades when the system asks for reduced motion). Agent cards stay when the agent list can't be read.
+- 95801b6: In a narrow window, such as 200 % zoom on a laptop, the Inbox shows one pane at a time, like on a phone.
+- 7b1133c: On Windows, the Inbox no longer says "The engine isn't answering" while the agent sandbox isn't set up yet.
+- d298a74: When the card open in the Inbox is decided, cancelled or expires in Paperclip, it stays open and says how it ended, such as "Approved by Liam · 10:00", in place of its buttons.
+- b5b3258: After the engine refuses to read the Inbox again, an open item now gives the same reason as the line over the list, instead of saying the engine isn't answering.
+- 4c906fc: In the Inbox, Request changes on a Paperclip approval now asks what should change, and a Paperclip confirmation that needs a reason asks for it before Reject.
+- ac849eb: In the Inbox and the Messenger's Needs you, an item now shows who asks as their picture, with a small badge for what it is: an approval, a question, an action, a task, a comment or something to answer elsewhere.
+- 7d85c7c: The Inbox's rows now line up with the Messenger's, and an agent's initials show in that agent's own colour, as in the Messenger.
+- e881de2: The Inbox's Needs you and Done lists now have the Messenger's plain rows: no box or lines, a soft background on hover and on the open item.
+- 3fff8fa: An agent's item in the Inbox now shows its project as a coloured dot and the project's name, both in its row and over the open item.
+- 6826a49: The Inbox's project filter fits on one line: All, the projects that fit, and "+N" for the rest, a menu of every project with how many items wait in it.
+- 46d2d3f: The Inbox now shows which items you haven't opened yet with a blue dot and a bolder title, counts them in the Needs you heading ("3 new"), and lets you mark an open item as unread from the menu in its header.
+- 5515154: Inbox rows stay the same height when their text is long: a title takes up to two lines and the line under it one, still ending in how long the item has waited.
+- cd25b07: In the Inbox, hovering a row now offers Mark as read or Mark as unread, and a new item's blue dot sits under its Late or Setup label.
+- 238d6ed: The Inbox marks each item by kind (an approval, a person step, an agent's picture), counts agents' cards in "2 of 6", says who asks on an agent's card, and shows "Showing what it said last" in a callout with Try again.
+- a621150: The sidebar's Inbox, and the Inbox tab on a phone, now show how many items are new, with the sidebar's Inbox in bold, and show no number once you've opened everything, even while items still wait.
+- 03f5f5b: On Windows, a Paperclip sign-in started from the Inbox in Halonic's main window now opens its approval page in the same small sign-in window as Settings › Connections.
+- 80e9715: When the Inbox can't load again, the line over the old list now says when it was last updated, and gives the actual reason instead of saying the engine isn't answering when the engine did answer.
+- 49399b2: On Windows, a silent install or uninstall now exits with code 41 when it didn't set up or remove the agent sandbox because the sandbox helper isn't signed by Halonic, instead of 0.
+- 629c3a6: The Windows installer now includes the system Halonic's WSL sandbox is set up from, so the setup works offline. Halonic now uses about 290 MB of disk space.
+- b7888e5: A local integration's connector page now has a Secrets section for the secrets its file names, and when the service didn't accept the token, **Paste a new token** takes you straight to the token's field.
+- 51ac0e9: A call to a local integration that a service refused (it didn't accept the key, didn't allow the action or asked to slow down), or whose code tried a site its sheet doesn't list, now counts as failed when nothing else in the call went through, so the run goes on instead of waiting for you.
+- 2694b50: On a local integration's page, the line under each secret now says the integration sends it only to the sites it says it connects to, instead of saying it gives it to a program it starts.
+- 3b78529: On an item's page, New chat and picking a chat from the menu put focus in the chat box, and a workflow's name can only be edited once the workflow has loaded.
+- fc0f3b6: Studio can now walk you through creating an Anthropic, OpenRouter, Cloudflare or Google Cloud API key, storing it in Paperclip Secrets and giving it to one agent, each on the service's own page with exact instructions; Halonic never sees the key.
+- 619f8d9: Scrollbars, dialog backdrops, shadows and the quieter text under more contrast now use the same neutral grey ink as the rest of the new theme, instead of the old blue-violet tint.
+- 406328a: Menus, tooltips, dialogs and toasts take the new design: rounder menus with an edge and softer icons, a wider small dialog, the same dim overlay in light and dark, and a pill for a toast's action.
+- 33ce323: In the Library, Skills, Knowledge, Collections and Connectors are now chips, and the list sits in a column of 34% of the width, at least 208px and at most 380px, beside a pane that says what the chosen kind holds.
+- b78ca3a: In Studio, a run of the live version now starts its connectors' programs and reads its agents' skills from that version, as `halonic run` does, so a saved change isn't used until it's made live.
+- 7e6b7c1: In a local-only workspace, a model provider whose file says `local: true` counts as local only when its address is on this computer or its local network; a provider at a public address is reported by `halonic validate` and isn't used as a local model.
+- dfce7dc: A deployment that lets many people sign in and stops them at a cost limit now refuses an agent whose model has no price, in `halonic validate` and when a run of it starts, so the limit can count every call.
+- ec2e5e5: In Changes, when you're getting updates and you both changed an item, its choices stack when the pane is narrow, and otherwise sit side by side.
+- a449c30: New messages, Inbox items and replies show in Studio as soon as Halonic hears of them, instead of up to 2 seconds later.
+- b817fe7: On Windows, Settings › Connections, Inbox and Messenger now read a folder you open after Studio started, while your agents run in Halonic's WSL distro.
+- 6d82a1d: The Messenger works better with a keyboard and a screen reader: removing a member from a channel's To line keeps focus nearby and reads out who the message goes to, an agent's name is read once, the same answer to two cards is read both times, a removed file no longer hides why Send won't work, and the member picker's active row shows in high-contrast mode.
+- 6dc28fc: In a channel, the Messenger's activity panel lists the channel's agents, one line each, and picking one shows what that agent is doing.
+- 7a74d27: The Messenger's activity panel shows what comes next for an idle agent and its earlier runs today.
+- c6b3098: The Messenger's activity panel now shows the task's state as a chip (In progress, Done, Failed or Stopped), marks its open button with a filled tile, and shows a focus ring on all its buttons.
+- 4c6e1a8: The Messenger shows what a chat's agent is doing in a panel beside the chat on wide windows: its task, how long it has been working, its last activity and its pull requests, or its last run once it ended.
+- e81d3db: The Messenger's activity panel now opens as a sheet over the chat in a medium window and in place of the chat in a narrow one.
+- 2664a87: Messenger shows an agent's replies in bubbles on the left, and an automatic first note (such as "On it.") in a dashed bubble with a small mark, which doesn't count as the reply, unread or the chat's preview.
+- 5450855: The Messenger shows each agent's Paperclip picture in its chat row and in the chat's header, and the agent's initial when it has none.
+- 29e0036: In a Messenger channel, typing @ and the name of an agent who isn't a member offers to add them, a task that ended without an answer has Ask again, and while the source is offline a working line says when it was last read instead of counting minutes.
+- 10cf1e1: A screen reader no longer reads an agent's automatic note out as its reply in the Messenger; it reads the agent's own answer when it arrives.
+- 230535f: A Messenger channel now looks as designed: work lines show a coloured icon for each state, every message you sent says who it went to on its own side, the To line and the `@` names sit inside the message box, and an empty channel shows the group icon.
+- 27eb986: In a Messenger channel you can add and remove agents, pick the lead, and leave the channel; before an agent joins a channel with messages, the Messenger says the agent will see them.
+- 9040c02: In a Messenger channel, the box says who a message goes to, you can name members with @, each message shows who wrote it, and your messages show what each agent is doing with them.
+- c32c37d: In the Messenger, a channel's row shows its size and who is working, Waiting for me lists channels where an agent asks you something, and an open channel shows how many questions wait for you with a Next button.
+- a82bec3: Messenger's chat rows show the newest message, its time, a dot for an unread reply and a "1 card" chip, and the list shows loading rows, or "Couldn't load your chats" with Try again, instead of "No chats yet".
+- 3605eac: In a Messenger chat your messages show in bubbles, an agent's messages sit under its picture with its name and time, days are labelled, a sent message shows at once with "Sending…", the chat stays at the newest message or shows "1 new message ↓" when you scrolled up, the cards bar has Next, and the chat is at most 800 px wide.
+- 2514f97: The Messenger shows files and cards as the Inbox does: "report.pdf · 1 MB", "Couldn't load the image." with Try again, "Waiting since 10:00 (3 h)", whole file names in the box on their own row, and focus on a picture once it's shown.
+- 8625ab1: In a Messenger chat, each card now shows in the conversation where it was made and stays there as "Approve, 12:10" once answered, and a "3 cards waiting" bar under the messages takes you to the oldest open card. Chats are named by their agent, such as "Liam · CTO", instead of "Chat with Liam".
+- ccd69ea: The Messenger reads out new messages, answered cards and "No message in this chat matches.", keeps focus after you answer a card or remove a file, and shows one pane at a time with Back to chats in a narrow window.
+- 759887c: Messenger shows all chats in one list without the All and Waiting for me tabs; each row counts your unread messages and marks a waiting card or question with a small violet dot, and each agent's messages sit in borderless bubbles in that agent's own colour, under its name in semibold.
+- 03ab843: In a Messenger channel, removing a member, making one the lead, adding one or leaving the channel keeps focus on the next control and says what changed to screen readers.
+- 70922be: In the Messenger, New ▾ starts a channel with 2 to 8 agents and a lead, or browses the channels you aren't in so you can join one.
+- 257d6d1: The Messenger has its new look: in a wide window, the chat list and the open chat share one rounded panel, split by a thin line, with the activity panel beside the chat.
+- 6981f4d: With nothing connected, Messenger says "No connections" and offers Connect Paperclip, which opens Settings › Connections, instead of an empty chat list.
+- 0c51d58: In Messenger, a chat opens at its newest message straight away, instead of showing its top first and jumping to the bottom a few seconds later.
+- 0c51d58: In Messenger, a message you send to an agent on Paperclip stays on the right as yours once Paperclip confirms it, instead of moving to the left as if someone else wrote it.
+- fb58466: The Messenger now shows the pictures Paperclip gives its agents, instead of only their initials.
+- e7c38f6: Messenger: a screen reader now hears "Chat pinned." or "Chat unpinned." after Pin chat or Unpin chat in a chat's ··· menu.
+- ae9a71b: In Halonic Messenger, a chat's ··· menu can pin it, and up to 3 pinned chats show first in the list.
+- 46ac638: Messenger: one chat that can't be read no longer hides your whole list, a message on its way shows its files' names, your own message no longer counts as a new message, a day from another year shows its year, and the loading rows breathe three times before they rest.
+- 0d7e261: In Messenger you can react to any message, old ones included, with 👍 ❤️ 😂 😮 ✅ or 👀, and see who else reacted.
+- b1cbefd: The Messenger remembers which chats you read after Studio restarts, and a chat can be marked read or unread from its row, or unread from the menu in its header.
+- fb3e449: The Messenger and the quick ask box show your agents right after Paperclip connects, instead of waiting for the Inbox to read every open task's cards; a chat's "needs you" dot appears once that read is done.
+- ebc3da4: Messenger has a search icon over its chats (or Ctrl+K inside Messenger), a find bar in a chat (Ctrl+F) that shows "2 of 5" and moves between matches, and a "Needs you" entry at the top that lists every card and question waiting for you across chats, oldest first, to answer there or open the chat.
+- dee23e1: The Messenger's open chat shows the agent's picture larger, and only a chat with unread messages has a bold name and a full-colour line.
+- 2b78682: The Messenger's chat list, a routine's runs and a workflow's Runs view show short times in English, written your region's way or the way you chose in Settings › Formats: the time today, then Yesterday, the weekday, the date this year, then the date with its year, with the full date and time when you hover.
+- 46cfd72: The Messenger no longer shows "{agent} is typing…" while the chat's source is offline or signed out.
+- b1583e6: Messenger shows "{agent} is typing…" while the agent works on your chat, and ticks under your messages: one once sent, two once the agent has read it.
+- 0cab870: In a Messenger channel, a work line that failed says why when the source gives a reason: "Elena couldn't finish: Build broke".
+- 36e836b: A screen reader now reads the alias's provider, model and price with the model picker on an agent's Model page.
+- b836cc1: A Paperclip question that lets you pick several options now shows checkboxes in the Inbox and Messenger, so you can pick more than one. It showed radios before.
+- ae3fcbd: The Inbox lists an agent whose On this computer choice is on hold once a routine ran it in the sandbox, with one row per agent that says Fixed once you confirm again or set it back to the sandbox.
+- 27d178f: In the Inbox, an agent's on-hold item now has Review and confirm, which opens the agent's page at Where it runs. The item no longer turns to Fixed when Studio couldn't read the agent's choice for a moment.
+- 8172027: `halonic doctor` checks OpenCode 2.3.0 too, and an agent whose file says `harness: opencode` runs it on Linux behind the bridge.
+- a5d50d5: Overview with nothing connected now says "No connections" and offers Connect Paperclip, as the Messenger does, instead of "No agents yet.".
+- fbdd6c8: When "Let phones answer risky approvals" is on and the phone can check your fingerprint or face, you can now approve or reject risky approvals in the phone app.
+- 9f1e9e6: The Inbox now shows Paperclip's secret proposals and join requests, to approve or reject; a secret's value never leaves Paperclip.
+- 257e332: Paperclip cards and approvals in the Inbox now list the files the agent posted with them, and **Show image** opens a picture.
+- 31a8750: A Paperclip checkbox, item-verdict or suggested-task card now shows in its answered record what was picked, by label, instead of nothing.
+- c3d3844: With a Paperclip connection, you can start a channel, change its members, and browse, join and leave channels.
+- 89664e6: Messenger lists your Paperclip channels, and a message in one becomes one Paperclip task for each agent you named, or for the lead when you name no one.
+- c56ad03: In a Paperclip channel, agents' replies to your message show in the channel, and under your message a line for each agent says whether it is starting, working, has answered, couldn't finish or passed the work on.
+- d188b16: A Paperclip connection shortens a very long user name in its label, and finds the name again after Paperclip had a server error.
+- dc717fa: Each Paperclip connection now shows whom it is signed in as, such as "Paperclip · Halonic · Board Supervisor", in Settings › Connections and next to its items, so two accounts on one Paperclip can be told apart.
+- 7067840: The Inbox and Messenger now show Paperclip's open decisions, with one button per option.
+- 2136ba9: Disconnecting a Paperclip connection now signs it out in every open workspace that uses it, even when you're offline.
+- 23d98d8: Right after you connect Paperclip, Inbox and Messenger show it online within a few seconds, instead of offline until something changes in Paperclip.
+- eddbc98: A Paperclip request in the Inbox now runs only on a Paperclip you connected in Settings › Connections and signed in to on this computer; otherwise the card says why and offers only Decline.
+- 03365e9: A Paperclip request the Inbox won't run now says "Halonic can't run this card's stepper", the sign-in reason reads "this computer isn't signed in to `<host>`", and a request opened before Settings › Connections has been read waits instead of being refused.
+- 361be81: New Messenger messages and Inbox items from Paperclip arrive sooner than polling when Paperclip sends live events; without them, the app keeps polling as before.
+- d95c7cc: The Inbox and the Messenger now open from a copy of your Paperclip lists kept on this computer, so after the first sync they don't wait for Paperclip. Search still asks Paperclip.
+- 93632ad: A workspace tool can list the budget approvals it would ask the board for in Paperclip, with the source file, its commit and the old and new amounts, skipping any budget that already waits on the board; it files nothing yet.
+- 3ba383a: A Paperclip card that asks several questions, or lets you pick several options, now shows in its answered record every option that was picked, by label.
+- 0a1dc38: A workspace tool can list each agent's seat rule for Paperclip (shared, pinned or a seat of its own, and paid API never). The budget report now compares project budgets as well as agent budgets, and says when Paperclip's 500-item agent or project list may have left some out.
+- 0286154: Halonic keeps you signed in to Paperclip after a restart in the demo, and in any workspace that only uses the test model.
+- 98b4108: Studio keeps you signed in to Paperclip when it restarts: a workspace you signed in from gets its connection back when it opens. After this update, sign in once more; from then on it sticks.
+- 1983823: Links in the Inbox and Messenger windows now open in your browser. Before, clicking one did nothing.
+- 9f6d1e8: A Paperclip plugin built from a workspace writes times in its tool answers as Amsterdam time with the zone named (for example "26 Nov 16:05 CET"), not as UTC timestamps; the data the tools return keeps UTC.
+- 7061b0e: A routine's skipped times now show the times it missed while routines were paused.
+- 14e33d1: Show activity now moves the focus into the activity panel. The phone's Inbox keeps the focus on the card's row after Back or Next, and says when you can answer once your computer answers again.
+- 9f58485: On the phone, a second Approve or Reject for the same agent is read out too.
+- 4e1c1ed: On a phone, approving now says "Approval sent." instead of "The run continues.", because the phone can't see whether the run goes on.
+- 0dbba08: On a phone, the Assistant says which page you're looking at under its name, such as "Looking at: Home", and its ⋮ shows Delete chat in red below a line, as on a computer.
+- a056ab5: On the phone, the computer's screen always has a heading and opens on it, Approve and Reject name their agent, and focus stays on the agent's row after an answer or Back to Agents.
+- 016efbe: On the phone, hidden characters in approval titles and your own messages now show as chips too.
+- de3d5fd: A paired phone that hasn't connected for 30 days is removed from the computer and has to be paired again.
+- c33c34a: On the phone, answering Inbox items asks for your fingerprint, face or PIN at most once every 5 minutes while the app stays open; approvals still ask every time.
+- a36065b: On the phone, an Inbox card no longer flashes "Set a screen lock on this phone to answer from it." while the phone is still checking its screen lock; its answers stay off until the check is done.
+- f5e0b2a: On the phone, risky Paperclip approvals (such as hiring, budget, the CEO's strategy, secret proposals, join requests and a card that gives an agent a secret) wait for your computer unless you turn on "Let phones answer risky approvals".
+- ac159de: On the phone, a computer's Inbox and Agents tabs sit in a bar at the bottom with the Inbox's count, and each Inbox card shows its title, who asks and how long it has waited, its first option filled, and why answering is off in a note above the options.
+- e6ce1f7: On the phone's Messenger, a screen reader now says "You" before your own messages, and the focus goes to a chat's name when it opens and back to its row after Back.
+- 8995ce3: On the phone, Messenger's chats show each agent's picture, source and time, replies show who wrote them, and in a channel you can name members with `@`.
+- 8e08525: On the phone, a Messenger list or chat that couldn't be loaded now says why, with Try again, instead of showing an empty screen.
+- 17bf97c: On the phone, a paired computer's screen has a Messenger tab between Inbox and Agents, and a GitHub pull request link in a message opens in your browser.
+- c330532: On the phone, a computer with an older Halonic still shows its agents, with a note to update Halonic on that computer to use Inbox and Messenger from your phone, instead of asking you to update before anything works.
+- 70a1df0: On the phone, Back from Paired computers returns to the computer instead of leaving the page, Back on the scanner, Camera off or Type a code returns to Pair with a computer, each pairing step and Paired computers move focus to what they show, and forgetting a computer on Removed or Can't confirm says it was forgotten.
+- d409869: On a phone with a PIN, pattern or password but no fingerprint, you can now answer Inbox items; risky approvals still need a fingerprint or a strong face unlock.
+- a4b4e12: On the phone, reactions show under each message in a chat: tap a chip to add or remove yours, or press and hold a message to react or copy its text.
+- a69c0a0: On the phone, the Remote screens fill the screen: the main buttons sit at the bottom, problem screens are centred, titles and headings are smaller, so they fit on one line, the scanner shows without the top bar, Forget asks with stacked buttons, and agents' states turn grey while what you see is out of date.
+- 9947ce8: On the phone, Type a code now lists the computers on this Wi-Fi and the ones paired before to choose from, with the Code field and Pair, says when it is still looking or how to allow Nearby devices, and keeps the computer and code after a wrong code.
+- a35acec: When the phone and your computer run versions of Halonic that can't talk to each other, the phone now says to update Halonic on both, instead of waiting for a reconnect.
+- 5c97c55: Clearer messages when a pairing code doesn't work and when a rule or tool step can't run.
+- beadcb1: In a served Studio, a run that stops at your plan's limit shows in the Inbox with "Waiting: plan limit reached", why it stopped, when the limit resets and **Continue the run**.
+- df33495: When you press Continue the run on a run that is still at its plan limit, the card now says "This run is still at your plan's limit." with the day the limit resets, instead of seeming to do nothing.
+- 2dcb70f: With a screen reader, the usage banner now shows in the landmark list.
+- 8ab940b: `halonic build paperclip-plugin` now puts the workspace's signal files into the plugin, and the release file and the build summary list the signals added, removed and changed.
+- 908de42: `halonic build paperclip-plugin` now puts the workspace's templates (`library/templates/<id>.md`) in the plugin, so agents can read them, and refuses a template file that isn't committed.
+- bd61d79: After you sign out of a plugin's sign-in, focus moves to its **Sign in** button and screen readers read "Signed out of *plugin*.", and a "Couldn't start the sign-in" line goes away once the sign-in is signed in another way.
+- 5b2ebc9: `halonic build paperclip-plugin` now writes the snapshot's SHA-256 into the release file as `snapshotSha256` and prints it as Snapshot SHA-256, so you can fill in the plugin's Pinned snapshot SHA-256 setting without unpacking the plugin file.
+- a2e4442: In a build of Halonic without plugin tools, Home no longer shows plugin cards and Ctrl K no longer lists plugin commands; Settings › Plugins says once that plugin tools aren't in this build yet.
+- 079f377: Every button, link, tab, menu item and row you can click now shows the hand cursor, and an unavailable one shows the not-allowed cursor.
+- 79818b3: On a Preview build, the release page link in "Updated to Halonic" and in the "didn't install" message now opens the Preview release instead of a page that doesn't exist.
+- 4eedc31: The prompt boxes get a clearer edge when the system asks for more contrast.
+- e0c709b: The Ctrl+K search and the Studio chat now have rounder boxes with a soft shadow, and Send is a round arrow inside the chat box.
+- 2b78dd6: A change card in the Assistant shows at most 3 lines of the model's reason, with "more" under it to read the rest, so Show the diff and the buttons stay in view.
+- 265f45f: In the Inbox, Accept on a file that changed after the run started opens Compare, with Keep mine, Use the run's and, when the two don't touch the same lines, Combine both.
+- d712fbb: A screen reader now says which file each Reject and Accept button on a proposal decides, such as "Accept docs/returns.md changed".
+- e27cfe1: A card that asks several questions, or lets you pick several options, now shows each question with radio buttons or checkboxes and a Submit button in Messenger and the Inbox; once answered, it shows your picks ticked and the day you answered.
+- fce44b7: The quick-ask box names the agent you're asking, keeps Ask quiet until you type, shows when you asked and who answered when, and lists each agent's role and what it's doing.
+- 6821a88: Quick ask's box takes typing while it reads your agents, says when it couldn't load them with Try again, says when no agent matches the picker's search, shows "Sending…" after Try again, and shows whether Copy worked.
+- 31ef030: Quick ask now shows in Help and in Ctrl K with its keys, and the "Your first run is done" card says "Ask an agent from any app: Ctrl+Alt+Space" (⌥Space on a Mac).
+- aa7569f: Change Quick ask's keys in Settings › Keyboard. If another app holds them, or your Linux desktop doesn't let apps add a shortcut, Settings says what to do instead.
+- 52bb8cb: Ask any agent from any app: press Ctrl+Alt+Space (⌥Space on a Mac), or pick Ask… in the tray menu.
+- 7dd2faf: Quick ask's box shows its keys and a loading outline while it reads your agents, instead of an empty box, and offers Open in Messenger only once the agent's own answer arrives, not on Paperclip's automatic "on it" note.
+- e7a4733: Quick ask's box now scrolls a long answer and its replies, so Copy and Open in Messenger stay in view.
+- ab0ae7f: In quick ask, Open in Messenger is now a link at the right end of the footer, like Copy, and Answer in Messenger on a question card is the blue main button.
+- 0669ad6: The quick-ask box takes the new design: the panel's corner, with a thin edge in dark, and the floating message box from the chats, in light and dark.
+- 37991e7: Open in Messenger, Answer in Messenger and Last answer in the quick-ask box now open Halonic Messenger on that chat, at its newest message, ready for you to type.
+- 3a84f1c: Quick ask's box says its keys, whether Copy worked and when no agent matches the search, to screen readers too.
+- b18f6d5: A screen reader now hears "Sending…" when Quick ask sends a question again.
+- 6821a88: Settings → Keyboard says the same thing when Quick ask's or Send feedback's shortcut is taken by another app.
+- c57ceeb: The sidebar beside the icon rail now takes about a third of the window, at most 380 pixels, and follows the window as you resize it until you drag its edge. Screen readers now call the icon rail "Apps", so its landmark is no longer confused with the sidebar's "Places".
+- a775653: The Studio's icon rail now sits flush with the window's left edge, its buttons 4px apart, and the Halonic Studio mark in the title bar lines up with the rail's icons.
+- a433bc7: The sidebar beside the icon rail lists only the places of the icon you picked, plus those no icon holds, so a place no longer shows twice. Settings moves from the sidebar's last row to the bottom of the rail.
+- 6200ab6: The icon rail marks where you are with a white dot, which travels to the icon you click. With reduced motion turned on in your system, it fades instead.
+- cdb34aa: A recent workspace opens as soon as Halonic starts, and its row says what it's waiting for, such as "Starting the engine…".
+- 0788018: Screen readers now hear which step an opening Recent workspace is at, and which chat each Mark as read or Mark as unread button is for. A build chat that stops after two fixes now names the integration.
+- aab2888: A plugin's name and labels, and a workspace tool's text, are refused when they hold invisible characters such as zero-width spaces, tag characters or line separators, not only control characters and text-direction marks.
+- 20cb002: Two new release action steppers: merge a release pull request directly at the head commit the request names (it stops if the pull request is closed, comes from a fork or its head changed since the request; GitHub refuses the merge if the head moves after the check, and on a branch that requires a merge queue unless you may bypass its rules, which skips the queue's checks), and approve a staged npm version on npmjs.com, with exact steps to check its commit and ref first.
+- ac09f30: Stopping a chat turn that runs on a remote host now always ends it; before, it could sometimes keep waiting for the model's answer.
+- 4b3f40a: Settings › Remote in the desktop app has a new switch, "Keep this computer awake while it's plugged in", so your phone can reach it; it's off until you turn it on.
+- 88b4328: Settings › Remote no longer shows an error when you cancel the desktop app's question before turning remote on, allowing risky approvals or pairing a phone, and the paired phones list and Revoke dialog show hidden characters in a phone's name as markers.
+- 6ba117b: Halonic now opens every window you had open, Studio, the Inbox and the Messenger, again when it starts, each where it was.
+- 7c0b0c8: Settings › Startup has a "Reopen windows on start" switch, on by default, so you can choose whether Halonic opens the windows you had open when you last quit.
+- 0cc11fd: An agent can file at most 10 action requests in one run. After that, `request_action` refuses and
+  files nothing, so a looping agent can't fill your inbox.
+- 055690d: `halonic serve`: the daily request ceiling (`limits.dailyRequests`) now counts only signed-in requests and signed webhook deliveries, so requests from someone who can't sign in no longer use up the day. A webhook delivery taken by one routine is refused when it is sent again to another routine whose secret has the same value; what senders sign is unchanged.
+- faec77c: When the chats on Home or a Library list load again while Try again has the focus, the focus moves to New chat on Home, or to the Library's first row, instead of being lost.
+- e15ce2e: The assistant's changes on the agent page are now marked around their field, and in the code editor added and removed lines get a coloured edge and full-size Accept and Reject buttons.
+- 8d5d75f: Before Studio desktop approves a hire, a secret or another risky request from your agents, it asks you in its own window, naming the agent, the secret and the environment variables the approval gives it, by name only.
+- 2de9f61: The last line of `halonic routines` now says routines also start on time while `halonic serve` is running.
+- 7c9a8c6: A run's page lets you open each file the run saved, read-only as plain text in its own tab, and a step's side panel shows what that step's agent answered.
+- 6cd41c8: In the desktop app, each file a run created has Save… on the run page's Items line, which saves it wherever you pick in the system's save dialog.
+- 1cd5c3a: On a run's saved file, Try again keeps keyboard focus on the file's name and a screen reader reads it when the file still can't be loaded; the file's text is a region named after the file.
+- 5b816e0: On Linux and macOS, `halonic run` no longer refuses while `halonic serve` is running for the workspace: the running Studio starts the run, which shows in the Inbox on your phone, and `run` prints the run's id. With `--event`, `--harness` or `--follow` it still asks you to stop `serve` first.
+- 1047dd6: Clicking a run notification opens that run in Studio, even when Studio's window was closed; "3 runs failed" opens Runs on the Failed runs.
+- d756e87: Studio now shows a desktop notification when a run fails, or when a run you started finishes, as set under Settings › Notifications › Runs. Clicking one opens Runs.
+- f4f4cce: `workspace.yaml` can set `budget.perRunTokens`: a run stops once it and its child runs have used that many tokens, all tokens counted, cache reads and writes included.
+- 8651609: `halonic run` while `halonic serve` runs: when serve takes the start but doesn't answer in time, run now says the run may have started and points at `halonic runs list`, instead of telling you to stop serve and run again. A trust check that fails in serve now reads "halonic serve couldn't start the run.", and the started line no longer promises a question on your phone.
+- d311c8f: After Run with Claude, focus stays on the screen and screen readers hear the outcome: that Claude Code is starting, that nothing was started, or why Halonic didn't start it.
+- 912be24: A request for a server session offers Run with Claude with a confirm screen before anything starts, and Settings shows Your server, where you set the server it starts on.
+- 57fb0a8: Runs shows its list in a column with the run you pick beside it, and Ctrl-click (Cmd-click on a Mac) or a middle click opens a run in a new tab instead.
+- 5ad254a: The Runs list shows each run with a picture of what ran and a coloured dot for its state, its time on the first line and its cost under it, so a row's state no longer covers its name.
+- 3388bd2: The Runs page now lists your Paperclip teams' agent runs of the last 30 days next to the workspace's runs, newest first, and says which team couldn't be read without hiding the other runs.
+- dbb0438: Runs shows every run in a table beside the list while no run is open, with each run's number, what started it and how long it took. Click a row to open the run.
+- 7ac1202: Claude Code and Codex agents in the sandbox get Halonic's coding tools to read, search and map the workspace, and Claude Code can run tests with them, always after asking you first.
+- e914ad3: On Windows, setting up the agent sandbox after an install without it now tells you to run the Halonic installer again with the sandbox box ticked, instead of asking you to reinstall, and Back on the installer's licence page keeps the desktop shortcut box as you left it.
+- 065c866: Search, Overview and Recap now show in the desktop app, and screen readers announce when they are loading, what they found and when something went wrong.
+- a8f86ea: Ctrl K and the phone's Search no longer say "Couldn't search" after you type quickly with Paperclip connected: they search once you pause typing, as the Search page does.
+- 6a34085: An action stepper that checks a secret now passes only when the secret was saved after the page opened, so an old value left over from before no longer counts.
+- 2f4a6eb: While Studio is connected to Paperclip, Send feedback shows in Help and in Ctrl K with its shortcut, such as "Send feedback (Ctrl+Shift+F)", and picking it starts a feedback once the menu has closed.
+- c56cdc7: The Send feedback window now shows its crop loading, says when the screenshot couldn't be loaded and offers to send the text alone, says before Send when Studio is offline, and keeps your text with Try again when Paperclip refuses the feedback.
+- 4260010: On the page that asks before an action sends, the request box now shows the same focus ring as the other controls when you reach it with the keyboard.
+- f9af67d: On `halonic serve`, connecting or disconnecting Paperclip from a paired device needs the sign-in password again, and `halonic serve devices` shows which device changed the Paperclip key and when.
+- 5482e5b: `halonic serve` keeps serving when the system won't let it open the console for `halonic serve pair` and `halonic serve devices`, and says why on a `!` line instead of stopping.
+- 6a5074c: `halonic serve` now serves your Paperclip messages to a signed-in window, and a Paperclip connection you sign in to or disconnect while it runs shows up or disappears at once, without a restart.
+- 3b914e4: `halonic serve pair` adds a phone or another device with a one-time code you allow at the computer that serves, and `halonic serve devices` lists the paired devices and signs one out.
+- 8ba9e8e: `halonic serve` connects a new built-in connector, `transport: { paperclip: { connection: <name> } }`: a workflow's tool steps read the PR watcher's last pass and wake or finish a Paperclip task through one of the workspace's Paperclip connections, with the key stored on the server. With no stored key, the step fails with `signed-out`.
+- beec624: `halonic serve --public-origin https://<host>` serves the engine behind a proxy on the same computer: it needs a sign-in password, answers only to that host name, and can't go with `--network`.
+- 23a96a0: `halonic serve` prints one line for every finished request, such as `POST /api/pair 429`, with the method, path and status only, so pairing tries show in its log.
+- 6725571: `halonic serve` now starts the workspace's routines on their schedule, as `halonic routines watch` does, and a signed-in owner can pause or resume them.
+- 8b4fd7c: `halonic serve` now runs a workflow's rule steps, each in a worker thread of its own with the agent limits.
+- 10d0239: A Studio served with `halonic serve` now recognises a copy of the Acme demo from its `template.yaml`, so it shows the demo's Home line, its Demo tag and the sample chip.
+- cf93e70: Studio in a browser (`halonic serve`, on a computer or a phone) now shows the same context on an Inbox card waiting for your answer as the desktop app: which workflow it comes from, with "Sample answers" when the test model wrote it, the email the run started with as a quote above the draft, and the step's closing line next to the buttons instead of inside the draft.
+- 7f8f771: When nothing is waiting, Home in a browser now says that runs needing your yes show up there.
+- e8e6e2c: On a phone or in a served browser window, an Inbox answer refused because the workspace isn't trusted now says where to fix it, "Fix this on your computer: Settings › Trust", instead of a Review button that opened nothing.
+- 38ed2b7: A server behind Cloudflare Access can now be paired: the pairing dialog takes an optional Access client ID and secret, kept in the keychain, which you can update later from the Messaging engine row.
+- 3f4460d: Settings › Connections can pair a workspace with a Halonic server: pick Server under Messaging engine, enter the code from `halonic serve pair`, and allow the request on the server when the check codes match.
+- 5ee76db: The Messaging engine row now shows whether the server answers (Offline, or Signed out when the server ended the pairing), when it last checked and when the pairing ends, also after Studio restarts, and names this computer as it paired with the server.
+- d1c4965: Secret names that start with `server-pairing__` are now kept for Halonic itself, the same way `token-key` is, so a workspace can't pick one.
+- 6ba83de: In Settings, Trusted sources now comes right after Trust in Agents, and the Keyboard icon's keys sit centred.
+- acaa93a: Settings › Connections now shows in the desktop app, so you can connect Paperclip there and see its cards in the Inbox.
+- 08e5aa6: The Settings list groups its sections by topic (General, Agents, Account and connections, Keyboard, About), every section has an icon, and About Halonic is always last.
+- 0c5b623: On Windows and macOS, Settings › On this computer › Startup has a "Start Halonic when I log in" switch, so Halonic can start in the tray (the menu bar on macOS) and run your routines without opening a window.
+- 3968291: Settings takes the new two-column look: the list of sections sits in a wider column, the section you picked is marked with the same soft fill as a row under the pointer, and its settings show beside it, in light and dark.
+- 7e07d31: Studio's `shell.log` now also keeps what went wrong in the first moments of start, such as quick ask's or the feedback shortcut's keys that couldn't be read or registered.
+- ce62e49: Show in chat in the ⋮ of an agent or a workflow puts it in the Assistant's chat, as a chip under the status line, and the assistant is told what is shown.
+- 5c170fa: The Messenger's chat rows and the sidebars' loading rows are now exactly 72px high, like the Inbox's rows, instead of growing taller.
+- c6961ad: When the browser won't open for a sign-in, its row now says "That sign-in didn't finish. Try again." and Sign in works again, instead of waiting for an approval that can't come. A waiting Sign in button keeps saying which sign-in it is for to screen readers.
+- dc40a0c: In a sign-in band or dialog, a row with a provider's logo and a row with a letter tile start their labels at the same place. On a touch phone, a chat opened from the last-chat shortcut no longer draws a focus ring round its title; a keyboard still shows it.
+- bed2832: When a Paperclip connection is signed out, the Inbox and the Messenger show a sign-in you can't close, with a Sign in button, until you sign in again. Studio's window shows it in a band under the title bar. Signing in once clears it in every open window.
+- 9be9d88: The Paperclip sign-in in an action stepper now tells a screen reader when the code has expired, and says to try the step again.
+- 7ca8002: Screen readers now read the sign-in prompt's waiting line, with the phrase to check in your browser, when you click Sign in, and again as the Sign in button's description when you come back from the browser.
+- c56fa0d: On Windows, the small sign-in window now opens at the right size and place over Halonic on a display scaled above 100 %. It also opens only pages on the service the sign-in is for.
+- e1905b7: On Windows, signing in to Paperclip, Google or a plugin now opens the sign-in page in a small window of your own browser, centred on Halonic, when your default browser is Chrome, Edge or Brave. Your saved passwords and logins are there as usual. Other links still open in your browser as before, and with another default browser, such as Firefox, sign-in pages open as before too.
+- df06bbe: `halonic validate` warns about a routine that starts itself on its own signal, and `halonic routines watch` shows which signal started a run and when a start was refused as a loop.
+- 260849e: Routines on a signal now start when a run sends that signal, under `halonic routines watch` and in Halonic Studio.
+- c804cf0: A workspace signal file can now switch on the `fast-track` rule, and `halonic validate` refuses a setting it doesn't know or a `jumpAhead` below 8.
+- 807b371: A workspace signal file can now switch on two more rules, `board-ask` and `task-effort`, and `halonic validate` refuses a setting either rule doesn't know.
+- 9c1b1fe: A workspace signal file can now switch on two more rules, `thin-spec` and `rule-checks`, and `halonic validate` refuses a setting either rule doesn't know.
+- 1f08797: Spend and seats dates its readings and offline banner from real reads, not from when a seat signed out, and its seat tile counts seats near their limit the same way Needs you does.
+- a866b62: On a phone, Spend and seats shows its money and seat figures as rows under "Money and seats", heads the seats "Seats · this week", and opens every agent from the "Agents by spend ›" heading.
+- 549fb4d: Spend and seats draws a signed-out seat's week dash in the same column as its "last read" line.
+- b127fc4: Spend and seats keeps one seat's failed read to its own row, draws its warnings in amber, greys the bars of seats signed out or not read, says "offline" in its freshness line, shows each section as one list and adds Open AI seats in Paperclip to its header.
+- 5119fc5: Every time the Windows installer runs, including an update, Repair or an install over an older version, it replaces Halonic's old Start menu shortcuts with Halonic, Halonic Inbox and Halonic Messenger.
+- 861be00: On the desktop, the status bar's badges and Problems pill sit fully inside the bar instead of running 1px over the window's bottom edge.
+- 9fb3289: A step the assistant changed now has the same thin coloured edge on the workflow canvas as its change mark, instead of a thicker one.
+- 2365668: A guided step whose instructions come from the service's docs now says "From the service's docs, not checked on the page" instead of "Checked on NaN undefined".
+- e10e2fe: An action stepper now stops before it changes anything when its check finds the state differs from what the requester saw, and each step shows today's value next to the change.
+- ed6f531: New command `halonic stepper guide <file>` prints the manual guide of a stepper request: numbered steps to do it by hand, with the exact pages, and refuses a request the stepper would refuse, with each reason.
+- 6a594ff: A request that stopped because something changed now says "nothing found" for a value its check couldn't find, where it said "not read".
+- 4b0513d: A guided step's pasted result is now sent back to the agent that asked, once it matches what the step asks for; a value that looks like a key or doesn't match says why under the field and isn't kept.
+- 61a06aa: In the desktop app you can run an agent's action request step by step, and Halonic answers the agent when you finish or decline.
+- afd4183: When you start a server session from a Paperclip stepper, the task's result now says, for example, "Started a server session on 27 Nov 2026 for HAL-1234".
+- c23830d: The Assistant panel shows the chat's full name, a focused change in the editor shows its whole focus ring, Messenger with nothing connected shows one message, and Search uses Studio's own search box.
+- 647181d: Studio's error lines name Halonic one way and give the command where one fixes it.
+- 2cdb698: Studio's window frame and title bar now have the same colour as the Messenger's, in light and dark. Settings › Appearance no longer has Frame colours.
+- 33e5588: Home's Needs you count is violet, agents keep their own colour on run tiles and a pull request's page, and Team and Runs write times the way the Messenger does.
+- 853ed90: Studio reads a workspace's files fewer times when it opens the workspace, so opening is quicker.
+- c7ecffb: Studio now shows its own typeface, Inter, on every computer.
+- 0acb556: The Assistant's recent chats show short times in your region's format, as the Messenger does, and the account button in the top bar shows your initials larger.
+- d1e3bc6: With "Reopen windows on start" off, Studio's window starts on Welcome instead of reopening the workspace it showed.
+- 2eccf61: Settings › Sync diagnostics shows how the Inbox and Messenger stayed up to date with Paperclip over the last 24 hours, and Studio now waits for changes with one request instead of one per screen.
+- 18ab5a3: New messages and Inbox changes from Paperclip now show within about 10 seconds while Halonic is open, instead of up to 30, and Halonic reads Paperclip once as soon as it starts.
+- c6c3814: The window's tabs now sit at the top of the page, beside the sidebar, instead of in the title bar.
+- c2a4b4f: The window's tabs sit on the window's frame again, just above the page: the open tab joins the page under it, and a tab you point at shows its light fill.
+- 3ba9ce7: On Windows, the Halonic, Messenger and Inbox icons fill their taskbar space, look equally big and stay sharp at every display scaling, and Inbox's icon is now an envelope.
+- 4ed96eb: Team detail pages keep keyboard focus: opening one focuses its title, and Back returns focus to the row you pressed.
+- 3b1cdd9: Spend and seats lists the agents that spent most today, with See all. A seat's row opens its page (its windows, manual reset, agents and the Seat Supervisor's proposal), and an agent opens its page (spend today, this week and this month, its seat and its tokens by model). Both pages only show; nothing acts.
+- 36bd8ed: The Team agent and seat pages now have a back link above the title, show the agent's or seat's name as the title, the seat's state and Limits, the agent's money as tiles, and See all lists every agent's spend by range.
+- ac4f9c9: On a phone, Pull requests shows the chips Stuck, All open and Queue, and Spend and seats shows only the Agents by spend heading until you open it.
+- ea4e280: Pull requests: a PR's title opens its own page, with its state, since when it is stuck, its review, queue and task, its timeline and Open in GitHub.
+- c443301: Team in the sidebar now has Pull requests: the open pull requests with the stuck ones worst first and "! 3" when three are stuck, a line on the merge queue's health, and Queue and Merged today tabs.
+- 969f0f5: Pull requests shows the merge queue's health in its own band, and the Queue tab lists its groups in one list with each PR's position first.
+- 56f6efc: Team screens keep keyboard focus on the page title after Try again, seat rows no longer open Paperclip while offline, the Pull requests lists show which one is selected, and long pull request titles wrap instead of being cut off.
+- a2fb692: Spend and seats shows in the sidebar under Team, with "! 2" when two problems need you; offline it says when its numbers were last read and turns its links off, a seat whose read failed says why, and Spent today says how many runs have no known seat.
+- 0e6d84a: On Windows 11, each Halonic window's title bar now has the same colour as its frame, with title text that stays readable in light and dark.
+- 5c7233b: A notification with two buttons now shows them side by side under its text, instead of one at the top right and one at the bottom left.
+- b3c5ffe: halonic validate now refuses a tool file whose parameters leave out one its action needs, such as pr for github.pull-request, or add one the action never reads, so halonic build paperclip-plugin no longer builds a tool that fails every call.
+- 8a853e2: A tool file can now declare an object parameter with its fields and a list parameter with its item type, such as monitor and blockedBy for paperclip.next-step (blockedBy may also be one text with commas), and halonic validate refuses a parameter its action needs that is declared as optional or with the wrong type.
+- 6300f78: Halonic shows its ring in the tray (the menu bar on macOS), with Pause routines in its menu. On Windows and macOS, closing Studio's window now keeps Halonic running there, so routines keep running; pick Quit Halonic in the tray's menu to quit. On Linux, closing the window still quits.
+- 2d0263e: The trust check now shows a "New:" line for each address, secret or tool a local integration gained since you trusted it.
+- 8d64147: Trust hardening: a local connector's trust now also covers the workspace files its command names, such as `tools/server.js` in `node tools/server.js`, so changing one asks for trust again.
+- c4ffea9: The trust check names the connection a Paperclip connector uses, such as "paperclip · acme-ops", in `halonic trust` and in Studio, so you can see which connection changed before you trust it again.
+- 026559c: When this month's budget is used up, an agent's Try it chat says so under the box with Change budget, and sends nothing until the budget changes.
+- 6b1f4fa: Try it on an agent page and the Tests page of a workflow now say how many of the assistant's changes you haven't accepted yet they include, and which changes to permissions, sandbox, connections or models they leave out until you accept them.
+- acbcd13: An agent whose file sets `chatUi` can now show cards, tables, a form and buttons in its Try it replies. Clicking a button sends its words as your message, and sending a form sends your answers as one message, just like typing them. Only the newest reply's buttons and form work.
+- 7a31e88: An agent's Try it chat is now kept with the workspace's other chats, so it comes back when you open the agent's page again.
+- 7002694: When an agent's model needs an API key that isn't set, its Try it chat now says so under the box before you send, with **Set the key ›** to open that provider's key on Models, instead of sending the message and failing.
+- 94fa1e7: The Try it chat shows an agent's reply as it is written.
+- 883fe29: A downloaded update now shows only the title bar's Update button, in colour so it stands out, instead of a second Restart to update button in the status bar.
+- 8bb26b3: When a new version of Halonic is out, an Update button in the title bar opens a dialog with what changed and Install or Restart. After the restart, a dialog says what's new.
+- d161721: Halonic now checks for a new version every 10 minutes while it is open, not only once a day, so a new release shows without restarting. It downloads only when the version is new.
+- af648b5: The Update available dialog now shows what changed in every version since the one you have, newest first.
+- 8c12d35: A downloaded update now waits on disk until you install it, so restarting Halonic doesn't download it again, and a newer release replaces the one waiting.
+- 30faed1: When an update skips several versions, each version's heading in the update notes now stands out from the notes under it.
+- 66aa363: A served Studio now shows a quiet banner when a plan's unit is 80% used or more, such as "You've used 95% of this month's agent time · It resets on 2 Dec 2026.", once per unit and period.
+- 05ba773: While Studio reopens your last workspace at start, Welcome shows that workspace opening, and Open folder and the other Recent workspaces work straight away instead of ignoring clicks.
+- e9d23f9: When the demo can't be copied, Welcome now says why right under Open demo, with Try again and Choose a folder… to copy it somewhere else.
+- d8db950: In Create version on a phone or a touch screen, each item's checkbox, its name and the change written beside it now sit on one line; the name used to sit 2px higher.
+- 39226bd: In a change card, **more** under the reason now looks like a link (also in high contrast), and pressing it moves focus to the full reason instead of losing it.
+- 729cd38: On the desktop, the Messenger's window reopens on the chat it showed and the Inbox's window on the item it showed, while they still exist.
+- 25dc12e: On the desktop, Studio's window and the Inbox and Messenger windows reopen on the workspace each one showed, while it is still in Recent.
+- 75dede7: On Windows, Halonic Inbox's and Halonic Messenger's windows show their own icon in the taskbar and in Alt+Tab at full size, instead of Halonic's.
+- 2c20e7b: Studio, Halonic Inbox and Halonic Messenger each open where you last left them, with the same size, and maximised if they were.
+- e114a81: On Windows, the agent host (`halonic-agent-host.exe`) no longer carries Node's broken signature: it is unsigned, like Halonic's other programs.
+- 2bf8b8d: Windows Studio now offers Settings › Agent sandbox with Set up, repair and removal.
+- ad64090: A window that would open partly off screen, after a screen was unplugged or its resolution went down, now opens fully on a screen, and a fullscreen window opens fullscreen again.
+- bd812ef: After an update that changes an app's icon, Windows now shows the new icon on the taskbar, in the Start menu and on the desktop, including apps pinned to the taskbar, without clearing the icon cache by hand.
+- 94f3ccb: The Windows installer shows Microsoft's own licence terms for the Visual C++ runtime file only when Set up the agent sandbox is ticked, after the install page: press I Agree to set up the sandbox, or press Back and clear the box to install Halonic without it.
+- 8744d76: On Windows, when the last sandboxed run in a workspace ends, Halonic now also removes the empty folders and files the sandbox made for settings such as `.yarn/releases` and `.claude/settings.json`, so they no longer show up in `git status`. A folder that was there before, or that holds anything else, stays.
+- 8671af3: The workflow page shows the assistant's changes to review: a bar under the header, an edge on each changed step, and Accept and Reject on each change, with Undo.
+- 58f9229: The chat on a workflow's page says "About: {name}", lists only the chats about that workflow, can open as a tab from its ⋮, and starts with "What should change in {name}?".
+- cdd144e: A workflow's page draws again with the Assistant's chat beside it, Ask about this skill… opens its chat, and a workflow's canvas fills the tab when it shows without the chat.
+- 4180f8d: The workflow page now uses the same header as the agent page, and shows the Assistant's chat about the workflow on its left when the Assistant gives one.
+- e459079: Workflow files can have a `rule` step (`type: rule`), which runs a pure function of the hub with no model; `halonic validate` checks that it names its file and its output. Running one needs an engine that runs rules, which comes in a later release; until then the run stops at the step and says so.
+- 5b89104: Workflow files can have a `tool` step (`type: tool`), which calls one tool of a connector with no model, with the same checks and approvals as an agent's call; `halonic validate` checks that it names its connector, its tool and its output, and the Inbox names the step when it waits for your OK.
+- 4939c4a: After Delete on a workflow file that didn't load, the focus moves to the next row in the Workflows list, and back to the file's row on Undo.
+- 253aa8c: A workspace shows as soon as its files are read, with "Starting the engine…" at the top until the engine answers; only running something waits for the engine.
+- 24a17ed: A workspace connector that runs in the sandbox, in Studio and in `halonic run`, can no longer read your credential folders (such as `.ssh` and `.aws`), the same as a plugin's local tool.
+- 530164b: A workspace's `routing.yaml` now goes into its Paperclip plugin, `halonic validate` refuses one that names an agent by anything but its url key, and the release file lists the routing entries that changed.
+- 6d616c2: A workspace can switch on a supervision rule for its plugin in `library/signals/<id>.signal.yaml`, and checking the workspace refuses a signal file that names a rule Halonic doesn't offer, names an action or holds a key.
+- dcbd50b: A workspace can carry a `template.yaml` that says how it presents itself when shared, and `halonic schema` now also writes its JSON Schema; the Acme example has one.
+- 0484183: A workspace can keep Markdown templates for its agents in `library/templates/<id>.md`, and a workspace tool can serve them read-only with the `paperclip.template` action.
+- 2405f2b: A workspace can describe tools for its agents in `library/tools/<id>.tool.yaml`, and checking the workspace refuses a tool file that holds a key, asks an agent for a key, or uses an action Halonic doesn't offer.
+
 ## 0.1.1
 
 ### Patch Changes
