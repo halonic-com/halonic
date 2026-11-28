@@ -259,7 +259,7 @@ covers it:
 | a new `vi.mock` of a module in the package a `verifies(…)` test file's requirements are about | the test file |
 | a golden file (`golden/`, `__snapshots__/`, `.snap`) changed, added or deleted, or an inline snapshot changed | the golden/test file |
 | a lower coverage floor in `package.json`, a new `v8`/`c8`/`istanbul ignore` comment, or changed `coverage` settings | the changed file |
-| a file under the guard's own paths changed, added or deleted: `.github/`, `packages/testing/parity/allowed-differences.json`, `packages/testing/spec/`, `tooling/check/`, `tooling/config/src/vitest-preset.ts`, `turbo.json` | that path, as written here |
+| a file under the guard's own paths changed, added or deleted: `.github/`, `packages/core/std/src/secret-rules.ts`, `packages/testing/parity/allowed-differences.json`, `packages/testing/spec/`, `tooling/check/`, `tooling/config/src/vitest-preset.ts`, `turbo.json` | that path, as written here |
 | `tooling/check/policy.json` changed in `extraExports` only (a note of either kind is enough, so the CTO can sign it as `internal`) | `tooling/check/policy.json` |
 | the lines for `@typescript/typescript6` (the parser the guard runs) changed in `pnpm-workspace.yaml` or `pnpm-lock.yaml` (a note of either kind is enough) | that file |
 
@@ -473,6 +473,7 @@ check runs may load an npm package, the TypeScript parser included:
 and finds tests by their quoted IDs. It fails a change
 under the guard's own paths (`.github/`, `.gitattributes`, `tooling/check/`
 with its `approvers.json`, `packages/testing/spec/`,
+`packages/core/std/src/secret-rules.ts` (the leak guard's secret rules),
 `packages/testing/parity/allowed-differences.json`,
 `tooling/config/src/vitest-preset.ts`, `turbo.json`) unless the note lists
 that path as written here and its approval is verified. The note must be
@@ -758,7 +759,10 @@ Who may use what:
 types packages, listed under `apiTypes` in `policy.json`, use only each other and no third-party code
 ([decision](../adr/2026-11-09-api-types-stand-alone.md)). The tooling packages listed under
 `toolingUsesCore` in `policy.json` may also use core packages. It exists for the Agent tools plugin
-(`@halonicjs/tooling-paperclip`), whose workflow host runs on our own engine (HAL-18009). A core package
+(`@halonicjs/tooling-paperclip`), whose workflow host runs on our own engine (HAL-18009). The leak guard
+runs with nothing installed, so it imports the secret rules it shares with Studio's offer scans by path,
+from `packages/core/std/src/secret-rules.ts`: the only import allowed to reach into another package
+(HAL-20537). A core package
 may not be named `root` or `host`, or start with another layer's prefix
 (`app-`, `adapter-`, `host-`, `target-`, `studio-`, `testing-`, `tooling-`).
 

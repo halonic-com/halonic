@@ -5,8 +5,9 @@ import { findSecretShape } from "@halonicjs/std";
  * HAL-19163). Studio's `findSecretShape` knows only the keys a person pastes
  * into Studio. A chat task can hold any secret the team handles, and the most
  * likely ones (agent API keys and broker tokens) are JWTs. So the bot also
- * checks the shapes of the repo's leak guard (`tooling/check/src/leaks/secrets.ts`),
- * and a change there belongs here too.
+ * checks the shapes of the repo's leak guard
+ * (`packages/core/std/src/secret-rules.ts`), and a change there belongs here
+ * too.
  *
  * Only the kind leaves the check, never the text that matched.
  */

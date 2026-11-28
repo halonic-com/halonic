@@ -114,7 +114,8 @@
       "./golden"
     ],
     "@halonicjs/std": [
-      "./error-kind"
+      "./error-kind",
+      "./secret-rules"
     ],
     "@halonicjs/studio-feature-assistant": [
       "./words"

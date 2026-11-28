@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
+import {
+  findRuleMatches,
+  isPlaceholder,
+  maskSecret,
+  secretRules,
+} from "../../../../packages/core/std/src/secret-rules.ts";
 import { fileNameOf, fileRules } from "./files.ts";
+import { fingerprint } from "./fingerprint.ts";
 import { findAbsolutePaths } from "./paths.ts";
-import { findRuleMatches, fingerprint, isPlaceholder, maskSecret, secretRules } from "./secrets.ts";
 import { absolute, fakeSecrets, filler } from "./test-values.ts";
 
 function secretRulesHit(line: string): string[] {

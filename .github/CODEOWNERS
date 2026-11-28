@@ -26,6 +26,7 @@
 # The root manifest holds the script that installs the git hooks.
 /package.json @halonic-com/maintainers
 /tooling/check/src/leaks/ @halonic-com/maintainers
+/packages/core/std/src/secret-rules.ts @halonic-com/maintainers
 /tooling/check/src/cli/leaks.ts @halonic-com/maintainers
 /tooling/check/leak-allow.txt @halonic-com/maintainers
 /tooling/check/agent-names.txt @halonic-com/maintainers

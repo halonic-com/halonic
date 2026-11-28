@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { AllowList, hasInlineAllow } from "./allow.ts";
+import { fingerprint } from "./fingerprint.ts";
 import { type Change, scanChanges } from "./scan.ts";
-import { fingerprint } from "./secrets.ts";
 import { TermMatcher } from "./terms.ts";
 import { absolute, fakeSecrets, testTerms } from "./test-values.ts";
 

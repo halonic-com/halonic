@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "sideEffects": false,
-  "description": "In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison, a typed event emitter, error kinds, a per-key work queue, a stop signal for core code, semver versions and gitignore-style path patterns.",
+  "description": "In-house utilities that replace generic libraries: result type, ids, clock, UTF-8, base64url, text helpers, deep equality and clone, posix paths, constant-time comparison, a typed event emitter, error kinds, a per-key work queue, a stop signal for core code, semver versions, gitignore-style path patterns and the secret rules shared by the leak guard and the offer scans.",
   "exports": {
     ".": "./src/index.ts",
-    "./error-kind": "./src/error-kind.ts"
+    "./error-kind": "./src/error-kind.ts",
+    "./secret-rules": "./src/secret-rules.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p . && tsc --noEmit -p tsconfig.test.json",

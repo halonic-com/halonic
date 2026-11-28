@@ -1,8 +1,14 @@
+import {
+  findRuleMatches,
+  isPlaceholder,
+  maskSecret,
+  secretRules,
+} from "../../../../packages/core/std/src/secret-rules.ts";
 import { type AllowList, allowFilePath, hasInlineAllow } from "./allow.ts";
 import { fileNameOf, fileRules } from "./files.ts";
+import { fingerprint } from "./fingerprint.ts";
 import { agentMentionRule, type MentionMatcher, mentionLabels } from "./mentions.ts";
 import { absolutePathRule, findAbsolutePaths } from "./paths.ts";
-import { findRuleMatches, fingerprint, isPlaceholder, maskSecret, secretRules } from "./secrets.ts";
 import { excusedTerms, type TermCutoff } from "./term-cutoffs.ts";
 import { personalTermRule, type TermMatcher } from "./terms.ts";
 

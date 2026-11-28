@@ -5,7 +5,7 @@ import { findKeyShapedText } from "./key-shaped-text.ts";
 const mixed = (times: number) => "A1b2".repeat(times);
 
 /**
- * One invented value per rule of the leak guard (`tooling/check/src/leaks/secrets.ts`),
+ * One invented value per rule of the leak guard (`packages/core/std/src/secret-rules.ts`),
  * put together at run time so this file holds no value the guard would flag.
  */
 const leakGuardShapes: [string, string][] = [

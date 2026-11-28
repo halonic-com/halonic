@@ -7,8 +7,10 @@ import { guardDependencyChanged, guardDependencyFiles } from "./guard-dependenci
  * merge base's copy, but a pull request's test results still come from its
  * own `testing/spec` and Vitest preset, and its own workflows decide what
  * runs. `allowed-differences.json` lists the signed-off exceptions to
- * parity, so each entry needs the same note as a golden file. A folder ends
- * in `/`; anything else is one file.
+ * parity, so each entry needs the same note as a golden file. The leak
+ * guard's secret rules live in `std`, shared with Studio's offer scans
+ * (HAL-20537), and stay guarded there: loosening a rule would switch off
+ * part of the leak guard. A folder ends in `/`; anything else is one file.
  *
  * The golden-file compare helpers and `testing/contracts/target/live` with
  * its sweeper join this list when they are added.
@@ -16,6 +18,7 @@ import { guardDependencyChanged, guardDependencyFiles } from "./guard-dependenci
 export const guardedPaths: readonly string[] = [
   ".github/",
   ".gitattributes",
+  "packages/core/std/src/secret-rules.ts",
   "packages/testing/parity/allowed-differences.json",
   "packages/testing/spec/",
   "tooling/check/",

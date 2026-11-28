@@ -1,6 +1,6 @@
+import { secretRules } from "../../../../packages/core/std/src/secret-rules.ts";
 import { fileRules } from "./files.ts";
 import { absolutePathRule } from "./paths.ts";
-import { secretRules } from "./secrets.ts";
 import { parseTermCutoff, type TermCutoff, termCutoffKeyword } from "./term-cutoffs.ts";
 import { personalTermRule } from "./terms.ts";
 

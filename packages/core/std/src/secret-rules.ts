@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 /**
  * Known secret and key formats. Each rule matches one kind of credential
  * that has a fixed, recognisable shape, so the rules stay precise enough
@@ -226,13 +224,4 @@ export function isPlaceholder(value: string): boolean {
 export function maskSecret(rule: string, value: string): string {
   const prefix = rulesWithPublicPrefix.has(rule) ? value.slice(0, 4) : "";
   return `${prefix}${"*".repeat(8)} (${value.length} characters)`;
-}
-
-/**
- * A short, one-way fingerprint of a matched value. The allow file names
- * a secret-shaped value by fingerprint, so it can allow exactly that value
- * and nothing else, without the value itself entering the repo.
- */
-export function fingerprint(value: string): string {
-  return `fp:${createHash("sha256").update(value).digest("hex").slice(0, 16)}`;
 }
