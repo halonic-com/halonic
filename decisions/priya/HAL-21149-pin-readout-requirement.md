@@ -2,7 +2,7 @@
 
 - Approval: /HAL/issues/HAL-21149 (follow-up from the review of #6956, HAL-21136)
 - Kind: user-visible
-- Signature: pending, Liam signs on review
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:K3IaQOIgYm2S4pmg+i1YE1xyCB6THF7eoBONeoUQhfWWD+6KIQlIRNgUvj/GM4PuXwSBow5Bwz+HGNBBvH19Bw==
 
 Since #6956 the Messenger page's status region reads out "Chat pinned." or
 "Chat unpinned." after each **Pin chat** or **Unpin chat** pick in the ···
