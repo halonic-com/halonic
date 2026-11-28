@@ -162,6 +162,27 @@ verifies("library.library-page", () => {
     expect(page.textContent).toContain("Acme refunds");
   });
 
+  it("starts Try again's label where the sentence starts, on its own row", async () => {
+    const { host, notify } = staleHost();
+    const page = await show(host);
+    host.list.mockRejectedValueOnce(new Error("ECONNRESET"));
+    act(() => notify());
+    await settled();
+    const tryAgain = button(page, "Try again") as HTMLElement;
+    const pulledOut = tryAgain.parentElement as HTMLElement;
+    const line = pulledOut.parentElement as HTMLElement;
+    // Pulled left by the ghost button's 1px edge and side padding (px-3, px-4 on touch).
+    expect(line.className).toContain("flex flex-col items-start gap-1");
+    expect(pulledOut.className).toBe("-ms-3.25 phone:-ms-4.25 touch:-ms-4.25");
+    expect(tryAgain.className).toContain("px-3");
+    expect(tryAgain.className).toContain("touch:px-4");
+    const copies = Array.from(tryAgain.firstElementChild?.children ?? []);
+    expect(copies.map((copy) => copy.textContent)).toEqual(["Try again", "Trying again…"]);
+    for (const copy of copies) {
+      expect(copy.className).toContain("justify-start");
+    }
+  });
+
   it("moves the focus to the first row when a focused Try again's read clears the line", async () => {
     const { host, notify } = staleHost();
     const page = await show(host);

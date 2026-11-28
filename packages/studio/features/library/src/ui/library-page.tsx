@@ -244,17 +244,21 @@ function StaleLine({
   const tryAgain = useRef<HTMLButtonElement>(null);
   useTellWhenGoneWithFocus(tryAgain, onGoneWithFocus);
   return (
-    <p className="flex flex-wrap items-center gap-2 px-4 py-2 text-small text-fg-muted">
-      {showingLastList(kind, reason)}
-      <Button
-        ref={tryAgain}
-        variant="ghost"
-        busy={refreshing}
-        busyLabel={tryingAgain}
-        onClick={onTryAgain}
-      >
-        Try again
-      </Button>
+    // As Home's failure line: Try again on its own row, pulled out by the ghost button's edge and
+    // padding, so its label starts where the sentence starts (HAL-20925).
+    <p className="flex flex-col items-start gap-1 px-4 py-2 text-small text-fg-muted">
+      <span>{showingLastList(kind, reason)}</span>
+      <span className="-ms-3.25 phone:-ms-4.25 touch:-ms-4.25">
+        <Button
+          ref={tryAgain}
+          variant="ghost"
+          busy={refreshing}
+          busyLabel={tryingAgain}
+          onClick={onTryAgain}
+        >
+          Try again
+        </Button>
+      </span>
     </p>
   );
 }

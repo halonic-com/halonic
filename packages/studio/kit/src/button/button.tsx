@@ -90,6 +90,12 @@ interface ButtonWithLabel extends ButtonBase {
    * labels, before, during and after, so nothing next to it moves.
    */
   readonly busyLabel?: string | undefined;
+  /**
+   * Where the two labels sit in the kept width: `start` by default on a ghost button, which has
+   * no box at rest, so its label stays next to the text beside it; `center` on the others. A
+   * ghost button in a centred column or at the end of a row that wraps takes `center`.
+   */
+  readonly busyAlign?: BusyAlign | undefined;
   /** What screen readers hear while `busy`, when it differs from `busyLabel`: "Checking for updates". */
   readonly busyName?: string | undefined;
   /**
@@ -121,9 +127,13 @@ interface IconButton extends ButtonBase {
   readonly pressed?: boolean;
   readonly children?: never;
   readonly busyLabel?: never;
+  readonly busyAlign?: never;
   readonly busyName?: never;
   readonly name?: never;
 }
+
+/** Where a button's resting and busy labels sit in the width it keeps for the wider one. */
+type BusyAlign = "start" | "center";
 
 /** The props of `Button`. */
 export type ButtonProps = ButtonWithLabel | IconButton;
@@ -253,7 +263,16 @@ const largeIconSlot = "phone:size-icon-md";
 
 /** One grid cell: the resting and the busy copy lie on top of each other in it. */
 const busyCell = "inline-grid";
-const busyCopy = "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5";
+const busyCopy = "col-start-1 row-start-1 inline-flex items-center gap-1.5";
+/**
+ * Where each copy sits in the kept width. A ghost button has no box at rest, so a centred label
+ * would stand in from the text beside it; its copies start at its edge unless it asks otherwise
+ * (HAL-20925).
+ */
+function busyCopyAlign(variant: ButtonVariant, align: BusyAlign | undefined): string {
+  const resolved = align ?? (variant === "ghost" ? "start" : "center");
+  return resolved === "start" ? "justify-start" : "justify-center";
+}
 
 /**
  * The kit's button: a native `<button>`, `type="button"` unless it submits a form. With `icon`
@@ -337,16 +356,21 @@ export function Button(props: ButtonProps) {
         onClick={handleClick}
         onFocus={handleFocus}
       >
-        <ButtonBody props={props} busy={busy} iconClasses={iconClasses} />
+        <ButtonBody props={props} variant={variant} busy={busy} iconClasses={iconClasses} />
       </button>
       {reasonTooltip.popover}
     </>
   );
 }
 
-type ButtonBodyProps = { props: ButtonProps; busy: boolean; iconClasses: string };
+type ButtonBodyProps = {
+  props: ButtonProps;
+  variant: ButtonVariant;
+  busy: boolean;
+  iconClasses: string;
+};
 
-function ButtonBody({ props, busy, iconClasses }: ButtonBodyProps) {
+function ButtonBody({ props, variant, busy, iconClasses }: ButtonBodyProps) {
   const iconBox = (icon: ReactNode) =>
     icon === undefined ? null : (
       <span className={iconClasses} aria-hidden="true">
@@ -364,13 +388,14 @@ function ButtonBody({ props, busy, iconClasses }: ButtonBodyProps) {
   }
   // Both copies always take up room; the one not in use is `invisible`, so it only sets the
   // width and screen readers skip it.
+  const copy = `${busyCopy} ${busyCopyAlign(variant, props.busyAlign)}`;
   return (
     <span className={busyCell}>
-      <span className={`${busyCopy} ${busy ? "invisible" : ""}`.trim()}>
+      <span className={`${copy} ${busy ? "invisible" : ""}`.trim()}>
         {iconBox(props.icon)}
         {props.children}
       </span>
-      <span className={`${busyCopy} ${busy ? "" : "invisible"}`.trim()}>
+      <span className={`${copy} ${busy ? "" : "invisible"}`.trim()}>
         {iconBox(<Spinner />)}
         {props.busyLabel}
       </span>

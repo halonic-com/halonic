@@ -76,6 +76,7 @@ export function TrySample({
       busy={busy}
       unavailable={busy || offId === undefined ? undefined : { reason: offId }}
       busyLabel={trySampleWords.creating}
+      busyAlign="center"
       busyName={elsewhere ? trySampleWords.creating : trySampleWords.creatingName}
       {...(quiet || timeId === undefined ? {} : { "aria-describedby": timeId })}
       onClick={onPress}

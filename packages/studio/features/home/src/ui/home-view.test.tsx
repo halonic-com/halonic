@@ -273,6 +273,34 @@ verifies("home.list-column", () => {
     expect(label(tryAgain as HTMLElement)).toBe("Try again");
   });
 
+  it("starts Try again's label where the reason text starts, at rest and while it reads", async () => {
+    const { service } = fakeChats([summary("triage", "Triage")]);
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    const tryAgain = button(page, "Try again") as HTMLElement;
+    const pulledOut = tryAgain.parentElement as HTMLElement;
+    const line = pulledOut.parentElement as HTMLElement;
+    // Its own row, pulled left by the ghost button's 1px edge and side padding (px-3, px-4 on touch).
+    expect(line.className).toContain("flex flex-col items-start gap-1 px-3");
+    expect(pulledOut.className).toBe("-ms-3.25 phone:-ms-4.25 touch:-ms-4.25");
+    expect(tryAgain.className).toContain("px-3");
+    expect(tryAgain.className).toContain("touch:px-4");
+    // Both labels start at the button's edge in one grid cell, so the width doesn't change.
+    const startsAtEdge = () => {
+      const copies = Array.from(tryAgain.firstElementChild?.children ?? []);
+      expect(copies.map((copy) => copy.textContent)).toEqual(["Try again", "Trying again…"]);
+      for (const copy of copies) {
+        expect(copy.className).toContain("col-start-1 row-start-1");
+        expect(copy.className).toContain("justify-start");
+      }
+    };
+    startsAtEdge();
+    service.list = () => new Promise(() => {});
+    await act(async () => tryAgain.click());
+    expect(tryAgain.getAttribute("aria-busy")).toBe("true");
+    startsAtEdge();
+  });
+
   it("leaves the focus where it is when a list change clears a failure", async () => {
     const { service, change } = fakeChats([summary("triage", "Triage")]);
     const list = service.list;
