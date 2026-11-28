@@ -2,6 +2,7 @@
 
 - Approval: the look check on HAL-20825 (Noah's [major] and [minor] on #6888); the maintainer approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:Nz/Ln3ZVUjD9tB9I+2M9mhiPszsI+LyiFWodPxyc+UE7dNNoGFT4eMKK9Vb2VFRoKAaYmODlTTnab1SXkv6OAQ==
 
 ## What changes
 
