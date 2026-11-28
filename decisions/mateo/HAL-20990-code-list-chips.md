@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20990 (Code in the new design, PR 2 of 2; the board picked "Code like chats" on HAL-20742, 28 Nov 2026, with SCREENS.md's tree row). Liam approves the change in review on HAL-20990.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:dUcW8FgHRd2iH3ghWBQOH34YDfnYe3klCkzybtQdEG442OlaWbfMP9WYaldw+bQWNvgC5twH7rii+6PjX6ElAA==
 
 ## What changes
 
