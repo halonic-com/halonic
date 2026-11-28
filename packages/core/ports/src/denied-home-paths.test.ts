@@ -20,6 +20,10 @@ verifies("ports.denied-home-paths", () => {
     ".ssh.",
     "AppData/Roaming/gcloud/a.db",
     "Library/Keychains/login.keychain-db",
+    ".local/share/opencode/auth.json",
+    ".config/opencode/opencode.json",
+    ".config/git/credentials",
+    ".config/github-copilot/apps.json",
   ])("denies %s", (path) => {
     expect(isDeniedHomePath(path)).toBe(true);
   });
@@ -30,6 +34,26 @@ verifies("ports.denied-home-paths", () => {
       expect(isDeniedHomePath(path)).toBe(false);
     },
   );
+
+  it.each(["linux", "darwin", "win32"] as const)(
+    "denies OpenCode's settings, git's XDG credentials and Copilot's tokens on %s",
+    (platform) => {
+      expect(homePathsOf(deniedHomePaths["agent-settings"], platform)).toEqual(
+        expect.arrayContaining([".local/share/opencode", ".config/opencode"]),
+      );
+      expect(homePathsOf(deniedHomePaths["cloud-sign-ins"], platform)).toEqual(
+        expect.arrayContaining([".config/git/credentials", ".config/github-copilot"]),
+      );
+    },
+  );
+
+  it("denies Copilot's Windows folder on Windows only", () => {
+    const signIns = deniedHomePaths["cloud-sign-ins"];
+    expect(homePathsOf(signIns, "win32")).toContain("AppData/Local/github-copilot");
+    expect(homePathsOf(signIns, "linux")).not.toContain("AppData/Local/github-copilot");
+    expect(homePathsOf(signIns, "darwin")).not.toContain("AppData/Local/github-copilot");
+    expect(isDeniedHomePath("AppData/Local/github-copilot/apps.json")).toBe(true);
+  });
 
   it("gives each system its own paths, and every system's when none is named", () => {
     const browser = deniedHomePaths["browser-data"];
