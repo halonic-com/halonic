@@ -37,11 +37,19 @@ function acme() {
     lastActivityAt: at(14, 9),
     canStop: false,
   });
+  const finished: TeamRun = {
+    ...run(noah.id, "ACME-5"),
+    id: "acme:run:noah-earlier",
+    state: "succeeded",
+    startedAt: at(11, 2),
+    finishedAt: at(11, 11),
+    lastActivityAt: at(11, 11),
+  };
   const runs: TeamRuns[] = [
     {
       source: source.id,
       asOf: now().toISOString(),
-      runs: [run(liam.id, "ACME-7"), run(chief.id, "ACME-8")],
+      runs: [run(liam.id, "ACME-7"), run(chief.id, "ACME-8"), finished],
       complete: true,
     },
   ];
@@ -49,7 +57,7 @@ function acme() {
     runs: vi.fn(async () => runs),
     pullRequests: vi.fn(async () => []),
   };
-  return { messaging, activity };
+  return { messaging, activity, finished };
 }
 
 /** A window from 900 to 1199 px wide: the wide query doesn't match. */
@@ -105,15 +113,15 @@ verifies("messenger.activity-channel", () => {
       expect(found.every((line) => line.classList.contains("focus-ring-inset"))).toBe(true);
     });
 
-    it("reads each agent's runs on its own when the workspace's newest runs leave some out", async () => {
-      const { messaging, activity } = acme();
+    it("reads the picked agent's runs on its own when the workspace's newest runs leave some out", async () => {
+      const { messaging, activity, finished } = acme();
       const own = await activity.runs({ since: "" });
-      // A busy day: the workspace's newest runs leave out Liam's ACME-7, and say some are missing.
-      const isLiams = (run: TeamRun) => run.task?.identifier === "ACME-7";
+      // A busy day: the workspace's newest runs leave out Noah's earlier finished run, and say so.
+      const isNoahs = (run: TeamRun) => run.id === finished.id;
       vi.mocked(activity.runs).mockImplementation(async ({ agent }) =>
         own.map((each) => {
           if (agent === undefined) {
-            return { ...each, runs: each.runs.filter((run) => !isLiams(run)), complete: false };
+            return { ...each, runs: each.runs.filter((run) => !isNoahs(run)), complete: false };
           }
           return { ...each, runs: each.runs.filter((run) => run.agent === agent) };
         }),
@@ -121,6 +129,25 @@ verifies("messenger.activity-channel", () => {
       const page = await openMessenger(messaging, [], false, now, activity);
       await openChat(page, "Launch");
       expect(lines(page)).toEqual(["Liam · Working on ACME-7", "Noah · Idle"]);
+      // Only the workspace is read until an agent is picked: no read per agent.
+      expect(
+        vi.mocked(activity.runs).mock.calls.every(([query]) => query.agent === undefined),
+      ).toBe(true);
+      await press(panel(page)?.querySelectorAll("[data-agent-line]")[1]);
+      await settle();
+      expect(activity.runs).toHaveBeenCalledWith({
+        agent: finished.agent,
+        since: expect.any(String),
+      });
+      expect(panel(page)?.textContent).toContain("Idle · last run ended 11:11");
+    });
+
+    it("names the header button after the channel, with no 's", async () => {
+      mediumWindow();
+      const { messaging, activity } = acme();
+      const page = await openMessenger(messaging, [], false, now, activity);
+      await openChat(page, "Launch");
+      expect(headerButton(page)?.getAttribute("aria-label")).toBe("Activity in Launch, working");
     });
 
     it("shows the header button's dot while one of its agents works", async () => {
@@ -156,6 +183,64 @@ verifies("messenger.activity-channel", () => {
       await pressKey("i", { ctrlKey: true });
       expect(panel(page)).toBeNull();
       expect(document.activeElement).toBe(headerButton(page));
+    });
+  });
+});
+
+verifies("messenger.activity-channel-states", () => {
+  describe("a channel's list while it reads", () => {
+    it("shows the agents' names with a bar for their status, and no Idle, until the first read", async () => {
+      const { messaging, activity } = acme();
+      vi.mocked(activity.runs).mockImplementation(() => new Promise(() => undefined));
+      const page = await openMessenger(messaging, [], false, now, activity);
+      await openChat(page, "Launch");
+      expect(lines(page)).toEqual(["Liam", "Noah"]);
+      expect(panel(page)?.querySelector("ul")?.getAttribute("aria-busy")).toBe("true");
+      expect(panel(page)?.querySelectorAll("[data-status-loading]")).toHaveLength(2);
+      expect(panel(page)?.textContent).not.toContain("Idle");
+    });
+
+    it("says it couldn't read the channel's activity, with Try again", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const { messaging, activity } = acme();
+      const runs = await activity.runs({ since: "" });
+      vi.mocked(activity.runs).mockRejectedValue(new Error("The agent host is down."));
+      const page = await openMessenger(messaging, [], false, now, activity);
+      await openChat(page, "Launch");
+      expect(panel(page)?.textContent).toContain("Couldn't read the activity in Launch");
+      expect(lines(page)).toEqual([]);
+      vi.mocked(activity.runs).mockResolvedValue(runs);
+      const again = [...(panel(page)?.querySelectorAll("button") ?? [])].find(
+        (button) => button.textContent === "Try again",
+      );
+      await press(again);
+      await settle();
+      expect(lines(page)).toEqual(["Liam · Working on ACME-7", "Noah · Idle"]);
+    });
+
+    it("marks each line as one that opens, with a chevron at its end", async () => {
+      const { messaging, activity } = acme();
+      const page = await openMessenger(messaging, [], false, now, activity);
+      await openChat(page, "Launch");
+      const found = [...(panel(page)?.querySelectorAll("[data-agent-line]") ?? [])];
+      expect(found.every((line) => line.lastElementChild?.querySelector("svg") !== null)).toBe(
+        true,
+      );
+    });
+  });
+
+  describe("one back link per level", () => {
+    it("puts ‹ Channel in the header, in place of a narrow window's ‹ Launch", async () => {
+      const { messaging, activity } = acme();
+      const page = await openMessenger(messaging, [], true, now, activity);
+      await openChat(page, "Launch");
+      await press(headerButton(page));
+      const header = () => panel(page)?.firstElementChild;
+      expect(header()?.textContent).toContain("‹ Launch");
+      await press(panel(page)?.querySelector("[data-agent-line]"));
+      expect(header()?.querySelector("[data-back-to-channel]")).not.toBeNull();
+      expect(header()?.textContent).not.toContain("‹ Launch");
+      expect(document.activeElement?.getAttribute("aria-label")).toBe("Back to the channel");
     });
   });
 });

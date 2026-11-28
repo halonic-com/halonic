@@ -62,7 +62,8 @@ const headerHeightClass: Record<PanelPlace, string> = {
  * does (motion 1); a sheet comes in from the end and fades out as it closes, and **Esc** closes it;
  * a place has **‹ Chief** to go back (`messenger.activity-widths`). A sheet or a place takes the
  * focus as it opens, since it covers the button that opened it. In a channel, an agent's view has
- * **‹ Channel** to go back to the channel's agents (`messenger.activity-channel`).
+ * **‹ Channel** to go back to the channel's agents (`messenger.activity-channel`), in the header's
+ * leading slot, one back link per level: on a narrow window it takes the place of **‹ Launch**.
  */
 export function ActivityPanel({
   title,
@@ -89,7 +90,7 @@ export function ActivityPanel({
   const close = usePanelMotion(aside, place, onClose);
   const body = useRef<HTMLDivElement>(null);
   useFadeIn(body, shows);
-  useChannelFocus(body, onBack !== undefined);
+  useChannelFocus(aside, onBack !== undefined);
   const onKeyDown = (event: KeyboardEvent) => {
     if (place !== "sheet" || event.key !== "Escape") return;
     event.preventDefault();
@@ -103,9 +104,8 @@ export function ActivityPanel({
       onKeyDown={onKeyDown}
       className={`flex flex-col ${placeClass[place]}`}
     >
-      <PanelHeader title={title} chat={chat} place={place} onClose={close} />
+      <PanelHeader title={title} chat={chat} place={place} onClose={close} onBack={onBack} />
       <div ref={body} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-4">
-        {onBack === undefined ? null : <BackToChannel onBack={onBack} />}
         {children}
       </div>
     </aside>
@@ -138,23 +138,29 @@ function usePanelMotion(
   };
 }
 
-/** "Chief's activity", with **×** to close it, or on a narrow window **‹ Chief** to go back. */
+/**
+ * "Chief's activity", with **×** to close it, or on a narrow window **‹ Chief** to go back; a
+ * channel's agent view leads with **‹ Channel** instead.
+ */
 function PanelHeader({
   title,
   chat,
   place,
   onClose,
+  onBack,
 }: {
   readonly title: string;
   readonly chat: string;
   readonly place: PanelPlace;
   readonly onClose: () => void;
+  readonly onBack: (() => void) | undefined;
 }) {
   return (
     <div
       className={`flex items-center gap-2 border-b border-border px-4 ${headerHeightClass[place]}`}
     >
-      {place === "place" ? (
+      {onBack !== undefined ? <BackToChannel onBack={onBack} /> : null}
+      {onBack === undefined && place === "place" ? (
         <button
           type="button"
           id={panelCloseId}

@@ -23,6 +23,8 @@ export interface ActivityToggle {
   /** The agent has a run going: the closed panel's button shows a still blue dot. */
   readonly working: boolean;
   readonly name: string;
+  /** The panel's heading, which names the header button: "Chief's activity", "Activity in Launch". */
+  readonly title: string;
   readonly toggle: () => void;
 }
 
@@ -114,11 +116,7 @@ export function ActivityButton() {
           variant="ghost"
           size="sm"
           icon={<PanelIcon dot={toggle.working && !toggle.open} />}
-          label={
-            toggle.working
-              ? activityWords.buttonWorking(toggle.name)
-              : activityWords.title(toggle.name)
-          }
+          label={toggle.working ? activityWords.buttonWorking(toggle.title) : toggle.title}
           pressed={toggle.open}
           aria-controls={activityPanelId}
           aria-keyshortcuts="Control+I"
