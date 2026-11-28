@@ -3,6 +3,7 @@
 - Task: HAL-20839
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20839 (filed by the post-merge words and a11y check of #6872, HAL-20834, which asks for this EARS line)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:nc9sVxKiseTOr5Ezs6j23bQ+4vjsiM1v+5mv1NOMiP4vNxNlYwhE+rknSQpFaWtarA4zj4hK8hGUzzivLL6FCQ==
 
 ## What changes
 
