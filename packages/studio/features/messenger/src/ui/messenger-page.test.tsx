@@ -281,8 +281,17 @@ verifies("messenger.framed-list", () => {
     expect(pageClasses).not.toContain("gap-2");
     const rows = list.querySelector("[data-chats-scroll]") as HTMLElement;
     expect(rows.className.split(" ")).toContain("px-2");
+    const header = list.querySelector("h2")?.parentElement as HTMLElement;
+    expect(header.className.split(" ")).toContain("px-5");
     const chatClasses = chat.className.split(" ");
     expect(chatClasses).toContain("bg-app-panel");
     expect(chatClasses).not.toContain("rounded-lg");
+  });
+
+  it("leaves the list column out while nothing is connected in a wide window", async () => {
+    const page = await openMessenger(new FakeAgentMessaging());
+    expect(page.querySelector('[data-part="list-column"]')).toBeNull();
+    const chat = page.querySelector('main[data-part="content-pane"]') as HTMLElement;
+    expect(chat.parentElement?.children).toHaveLength(3);
   });
 });

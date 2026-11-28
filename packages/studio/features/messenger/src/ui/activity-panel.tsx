@@ -1,5 +1,5 @@
 import { Button, CloseIcon, decidedAt, EmptyState, leave } from "@halonicjs/studio-kit";
-import { type EngineWords, focusedPanelClass } from "@halonicjs/studio-shell";
+import type { EngineWords } from "@halonicjs/studio-shell";
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -40,9 +40,18 @@ export type PanelPlace = "beside" | "sheet" | "place";
 const placeClass: Record<PanelPlace, string> = {
   // Beside the chat past a 1px line, as the list column is (`messenger.framed-list`).
   beside: "w-80 shrink-0 border-s border-border bg-app-panel",
-  sheet: `absolute inset-y-0 end-0 z-10 w-80 shadow-2 ${focusedPanelClass}`,
+  // Over the chat's end inside the page's framed panel, which clips it: a start line and a
+  // shadow, no edge or corners of its own.
+  sheet: "absolute inset-y-0 end-0 z-10 w-80 border-s border-border bg-app-panel shadow-2",
   // Instead of the chat, inside the page's framed panel, so no second edge.
   place: "min-w-0 flex-1 bg-app-panel",
+};
+
+/** The header's height: beside the chat, the chat header's 64px, so the two meet in one line. */
+const headerHeightClass: Record<PanelPlace, string> = {
+  beside: "h-16 shrink-0",
+  sheet: "py-3",
+  place: "py-3",
 };
 
 /**
@@ -142,7 +151,9 @@ function PanelHeader({
   readonly onClose: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+    <div
+      className={`flex items-center gap-2 border-b border-border px-4 ${headerHeightClass[place]}`}
+    >
       {place === "place" ? (
         <button
           type="button"

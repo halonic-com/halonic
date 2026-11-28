@@ -10,14 +10,17 @@
   activity panel beside it, are rounded panels of their own, 8px apart. It now says the page is
   the window's one framed panel; while the list and the chat show side by side, the list is a list
   column of the kit's size (`kit.list-column`) with its rows 8px in from both sides, and the chat
-  shows beside it in a content pane, past a 1px line; the activity panel sits past a 1px line from
-  the chat.
+  shows beside it in a content pane, past a 1px line. While nothing is connected and both would
+  show, the list column is left out. Beside the chat or as a sheet, the activity panel has a 1px
+  line at its start edge only; in the chat's place it has none; beside the chat its header is
+  64px, the chat header's height. The list's header sits 20px in, in line with the rows.
 - `kit.framed-sidebar`, `inbox.framed-sidebar` and `shell.frame`: they named the Messenger as a
-  user of the framed sidebar. They no longer do; nothing else in them changes.
+  user of the framed sidebar. They no longer do. `kit.framed-sidebar` also says 16px corners
+  where it said 12px: the panel has been `rounded-lg`, 16px, since #6626. Nothing else changes.
 
 The two tests that checked the 8px gap and the separate rounded panels now check the framed page,
 the list column's size, the rows' inset, the 1px lines and the panel colour, and that the gap is
-gone.
+gone. The No connections test now finds no list column in a wide window.
 
 ## Why
 

@@ -195,6 +195,13 @@ verifies("messenger.framed-list", () => {
       expect.arrayContaining(["w-80", "border-s", "border-border", "bg-app-panel"]),
     );
     expect(classes).not.toContain("rounded-lg");
+    expect(classes).not.toContain("border");
     expect((aside.parentElement as HTMLElement).className.split(" ")).not.toContain("gap-2");
+  });
+
+  it("gives the activity panel's header the chat header's 64px beside the chat", async () => {
+    const { page } = await chiefsChat(working);
+    const header = (panel(page) as HTMLElement).firstElementChild as HTMLElement;
+    expect(header.className.split(" ")).toContain("h-16");
   });
 });

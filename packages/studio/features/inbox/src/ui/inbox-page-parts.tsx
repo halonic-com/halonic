@@ -37,10 +37,10 @@ export function ListHeader({ phone, onePane, newRequest }: ListHeaderProps) {
 
 /**
  * The Inbox's two panes. In its own window (`framed`) they are the kit's framed sidebar, as
- * Studio's (`inbox.framed-sidebar`): the list on the window's frame and the item
- * on a framed panel 8px beside it, and the page is the window's `main`, since the window draws no
- * panel. In Studio's window, whose framed panel the page already sits on, the two panes sit side
- * by side with the list's line between them.
+ * Studio's (`inbox.framed-sidebar`): the list on the window's frame and the item on a framed panel
+ * 8px beside it, and the page is the window's `main`, since the window draws no panel. In Studio's
+ * window, whose framed panel the page already sits on, the two panes sit side by side with the
+ * list's line between them.
  */
 export function InboxPanes({
   framed,

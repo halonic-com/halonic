@@ -76,7 +76,7 @@ export function ListHeader({
   }, [search]);
   if (search === undefined) {
     return (
-      <div className="flex items-center gap-2 px-3 pt-2">
+      <div className="flex items-center gap-2 px-5 pt-2">
         <h2 className="min-w-0 flex-1 text-body-strong">{messengerWords.chatsLabel}</h2>
         <button
           ref={icon}

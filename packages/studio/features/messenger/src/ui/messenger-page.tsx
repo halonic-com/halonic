@@ -197,7 +197,7 @@ export function MessengerPage({
 const desktopListColumnClass = `${listColumnClass} flex shrink-0 flex-col border-e border-border`;
 
 /**
- * The page: the window's one framed panel, 12px corners and a 1px line on the frame, that holds
+ * The page: the window's one framed panel, rounded corners and a 1px line on the frame, that holds
  * the list column and the chat (`messenger.framed-list`, `shell.focused-apps`).
  */
 const pageClass = `flex h-full min-h-0 min-w-0 flex-1 ${focusedPanelClass}`;
@@ -207,8 +207,9 @@ const contentPaneClass = "flex min-h-0 min-w-0 flex-1 flex-col bg-app-panel";
 
 /**
  * The list's column, the page's Messenger landmark. With nothing connected the panel's No
- * connections is the one message: the column stays, so the layout doesn't move once a source
- * connects, but as a plain empty `div`, not an empty landmark (HAL-18316 MS12).
+ * connections is the one message, never an empty landmark (HAL-18316 MS12): side by side the
+ * column is left out, so the message centres in the one panel (`messenger.framed-list`); one pane
+ * at a time keeps a plain empty `div` in its place.
  */
 function ListColumn({
   listRef,
@@ -222,7 +223,7 @@ function ListColumn({
   readonly children: ReactNode;
 }) {
   const className = onePane ? "flex min-w-0 flex-1 flex-col" : desktopListColumnClass;
-  if (connected === false) return <div className={className} />;
+  if (connected === false) return onePane ? <div className={className} /> : null;
   return (
     <nav
       ref={listRef}

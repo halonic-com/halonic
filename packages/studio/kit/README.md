@@ -1360,11 +1360,11 @@ screen you haven't seen yet.
 
 ## SidebarFrame and FramedPanel
 
-The framed sidebar the Inbox and Studio share (`kit.framed-sidebar`): the sidebar
-sits straight on the window's frame, with no fill or line, and the content sits 8px beside it on a
-framed panel with 12px corners and a 1px line. `tone` picks the panel's fill: `app` (a focused
-app's panel, the default) or `studio` (the page's `surface`). `as="main"` makes the panel the
-page's `main`; `ref` points at it.
+The framed sidebar the Inbox and Studio share (`kit.framed-sidebar`): the sidebar sits straight on
+the window's frame, with no fill or line, and the content sits 8px beside it on a framed panel with
+16px corners and a 1px line. `tone` picks the panel's fill: `app` (a focused app's panel, the
+default) or `studio` (the page's `surface`). `as="main"` makes the panel the page's `main`; `ref`
+points at it.
 
 ```tsx
 <SidebarFrame sidebar={<nav aria-label="Chats">…</nav>}>
