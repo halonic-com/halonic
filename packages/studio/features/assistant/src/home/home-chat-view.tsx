@@ -20,8 +20,7 @@ export interface HomeChatViewProps {
 
 /**
  * A chat in Home's content pane (`assistant.home.chats`, `assistant.home.chat-look`): the new
- * design's chat header with its title, ⋮ with Rename and Delete
- * chat…, and the chat, without the tab's Continue in the side panel or its items panel. Home holds
+ * design's chat header with its title, ⋮ with Rename and Delete chat…, and the chat, without the tab's Continue in the side panel or its items panel. Home holds
  * the chat; when the chat goes anywhere else, `onLeave` tells Home.
  */
 export function HomeChatView({ chatId, context, onLeave }: HomeChatViewProps) {
@@ -51,8 +50,9 @@ export function HomeChatView({ chatId, context, onLeave }: HomeChatViewProps) {
   return (
     <section aria-label={title} className="flex h-full min-h-0 flex-col">
       {renaming && view !== undefined ? (
-        // The rename field takes the heading's place, at the header's height and shadow.
-        <div className="flex h-16 shrink-0 items-center px-4 shadow-header">
+        // While renaming, the field replaces the whole header, mark and ⋮ included, at its height
+        // and shadow; ContentHeader's title is text only. Stacked like it, so bubbles stay under.
+        <div className="relative z-(--layer-sticky) flex h-16 shrink-0 items-center bg-surface px-4 shadow-header">
           <RenameField
             chats={chats}
             chatId={chatId}
