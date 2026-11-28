@@ -116,7 +116,9 @@ function routeOf(
     case "call": {
       const placeholders = placeholdersOf(step.path, fields, where);
       const body = step.body.map((field) => bodyFieldOf(field, fields, where));
-      const target = callTargetOf(step.target, definition.risk, placeholders, where);
+      const textFields = body.filter((field) => field.kind === "string").map(({ name }) => name);
+      const names = new Set([...Object.keys(placeholders), ...textFields]);
+      const target = callTargetOf(step.target, definition.risk, names, where);
       const route: ActionCallRoute = {
         ...base,
         kind: "call",
@@ -160,7 +162,7 @@ function routeOf(
  * The routes of a definition's steps, as the shell's generated route list
  * holds them (architecture note, 2.4): a `guided` step's address, a `call`
  * step's method, path, body, kept fields and, for an `irreversible` call, its
- * target, and a `check` as a `GET` with no
+ * target over its placeholders and text body fields, and a `check` as a `GET` with no
  * body that runs without the native dialog. Each placeholder and body field
  * takes its pattern from the parameter of the same name; a `parameter-list`
  * field is an `integer-list`. An `input`,

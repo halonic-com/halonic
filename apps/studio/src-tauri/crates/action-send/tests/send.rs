@@ -454,3 +454,25 @@ fn a_sent_call_wipes_its_token_and_body() {
     let body = call.body.as_deref().unwrap_or_default();
     assert!(!body.is_empty() && body.iter().all(|byte| *byte == 0));
 }
+
+#[test]
+fn a_body_field_in_the_target_is_typed_as_the_page_sent_it() {
+    // Liam's condition 3 on HAL-21185: the user types `acme/new-app`, the
+    // organisation from the path and the repository's name from the body.
+    let create = json!({ "definition": "acme.create-repo", "version": 1, "step": 1,
+                         "placeholders": { "owner": "acme" }, "body": { "name": "new-app" } });
+    for (typed, sent) in [("acme/new-app", 1), ("acme", 0), ("acme/other", 0)] {
+        let network = FakeNetwork::answering(json_answer(201, json!({ "id": 7 })));
+        let dialogs = FakeDialogs::typing(Some((Some(typed), Vec::new())));
+        let result = send_with(
+            &routes(),
+            &network,
+            &FakeKeychain::signed_in(),
+            &dialogs,
+            &FakeLog::default(),
+            create.clone(),
+        );
+        assert_eq!(dialogs.asked()[0].target.as_deref(), Some("acme/new-app"));
+        assert_eq!(network.calls().len(), sent, "typed {typed}: {result:?}");
+    }
+}

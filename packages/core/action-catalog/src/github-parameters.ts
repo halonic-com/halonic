@@ -16,3 +16,12 @@ export const githubOwner: TextParameter = {
 
 /** A GitHub repository name. */
 export const githubRepo: TextParameter = { kind: "text", pattern: /^[A-Za-z0-9._-]{1,100}$/ };
+
+/**
+ * The name of a repository `github.create-repository` makes: lower-case
+ * letters, digits and hyphens, starting with a letter or digit. Narrower than
+ * {@link githubRepo}, which must also read the dots, underscores and capitals
+ * of repositories that already exist, so every new repository's name is also
+ * a valid npm package, Paperclip project key and DNS label start.
+ */
+export const newGithubRepo: TextParameter = { kind: "text", pattern: /^[a-z0-9][a-z0-9-]{0,99}$/ };

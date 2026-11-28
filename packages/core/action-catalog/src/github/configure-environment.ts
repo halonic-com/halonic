@@ -1,4 +1,9 @@
-import { type StepperDefinition, strictParameters } from "@halonicjs/action-steppers";
+import {
+  type CheckStep,
+  type GuidedStep,
+  type StepperDefinition,
+  strictParameters,
+} from "@halonicjs/action-steppers";
 import { githubEnvironment } from "../github-environment-parameters.ts";
 import { githubOwner, githubRepo } from "../github-parameters.ts";
 
@@ -17,6 +22,33 @@ const environmentFields = [
   "deployment_branch_policy.protected_branches",
   "deployment_branch_policy.custom_branch_policies",
 ] as const;
+
+/** The guided step where the user sets {environment}'s protection rules; `github.create-repository` reuses it. */
+export const environmentProtectionGuided: GuidedStep = {
+  kind: "guided",
+  address: environmentsPage,
+  instructions: [
+    "Click {environment}.",
+    "Under **Deployment protection rules**, tick **Required reviewers** and add {reviewer}.",
+    "Tick **Wait timer** and set it to {wait_timer} minutes, or untick it for 0.",
+    "Click **Save protection rules**.",
+    "Under **Deployment branches and tags**, choose {branches}.",
+  ],
+  // Checked against GitHub's documentation for the page; the live smoke test walks it.
+  checkedOn: "2026-11-27",
+};
+
+/** The check that {environment} was saved after the stepper opened; `github.create-repository` reuses it. */
+export const environmentSavedCheck: CheckStep = {
+  kind: "check",
+  path: environmentPath,
+  keep: [...environmentFields, "updated_at"],
+  changedAfterStart: "updated_at",
+  manual: {
+    url: environmentsPage,
+    instructions: ["Click {environment} and check the rules you just set are shown."],
+  },
+};
 
 /**
  * Sets up a GitHub environment's protection rules by hand (inventory row
@@ -54,29 +86,8 @@ export const definition: StepperDefinition<EnvironmentParameters> = {
         instructions: ["Click {environment} and note its protection rules."],
       },
     },
-    {
-      kind: "guided",
-      address: environmentsPage,
-      instructions: [
-        "Click {environment}.",
-        "Under **Deployment protection rules**, tick **Required reviewers** and add {reviewer}.",
-        "Tick **Wait timer** and set it to {wait_timer} minutes, or untick it for 0.",
-        "Click **Save protection rules**.",
-        "Under **Deployment branches and tags**, choose {branches}.",
-      ],
-      // Checked against GitHub's documentation for the page; the live smoke test walks it.
-      checkedOn: "2026-11-27",
-    },
-    {
-      kind: "check",
-      path: environmentPath,
-      keep: [...environmentFields, "updated_at"],
-      changedAfterStart: "updated_at",
-      manual: {
-        url: environmentsPage,
-        instructions: ["Click {environment} and check the rules you just set are shown."],
-      },
-    },
+    environmentProtectionGuided,
+    environmentSavedCheck,
   ],
   targets: (parameters) => [
     {

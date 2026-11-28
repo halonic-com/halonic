@@ -15,14 +15,10 @@ function assertText(text: string, template: string, where: string): void {
 /**
  * Checks a target template as the shell's `parse_target` (`action-send`'s
  * `target.rs`) reads it, with the same wording: text with `{name}` parts, each
- * one of the route's placeholders, at least one of them, and no stray `}` or
- * hidden character.
+ * one of `names` (the route's placeholders and text body fields), at least one
+ * of them, and no stray `}` or hidden character.
  */
-function assertTarget(
-  template: string,
-  placeholders: Readonly<Record<string, string>>,
-  where: string,
-): void {
+function assertTarget(template: string, names: ReadonlySet<string>, where: string): void {
   let rest = template;
   let named = false;
   while (rest !== "") {
@@ -37,8 +33,8 @@ function assertTarget(
     assert(end !== -1, `${where}: the target \`${template}\` has an unclosed \`{\``);
     const name = after.slice(0, end);
     assert(
-      placeholderName.test(name) && Object.hasOwn(placeholders, name),
-      `${where}: \`{${name}}\` in the target \`${template}\` isn't one of the route's placeholders`,
+      placeholderName.test(name) && names.has(name),
+      `${where}: \`{${name}}\` in the target \`${template}\` isn't one of the route's placeholders or text body fields`,
     );
     named = true;
     rest = after.slice(end + 1);
@@ -48,7 +44,9 @@ function assertTarget(
 
 /**
  * A call route's target, as the shell's route list takes it: an
- * `irreversible` call must have one and no other call may.
+ * `irreversible` call must have one and no other call may. `names` are what
+ * it may name: the route's placeholders and its text body fields, such as a
+ * new repository's `name` in the body of `POST /orgs/{owner}/repos`.
  *
  * @throws Error when the risk and the target don't fit together, or the
  *   template isn't one the shell's `parse_target` reads
@@ -56,7 +54,7 @@ function assertTarget(
 export function callTargetOf(
   target: string | undefined,
   risk: ActionRisk,
-  placeholders: Readonly<Record<string, string>>,
+  names: ReadonlySet<string>,
   where: string,
 ): string | undefined {
   if (risk !== "irreversible") {
@@ -64,6 +62,6 @@ export function callTargetOf(
     return undefined;
   }
   assert(target !== undefined, `${where}: an irreversible call needs a target`);
-  assertTarget(target, placeholders, where);
+  assertTarget(target, names, where);
   return target;
 }

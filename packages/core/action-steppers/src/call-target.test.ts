@@ -80,7 +80,28 @@ verifies("action-steppers.call-target", () => {
       for (const name of ["environment", "run id", ""]) {
         const target = `{owner}/{repo} run {${name}}`;
         expect(() => routesOf(withTarget(target))).toThrow(
-          `${where}: \`{${name}}\` in the target \`${target}\` isn't one of the route's placeholders`,
+          `${where}: \`{${name}}\` in the target \`${target}\` isn't one of the route's placeholders or text body fields`,
+        );
+      }
+    });
+
+    it("takes a text body field in the target, but not a constant or an integer", () => {
+      // Liam's condition 3 on HAL-21185: a new repository is typed as `{owner}/{name}`.
+      const create: CallStep = {
+        ...approve,
+        path: "/orgs/{owner}/repos",
+        body: [
+          { name: "repo", kind: "parameter" },
+          { name: "runId", kind: "parameter" },
+          { name: "state", kind: "constant", value: "approved" },
+        ],
+        target: "{owner}/{repo}",
+      };
+      expect(routesOf(definition(create))[0]).toMatchObject({ target: "{owner}/{repo}" });
+      for (const name of ["runId", "state"]) {
+        const target = `{owner}/{${name}}`;
+        expect(() => routesOf(definition({ ...create, target }))).toThrow(
+          `${where}: \`{${name}}\` in the target \`${target}\` isn't one of the route's placeholders or text body fields`,
         );
       }
     });

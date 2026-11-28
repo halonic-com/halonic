@@ -23,7 +23,7 @@ fn with_first_route(change: impl FnOnce(&mut Value)) -> Result<RouteList, String
 #[test]
 fn the_acme_list_loads() {
     let list = RouteList::parse(ACME_ROUTES).expect("loads");
-    assert_eq!(list.calls.len(), 6);
+    assert_eq!(list.calls.len(), 7);
     assert_eq!(list.guided.len(), 1);
 }
 
@@ -218,9 +218,33 @@ fn only_an_irreversible_call_names_a_target_from_its_own_placeholders() {
         assert!(list.is_err(), "case {index}");
     }
     let mut list = acme();
-    list["routes"][6]["target"] = json!("{owner}/{repo}");
+    list["routes"][7]["target"] = json!("{owner}/{repo}");
     assert!(
         RouteList::parse(&list.to_string()).is_err(),
         "a guided step has no target"
     );
+}
+
+/// The acme list's `irreversible` call whose target names a body field, `acme.create-repo`.
+const CREATE_REPO: usize = 6;
+
+#[test]
+fn a_target_may_name_a_text_body_field_but_never_a_constant_or_a_secret() {
+    // Liam's condition 3 on HAL-21185: a repository made by
+    // `POST /orgs/{owner}/repos` is typed as `{owner}/{name}`, its name a body field.
+    assert!(RouteList::parse(&acme().to_string()).is_ok());
+    let refused = [
+        with_route(CREATE_REPO, |route| {
+            route["target"] = json!("{owner}/{auto_init}")
+        }),
+        with_route(CREATE_REPO, |route| {
+            route["body"][0] = json!({ "name": "name", "kind": "secret-input" })
+        }),
+        with_route(CREATE_REPO, |route| {
+            route["body"][0] = json!({ "name": "name", "kind": "integer" })
+        }),
+    ];
+    for (index, list) in refused.iter().enumerate() {
+        assert!(list.is_err(), "case {index}");
+    }
 }
