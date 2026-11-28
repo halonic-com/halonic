@@ -281,7 +281,7 @@ verifies("home.list-column", () => {
     const pulledOut = tryAgain.parentElement as HTMLElement;
     const line = pulledOut.parentElement as HTMLElement;
     // Its own row, pulled left by the ghost button's 1px edge and side padding (px-3, px-4 on touch).
-    expect(line.className).toContain("flex flex-col items-start gap-1 px-3");
+    expect(line.className).toContain("flex flex-col items-start gap-1 ps-3.25");
     expect(pulledOut.className).toBe("-ms-3.25 phone:-ms-4.25 touch:-ms-4.25");
     expect(tryAgain.className).toContain("px-3");
     expect(tryAgain.className).toContain("touch:px-4");
