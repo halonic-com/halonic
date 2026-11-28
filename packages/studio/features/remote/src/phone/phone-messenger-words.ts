@@ -4,6 +4,7 @@
  * itself.
  */
 
+import type { AgentActivity } from "@halonicjs/ports";
 import type { MessagingOutcome } from "./messaging-client.ts";
 
 export const phoneMessengerWords = {
@@ -55,6 +56,35 @@ export const phoneMessengerWords = {
   notLoaded: (computer: string) =>
     `Couldn't load it: ${computer} turned it down. You can open it there.`,
   tryAgain: "Try again",
+  /** p02b, a row's second line while the chat's agent works on it. */
+  working: "Working…",
+  /** p02b's row, its second line: what was left in its box and not sent. */
+  draft: (text: string) => `Draft: ${text}`,
+  /** The violet dot after a row's name while the chat waits for the person, read as this. */
+  needsYouDot: ", needs you",
+  /** The list's name for a screen reader, as the desktop's. */
+  chatsLabel: "Chats",
+  /** While a message is on its way, as the desktop's pending message says. */
+  sending: "Sending…",
+  /** A chat while its messages load: the desktop Messenger's words (HAL-18481, improvement 3). */
+  loadingChat: "Loading this chat",
+  stillLoading: "Still loading",
+  today: "Today",
+  yesterday: "Yesterday",
+  /** p04a, the header's status line after the source: the desktop's activity words. */
+  activity: {
+    idle: "Idle",
+    working: "Working",
+    waiting: "Waiting",
+    paused: "Paused",
+    other: "",
+  } satisfies Record<AgentActivity, string>,
+  /** k14a: a channel's size after its name. */
+  channelSize: (count: number) => `${count} agents`,
+  /** Group 15: the lead in a channel's member line, "Chief (lead) · Liam · Elena". */
+  leadName: (name: string) => `${name} (lead)`,
+  /** k10d: the box's To line while nobody is named. */
+  toLead: (lead: string) => `To ${lead} (lead) · Type @ to ask someone else`,
 } as const;
 
 /** What a read the host didn't answer came back as. */
@@ -98,6 +128,23 @@ export function sendLine(outcome: MessagingOutcome<unknown>, computer: string): 
         ? phoneMessengerWords.offline(computer)
         : phoneMessengerWords.refused;
   }
+}
+
+/**
+ * "Today", "Yesterday", else the day itself, "Mon 23 Nov", by the local calendar; a day in another
+ * year than `now` has its year too, "Mon 24 Nov 2025". The desktop Messenger's `dayLabel`.
+ */
+export function dayLabel(at: Date, now: Date): string {
+  const days = Math.round((startOfDay(now) - startOfDay(at)) / 86_400_000);
+  if (days === 0) return phoneMessengerWords.today;
+  if (days === 1) return phoneMessengerWords.yesterday;
+  const day = at.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
+  // Added by hand: with `year`, en-GB puts a comma after the weekday ("Mon, 24 Nov 2025").
+  return at.getFullYear() === now.getFullYear() ? day : `${day} ${at.getFullYear()}`;
+}
+
+function startOfDay(at: Date): number {
+  return new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime();
 }
 
 /** "Elena", "Elena and Liam", "Elena, Liam and Chief". */

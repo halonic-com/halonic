@@ -6,6 +6,7 @@ import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { GatewayHost } from "../../test-support/gateway-scene.ts";
 import { listedSession } from "../../test-support/listed-session.ts";
+import { rowNamed } from "../../test-support/phone-messenger-scene.tsx";
 import { FakePhoneTunnel } from "../../test-support/phone-tunnel.ts";
 import type { MessagingList } from "../messaging-client.ts";
 import type { PhoneScanner } from "../pairing-flow.ts";
@@ -191,7 +192,7 @@ verifies("remote.phone-shortcuts", () => {
     await answer(host, "conversations", [launchReview]);
 
     expect(openChat()).toBeUndefined();
-    expect(buttonNamed("Launch review")).toBeDefined();
+    expect(rowNamed("Launch review")).toBeDefined();
     expect(shortcuts.setLastChat).not.toHaveBeenCalled();
   });
 
@@ -202,7 +203,10 @@ verifies("remote.phone-shortcuts", () => {
     const [[computer, host] = []] = [...hosts];
     if (computer === undefined || host === undefined) throw new Error("No gateway client held.");
     await answer(host, "conversations", [launchReview]);
-    await press("Launch review");
+    const row = rowNamed("Launch review");
+    expect(row, "Launch review").toBeDefined();
+    await act(async () => row?.click());
+    await settle();
     expect(shortcuts.setLastChat.mock.calls).toEqual([
       [{ computer, chat: launchReview.id, name: "Launch review" }],
     ]);

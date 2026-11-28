@@ -1,40 +1,66 @@
-import { type Conversation, gatewayMaxPromptLength, type Message } from "@halonicjs/ports";
-import { BackIcon, Button, Dialog, TextArea } from "@halonicjs/studio-kit";
-import { useEffect, useId, useState } from "react";
-import { messageParts, openChecked } from "./message-links.ts";
-import type { MessagingOutcome } from "./messaging-client.ts";
-import type { AgentNames, PhoneMessaging } from "./phone-messenger.tsx";
 import {
-  type ReadFailure,
-  sendLine,
-  phoneMessengerWords as words,
-} from "./phone-messenger-words.ts";
+  type Conversation,
+  gatewayMaxPromptLength,
+  type Message,
+  type MessagingId,
+} from "@halonicjs/ports";
+import {
+  Button,
+  ChatBoxLine,
+  ChatComposer,
+  type ChatComposerPicker,
+  ChatLoading,
+  TickIcon,
+} from "@halonicjs/studio-kit";
+import { useEffect, useId, useRef, useState } from "react";
+import type { ChatDraft } from "./chat-drafts.ts";
+import {
+  ChatHeader,
+  ChatLines,
+  isChannel,
+  isMessage,
+  MembersSheet,
+  nameOf,
+} from "./phone-chat-parts.tsx";
+import type { ChatAgents, PhoneMessaging, SourceLabels } from "./phone-messenger.tsx";
+import { type ReadFailure, phoneMessengerWords as words } from "./phone-messenger-words.ts";
 import { ReadFailedLine } from "./read-failed-line.tsx";
 
 /** What a chat on the phone needs. */
 export interface PhoneChatProps {
   readonly messaging: PhoneMessaging;
   readonly conversation: Conversation;
-  readonly names: AgentNames;
+  readonly agents: ChatAgents;
+  readonly sources: SourceLabels;
   readonly computer: string;
+  /** The chat's draft in the list: the box starts with its text and follows its line and send. */
+  readonly draft: ChatDraft;
+  /** Gets what is left in the box when the chat closes, for the chat row's "Draft: …". */
+  readonly onKeep: (text: string) => void;
+  /** Sends through the list, so the send outlives the chat; true when the computer took it. */
+  readonly onSend: (
+    conversation: Conversation,
+    text: string,
+    to: readonly MessagingId[],
+  ) => Promise<boolean>;
   readonly onOpenLink: (link: string) => void;
   readonly onBack: () => void;
 }
 
 /**
- * One chat on the phone (p04a): its messages, oldest first, and the box under them. In a channel,
- * `@` opens Name someone (k16b), whose picks fill the message's `to`, and Members lists who is in
- * it, read-only (k16c). Messages it couldn't read show why, with Try again.
+ * One chat on the phone (p04a): its header, its messages, oldest first, and the kit's box under
+ * them. In a channel, `@` (typed, or the Name someone button) opens the box's picker of members
+ * (k16b), whose picks fill the message's `to`, each named member ticked; Members lists who is in
+ * it, read-only (k16c). Until the messages are read, the kit's skeleton lines stand in their place;
+ * messages it couldn't read show why, with Try again.
  */
 export function PhoneChat(props: PhoneChatProps) {
-  const { messaging, conversation, names, computer, onOpenLink, onBack } = props;
-  const [messages, setMessages] = useState<readonly Message[]>([]);
-  const [to, setTo] = useState<readonly string[]>([]);
-  const [sheet, setSheet] = useState<"none" | "name" | "members">("none");
+  const { messaging, conversation, agents, sources, computer, onOpenLink, onBack } = props;
+  const [messages, setMessages] = useState<readonly Message[] | undefined>(undefined);
+  const [to, setTo] = useState<readonly MessagingId[]>([]);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [reads, setReads] = useState(0);
   const [failure, setFailure] = useState<ReadFailure | undefined>(undefined);
-  const members = conversation.members ?? [];
-  const nameOf = (agent: string) => names.get(agent) ?? agent;
 
   useEffect(() => {
     let current = true;
@@ -53,253 +79,222 @@ export function PhoneChat(props: PhoneChatProps) {
     };
   }, [messaging, conversation.id, reads]);
 
-  const toggle = (agent: string) => {
-    setTo((before) =>
-      before.includes(agent) ? before.filter((each) => each !== agent) : [...before, agent],
-    );
-    setSheet("none");
+  const readAgain = () => {
+    setFailure(undefined);
+    setReads((count) => count + 1);
   };
 
   return (
     <div className="flex grow flex-col">
-      <header className="flex min-h-14 items-center gap-2 border-b border-border px-2">
-        <Button
-          variant="ghost"
-          size="touch"
-          icon={<BackIcon />}
-          label={words.back}
-          onClick={onBack}
-        />
-        <h2 className="min-w-0 flex-1 truncate text-heading text-fg">{conversation.title}</h2>
-        {members.length > 0 ? (
-          <Button variant="ghost" size="touch" onClick={() => setSheet("members")}>
-            {words.members}
-          </Button>
-        ) : null}
-      </header>
+      <ChatHeader
+        conversation={conversation}
+        agents={agents}
+        sources={sources}
+        onBack={onBack}
+        onMembers={() => setMembersOpen(true)}
+      />
       <ReadFailedLine
         messaging={messaging}
         failure={failure}
         computer={computer}
-        onTryAgain={() => {
-          setFailure(undefined);
-          setReads((count) => count + 1);
-        }}
+        onTryAgain={readAgain}
       />
-      <ol className="flex flex-1 flex-col gap-3 overflow-y-auto p-4">
-        {messages.map((message) => (
-          <li key={message.id} className={message.author.kind === "me" ? "self-end" : ""}>
-            <MessageBody body={message.body} onOpenLink={onOpenLink} />
-          </li>
-        ))}
-      </ol>
+      {messages === undefined ? (
+        <div className="flex-1">
+          {failure === undefined ? (
+            <ChatLoading label={words.loadingChat} onRetry={readAgain} />
+          ) : null}
+        </div>
+      ) : (
+        <ChatLines messages={messages} agents={agents} now={new Date()} onOpenLink={onOpenLink} />
+      )}
       <ChatBox
         {...props}
         to={to}
-        toLine={to.length > 0 ? words.to(to.map(nameOf)) : undefined}
-        onNameSomeone={members.length > 0 ? () => setSheet("name") : undefined}
+        onTo={setTo}
         onSent={() => {
           setTo([]);
           setReads((count) => count + 1);
         }}
       />
-      {sheet === "none" ? null : (
-        <ChatSheet
-          sheet={sheet}
+      {membersOpen ? (
+        <MembersSheet
           conversation={conversation}
-          to={to}
-          nameOf={nameOf}
+          agents={agents}
           computer={computer}
-          onToggle={toggle}
-          onClose={() => setSheet("none")}
+          onClose={() => setMembersOpen(false)}
         />
-      )}
+      ) : null}
     </div>
   );
 }
 
+/** "@" and what follows it at the end of the text: what the picker filters the members by. */
+const typedName = /(?:^|\s)@([^\s@]*)$/u;
+
 /**
- * The box under a chat. A message is sent once: after anything but the host taking it, the text
- * stays and the line under the box says why, and a send cut off by a drop is never sent again.
+ * The kit's box under a chat. A message is sent once: after anything but the host taking it, the
+ * text stays and the line under the box says why, and a send cut off by a drop is never sent
+ * again. A box opened while its message is on its way says "Sending…" and takes the outcome.
  */
 function ChatBox({
-  messaging,
   conversation,
-  computer,
+  agents,
+  draft,
+  onKeep,
+  onSend,
   to,
-  toLine,
-  onNameSomeone,
+  onTo,
   onSent,
 }: PhoneChatProps & {
-  readonly to: readonly string[];
-  readonly toLine: string | undefined;
-  /** Opens Name someone; none outside a channel. */
-  readonly onNameSomeone: (() => void) | undefined;
+  readonly to: readonly MessagingId[];
+  readonly onTo: (to: readonly MessagingId[]) => void;
   readonly onSent: () => void;
 }) {
   const lineId = useId();
-  const [text, setText] = useState("");
-  const [line, setLine] = useState<string | undefined>(undefined);
-  const [sending, setSending] = useState(false);
+  // The box keeps its own text, so a key redraws only the box, not every message above it.
+  const [text, setText] = useState(draft.text);
+  const [picking, setPicking] = useState(false);
+  // The To line after a pick, for a screen reader: the tick is for the eye only (as MS10).
+  const [toSaid, setToSaid] = useState("");
+  const textRef = useRef<HTMLTextAreaElement>(null);
   const tooLong = text.length > gatewayMaxPromptLength;
-  const canSend = !sending && !tooLong && text.trim() !== "";
-
-  async function send() {
-    if (!canSend) return;
-    setSending(true);
-    setLine(undefined);
-    let outcome: MessagingOutcome<unknown>;
-    try {
-      outcome = await messaging.send(conversation, text, to);
-    } catch {
-      // A port that rejects never said what became of the message: treat it as cut off.
-      outcome = { kind: "cut-off" };
-    } finally {
-      setSending(false);
-    }
-    setLine(sendLine(outcome, computer));
-    if (outcome.kind !== "done") return;
+  const channel = isChannel(conversation);
+  useKeepOnClose(text, onKeep);
+  // A message the computer takes while the box is open, sent from it or before it opened, empties it.
+  useOnSent(draft.sent, () => {
     setText("");
+    setToSaid("");
     onSent();
+  });
+
+  function send() {
+    if (draft.sending || tooLong) return;
+    void onSend(conversation, text, to);
   }
 
+  function change(next: string) {
+    setText(next);
+    if (channel) setPicking(typedName.test(next));
+  }
+
+  const toLineOf = (named: readonly MessagingId[]) =>
+    named.length > 0
+      ? words.to(named.map((agent) => nameOf(agents, agent)))
+      : words.toLead(nameOf(agents, conversation.agent));
+
+  const toggle = (agent: MessagingId) => {
+    const next = to.includes(agent) ? to.filter((each) => each !== agent) : [...to, agent];
+    onTo(next);
+    setToSaid(toLineOf(next));
+    // A typed "@name" was only how the member was picked: it leaves the message.
+    setText(text.replace(typedName, (typed) => (typed.startsWith("@") ? "" : (typed[0] ?? ""))));
+    setPicking(false);
+    textRef.current?.focus();
+  };
+
+  const query = typedName.exec(text)?.[1]?.toLocaleLowerCase() ?? "";
+  const picker: ChatComposerPicker | undefined = channel
+    ? {
+        label: words.nameSomeone,
+        open: picking,
+        options: (conversation.members ?? [])
+          .filter((agent) => nameOf(agents, agent).toLocaleLowerCase().startsWith(query))
+          .map((agent) => ({
+            id: agent,
+            content: (
+              <span
+                className="flex min-w-0 flex-1 items-center gap-2"
+                data-named={to.includes(agent)}
+              >
+                <span className="min-w-0 flex-1 truncate">{nameOf(agents, agent)}</span>
+                {agent === conversation.agent ? (
+                  <span className="text-small text-fg-muted">{words.lead}</span>
+                ) : null}
+                {to.includes(agent) ? (
+                  <span
+                    aria-hidden="true"
+                    className="size-icon-md shrink-0 text-accent *:size-full"
+                  >
+                    <TickIcon />
+                  </span>
+                ) : null}
+              </span>
+            ),
+          })),
+        onPick: toggle,
+        onClose: () => setPicking(false),
+      }
+    : undefined;
+
+  const toLine = toLineOf(to);
   return (
-    <div className="flex flex-col gap-1 border-t border-border px-3 pt-2 pb-safe">
-      {toLine === undefined ? null : <p className="text-small text-fg-muted">{toLine}</p>}
-      <div className="flex items-end gap-2">
-        {onNameSomeone === undefined ? null : (
-          <Button variant="ghost" size="touch" name={words.nameSomeone} onClick={onNameSomeone}>
-            @
-          </Button>
-        )}
-        <div className="min-w-0 flex-1">
-          <TextArea
-            aria-label={words.label}
-            placeholder={words.placeholder(conversation.title)}
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-          />
-        </div>
-        <Button
-          variant="primary"
-          size="touch"
-          busy={sending}
-          unavailable={tooLong ? { reason: lineId } : undefined}
-          onClick={() => void send()}
-        >
-          {words.send}
-        </Button>
-      </div>
-      <p id={lineId} role="status" className="text-small text-fg-muted">
-        {tooLong ? words.tooLong : line}
-      </p>
+    <div className="border-t border-border px-3 pt-2 pb-safe">
+      <span role="status" className="sr-only">
+        {toSaid}
+      </span>
+      <ChatComposer
+        label={words.label}
+        placeholder={words.placeholder(conversation.title)}
+        value={text}
+        onChange={change}
+        onSend={send}
+        onStop={() => {}}
+        answering={false}
+        sendUnavailable={tooLong ? { reason: lineId } : undefined}
+        textRef={textRef}
+        picker={picker}
+        header={
+          channel ? (
+            <span className="flex items-center gap-2">
+              <span className="min-w-0 flex-1 text-small text-fg-muted">{toLine}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                name={words.nameSomeone}
+                onClick={() => setPicking((open) => !open)}
+              >
+                @
+              </Button>
+            </span>
+          ) : undefined
+        }
+        line={boxLine(lineId, tooLong ? words.tooLong : draft.line, draft.sending)}
+      />
     </div>
   );
 }
 
-/** An agent's message, its links showing their full address (`messageParts`). */
-function MessageBody({
-  body,
-  onOpenLink,
-}: {
-  readonly body: string;
-  readonly onOpenLink: (link: string) => void;
-}) {
-  return (
-    <p className="whitespace-pre-wrap break-words text-body text-fg">
-      {messageParts(body).map((part, index) =>
-        part.kind === "text" ? (
-          // Parts never reorder, so the index is the key.
-          <span key={index}>{part.text}</span>
-        ) : (
-          // A real link, so a screen reader says "Link"; the tap goes through `openChecked`.
-          <a
-            key={index}
-            href={part.link}
-            className="break-all text-accent-text underline focus-ring"
-            onClick={(event) => {
-              event.preventDefault();
-              openChecked(part.link, undefined, onOpenLink);
-            }}
-          >
-            {part.link}
-            <span className="sr-only">{words.opensInBrowser}</span>
-          </a>
-        ),
-      )}
-    </p>
-  );
-}
-
 /**
- * Name someone (k16b), whose picks fill `to` with members only, or Members, read-only (k16c):
- * changing who is in a channel stays on the computer.
+ * The line under the box: why a message didn't go, or "Sending…" while one is on its way, so a tap
+ * on a slow link shows it did something.
  */
-function ChatSheet({
-  sheet,
-  conversation,
-  to,
-  nameOf,
-  computer,
-  onToggle,
-  onClose,
-}: {
-  readonly sheet: "name" | "members";
-  readonly conversation: Conversation;
-  readonly to: readonly string[];
-  readonly nameOf: (agent: string) => string;
-  readonly computer: string;
-  readonly onToggle: (agent: string) => void;
-  readonly onClose: () => void;
-}) {
-  const members = conversation.members ?? [];
-  if (sheet === "name") {
+function boxLine(id: string, why: string | undefined, sending: boolean) {
+  if (why !== undefined) {
     return (
-      <Dialog title={words.nameSomeone} size="sm" onCancel={onClose}>
-        <ul className="flex flex-col">
-          {members.map((agent) => (
-            <li key={agent}>
-              <button
-                type="button"
-                aria-pressed={to.includes(agent)}
-                className="flex min-h-12 w-full items-center rounded-md px-2 text-left text-body text-fg focus-ring"
-                onClick={() => onToggle(agent)}
-              >
-                {nameOf(agent)}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </Dialog>
+      <span id={id}>
+        <ChatBoxLine tone="warning">{why}</ChatBoxLine>
+      </span>
     );
   }
-  return (
-    <Dialog title={words.members} size="sm" onCancel={onClose}>
-      <ul className="flex flex-col gap-2">
-        {members.map((agent) => (
-          <li key={agent} className="flex items-center gap-2 text-body text-fg">
-            {nameOf(agent)}
-            {agent === conversation.agent ? (
-              <span className="text-small text-fg-muted">{words.lead}</span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      <p className="mt-4 text-small text-fg-muted">{words.membersOnComputer(computer)}</p>
-    </Dialog>
-  );
+  return sending ? <ChatBoxLine tone="muted">{words.sending}</ChatBoxLine> : undefined;
 }
 
-function isMessage(item: unknown): item is Message {
-  return (
-    typeof item === "object" &&
-    item !== null &&
-    "id" in item &&
-    typeof item.id === "string" &&
-    "body" in item &&
-    typeof item.body === "string" &&
-    "author" in item &&
-    typeof item.author === "object" &&
-    item.author !== null
-  );
+/** Gives `onKeep` what is in the box when the chat closes, read then, not when it opened. */
+function useKeepOnClose(text: string, onKeep: (text: string) => void) {
+  const latest = useRef({ text, onKeep });
+  latest.current = { text, onKeep };
+  useEffect(() => () => latest.current.onKeep(latest.current.text), []);
+}
+
+/** Calls `onSent` each time `sent` counts up after the box opened, not for sends before. */
+function useOnSent(sent: number, onSent: () => void) {
+  const seen = useRef(sent);
+  const latest = useRef(onSent);
+  latest.current = onSent;
+  useEffect(() => {
+    if (sent === seen.current) return;
+    seen.current = sent;
+    latest.current();
+  }, [sent]);
 }

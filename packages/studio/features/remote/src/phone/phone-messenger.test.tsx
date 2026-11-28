@@ -1,13 +1,25 @@
 // @vitest-environment jsdom
 
-import type { Conversation, Message } from "@halonicjs/ports";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GatewayScene, SCENE_COMPUTER } from "../test-support/gateway-scene.ts";
+import {
+  answer,
+  buttonNamed,
+  channel,
+  direct,
+  line,
+  message,
+  openChannel,
+  readLine,
+  renderMessenger,
+  rowNamed,
+  settle,
+  type,
+} from "../test-support/phone-messenger-scene.tsx";
 import { render, unmountAll } from "../test-support/render.tsx";
 import { messageParts, openChecked, openInBrowserTab } from "./message-links.ts";
-import type { MessagingList } from "./messaging-client.ts";
 import { PhoneMessenger } from "./phone-messenger.tsx";
 
 beforeEach(() => {
@@ -24,100 +36,22 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const channel: Conversation = {
-  id: "c1",
-  source: "acme",
-  agent: "elena",
-  members: ["elena", "liam"],
-  title: "Engineering",
-  updatedAt: "2026-11-25T10:00:00.000Z",
-  waitingForMe: true,
-};
-const { members: _members, ...lead } = channel;
-const direct: Conversation = { ...lead, id: "c2", title: "Chief" };
 const pullRequest = "https://github.com/acme/app/pull/12";
 const paperclip = "Paperclip · Halonic";
-
-function message(body: string): Message {
-  const author = { kind: "agent", agent: "elena", name: "Elena" } as const;
-  return { id: "m1", conversation: "c1", author, body, attachments: [], sentAt: channel.updatedAt };
-}
-
-/** Lets the host's answers settle and React draw them. */
-const settle = () => act(async () => await new Promise((resolve) => setTimeout(resolve, 0)));
-
-/** The host answers the newest `msg-read` of `what` with `items`. */
-function answer(scene: GatewayScene, what: MessagingList | "messages", items: readonly unknown[]) {
-  const read = scene.tunnel.sentOf("msg-read").findLast((each) => each.what === what);
-  scene.host({ type: "msg-data", replyTo: read?.id ?? "", what, items });
-}
-
-/** A Messenger tab over a version 4 host with `channel` and `direct`, `channel` open. */
-async function openChannel(messages: readonly Message[] = []) {
-  const scene = new GatewayScene();
-  scene.connect();
-  const onOpenLink = vi.fn();
-  const screen = render(
-    <PhoneMessenger
-      messaging={scene.client.messaging}
-      computer={SCENE_COMPUTER}
-      olderComputer={false}
-      onOpenLink={onOpenLink}
-    />,
-  );
-  answer(scene, "conversations", [channel, direct]);
-  answer(scene, "agents", [
-    { id: "elena", name: "Elena" },
-    { id: "liam", name: "Liam" },
-  ]);
-  await settle();
-  await act(async () => buttonNamed("Engineering")?.click());
-  answer(scene, "messages", messages);
-  await settle();
-  return { scene, screen, onOpenLink };
-}
-
-function buttonNamed(name: string): HTMLButtonElement | undefined {
-  return [...document.querySelectorAll("button")].find(
-    (button) => (button.getAttribute("aria-label") ?? button.textContent) === name,
-  );
-}
-
-function type(text: string) {
-  act(() => {
-    const box = document.querySelector("textarea");
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(box, text);
-    box?.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-}
-
-/** The live regions: a failed read's line first, then in a chat the line under the box. */
-const statuses = () => [...document.querySelectorAll('[role="status"]')];
-const line = () => statuses().at(-1)?.textContent;
-const readLine = () => statuses()[0]?.textContent;
 
 verifies("remote.phone-messenger", () => {
   describe("the phone's Messenger tab", () => {
     it("lists the chats, All or Waiting for me", async () => {
-      const scene = new GatewayScene();
-      scene.connect();
-      render(
-        <PhoneMessenger
-          messaging={scene.client.messaging}
-          computer={SCENE_COMPUTER}
-          olderComputer={false}
-          onOpenLink={() => undefined}
-        />,
-      );
+      const { scene } = renderMessenger();
       answer(scene, "conversations", [channel, { ...direct, waitingForMe: false }]);
       answer(scene, "agents", []);
       await settle();
-      expect(buttonNamed("Chief")).toBeDefined();
+      expect(rowNamed("Chief")).toBeDefined();
       const chips = [...document.querySelectorAll<HTMLLabelElement>('[role="radiogroup"] label')];
       expect(chips.map((chip) => chip.textContent)).toEqual(["All", "Waiting for me · 1"]);
       await act(async () => chips[1]?.querySelector("input")?.click());
-      expect(buttonNamed("Chief")).toBeUndefined();
-      expect(buttonNamed("Engineering")).toBeDefined();
+      expect(rowNamed("Chief")).toBeUndefined();
+      expect(rowNamed("Engineering")).toBeDefined();
     });
 
     it("has no control to add or remove a member, start a chat or channel, join or leave", async () => {
@@ -138,8 +72,8 @@ verifies("remote.phone-messenger", () => {
     it("sends to the members picked in Name someone", async () => {
       const { scene } = await openChannel();
       await act(async () => buttonNamed("Name someone")?.click());
-      expect(document.querySelector("dialog")?.textContent).toContain("Name someone");
-      await act(async () => buttonNamed("Liam")?.click());
+      expect(document.querySelector("[data-chat-picker]")?.textContent).toContain("Name someone");
+      await act(async () => optionNamed("Liam")?.click());
       expect(document.body.textContent).toContain("To Liam");
       type("Ship it");
       await act(async () => buttonNamed("Send")?.click());
@@ -172,13 +106,14 @@ verifies("remote.phone-messenger", () => {
 
     it("shows a link's full address and opens only one isAllowedWebLink passes", async () => {
       const body = `See [the PR](${pullRequest}) or https://github.com.evil.io/acme/app/pull/12.`;
-      const { onOpenLink } = await openChannel([message(body)]);
+      const { opened } = await openChannel([message(body)]);
       expect(document.querySelectorAll("a")).toHaveLength(1);
       expect(document.body.textContent).toContain("https://github.com.evil.io/acme/app/pull/12.");
       await act(async () => document.querySelector("a")?.click());
-      expect(onOpenLink).toHaveBeenCalledWith(pullRequest);
+      expect(opened).toEqual([pullRequest]);
+      const onOpenLink = vi.fn();
       expect(openChecked("javascript:alert(1)", undefined, onOpenLink)).toBe(false);
-      expect(onOpenLink).toHaveBeenCalledTimes(1);
+      expect(onOpenLink).not.toHaveBeenCalled();
     });
 
     it("keeps the sentence round a link and refuses a link with a label that hides it", () => {
@@ -194,16 +129,7 @@ verifies("remote.phone-messenger", () => {
 
     it("says a source is offline instead of an empty list, and Try again reads again", async () => {
       vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 10, 26, 15, 0) });
-      const scene = new GatewayScene();
-      scene.connect();
-      render(
-        <PhoneMessenger
-          messaging={scene.client.messaging}
-          computer={SCENE_COMPUTER}
-          olderComputer={false}
-          onOpenLink={() => undefined}
-        />,
-      );
+      const { scene } = renderMessenger();
       const reads = () => scene.tunnel.sentOf("msg-read").filter((read) => read.what !== "sources");
       const refused = reads().find((read) => read.what === "conversations");
       scene.host({ type: "error", replyTo: refused?.id ?? "", code: "offline" });
@@ -225,7 +151,7 @@ verifies("remote.phone-messenger", () => {
       await settle();
       expect(buttonNamed("Try again")).toBeUndefined();
       expect(readLine()).toBe("");
-      expect(buttonNamed("Engineering")).toBeDefined();
+      expect(rowNamed("Engineering")).toBeDefined();
     });
 
     it("says a chat cut off by a drop couldn't be loaded, and Try again reads it again", async () => {
@@ -234,7 +160,7 @@ verifies("remote.phone-messenger", () => {
       answer(scene, "conversations", [channel]);
       answer(scene, "agents", []);
       await settle();
-      await act(async () => buttonNamed("Engineering")?.click());
+      await act(async () => rowNamed("Engineering")?.click());
       scene.drop();
       scene.connect();
       await settle();
@@ -251,16 +177,7 @@ verifies("remote.phone-messenger", () => {
     });
 
     it("says the computer turned down a list it refused for any other reason", async () => {
-      const scene = new GatewayScene();
-      scene.connect();
-      render(
-        <PhoneMessenger
-          messaging={scene.client.messaging}
-          computer={SCENE_COMPUTER}
-          olderComputer={false}
-          onOpenLink={() => undefined}
-        />,
-      );
+      const { scene } = renderMessenger();
       answer(scene, "conversations", [channel]);
       const agents = scene.tunnel.sentOf("msg-read").find((read) => read.what === "agents");
       scene.host({ type: "error", replyTo: agents?.id ?? "", code: "signed-out" });
@@ -268,8 +185,10 @@ verifies("remote.phone-messenger", () => {
       expect(readLine()).toBe(
         "Couldn't load it: Work laptop turned it down. You can open it there.",
       );
-      expect(buttonNamed("Engineering")).toBeDefined();
-      expect(scene.tunnel.sentOf("msg-read").map((read) => read.what)).not.toContain("sources");
+      expect(rowNamed("Engineering")).toBeDefined();
+      // Only the list's own read of the sources, for the rows: none to word the refusal.
+      const sources = scene.tunnel.sentOf("msg-read").filter((read) => read.what === "sources");
+      expect(sources).toHaveLength(1);
     });
 
     it("shows the update note and reads nothing while the computer speaks version 3", () => {
@@ -289,20 +208,15 @@ verifies("remote.phone-messenger", () => {
   });
 });
 
-/** A Messenger tab over a version 4 host that hasn't answered anything yet. */
-function openList() {
-  const scene = new GatewayScene();
-  scene.connect();
-  render(
-    <PhoneMessenger
-      messaging={scene.client.messaging}
-      computer={SCENE_COMPUTER}
-      olderComputer={false}
-      onOpenLink={() => undefined}
-    />,
+/** A row of the box's list of members, by the member's name. */
+function optionNamed(name: string): HTMLElement | undefined {
+  return [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((option) =>
+    option.textContent?.startsWith(name),
   );
-  return scene;
 }
+
+/** A Messenger tab over a version 4 host that hasn't answered anything yet. */
+const openList = () => renderMessenger().scene;
 
 const chips = () => document.querySelector('[role="radiogroup"]');
 
@@ -336,6 +250,23 @@ verifies("remote.phone-messenger-tab", () => {
       expect(chips()).toBeNull();
     });
 
+    it("loads again from Try again after a failed read, never No chats yet", async () => {
+      const scene = openList();
+      const conversations = () =>
+        scene.tunnel.sentOf("msg-read").filter((read) => read.what === "conversations");
+      scene.host({ type: "error", replyTo: conversations()[0]?.id ?? "", code: "signed-out" });
+      answer(scene, "agents", []);
+      await settle();
+      await act(async () => buttonNamed("Try again")?.click());
+      expect(conversations()).toHaveLength(2);
+      expect(readLine()).toBe("Loading Messenger");
+      expect(document.body.textContent).not.toContain("No chats yet");
+      expect(chips()).toBeNull();
+      answer(scene, "conversations", [direct]);
+      await settle();
+      expect(rowNamed("Chief")).toBeDefined();
+    });
+
     it("says Nothing is waiting for you under the chips when nothing waits", async () => {
       const scene = openList();
       answer(scene, "conversations", [{ ...direct, waitingForMe: false }]);
@@ -343,7 +274,7 @@ verifies("remote.phone-messenger-tab", () => {
       await settle();
       await act(async () => chips()?.querySelectorAll("input")[1]?.click());
       expect(document.body.textContent).toContain("Nothing is waiting for you.");
-      expect(buttonNamed("Chief")).toBeUndefined();
+      expect(rowNamed("Chief")).toBeUndefined();
     });
   });
 });
@@ -397,7 +328,7 @@ verifies("remote.phone-messenger-links", () => {
       answer(scene, "agents", []);
       await settle();
       expect(document.querySelector("h2")).toBeNull();
-      expect(buttonNamed("Chief")).toBeDefined();
+      expect(rowNamed("Chief")).toBeDefined();
     });
 
     // HAL-20070: unbounded, each `[` and each dot rescanned to the end; 100,000 took seconds.

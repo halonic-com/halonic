@@ -1,9 +1,11 @@
-import type { Conversation, MessagingAgent, MessagingId } from "@halonicjs/ports";
+import type { Conversation, MessagingAgent, MessagingId, MessagingSource } from "@halonicjs/ports";
 import { EmptyState, FilterChips } from "@halonicjs/studio-kit";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useChatDrafts } from "./chat-drafts.ts";
 import type { MessagingClient } from "./messaging-client.ts";
 import { OlderComputerPanel } from "./older-computer-note.tsx";
 import { PhoneChat } from "./phone-chat.tsx";
+import { ChatRows, ChatsSkeleton } from "./phone-chat-rows.tsx";
 import { type ReadFailure, phoneMessengerWords as words } from "./phone-messenger-words.ts";
 import { ReadFailedLine } from "./read-failed-line.tsx";
 
@@ -27,8 +29,11 @@ export interface PhoneMessengerProps {
   readonly onLanded?: () => void;
 }
 
-/** Agents' names by id, for the `@` sheet, the To line and Members. */
-export type AgentNames = ReadonlyMap<MessagingId, string>;
+/** The agents read, by id: a chat's picture, name and status line, the `@` picker and Members. */
+export type ChatAgents = ReadonlyMap<MessagingId, MessagingAgent>;
+
+/** The sources read, their labels by id: "name · source" on a row and in a chat's header. */
+export type SourceLabels = ReadonlyMap<MessagingId, string>;
 
 /** Pages read of a list at most, so a host that always says `more` can't keep the phone reading. */
 const maxPages = 10;
@@ -60,24 +65,33 @@ function MessengerLists({
     setOpen(conversation);
     onOpened?.(conversation);
   };
+  // What was left in a chat's box, its line and its send, per chat, while the tab is open: its
+  // row's "Draft: …". The box keeps its own text while open, so typing redraws only the box.
+  const drafts = useChatDrafts(messaging, computer);
   const listed = useListRead(messaging, "conversations", isConversation, open === undefined);
-  const agents = useListRead(messaging, "agents", isAgent, open === undefined);
-  const names: AgentNames = useMemo(
-    () => new Map((agents.items ?? []).map((agent) => [agent.id, agent.name])),
-    [agents.items],
+  const agentsRead = useListRead(messaging, "agents", isAgent, open === undefined);
+  // Only labels a row: a sources read that fails leaves rows without them, and says nothing.
+  const sourcesRead = useListRead(messaging, "sources", isSource, open === undefined);
+  const agents: ChatAgents = useMemo(
+    () => new Map(agentsRead.items.map((agent) => [agent.id, agent])),
+    [agentsRead.items],
   );
-  const failure = listed.failure ?? agents.failure;
+  const sources: SourceLabels = useMemo(
+    () => new Map(sourcesRead.items.map((source) => [source.id, source.label])),
+    [sourcesRead.items],
+  );
+  const failure = listed.failure ?? agentsRead.failure;
   const conversations = listed.items;
   // The shortcut's chat opens once the list has answered; a chat that's gone leaves the list.
   useEffect(() => {
-    if (landing === undefined || conversations === undefined) return;
+    if (landing === undefined || !listed.read) return;
     const landed = conversations.find((conversation) => conversation.id === landing);
     if (landed !== undefined) {
       setOpen(landed);
       onOpened?.(landed);
     }
     onLanded?.();
-  }, [landing, conversations, onOpened, onLanded]);
+  }, [landing, listed.read, conversations, onOpened, onLanded]);
 
   if (open !== undefined) {
     return (
@@ -85,62 +99,49 @@ function MessengerLists({
         key={open.id}
         messaging={messaging}
         conversation={open}
-        names={names}
+        agents={agents}
+        sources={sources}
         computer={computer}
+        draft={drafts.draftOf(open.id)}
+        onKeep={(text) => drafts.keep(open.id, text)}
+        onSend={drafts.send}
         onOpenLink={onOpenLink}
         onBack={() => setOpen(undefined)}
       />
     );
   }
+  const waiting = conversations.filter((conversation) => conversation.waitingForMe);
+  const shown = waitingOnly ? waiting : conversations;
+  const retry = () => {
+    listed.retry();
+    agentsRead.retry();
+    sourcesRead.retry();
+  };
+  // A phone read waits for the computer's answer or a drop, so a slow computer leaves the skeleton
+  // up with no failure: its Try again reads the chats again all the same (HAL-19093 review).
+  const reload = () => {
+    listed.reload();
+    agentsRead.reload();
+  };
   const failedLine = (
     <ReadFailedLine
       messaging={messaging}
       failure={failure}
       computer={computer}
-      onTryAgain={() => {
-        listed.retry();
-        agents.retry();
-      }}
+      onTryAgain={retry}
     />
   );
   // No chips and no "No chats yet" until the computer has answered: a list still on its way or
-  // one that couldn't be read isn't an empty one.
-  if (conversations === undefined || conversations.length === 0) {
+  // one that couldn't be read isn't an empty one (HAL-20039).
+  if (!listed.read || conversations.length === 0) {
+    if (failure !== undefined) return failedLine;
+    if (!listed.read) return <ChatsSkeleton onRetry={reload} />;
     return (
-      <ListPlaceholder
-        failedLine={failure === undefined ? undefined : failedLine}
-        answered={conversations !== undefined}
-        computer={computer}
-      />
+      <div className="flex flex-1 flex-col justify-center">
+        <EmptyState title={words.emptyTitle} description={words.emptyText(computer)} />
+      </div>
     );
   }
-  return (
-    <ConversationList
-      conversations={conversations}
-      failedLine={failedLine}
-      waitingOnly={waitingOnly}
-      onWaitingOnly={setWaitingOnly}
-      onOpen={openChat}
-    />
-  );
-}
-
-/** p02b: the chips, All or Waiting for me, over the chats; the filter outlives an opened chat. */
-function ConversationList({
-  conversations,
-  failedLine,
-  waitingOnly,
-  onWaitingOnly,
-  onOpen,
-}: {
-  readonly conversations: readonly Conversation[];
-  readonly failedLine: ReactNode;
-  readonly waitingOnly: boolean;
-  readonly onWaitingOnly: (waitingOnly: boolean) => void;
-  readonly onOpen: (conversation: Conversation) => void;
-}) {
-  const waiting = conversations.filter((conversation) => conversation.waitingForMe);
-  const shown = waitingOnly ? waiting : conversations;
   return (
     <div className="flex flex-col gap-3">
       <FilterChips
@@ -151,104 +152,79 @@ function ConversationList({
           { value: "waiting", label: words.waitingChip(waiting.length) },
         ]}
         value={waitingOnly ? "waiting" : "all"}
-        onChange={(value) => onWaitingOnly(value === "waiting")}
+        onChange={(value) => setWaitingOnly(value === "waiting")}
       />
       {failedLine}
       {shown.length === 0 ? (
-        <p className="text-small text-fg-muted">{words.nothingWaiting}</p>
-      ) : null}
-      <ul className="flex flex-col">
-        {shown.map((conversation) => (
-          <li key={conversation.id}>
-            <button
-              type="button"
-              className="flex min-h-12 w-full items-center rounded-md px-2 text-left text-body text-fg focus-ring"
-              onClick={() => onOpen(conversation)}
-            >
-              {conversation.title}
-            </button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-/**
- * The tab before it has chats to list: why the read failed, "Loading Messenger" until the computer
- * answers, or the empty state once it said it has none.
- */
-function ListPlaceholder({
-  failedLine,
-  answered,
-  computer,
-}: {
-  readonly failedLine: ReactNode;
-  readonly answered: boolean;
-  readonly computer: string;
-}) {
-  if (failedLine !== undefined) return failedLine;
-  if (!answered) {
-    return (
-      <p role="status" className="text-small text-fg-muted">
-        {words.loading}
-      </p>
-    );
-  }
-  return (
-    <div className="flex flex-1 flex-col justify-center">
-      <EmptyState title={words.emptyTitle} description={words.emptyText(computer)} />
+        <p className="px-3 py-4 text-small text-fg-muted">{words.nothingWaiting}</p>
+      ) : (
+        <ChatRows
+          conversations={shown}
+          agents={agents}
+          sources={sources}
+          drafts={drafts.texts}
+          now={new Date()}
+          onOpen={openChat}
+        />
+      )}
     </div>
   );
 }
 
 /** A list read whole, why its newest read failed, and a way to read it again. */
 interface ListRead<Item> {
-  /** `undefined` until the computer answers the first read, and again while a retry is out. */
-  readonly items: readonly Item[] | undefined;
+  readonly items: readonly Item[];
   readonly failure: ReadFailure | undefined;
+  /** A read has answered whole at least once, so an empty list is empty, not loading. */
+  readonly read: boolean;
   /** Reads the list again, only if its newest read failed. */
   readonly retry: () => void;
+  /** Reads the list again whether or not its newest read failed, as for a read still waiting. */
+  readonly reload: () => void;
 }
 
 /** Reads `what` whole while `active`, again each time it turns active or `retry` is called. */
 function useListRead<Item>(
   messaging: PhoneMessaging,
-  what: "conversations" | "agents",
+  what: "conversations" | "agents" | "sources",
   isItem: (item: unknown) => item is Item,
   active: boolean,
 ): ListRead<Item> {
-  const [items, setItems] = useState<readonly Item[] | undefined>(undefined);
+  const [items, setItems] = useState<readonly Item[]>([]);
   const [failure, setFailure] = useState<ReadFailure | undefined>(undefined);
+  const [read, setRead] = useState(false);
   const [reads, setReads] = useState(0);
 
   useEffect(() => {
     if (!active) return;
     let current = true;
-    void readAll(messaging, what, isItem).then((read) => {
+    void readAll(messaging, what, isItem).then((result) => {
       if (!current) return;
-      setItems(read.items);
-      setFailure(read.failure);
+      setItems(result.items);
+      setFailure(result.failure);
+      if (result.failure === undefined) setRead(true);
     });
     return () => {
       current = false;
     };
   }, [messaging, what, isItem, active, reads]);
 
-  const retry = () => {
-    if (failure === undefined) return;
+  const reload = () => {
     setFailure(undefined);
-    // Back to loading, so a list that failed empty doesn't read as "No chats yet" meanwhile.
-    setItems(undefined);
+    // Loading again until it answers, so a list that failed empty doesn't read as "No chats yet".
+    setRead(false);
     setReads((count) => count + 1);
   };
-  return { items, failure, retry };
+  const retry = () => {
+    if (failure !== undefined) reload();
+  };
+  return { items, failure, read, retry, reload };
 }
 
 /** Every page of `what`, up to {@link maxPages}; what was read so far and why when a read fails. */
 async function readAll<Item>(
   messaging: PhoneMessaging,
-  what: "conversations" | "agents",
+  what: "conversations" | "agents" | "sources",
   isItem: (item: unknown) => item is Item,
 ): Promise<{ readonly items: readonly Item[]; readonly failure: ReadFailure | undefined }> {
   const items: Item[] = [];
@@ -284,5 +260,16 @@ function isAgent(item: unknown): item is MessagingAgent {
     typeof item.id === "string" &&
     "name" in item &&
     typeof item.name === "string"
+  );
+}
+
+function isSource(item: unknown): item is MessagingSource {
+  return (
+    typeof item === "object" &&
+    item !== null &&
+    "id" in item &&
+    typeof item.id === "string" &&
+    "label" in item &&
+    typeof item.label === "string"
   );
 }
