@@ -84,6 +84,7 @@ The steps, in `src/steps/`:
 | 32 | The places open | `shell.sidebar-places`, `inbox.page`, `inbox.request`, `runs.app-list`, `library.library-place`, `library.library-page`, `source-control.changes-page` | with Settings closed, Inbox, Runs, Library and Changes each open from Places and show their own text (New request, the Runs app's "No runs yet today.", the Skills sentence, a Changes state); every place is tried, and the note names each that failed |
 | 33 | The focus ring after a click | `shell.focus-ring-after-pointer` | from Welcome (the demo closed first), Open demo leaves the page's title focused with no ring and `<html data-input="pointer">`; Shift alone keeps that mark and Tab turns it to `keyboard`; then Enter on Runs in Places opens that page, whose title takes focus with the ring |
 | 34 | A wait step's answers | `inbox.wait-card` | in a 1280 × 800 window, the demo's Support reply, started from New request with an invented email, waits at its review step, and that card's Reject and Approve sit in one right-aligned row at their natural width, Approve at the right end |
+| 35 | The file tree's search and rows | `files.ui.tree-search`, `files.ui.tree-rows` | in a 1280 × 800 window the sidebar's Files tab shows the tree, read only in the sidebar's own panel; "writer" in Search files shows only file rows with it in their path and the count for them ("1 file" in a fresh demo), a row is at least 32px high with 8px corners, 10px inside the column, 13px in at the top and 16px further in one level down, Escape shows the tree as before, and the same holds for "agents/" ("3 files"); the sidebar goes back to Studio |
 
 Steps 4 to 8 cover the Connections requirements (`requirements/connections-steps.md`, HAL-18868).
 They and steps 9 to 21 come straight after Connect Paperclip: the restart after a failing step used
@@ -103,8 +104,9 @@ they come straight after Settings so they find step 1's chat in that reopened de
 has no step: the desktop app doesn't load the Assistant feature. Step 31 puts Writer in Codex
 for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 32
 opens the other places (HAL-18870), so its page visits come after Try it has read the chat.
-Steps 33 and 34 come last (HAL-20621): step 33 closes and reopens the demo, and step 34 leaves
-its run waiting in the Inbox.
+Steps 33 and 34 come after it (HAL-20621): step 33 closes and reopens the demo, and step 34 leaves
+its run waiting in the Inbox. Step 35 reads the file tree (HAL-20764) last, because it switches the
+sidebar from the places to Files; it switches back to Studio when it is done.
 The app opens at 800 × 600, a narrow window
 where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step
 sizes the window to 1280 × 800 first and gives it its size back afterwards (HAL-19048).
