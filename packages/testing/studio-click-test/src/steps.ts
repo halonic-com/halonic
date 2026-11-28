@@ -22,6 +22,7 @@ import { messengerEmpty } from "./steps/messenger-empty.ts";
 import { messengerSend } from "./steps/messenger-send.ts";
 import { placesOpen } from "./steps/places-open.ts";
 import { quickAskBoxLook } from "./steps/quick-ask-look.ts";
+import { railCurrent } from "./steps/rail-current.ts";
 import { restartKeepsSignIn } from "./steps/restart-sign-in.ts";
 import { overviewRecap, searchTask } from "./steps/search-overview.ts";
 import { settingsFormats, settingsTheme } from "./steps/settings-display.ts";
@@ -91,4 +92,5 @@ export const clickTestSteps: readonly Step[] = [
   fileMenuToast,
   newFileDialog,
   tabTooltip,
+  railCurrent,
 ];
