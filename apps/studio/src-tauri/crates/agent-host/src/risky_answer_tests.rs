@@ -165,3 +165,34 @@ fn the_question_drops_format_characters() {
         risky.question()
     );
 }
+
+#[test]
+fn the_question_says_you_asked_for_the_persons_own_item() {
+    let risky = RiskyAnswer::of(
+        409,
+        &ask(|confirmation| {
+            confirmation["from"] = json!("you");
+            confirmation["fromYou"] = json!(true);
+        }),
+    )
+    .expect("an ask");
+    assert!(
+        risky.question().starts_with("You asked: Hire an agent\n"),
+        "{}",
+        risky.question()
+    );
+}
+
+#[test]
+fn only_the_hosts_flag_makes_it_your_item() {
+    let risky = RiskyAnswer::of(
+        409,
+        &ask(|confirmation| confirmation["from"] = json!("You")),
+    )
+    .expect("an ask");
+    assert!(
+        risky.question().starts_with("You asks: Hire an agent\n"),
+        "{}",
+        risky.question()
+    );
+}

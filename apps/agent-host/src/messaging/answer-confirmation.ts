@@ -17,6 +17,11 @@ export interface AnswerConfirmation {
   title: string;
   /** Who asks: the agent's or the person's name, or "you". */
   from: string;
+  /**
+   * Set when the item is the person's own, so the shell says "You asked". A flag rather than the
+   * `from` text, since an agent may call itself "you".
+   */
+  fromYou?: true;
   /** The label of the option the person picked, which the item offers; absent for any other answer. */
   option?: string;
   /**
@@ -53,6 +58,7 @@ export function confirmationOf(item: InboxItem, answer: InboxAnswer): AnswerConf
   return {
     title: oneLine(item.question.split("\n").find((line) => line.trim() !== "") ?? ""),
     from: authorName(item),
+    ...(item.from.kind === "me" ? { fromYou: true } : {}),
     ...(option === undefined ? {} : { option: oneLine(option.label) }),
     ...(note === "" ? {} : { note: { label: oneLine(option?.noteLabel ?? "Note"), text: note } }),
     ...(item.reach === undefined ? {} : { reach: item.reach }),

@@ -69,6 +69,18 @@ verifies("agent-host.risky-answer-confirm", () => {
       });
     }
 
+    it("marks the person's own item, so the shell says they asked", async () => {
+      const own = risky("own", "Hire an agent", { from: { kind: "me" } });
+      const on = await listing([own]);
+
+      const reply = await on.send("POST /v1/messaging/answer", own.id, approve);
+
+      expect(reply).toMatchObject({
+        status: 409,
+        body: { confirmation: { title: "Hire an agent", from: "you", fromYou: true } },
+      });
+    });
+
     it("sends a reject, and any answer to a normal item, at once", async () => {
       const normal: InboxItem = { ...risky("normal", "Publish the launch post?"), risk: "normal" };
       const hire = riskyKinds[2]?.[1] ?? normal;
