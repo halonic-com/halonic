@@ -121,6 +121,10 @@
      in light and dark: the dot lies on the selected drawing's dark glass, and the ring is the
      board's pick on HAL-20742. Decoration, so neither has a contrast minimum. */
   --color-point-of-light: light-dark(#ffffff, #ffffff);
+  /* The selected rail drawing's fill: the icons' deep blue glass in light and dark, so the white
+     dot has its dark seat in dark too, where the text colour is near-white (HAL-21048). The
+     drawing's edge stays in the text colour, so the drawing still reads on the dark rail. */
+  --color-rail-glass: light-dark(#0a1630, #0a1630);
   --color-rail-pulse: light-dark(#60a5fa, #60a5fa);
 
   /* ---------------------------------------------------------------- Colour: status */

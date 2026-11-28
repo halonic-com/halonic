@@ -104,13 +104,24 @@ export function IconRail({ entries, tabs, placeOfKind, onSettings, column }: Ico
 }
 
 /**
- * An entry's drawing: a place's own icon, filled while selected. Code and Messenger have no
- * drawing in the kit yet (the new icons, HAL-20465), so they show the dashed ring until then.
+ * An entry's drawing: a place's own icon, filled while selected. The selected fill is the dark
+ * glass in both themes, not the text colour, so the rail's white dot reads on it in dark too; the
+ * edge stays in the text colour, so in dark the drawing still stands out from the dark circle
+ * (`shell.rail-dot-seat`). Code and Messenger have no drawing in the kit yet (the new icons,
+ * HAL-20465), so they show the dashed ring until then.
  */
 function RailIcon({ name, selected }: { readonly name: string; readonly selected: boolean }) {
-  if (isPlaceIconName(name)) return <PlaceIcon name={name} filled={selected} />;
-  return <DashedRingIcon />;
+  if (!isPlaceIconName(name)) return <DashedRingIcon />;
+  if (!selected) return <PlaceIcon name={name} />;
+  return (
+    <span data-rail-glass="" className={glassFill}>
+      <PlaceIcon name={name} filled />
+    </span>
+  );
 }
+
+/** Only the drawing's solid fill turns to glass; its edge keeps the text colour. */
+const glassFill = "grid *:size-full [&_[fill=currentColor]]:fill-rail-glass";
 
 function isPlaceIconName(name: string): name is PlaceIconName {
   return (placeIconNames as readonly string[]).includes(name);
