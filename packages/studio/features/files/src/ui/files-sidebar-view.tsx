@@ -48,6 +48,12 @@ type Loaded =
 
 const skeletonWidths = ["1/2", "2/3", "2/5", "3/5"] as const;
 
+/** Under a page title the search field sits a little lower, as on Runs, Library and Changes. */
+function searchWrapClass(title: string | undefined): string {
+  if (title === undefined) return "px-5 pt-1 pb-2";
+  return "px-5 pt-2 pb-2";
+}
+
 /**
  * The Files view in the sidebar: the workspace's file tree, with the loading, can't-load and empty
  * states. It lists again whenever the host says a file or a mark changed, and keeps the opened
@@ -371,8 +377,7 @@ export function FilesSidebarView({ context, title, pageAsks }: FilesSidebarViewP
           onClick={startAdding}
         />
       </TitleLine>
-      {/* Under a page title the field sits a little lower, as on Runs, Library and Changes. */}
-      <div className={title === undefined ? "px-5 pt-1 pb-2" : "px-5 pt-2 pb-2"}>
+      <div className={searchWrapClass(title)}>
         <SearchField
           label={filesWords.search}
           value={search.typed}
