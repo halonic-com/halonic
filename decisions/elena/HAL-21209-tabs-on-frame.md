@@ -2,7 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-21209 (found in the post-merge look check HAL-21195 of #6920, against the approved mockup, v26 on HAL-20617). Liam approves the change in review on HAL-21209.
 - Kind: user-visible
-- Signature:
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:qXWsUHsLCRqO6Z3in2QYhdTmlK1J4foZBs1QwjQyPOpWBrsl9mk/bXHmICh9WZsb2pFvLUW3QvvNSNr7UY2FCg==
 
 ## What changes
 
