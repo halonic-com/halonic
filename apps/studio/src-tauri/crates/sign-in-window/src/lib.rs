@@ -23,8 +23,8 @@ pub use url::Url;
 mod rules;
 
 pub use rules::{
-    Browser, MIN_HEIGHT, MIN_WIDTH, NewWindows, browser_exe, browser_rect, chromium_browser,
-    launch_arguments, new_windows, popup_rect, sign_in_url,
+    Browser, MIN_HEIGHT, MIN_WIDTH, NewWindows, WS_EX_TOOLWINDOW, browser_exe, browser_rect,
+    chromium_browser, is_browser_frame, launch_arguments, new_windows, popup_rect, sign_in_url,
 };
 
 #[cfg(windows)]

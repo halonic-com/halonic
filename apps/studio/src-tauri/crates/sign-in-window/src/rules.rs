@@ -181,6 +181,17 @@ pub fn launch_arguments(url: &Url, rect: Rect, scale_factor: f64) -> [String; 3]
     ]
 }
 
+/// Windows' `WS_EX_TOOLWINDOW` extended style, kept here so the frame check
+/// is plain logic, tested on every platform.
+pub const WS_EX_TOOLWINDOW: u32 = 0x0000_0080;
+
+/// Whether a `Chrome_WidgetWin_1` window is a browser frame, which the
+/// sign-in window is. Chromium's bubbles and menus share that class, but
+/// they have an owner window or the tool-window style.
+pub fn is_browser_frame(has_owner: bool, extended_style: u32) -> bool {
+    !has_owner && extended_style & WS_EX_TOOLWINDOW == 0
+}
+
 /// What the browser's windows show after the start, next to the ones it
 /// had before.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
