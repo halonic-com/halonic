@@ -312,6 +312,8 @@ verifies("library.list-column", () => {
     const title = page.querySelector("h1");
     expect(title?.textContent).toBe("Library");
     expect(title?.parentElement?.contains(button(page, "New skill") ?? null)).toBe(true);
+    // In a column too narrow for both, New wraps under "Library" instead of running past the edge.
+    expect(title?.parentElement?.className.split(" ")).toContain("flex-wrap");
     // The title's line is its own: the search field sits under the chips, not beside New.
     expect(title?.parentElement?.querySelector('input[type="search"]')).toBeNull();
     expect(page.querySelector('input[type="search"]')).not.toBeNull();

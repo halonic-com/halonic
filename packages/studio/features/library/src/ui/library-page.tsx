@@ -195,8 +195,8 @@ function showsListHead(load: Load, overview: ReturnType<typeof libraryOverview>)
 }
 
 /**
- * The page's title. On the desktop the list column is narrow, so New sits on the title's line and
- * the search keeps the full width; on a phone the top bar names the kind's list, so the heading
+ * The page's title. On the desktop the list column is narrow, so New sits on the title's line, or
+ * wraps under "Library" where the column is too narrow for both, and the search keeps the full width; on a phone the top bar names the kind's list, so the heading
  * says the same, for screen readers only. Margin, not padding: the shell focuses the heading, and
  * its focus ring must fit inside the scrolling page.
  */
