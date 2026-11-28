@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20676 (P3 of the HAL-20617 build plan, approved by Liam on the task: "the workspace tabs sit above the content pane"). Liam approves the change in review on HAL-20676.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:M1IY5Gf0Jcsl7I3cnGLstK02rwpor4OuUpxe5rDRzcJTBTMgLhwxZkSD/W8uRSCYheCg2JId5y2hnAsIDjHtCg==
 
 ## What changes
 
