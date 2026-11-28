@@ -41,8 +41,11 @@ jobs:
         run: pnpm check:licences
       - name: Audit shipped dependencies (high and critical fail)
         run: pnpm check:audit --prod --audit-level high
-      - name: Audit dev tooling (report only)
-        run: pnpm check:audit || echo "::warning::Advisories in dev tooling; see the log above."
+      # Dev tooling never ships, but a high advisory there still fails the run,
+      # so it can't sit unnoticed behind the --prod audit (HAL-20858). Lower
+      # severities stay in the log only.
+      - name: Audit dev tooling (high and critical fail)
+        run: pnpm check:audit --audit-level high
 
   cargo-deny:
     # The Tauri shell's advisories run on pull requests only when its folder

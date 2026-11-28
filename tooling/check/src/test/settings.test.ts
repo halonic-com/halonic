@@ -160,8 +160,13 @@ function allowing(selector = allowedSelector): string {
   });
 }
 
+/** The real `overrides:` block with its indented lines, up to the next top-level setting. */
+const realOverrides = /^overrides:\n(?: {2}.*\n)*/m;
+
+// Replaces the repo's own overrides, so each test sees only the one it sets
+// and the real list can grow without touching these tests (HAL-20858).
 function overriding(key: string, value: string): (yaml: string) => string {
-  return (yaml) => `${yaml}\noverrides:\n  "${key}": ${value}\n`;
+  return (yaml) => `${yaml.replace(realOverrides, "")}\noverrides:\n  "${key}": ${value}\n`;
 }
 
 describe("tooling/check: allowed overrides", () => {
