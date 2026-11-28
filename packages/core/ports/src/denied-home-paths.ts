@@ -1,7 +1,7 @@
 // The paths in a person's home folder that a harness run's sandbox denies,
 // by group (threat model 4.6): their SSH keys, cloud sign-ins, browser data,
 // password stores, package registry tokens, shell histories and their own
-// Claude Code and Codex settings. One list, so the sandbox's profile and a
+// Claude Code, Codex and OpenCode settings. One list, so the sandbox's profile and a
 // plugin's copy (`app.plugin-add`) leave out the same paths.
 
 import type { DeniedPathGroupCode } from "@halonicjs/events";
@@ -32,8 +32,16 @@ export const deniedHomePaths: Readonly<Record<HomeDeniedGroupCode, HomePaths>> =
       ".config/gh",
       ".netrc",
       ".git-credentials",
+      ".config/git/credentials",
+      ".config/github-copilot",
     ],
-    only: { win32: ["AppData/Roaming/gcloud", "AppData/Roaming/GitHub CLI"] },
+    only: {
+      win32: [
+        "AppData/Roaming/gcloud",
+        "AppData/Roaming/GitHub CLI",
+        "AppData/Local/github-copilot",
+      ],
+    },
   },
   "browser-data": {
     everywhere: [],
@@ -107,7 +115,9 @@ export const deniedHomePaths: Readonly<Record<HomeDeniedGroupCode, HomePaths>> =
     ],
     only: { win32: ["AppData/Roaming/Microsoft/Windows/PowerShell/PSReadLine"] },
   },
-  "agent-settings": { everywhere: [".claude", ".claude.json", ".codex"] },
+  "agent-settings": {
+    everywhere: [".claude", ".claude.json", ".codex", ".local/share/opencode", ".config/opencode"],
+  },
 };
 
 /**
