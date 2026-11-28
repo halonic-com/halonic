@@ -569,8 +569,9 @@ keyboard focus. Drag it, or Tab to it and use the window-splitter keys: ← and 
 180px, End 380px, Enter the window's own width for the column, 34% of the window kept in 180 to
 380px, and the column follows the window again; with no window around it, Enter gives 264px (a
 double-click does the same). It's a `separator` named "Resize sidebar" whose value a screen
-reader reads, so it sends nothing to the announcer. The sidebar owns the width: `onResize` follows every move, `onResizeEnd` saves once the key or pointer is released.
-The narrow window has no edge.
+reader reads, so it sends nothing to the announcer. The sidebar owns the width: `onResize`
+follows every move, `onResizeEnd` saves once the key or pointer is released. The narrow
+window has no edge.
 
 ```tsx
 <nav id="sidebar" style={{ width }}>…</nav>
