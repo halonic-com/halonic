@@ -2,6 +2,7 @@ import type { Step, StepContext, StepOutcome } from "../runner.ts";
 import { clickRow, clickWhenShown, lastWords, rowContaining, waitForText } from "../screen.ts";
 import { seedNames } from "../test-paperclip.ts";
 import { buttonLabels, screenText } from "../words.ts";
+import { inboxRowFit } from "./inbox-row-fit.ts";
 import { closeDialogs, onWorkspace, openPlace } from "./open-demo.ts";
 import { sidebarRowSize } from "./plain-row-size.ts";
 
@@ -32,11 +33,23 @@ async function stale(context: StepContext, text: string): Promise<StepOutcome> {
 /** The Inbox's stale line, which names the load that failed. */
 const staleLine = "//*[@data-failed]";
 
-/** The seeded card's row in the Inbox's plain List: its box, and its avatar's 48px place. */
+/** An XPath test that the element has the class `name`. */
+function hasClass(name: string): string {
+  return `contains(concat(' ', normalize-space(@class), ' '), ' ${name} ')`;
+}
+
+/**
+ * The seeded card's row in the Inbox's plain List: its box, its avatar's 48px place, its title
+ * (the plain row's 15px reading text), its meta line (the 14px body text under it) and its
+ * avatar's badge.
+ */
 const cardRow = rowContaining(screenText.strategyApproval.text);
 export const cardRowParts = {
   row: `${cardRow}/*[1]`,
-  picture: `${cardRow}//*[contains(concat(' ', normalize-space(@class), ' '), ' size-12 ')]`,
+  picture: `${cardRow}//*[${hasClass("size-12")}]`,
+  title: `(${cardRow}//span[${hasClass("text-reading")}])[1]`,
+  meta: `(${cardRow}//span[${hasClass("text-body")}])[1]`,
+  badge: `${cardRow}//*[@data-avatar-badge]`,
 } as const;
 
 /**
@@ -57,8 +70,10 @@ async function backToList(
  * Step 9: the Inbox shows the seeded board card, and Approve answers it. The
  * row shows the card's type; the card shows its title, from a fresh read: no
  * line says the Inbox shows what it read last, over the card or over the list after the answer
- * (HAL-19190). The card's row is exactly 72px high with a 48px avatar (HAL-20558, HAL-20675). The click must
- * reach the test Paperclip: its API says approved, and the card leaves Needs you.
+ * (HAL-19190). The card's row is exactly 72px high with a 48px avatar (HAL-20558, HAL-20675),
+ * its title clamped to two lines, its meta line cut on one and its avatar's badge 20px
+ * (HAL-20759). The click must reach the test Paperclip: its API says approved, and the card
+ * leaves Needs you.
  */
 export const inboxAnswer: Step = {
   id: "inbox-answer",
@@ -69,6 +84,9 @@ export const inboxAnswer: Step = {
     "paperclip-client.approval-fields",
     "studio.desktop-agent-messaging",
     "kit.plain-row-size",
+    "kit.plain-row-fit",
+    "kit.avatar-badge",
+    "inbox.row-meta-wraps",
     "inbox.header-avatar",
     "inbox.proposal-page",
   ],
@@ -89,6 +107,8 @@ export const inboxAnswer: Step = {
     }
     const size = await sidebarRowSize(context, "The Inbox's card row", cardRowParts);
     if (!size.passed) return size;
+    const fit = await inboxRowFit(context, "The Inbox's card row", cardRowParts);
+    if (!fit.passed) return fit;
     const shown = await clickRow(context, screenText.strategyApproval.text, cardWaitMs);
     const card = await waitForText(context, shown ? 20_000 : 0, (text) =>
       text.includes(seedNames.card) ? true : undefined,

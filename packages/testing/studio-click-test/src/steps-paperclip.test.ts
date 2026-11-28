@@ -1,6 +1,12 @@
 import { verifies } from "@halonicjs/testing-spec";
 import { describe, expect, it } from "vitest";
-import { button, drawRow, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
+import {
+  button,
+  drawRow,
+  drawRowFit,
+  type FakeStudio,
+  fakeStudio,
+} from "./fake-studio.test-helper.ts";
 import { placesList } from "./screen.ts";
 import { cardRowParts, inboxAnswer } from "./steps/inbox-answer.ts";
 import {
@@ -25,6 +31,7 @@ function main(studio: FakeStudio) {
 function connectedStudio(places: Record<string, () => void>): FakeStudio {
   const studio = fakeStudio("Acme");
   drawRow(studio, cardRowParts);
+  drawRowFit(studio, cardRowParts);
   button(studio, "main", screenText.places.text, () => {
     for (const [name, open] of Object.entries(places)) button(studio, "main", name, open);
   });
@@ -71,6 +78,15 @@ verifies("studio-click-test.paperclip-steps", () => {
         screenText.strategyApproval.text,
         buttonLabels.approve.text,
       ]);
+    });
+
+    it("fails as PLAIN_ROW_FIT before the click when the row's title isn't clamped", async () => {
+      const studio = studioWithCard();
+      drawRowFit(studio, cardRowParts, { titleClamp: "none" });
+      await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
+        code: "PLAIN_ROW_FIT",
+      });
+      expect(studio.clicks).not.toContain(screenText.strategyApproval.text);
     });
 
     it("fails as NOT_ANSWERED_ON_PAPERCLIP when the click never reached Paperclip", async () => {
