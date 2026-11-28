@@ -2,7 +2,6 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20676 (P3 of the HAL-20617 build plan, approved by Liam on the task: "the workspace tabs sit above the content pane"). Liam approves the change in review on HAL-20676.
 - Kind: user-visible
-- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:TQEVi9yNc8u3xys9PLcOwlGuGqkdyECGcUSQt0zJl9Pf9rarWOwyfgQsvg5bn/lEDBUEfhDb3itb/wZNo7VsBw==
 
 ## What changes
 
@@ -27,3 +26,4 @@ The build plan's P3 puts the workspace tabs above the content pane, beside the r
 - shell.frame
 - shell.title-bar
 - shell.studio-window
+- packages/studio/shell/src/window/title-bar-start.test.tsx
