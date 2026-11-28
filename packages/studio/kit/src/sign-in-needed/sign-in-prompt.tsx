@@ -53,7 +53,13 @@ export function SignInModal({ app, signIns, onSignIn }: SignInModalProps) {
     >
       <div ref={list} className="flex flex-col gap-3">
         {signIns.map((signIn) => (
-          <SignInRow key={signIn.key} signIn={signIn} label={signIn.name} onSignIn={onSignIn} />
+          <SignInRow
+            key={signIn.key}
+            signIn={signIn}
+            label={signIn.name}
+            logoAlt={signIn.provider}
+            onSignIn={onSignIn}
+          />
         ))}
       </div>
     </BlockingDialog>
@@ -90,6 +96,7 @@ export function SignInBand({ signIns, unreadable, onSignIn, onTryAgain }: SignIn
           key={signIn.key}
           signIn={signIn}
           label={`Sign in to ${signIn.provider} to use ${signIn.purpose}.`}
+          logoAlt=""
           onSignIn={onSignIn}
         />
       ))}
@@ -108,10 +115,12 @@ export function SignInBand({ signIns, unreadable, onSignIn, onTryAgain }: SignIn
 interface SignInRowProps {
   readonly signIn: SignInRowItem;
   readonly label: string;
+  /** The logo's alt: empty where the label already names the provider, so it isn't heard twice. */
+  readonly logoAlt: string;
   readonly onSignIn: (key: string) => void;
 }
 
-function SignInRow({ signIn, label, onSignIn }: SignInRowProps) {
+function SignInRow({ signIn, label, logoAlt, onSignIn }: SignInRowProps) {
   const waiting = signIn.progress.kind === "waiting";
   const statusId = useId();
   return (
@@ -122,7 +131,7 @@ function SignInRow({ signIn, label, onSignIn }: SignInRowProps) {
         ) : (
           // The 24px logo sits in the letter tile's 28px box, so every row's label starts at one x.
           <span className="flex size-7 shrink-0 items-center justify-center">
-            <img src={signIn.logo} alt={signIn.provider} className="size-6" />
+            <img src={signIn.logo} alt={logoAlt} className="size-6" />
           </span>
         )}
         <p className="min-w-0 flex-1 text-body wrap-break-word">{label}</p>
@@ -131,6 +140,7 @@ function SignInRow({ signIn, label, onSignIn }: SignInRowProps) {
           variant="primary"
           busy={waiting}
           busyLabel="Waiting…"
+          busyName={`Waiting: ${signIn.provider}, ${signIn.name}`}
           name={`Sign in: ${signIn.provider}, ${signIn.name}`}
           aria-describedby={statusId}
           onClick={() => onSignIn(signIn.key)}

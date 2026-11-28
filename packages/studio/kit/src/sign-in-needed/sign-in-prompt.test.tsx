@@ -111,6 +111,23 @@ verifies("kit.sign-in-prompt", () => {
     );
   });
 
+  it("keeps naming which sign-in a waiting button is for, so two rows stay apart (HAL-21251)", () => {
+    const { container } = render(
+      <SignInModal
+        app="Inbox"
+        signIns={[
+          row("Acme team", { progress: { kind: "waiting", phrase: undefined } }),
+          row("Zeta", { progress: { kind: "waiting", phrase: undefined } }),
+        ]}
+        onSignIn={() => undefined}
+      />,
+    );
+    expect(buttons(dialogOf(container))).toEqual([
+      "Waiting: Paperclip, Acme team",
+      "Waiting: Paperclip, Zeta",
+    ]);
+  });
+
   it("keeps the waiting line's status region mounted and ties it to the Sign in button", () => {
     const idle = row("Acme team");
     const { container, rerender } = render(
@@ -152,6 +169,8 @@ verifies("kit.sign-in-prompt", () => {
       />,
     );
     expect(container.textContent).toContain("Sign in to Google to use Gmail.");
+    // The label already names Google, so the logo's alt stays empty in the band.
+    expect(container.querySelector("img")?.getAttribute("alt")).toBe("");
     expect(container.textContent).toContain("Couldn't check your sign-ins.");
     expect(buttons(container)).toEqual(["Sign in: Google, ada@acme.test", "Try again"]);
     const tryAgain = container.querySelectorAll("button")[1];

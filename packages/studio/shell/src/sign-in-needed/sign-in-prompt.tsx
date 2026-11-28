@@ -85,11 +85,11 @@ function useSignInNeeds(props: SignInPromptProps): SignInNeeds | undefined {
       contextFor: (featureId) => latestContextFor.current(featureId),
       channel: opened,
       timers: timers ?? systemTimers,
-      openExternal: (url) => {
-        latestOpenExternal
-          .current(url)
-          .catch((error: unknown) => console.error("Couldn't open the sign-in page.", error));
-      },
+      openExternal: (url) =>
+        latestOpenExternal.current(url).catch((error: unknown) => {
+          console.error("Couldn't open the sign-in page.", error);
+          throw error;
+        }),
     });
     const onFocus = (): void => created.windowFocused();
     globalThis.addEventListener("focus", onFocus);
