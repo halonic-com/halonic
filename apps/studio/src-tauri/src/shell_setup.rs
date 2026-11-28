@@ -27,5 +27,9 @@ pub fn setup<R: Runtime>(app: &mut App<R>) -> Result<(), Box<dyn std::error::Err
     crate::notification_clicks::listen(app.handle());
     #[cfg(desktop)]
     crate::background_start::after_tray(app.handle(), background, crate::tray::start(app.handle()));
+    // Last: second starts that came while setting up, such as a frame
+    // reopened above handing over its window, run once setup has returned.
+    #[cfg(desktop)]
+    crate::starts_after_setup::setup_finished(app.handle());
     Ok(())
 }

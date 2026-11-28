@@ -157,6 +157,8 @@ mod server_session;
 mod server_session_brief;
 mod shell_setup;
 mod sign_in_window;
+#[cfg(desktop)]
+mod starts_after_setup;
 mod system_region;
 #[cfg(desktop)]
 mod tray;
