@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { fileItem } from "../file-item.ts";
+import type { FilesHost } from "../files-host.ts";
 import { takeRenameAsked } from "../rename-request.ts";
 import { forgetOpenedEditors, openedEditors } from "../test-support/code-editor.ts";
 import { codePane, openFolders, showCodePage } from "../test-support/code-page.tsx";
@@ -54,6 +55,23 @@ async function pressF2InPane(page: HTMLElement): Promise<void> {
   await settled();
 }
 
+/** Types into a field as a person does, so React hears the change. */
+async function typeInto(input: HTMLInputElement | null, value: string): Promise<void> {
+  const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    set?.call(input, value);
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await settled();
+}
+
+async function key(target: Element | null, name: string): Promise<void> {
+  await act(async () => {
+    target?.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true }));
+  });
+  await settled();
+}
+
 function shownPaths(page: HTMLElement): string[] {
   return [...page.querySelectorAll<HTMLElement>("[data-path]")].map(
     (row) => row.dataset["path"] ?? "",
@@ -84,6 +102,69 @@ verifies("files.code-list-chips", () => {
 
     expect(codePane(page, "list")?.querySelector('[role="tree"]')).toBeNull();
     expect(codePane(page, "list")?.textContent).toContain("No file has a problem.");
+  });
+
+  it("searches among the files with a problem while Problems is on", async () => {
+    const { page } = await showCodePage(withProblems(true));
+    await pick(page, "Problems");
+    const search = page.querySelector<HTMLInputElement>('input[type="search"]');
+
+    await typeInto(search, "orders");
+    expect(codePane(page, "list")?.textContent).toContain("No files match “orders”.");
+
+    await typeInto(search, "checkout");
+    expect(codePane(page, "list")?.textContent).toContain("1 file");
+    expect(shownPaths(page)).toEqual(["src", "src/checkout", "src/checkout/refunds.ts"]);
+  });
+
+  it("turns All on after a rename in the tree, so the row takes the focus without a problem", async () => {
+    let paths = acmeFiles;
+    let marks = new Map([["src/checkout/refunds.ts", { errors: 1 }]]);
+    const subscribers: (() => void)[] = [];
+    const host: Partial<FilesHost> = {
+      list: async () => listing(paths, marks),
+      subscribe: (listener) => {
+        subscribers.push(listener);
+        return () => {};
+      },
+      rename: async () => {
+        paths = ["src/checkout/orders.ts", "src/checkout/refund.ts", "README.md"];
+        marks = new Map();
+        return { places: 0, owners: [], undo: async () => {} };
+      },
+    };
+    const { page } = await showCodePage({ host });
+    await pick(page, "Problems");
+    await openFolders(page, "src", "src/checkout");
+    // The click gives the row the tree's focus, and F2 renames the focused row.
+    await openInPane(page, "src/checkout/refunds.ts");
+    await key(rowNamed(page, "src/checkout/refunds.ts"), "F2");
+
+    const field = rowNamed(page, "src/checkout/refunds.ts").querySelector("input");
+    await typeInto(field, "refund.ts");
+    await key(field, "Enter");
+    await act(async () => {
+      for (const listener of subscribers) listener();
+    });
+    await settled();
+
+    expect(chip(page, "All").checked).toBe(true);
+    expect(document.activeElement).toBe(rowNamed(page, "src/checkout/refund.ts"));
+  });
+
+  it("moves Go to Files to the line that says no file has a problem", async () => {
+    const { page } = await showCodePage({
+      host: { ...withProblems(false).host, read: async () => null },
+    });
+    await openInPane(page, "README.md");
+    await pick(page, "Problems");
+
+    const goTo = [...page.querySelectorAll("button")].find(
+      (button) => button.textContent === "Go to Files",
+    );
+    act(() => goTo?.click());
+
+    expect(document.activeElement?.textContent).toBe("No file has a problem.");
   });
 
   it("turns All on for F2 in the pane, so the row's name field shows", async () => {

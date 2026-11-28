@@ -51,9 +51,9 @@ export interface FilesSidebarViewProps {
   readonly pageAsks?: RenameAsks;
   /** Code's list column only: the chips drawn under the search field. */
   readonly chips?: ReactNode;
-  /** Which files the tree lists, as the chips say (`files.code-list-chips`); every file by default. */
+  /** Which files the tree lists, as the chips say (`files.code-list-chips`); all by default. */
   readonly filter?: TreeFilter;
-  /** Called when an ask needs a row the filter may hide, such as a rename, so the chips show all. */
+  /** Called when a row the filter may hide must show, such as a renamed file: the chips show all. */
   readonly showAll?: () => void;
 }
 
@@ -183,6 +183,8 @@ export function FilesSidebarView({
   hidesNow.current = search.hides;
   const showFile = useCallback(
     (path: string) => {
+      // The file may have no problem at its new place, so the chips show every file again.
+      showAllNow.current?.();
       if (!hidesNow.current(path)) return;
       typeSearch("");
       setState((was) => ({ ...was, expanded: revealFile(was.expanded, path) }));

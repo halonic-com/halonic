@@ -15,9 +15,9 @@ export interface FileHeaderProps {
   readonly path: string;
   /** What the ⋮ menu's items do. The tab is open already, so it has no Open items but Open as *kind*. */
   readonly actions: Pick<FileMenuActions, "openAsItem" | "rename" | "remove" | "copyPath">;
-  /** The `h1`, for the focus once the assistant's last change in the file is decided. */
+  /** The file's heading, for the focus once the assistant's last change in it is decided. */
   readonly titleRef?: RefObject<HTMLHeadingElement | null> | undefined;
-  /** The file shows in Code's content pane, under the page's "Code" title (`files.code-pane-header`). */
+  /** The file is in Code's content pane, under the "Code" title (`files.code-pane-header`). */
   readonly inPane?: boolean;
 }
 
@@ -72,7 +72,7 @@ function PaneFileHeader({ path, actions, titleRef }: FileHeaderProps) {
 /**
  * The head of a file's tab: the file's name, the folder in muted text, then the ⋮ menu with
  * Open as *kind* for an agent's, a workflow's or a routine's file, Rename, Copy path and Delete
- * (`files.ui.file-tab-header`). The name is the page's `h1`.
+ * (`files.ui.file-tab-header`). The name is the page's `h1`; in Code's pane, an `h2`.
  */
 export function FileHeader({ path, actions, titleRef, inPane = false }: FileHeaderProps) {
   if (inPane) return <PaneFileHeader path={path} actions={actions} titleRef={titleRef} />;

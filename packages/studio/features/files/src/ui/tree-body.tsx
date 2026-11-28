@@ -12,7 +12,12 @@ export function TreeBody({
   readonly noProblems: boolean;
 }) {
   if (noProblems) {
-    return <p className="px-5 py-2 text-small text-fg-muted">{filesWords.noProblemFiles}</p>;
+    // Go to Files lands here when the chips leave no row to focus (`files.code-list-chips`).
+    return (
+      <p data-tree-note tabIndex={-1} className="px-5 py-2 text-small text-fg-muted">
+        {filesWords.noProblemFiles}
+      </p>
+    );
   }
   // `workspace.yaml` alone stays a row, with a quiet line under it and no button: the + is the way in.
   const onlyWorkspaceFile = files.every((path) => path === "workspace.yaml");

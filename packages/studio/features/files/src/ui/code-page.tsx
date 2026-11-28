@@ -57,8 +57,11 @@ export function CodePage({ context }: ItemViewProps) {
   const list: BesideList = useMemo(
     () => ({
       rename: (path) => asks.ask(path),
+      // The tree's Tab stop, or the line in its place when the chips leave no row.
       focusTree: () =>
-        listColumn.current?.querySelector<HTMLElement>('[data-path][tabindex="0"]')?.focus(),
+        listColumn.current
+          ?.querySelector<HTMLElement>('[data-path][tabindex="0"], [data-tree-note]')
+          ?.focus(),
     }),
     [asks],
   );

@@ -8,8 +8,9 @@ import type { TreeFilter } from "../tree/tree-filter.ts";
 import { FilesSidebarView } from "./files-sidebar-view.tsx";
 
 /**
- * What Code's list column gets, in the shape of a place's list column (`open`, `setOpen`), so the
- * window can draw it in its own list column later without a change here.
+ * What Code's list column gets: a place's list column's `context`, `open` and `setOpen`, so the
+ * window can draw it in its own list column later (HAL-21069), plus Code's rename asks, which the
+ * window then has to pass from the page as well.
  */
 export interface CodeListColumnProps {
   /** The context of the feature that added Code's page. */
