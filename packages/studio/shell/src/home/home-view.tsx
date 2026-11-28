@@ -14,6 +14,7 @@ import type {
   HomeViewContribution,
 } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
+import { focusRow, visibleRowIds } from "../overview/row-focus.ts";
 import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 
@@ -63,21 +64,31 @@ export function HomeView({ view, context, sections, name }: HomeViewProps) {
     />
   );
   if (narrow) {
-    if (open === undefined) {
-      return (
-        <div ref={listColumn} className="flex min-w-0 flex-1 flex-col">
-          {column}
-        </div>
-      );
-    }
+    // The column stays drawn, only hidden, while an item is open: its rows are there to take the
+    // focus back on "Back to Home", even where the column reads them before it draws them.
     return (
       <div className="flex min-w-0 flex-1 flex-col">
-        <div ref={back} className="px-2 pt-2">
-          <Button variant="ghost" size="sm" icon={<BackIcon />} onClick={() => setOpen(undefined)}>
-            {homeViewWords.back}
-          </Button>
+        <div
+          ref={listColumn}
+          className={open === undefined ? "flex min-w-0 flex-1 flex-col" : "hidden"}
+        >
+          {column}
         </div>
-        {pane}
+        {open === undefined ? null : (
+          <>
+            <div ref={back} className="px-2 pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<BackIcon />}
+                onClick={() => setOpen(undefined)}
+              >
+                {homeViewWords.back}
+              </Button>
+            </div>
+            {pane}
+          </>
+        )}
       </div>
     );
   }
@@ -89,15 +100,11 @@ export function HomeView({ view, context, sections, name }: HomeViewProps) {
   );
 }
 
-/** What can take the keyboard focus in the list column. */
-const focusable = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
 /**
  * The open item and the panes' focus. In one pane the list column and the open item replace each
- * other, so the focused row or button would go with them: the focus moves to "Back to Home" when
- * an item opens, as the Runs page's one pane does. When the item closes, the focus moves to its
- * row (the element with its `data-row-id`) while the list column has it, else to the column's
- * first control.
+ * other, so the focused row or button would be hidden with them: the focus moves to "Back to Home"
+ * when an item opens, as the Runs page's one pane does. When the item closes, the focus moves to
+ * its row (the element with its `data-row-id`) while the column lists it, else to the first row.
  */
 function useHomePanes() {
   const narrow = useNarrow();
@@ -105,13 +112,14 @@ function useHomePanes() {
   const column = useRef<HTMLDivElement>(null);
   const back = useRef<HTMLDivElement>(null);
   const setOpen = (id: string | undefined) => {
-    if (!narrow || id === open) return setOpenState(id);
+    // Only a pane change moves the focus; one open item after another keeps it in the pane.
+    if (!narrow || (id === undefined) === (open === undefined)) return setOpenState(id);
     flushSync(() => setOpenState(id));
     if (id !== undefined) return back.current?.querySelector<HTMLElement>("button")?.focus();
-    const rows = [...(column.current?.querySelectorAll<HTMLElement>("[data-row-id]") ?? [])];
-    const row = rows.find((each) => each.getAttribute("data-row-id") === open);
-    const target = row?.matches(focusable) ? row : row?.querySelector<HTMLElement>(focusable);
-    (target ?? column.current?.querySelector<HTMLElement>(focusable))?.focus();
+    const list = column.current;
+    if (list === null || open === undefined || focusRow(list, open)) return;
+    const [first] = visibleRowIds(list);
+    if (first !== undefined) focusRow(list, first);
   };
   return { narrow, open, setOpen, column, back };
 }

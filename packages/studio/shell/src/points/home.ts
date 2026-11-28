@@ -86,8 +86,9 @@ export interface HomeSlotProps {
 }
 
 /**
- * What Home's list column view gets. A row carries its item's id in `data-row-id`, so when the
- * item closes in one pane the shell can give the row the focus back.
+ * What Home's list column view gets. A row carries its item's id in `data-row-id` and takes the
+ * focus on its `role="gridcell"`, as the kit's `List` rows do, so when the item closes in one pane
+ * the shell can give the row the focus back.
  */
 export type HomeListColumnProps = HomeSlotProps;
 
