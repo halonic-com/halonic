@@ -312,10 +312,41 @@ verifies("library.list-column", () => {
     const title = page.querySelector("h1");
     expect(title?.textContent).toBe("Library");
     expect(title?.parentElement?.contains(button(page, "New skill") ?? null)).toBe(true);
+    // The title's line is its own: the search field sits under the chips, not beside New.
+    expect(title?.parentElement?.querySelector('input[type="search"]')).toBeNull();
     expect(page.querySelector('input[type="search"]')).not.toBeNull();
     // The one New button is the title's, none beside the search.
     expect(
       [...page.querySelectorAll("button")].filter((each) => each.textContent === "New skill"),
     ).toHaveLength(1);
+  });
+
+  it("keeps New on the title's line while the list loads", async () => {
+    const host = hostWith({});
+    host.list.mockImplementation(() => new Promise(() => undefined));
+    const page = await show(host, { onNew: () => undefined });
+    const title = page.querySelector("h1");
+    expect(title?.parentElement?.contains(button(page, "New skill") ?? null)).toBe(true);
+    expect(
+      [...page.querySelectorAll("button")].filter((each) => each.textContent === "New skill"),
+    ).toHaveLength(1);
+  });
+
+  it("keeps New with the list on a phone, where the title is for screen readers only", async () => {
+    const page = render(
+      <PresentationProvider presentation="phone">
+        <LibraryPage
+          host={hostWith({ skill: skills })}
+          kind="skill"
+          onKindChange={() => undefined}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+          onNew={() => undefined}
+        />
+      </PresentationProvider>,
+    );
+    await settled();
+    expect(page.querySelector("h1")?.className).toBe("sr-only");
+    expect(button(page, "New skill")).toBeDefined();
   });
 });

@@ -43,7 +43,7 @@ verifies("library.list-column", () => {
     const content = pane(show("desktop"), "content");
     expect(content?.getAttribute("aria-label")).toBe("Skills");
     expect(content?.querySelector("h2")?.textContent).toBe("Skills");
-    expect(content?.querySelector("svg")).not.toBeNull();
+    expect(content?.querySelector('[data-place-icon="library"]')).not.toBeNull();
     expect(content?.textContent).toContain(
       "Instructions your agents can pick up when a task calls for them.",
     );

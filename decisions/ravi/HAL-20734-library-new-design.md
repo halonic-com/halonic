@@ -8,7 +8,8 @@
 
 - `library.library-page`: the four kinds are a one-of row of chips named "Library", not four
   tabs, and the rule and its examples say "kind" where they said "tab". The kind's sentence stays under the title on a phone; on the desktop the content pane
-  says it (`library.list-column`, new). Two examples no longer name the sentence: the content
+  says it (`library.list-column`, new). Only the kinds that have one show a New button, and
+  on the desktop it sits on the title's line rather than under the chips (`library.list-column`). Two examples no longer name the sentence: the content
   pane's examples hold it now.
 - `library.broken-connectors`: the count of broken connector files is on the Connectors chip
   (`kit.filter-chip-count`, from HAL-20805), with the same words for screen readers ("Connectors,

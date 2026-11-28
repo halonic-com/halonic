@@ -173,7 +173,7 @@ function libraryChips(brokenConnectors: number) {
 }
 
 /** The kind's New button; none for a kind without one (Knowledge) or without `onNew`. */
-function newButtonOf(
+function kindNewButton(
   kind: LibraryItemKind,
   onNew: ((kind: LibraryItemKind) => void) | undefined,
 ): { readonly label: string; readonly onClick: () => void } | undefined {
@@ -211,7 +211,7 @@ function LibraryTitle({
 }) {
   if (phone) return <h1 className="sr-only">{tabLabel(kind)}</h1>;
   return (
-    <div className="mx-4 mt-4 flex items-center justify-between gap-2">
+    <div className="mx-4 mt-4 flex flex-wrap items-center justify-between gap-2">
       <h1 className="text-title">Library</h1>
       {newButton && (
         <Button variant="primary" icon={<PlusIcon />} onClick={newButton.onClick}>
@@ -252,7 +252,7 @@ export function LibraryPage({
     () => (load.state === "loaded" ? libraryOverview(load.listing, broken) : { hubs: [] }),
     [load, broken],
   );
-  const newButton = newButtonOf(kind, onNew);
+  const newButton = kindNewButton(kind, onNew);
   const newInTitle = !phone && showsListHead(load, overview);
   const toasts = useToastStore();
   const page = useRef<HTMLDivElement>(null);
