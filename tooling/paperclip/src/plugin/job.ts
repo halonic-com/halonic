@@ -195,6 +195,7 @@ async function recordPass(
       "pr_watcher.review_priority_raised": summary.priorityRaised,
       "pr_watcher.review_rerouted": summary.rerouted,
       "pr_watcher.review_both_limited": summary.bothLimited,
+      "pr_watcher.handed_back": summary.handedBack,
       "pr_watcher.github_requests": calls.snapshot + calls.watcher + calls.thinSpec,
       "pr_watcher.github_requests_snapshot": calls.snapshot,
       "pr_watcher.duration_ms": durationMs,
@@ -214,7 +215,7 @@ async function recordPass(
     ctx.logger.error(`PR watcher: couldn't save its metrics: ${failure.message}`, { companyId });
   }
   ctx.logger.info(
-    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.rerouted} moved off a limited reviewer, ${summary.bothLimited} with both reviewers limited, ${summary.failed.length} failed, ${callsText(calls)}, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later, ${summary.dedupedWake + summary.dedupedUnchanged} short checks deduped${dryRun ? " (dry run)" : ""}.`,
+    `PR watcher: ${summary.checked} tasks with a pull request, ${summary.done} done, ${summary.woken} woken, ${summary.handedOff} handed to review, ${summary.handedBack} given back to their author, ${summary.warned} warned after approval, ${summary.reviewWaits} waiting for review over 1 h, ${summary.priorityRaised} raised to high, ${summary.rerouted} moved off a limited reviewer, ${summary.bothLimited} with both reviewers limited, ${summary.failed.length} failed, ${callsText(calls)}, ${monitors.firedOnPrTasks} monitors fired on those tasks, ${summary.postponed} moved later, ${summary.dedupedWake + summary.dedupedUnchanged} short checks deduped${dryRun ? " (dry run)" : ""}.`,
     { companyId },
   );
   // The top 5, so Chief's team check can list the longest review waits (HAL-17920).

@@ -8,19 +8,25 @@
 
 A new requirement, `paperclip.pr-watcher-hand-back`: when Liam, Julian or Nora holds a task as its
 reviewer with no run going and has posted a verdict on its pull request's head (a signed approval
-or a finding), or merge control holds that head, the PR watcher gives the task to the author with
-`todo`. Once every pull request landed, it closes the task by the author's rules instead of
-skipping it.
+or a finding), the PR watcher gives the task to the author with `todo`, once per verdict. Once
+every pull request landed, it closes the task by the author's rules instead of skipping it.
 
-Two existing tests change with it; no test was weakened, skipped or removed:
+The active `paperclip.pr-watcher-plugin` says which task changes the watcher makes; it now also
+names giving a task back to its author (`paperclip.pr-watcher-hand-back`). Nothing else in it
+changes.
+
+Existing tests change with it; no test was weakened, skipped or removed:
 
 - The pass summary gains `handedBack`, so the summaries `watch.test.ts` and `done-rules.test.ts`
   compare in full now list `handedBack: 0`.
-- In `reroute.test.ts`, the "approved head" case of "moves nothing for a free reviewer, an
-  approved, draft or red head, or a working run" now has Julian's approval instead of the holder
-  Liam's. With Liam's own approval the task now rightly goes back to its author (the new rule);
-  with Julian's it still checks what the case is about, that an approved head isn't rerouted.
-  `paperclip.pr-watcher-reroute` is unchanged.
+- In `reroute.test.ts` ("moves nothing for a free reviewer, an approved, draft or red head, or a
+  working run"), `review-wait.test.ts` ("says nothing when it is approved on its head") and
+  `review-priority.test.ts` ("leaves it alone once the head is approved, red or in the queue"),
+  the approved case now has Julian's approval instead of the holder Liam's. With Liam's own
+  approval the task now rightly goes back to its author (the new rule), so the case would pass
+  for that reason instead; with Julian's it still checks what it is about, that an approved head
+  is neither rerouted nor noted as waiting. `paperclip.pr-watcher-reroute`,
+  `paperclip.pr-watcher-review-wait` and `paperclip.pr-watcher-review-priority` are unchanged.
 
 ## Why
 
@@ -32,6 +38,9 @@ request (HAL-21120, #6950). Doing the hand-back in the watcher makes it work on 
 ## Covers
 
 - paperclip.pr-watcher-hand-back
+- paperclip.pr-watcher-plugin
 - tooling/paperclip/src/pr-watcher/reroute.test.ts
+- tooling/paperclip/src/pr-watcher/review-wait.test.ts
+- tooling/paperclip/src/pr-watcher/review-priority.test.ts
 - tooling/paperclip/src/pr-watcher/watch.test.ts
 - tooling/paperclip/src/pr-watcher/done-rules.test.ts

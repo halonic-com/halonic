@@ -63,7 +63,7 @@ verifies("paperclip.pr-watcher-review-wait", () => {
   });
 
   test("says nothing when it is approved on its head", async () => {
-    const run = watcher({ extra: { approvals: [{ by: "Liam", head: "5701aaa" }] } });
+    const run = watcher({ extra: { approvals: [{ by: "Julian", head: "5701aaa" }] } });
     expect(await run.run()).toMatchObject({ reviewWaits: 0 });
     expect(notes(run)).toEqual([]);
   });

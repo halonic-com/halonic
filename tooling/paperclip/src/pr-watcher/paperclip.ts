@@ -2,8 +2,9 @@
  * The PR watcher's view of Paperclip. The plugin's host adapter
  * (`src/plugin/host.ts`) implements it; it reads tasks, comments and agents,
  * and writes only comments, wake-ups, a task's `done` status, a handoff of
- * a task to its reviewer with status `todo`, a later time for a monitor
- * the task already has, and a raise of a task's priority to `high`.
+ * a task to its reviewer or back to its author (HAL-21150) with status
+ * `todo`, a later time for a monitor the task already has, and a raise of a
+ * task's priority to `high`.
  */
 
 /**
@@ -80,8 +81,9 @@ export interface Paperclip {
   ): Promise<WriteOutcome>;
   markDone(taskId: string, body: string): Promise<WriteOutcome>;
   /**
-   * Comments, then gives the task to the reviewer `to` with status `todo` and
-   * wakes them, if the author `from` still holds it with no run going.
+   * Comments, then gives the task to `to` with status `todo` and wakes them,
+   * if `from` still holds it with no run going: the author to the reviewer,
+   * or the reviewer back to the author after a verdict (HAL-21150).
    * `key` makes a repeated wake-up a no-op. With `overQueuedRun`, a run that
    * is only queued or parked doesn't stop it: the move cancels that run
    * (a limited reviewer's, HAL-19203).

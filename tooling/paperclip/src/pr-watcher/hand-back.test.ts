@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import type { PullFacts } from "./decide.ts";
 import { agentComment, agents, type FakeTask, task } from "./fakes.test-helper.ts";
 import { mateoBranch, oldHead, open, setup } from "./handoff.test-helper.ts";
+import type { CommentRow } from "./paperclip.ts";
 
 /** The hand-back of a reviewer-held task to its author (HAL-21150). The pass runs at 17:00 UTC. */
 
@@ -18,6 +19,12 @@ function watcher(
     pulls: [open(5701, mateoBranch, { headCommittedAt: committedAt, ...pull })],
     comments,
   });
+}
+
+/** A comment the watcher wrote earlier, with the marker of `key`. */
+function watcherComment(key: string): CommentRow {
+  const body = `PR watcher: back to Mateo after review.\n<!-- pr-watcher: ${key} -->`;
+  return { authorAgentId: null, authorUserId: null, createdAt: "2026-11-24T16:40:00Z", body };
 }
 
 const merged: Partial<PullFacts> = {
@@ -36,12 +43,13 @@ verifies("paperclip.pr-watcher-hand-back", () => {
         taskId: "task-5701",
         from: agents.julian,
         to: agents.mateo,
-        key: "halonic-com/halonic#5701 5701aaa back to author",
+        key: "halonic-com/halonic#5701 5701aaa back to author approved",
       },
     ]);
     expect(run.comments["task-5701"]?.[0]?.body.split("\n")).toEqual([
       "PR watcher: back to Mateo after review, head `5701aaa` (HAL-21150).",
       "- [#5701](https://github.com/halonic-com/halonic/pull/5701)",
+      "<!-- pr-watcher: halonic-com/halonic#5701 5701aaa back to author approved -->",
     ]);
   });
 
@@ -55,10 +63,24 @@ verifies("paperclip.pr-watcher-hand-back", () => {
     expect(run.handoffs.map(({ from, to }) => [from, to])).toEqual([[agents.nora, agents.mateo]]);
   });
 
-  test("gives a task back when merge control holds its head", async () => {
+  test("hands back once per verdict: again for a new finding on the same head, not for the same one", async () => {
+    const earlier = watcherComment("halonic-com/halonic#5701 5701aaa back to author i1");
+    const first = { id: "i1", at: "2026-11-24T16:30:00Z", by: "Julian" };
+    const same = watcher({ latestReview: first }, undefined, { "task-5701": [earlier] });
+    expect(await same.run()).toMatchObject({ handedBack: 0, failed: [] });
+    expect(same.handoffs).toEqual([]);
+    const second = { id: "i2", at: "2026-11-24T16:50:00Z", by: "Julian" };
+    const again = watcher({ latestReview: second }, undefined, { "task-5701": [earlier] });
+    expect(await again.run()).toMatchObject({ handedBack: 1 });
+    expect(again.handoffs.map(({ key }) => key)).toEqual([
+      "halonic-com/halonic#5701 5701aaa back to author i2",
+    ]);
+  });
+
+  test("leaves a head merge control holds with its reviewer: an approval hands it back first", async () => {
     const run = watcher({ held: { url: "https://example.test/run", jobs: [], error: null } });
-    expect(await run.run()).toMatchObject({ handedBack: 1 });
-    expect(run.comments["task-5701"]?.[0]?.body).toContain("after the merge queue held it");
+    expect(await run.run()).toMatchObject({ handedBack: 0 });
+    expect(run.handoffs).toEqual([]);
   });
 
   test("leaves the task with its reviewer before a verdict on the head", async () => {
@@ -99,6 +121,9 @@ verifies("paperclip.pr-watcher-hand-back", () => {
     const after = agentComment(agents.priya, "2026-11-24T16:30:00Z", "One more deploy step.");
     const run = watcher(merged, undefined, { "task-5701": [after] });
     expect(await run.run()).toMatchObject({ done: 0, handedBack: 1 });
-    expect(run.comments["task-5701"]?.at(-1)?.body).toContain("back to Mateo after the merge");
+    const body = run.comments["task-5701"]?.at(-1)?.body ?? "";
+    expect(body).toContain("back to Mateo after the merge");
+    // The author's later pass reads the merge as reported: one wake for that comment, not two.
+    expect(body).toContain("<!-- pr-watcher: halonic-com/halonic#5701 5701aaa merged -->");
   });
 });

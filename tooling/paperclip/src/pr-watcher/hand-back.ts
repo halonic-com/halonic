@@ -1,4 +1,4 @@
-import { closedOutcome, type PullFacts, short } from "./decide.ts";
+import { closedOutcome, marker, type PullFacts, short } from "./decide.ts";
 
 /**
  * The hand-back of a task its reviewer holds to the author of its pull
@@ -9,30 +9,29 @@ import { closedOutcome, type PullFacts, short } from "./decide.ts";
 /** Why a reviewer-held task goes back to its author now. */
 export interface HandBack {
   readonly pull: PullFacts;
-  readonly why: "approved" | "findings" | "held" | "merged";
-  /** Makes a repeated hand-back of the same head a no-op. */
+  readonly why: "approved" | "findings" | "merged";
+  /**
+   * One per verdict: the head and the approval or the finding's id, so a
+   * second verdict on the same head (after the author answered a finding)
+   * hands the task back again, with a wake of its own.
+   */
   readonly key: string;
 }
 
-/** The reviewer's name as approvals and findings carry it: `liam` is `Liam`. */
-export function reviewerName(urlKey: string): string {
-  return urlKey.charAt(0).toUpperCase() + urlKey.slice(1);
-}
-
-/** Whether the reviewer's newest finding was made after the head was committed. */
+/**
+ * Whether the reviewer's newest finding still stands on the head: by
+ * `answered.ts`'s rule, only a head committed after it answers it.
+ */
 function findingOnHead(pull: PullFacts, reviewer: string): boolean {
   const review = pull.latestReview;
   if (review?.by !== reviewer) {
     return false;
   }
-  // A conversation comment carries no head: one older than the head was about an earlier one.
-  return pull.headCommittedAt === undefined || review.at >= pull.headCommittedAt;
+  const committed = pull.headCommittedAt;
+  return !(committed !== undefined && Date.parse(committed) > Date.parse(review.at));
 }
 
-function verdictOf(pull: PullFacts, reviewer: string): HandBack["why"] | undefined {
-  if (pull.held !== undefined) {
-    return "held";
-  }
+function verdictOf(pull: PullFacts, reviewer: string): HandBack | undefined {
   if (pull.draft) {
     return undefined;
   }
@@ -41,45 +40,52 @@ function verdictOf(pull: PullFacts, reviewer: string): HandBack["why"] | undefin
   if (
     approvals.some(({ by, head }) => by === reviewer && head !== "" && pull.head.startsWith(head))
   ) {
-    return "approved";
+    return keyed(pull, "approved", "approved");
   }
-  return findingOnHead(pull, reviewer) ? "findings" : undefined;
+  const review = pull.latestReview;
+  return review !== undefined && findingOnHead(pull, reviewer)
+    ? keyed(pull, "findings", review.id)
+    : undefined;
 }
 
 /**
- * Why the task goes back to its author: a merge that landed, the queue
- * holding a head, or the holder's verdict (a signed approval or a finding)
- * on an open pull request's head; undefined while the review is still due.
+ * Why the task goes back to its author: a merge that landed, or the
+ * holder's verdict (a signed approval or a finding) on an open pull
+ * request's head; undefined while the review is still due.
  */
 export function handBackOf(reviewer: string, pulls: readonly PullFacts[]): HandBack | undefined {
   const closed = closedOutcome(pulls);
   if (closed?.kind === "done") {
     const [pull] = closed.pulls;
-    return pull === undefined ? undefined : keyed(pull, "merged");
+    return pull === undefined ? undefined : keyed(pull, "merged", "merged");
   }
   for (const pull of pulls.filter((each) => each.state === "open")) {
-    const why = verdictOf(pull, reviewer);
-    if (why !== undefined) {
-      return keyed(pull, why);
+    const back = verdictOf(pull, reviewer);
+    if (back !== undefined) {
+      return back;
     }
   }
   return undefined;
 }
 
-function keyed(pull: PullFacts, why: HandBack["why"]): HandBack {
-  return { pull, why, key: `${pull.repo}#${pull.number} ${short(pull.head)} back to author` };
+function keyed(pull: PullFacts, why: HandBack["why"], verdict: string): HandBack {
+  const key = `${pull.repo}#${pull.number} ${short(pull.head)} back to author ${verdict}`;
+  return { pull, why, key };
 }
 
-/** The comment that goes with the hand-back. */
-export function handBackMessage(author: string, back: HandBack): string {
-  const words = {
-    approved: "after review",
-    findings: "after review",
-    held: "after the merge queue held it",
-    merged: "after the merge",
-  }[back.why];
+/**
+ * The comment that goes with the hand-back, with its marker and the markers
+ * of the states it answers (`also`), so neither is reported again.
+ */
+export function handBackMessage(
+  author: string,
+  back: HandBack,
+  also: readonly string[] = [],
+): string {
+  const words = back.why === "merged" ? "after the merge" : "after review";
   return [
     `PR watcher: back to ${author} ${words}, head \`${short(back.pull.head)}\` (HAL-21150).`,
     `- [#${back.pull.number}](${back.pull.url})`,
+    ...[back.key, ...also].map(marker),
   ].join("\n");
 }

@@ -62,7 +62,7 @@ verifies("paperclip.pr-watcher-review-priority", () => {
 
   test("leaves it alone once the head is approved, red or in the queue", async () => {
     const quiet = [
-      watcher({ extra: { approvals: [{ by: "Liam", head: "5701aaa" }] } }),
+      watcher({ extra: { approvals: [{ by: "Julian", head: "5701aaa" }] } }),
       watcher({ extra: { ciOkOnHead: "failure" } }),
       watcher({ extra: { inQueue: true } }),
     ];

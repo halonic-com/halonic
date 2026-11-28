@@ -1,6 +1,7 @@
+import { reviewerName } from "../reviewer-paths-who.ts";
 import { type CloseGuards, guardDone } from "./close-guards.ts";
-import { branchesOwner, type Decision, decide, type PullFacts } from "./decide.ts";
-import { type HandBack, handBackMessage, handBackOf, reviewerName } from "./hand-back.ts";
+import { branchesOwner, type Decision, decide, type Memory, type PullFacts } from "./decide.ts";
+import { type HandBack, handBackMessage, handBackOf } from "./hand-back.ts";
 import { readMemory } from "./memory.ts";
 import { doneMessage } from "./messages.ts";
 import type { Paperclip, TaskRow } from "./paperclip.ts";
@@ -22,8 +23,8 @@ export type HandBackStep = "done" | "handed" | "none";
  * For a task its reviewer holds with no run going (`pulls` are its pull
  * requests' facts, empty for any other task): once they all landed, done by
  * the author's rules; else back to the author with `todo` after the holder's
- * verdict on the head or a head the queue holds (HAL-21150). A parked task
- * is only closed: its holder put it aside on purpose.
+ * verdict on the head, once per verdict (HAL-21150). A parked task is only
+ * closed: its holder put it aside on purpose.
  */
 export async function handBackStep(
   options: HandBackOptions,
@@ -36,13 +37,20 @@ export async function handBackStep(
   if (who === undefined || back === undefined) {
     return "none";
   }
-  if (back.why === "merged") {
-    const done = await doneAsAuthor(options, task, who.author, pulls);
-    if (done !== undefined) {
-      return closeTask(options, task, done);
-    }
+  const memory = readMemory(await options.paperclip.comments(task.id), who.author);
+  if (memory.reported.has(back.key)) {
+    return "none";
   }
-  return task.parked === true ? "none" : giveBack(options, task, who, back);
+  let also: readonly string[] = [];
+  if (back.why === "merged") {
+    const decision = await decideAsAuthor(options, task, who.author, pulls, memory);
+    if (decision.kind === "done") {
+      return closeTask(options, task, decision);
+    }
+    // The comment after the merge is the author's to read now: one wake for it, not two.
+    also = decision.kind === "wake" ? decision.reasons.map((reason) => reason.key) : [];
+  }
+  return task.parked === true ? "none" : giveBack(options, task, who, { back, also });
 }
 
 /** The reviewer who holds the task and the author its branches name, by short name and id. */
@@ -72,12 +80,11 @@ async function giveBack(
   options: HandBackOptions,
   task: TaskRow,
   who: Parties,
-  back: HandBack,
+  { back, also }: { readonly back: HandBack; readonly also: readonly string[] },
 ): Promise<HandBackStep> {
-  const body = handBackMessage(reviewerName(who.authorKey), back);
-  options.log(
-    `${task.identifier}: back to ${who.authorKey}${options.dryRun ? " (dry run)" : ""}\n${body}`,
-  );
+  const body = handBackMessage(reviewerName(who.authorKey), back, also);
+  const dry = options.dryRun ? " (dry run)" : "";
+  options.log(`${task.identifier}: back to ${who.authorKey}${dry}\n${body}`);
   if (options.dryRun) {
     return "handed";
   }
@@ -86,23 +93,17 @@ async function giveBack(
   return outcome === "written" ? "handed" : "none";
 }
 
-/** The done the watcher would write if the author held the task; undefined when the author's rules keep it open. */
-async function doneAsAuthor(
+/** What the watcher would decide if the author held the task: done, or what keeps it open. */
+function decideAsAuthor(
   options: HandBackOptions,
   task: TaskRow,
   author: string,
   pulls: readonly PullFacts[],
-) {
+  memory: Memory,
+): Promise<Decision> {
   const asAuthor = { ...task, assigneeAgentId: author };
-  const memory = readMemory(await options.paperclip.comments(task.id), author);
   const guards = { guards: options.closeGuards, now: options.now };
-  const decision = await guardDone(
-    asAuthor,
-    decide(asAuthor, author, pulls, memory),
-    memory,
-    guards,
-  );
-  return decision.kind === "done" ? decision : undefined;
+  return guardDone(asAuthor, decide(asAuthor, author, pulls, memory), memory, guards);
 }
 
 async function closeTask(
