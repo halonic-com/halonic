@@ -2,7 +2,11 @@
 
 import type { RequesterPolicy, StepperCatalog } from "@halonicjs/action-steppers";
 import type { ServiceSignIn } from "@halonicjs/ports";
-import { type OpenExternal, OpenExternalProvider } from "@halonicjs/studio-kit";
+import {
+  type OpenExternal,
+  OpenExternalProvider,
+  type OpenExternalProviderProps,
+} from "@halonicjs/studio-kit";
 import { createActionSteps, FakeAgentConnections } from "@halonicjs/studio-services";
 import {
   FakeActionRecords,
@@ -31,10 +35,13 @@ async function settled(): Promise<void> {
   });
 }
 
+/** The kit's sign-in opener, read off the provider's props. */
+type OpenSignIn = NonNullable<OpenExternalProviderProps["openSignIn"]>;
+
 /** How the app opens pages: `openExternal` for every page, `openSignIn` for a sign-in page. */
 interface PageOpeners {
   readonly openExternal: OpenExternal;
-  readonly openSignIn: OpenExternal;
+  readonly openSignIn: OpenSignIn;
 }
 
 /**
@@ -124,7 +131,7 @@ verifies("inbox.agent-action-run", () => {
       });
       const openers = {
         openExternal: vi.fn<OpenExternal>(async () => {}),
-        openSignIn: vi.fn<OpenExternal>(async () => {}),
+        openSignIn: vi.fn<OpenSignIn>(async () => {}),
       };
       const root = await openSignInItem(acmeSignInCatalog, signIn, openers);
       await act(async () => runStep(root, 1)?.click());
@@ -133,6 +140,7 @@ verifies("inbox.agent-action-run", () => {
       await settled();
       expect(openers.openSignIn).toHaveBeenCalledWith(
         "https://paperclip.acme.example/cli-auth/challenge-1",
+        "https://paperclip.acme.example",
       );
       expect(openers.openExternal).not.toHaveBeenCalled();
     });

@@ -41,6 +41,19 @@ export function isAllowedAddress(address: string): boolean {
   }
 }
 
+/**
+ * The origin of the connection's address, which its approval page is on (`kit.open-sign-in`).
+ * The address was checked before the sign-in started; should it still not parse, the origin is
+ * empty, which the desktop shell refuses and reports, and the page opens as every other link.
+ */
+function originOf(address: string): string {
+  try {
+    return new URL(address).origin;
+  } catch {
+    return "";
+  }
+}
+
 /** The dialog's title: Connect Paperclip, Sign in, Sign in again or Add another account. */
 function titleOf(props: ConnectDialogProps): string {
   if (props.again?.state.kind === "no-key") return words.SIGN_IN;
@@ -142,7 +155,13 @@ export function ConnectDialog(props: ConnectDialogProps) {
   }
   if (view.stage === "waiting") {
     return (
-      <WaitingStep title={title} challenge={view.challenge} leftMs={leftMs} onCancel={close} />
+      <WaitingStep
+        title={title}
+        challenge={view.challenge}
+        origin={originOf(address.trim())}
+        leftMs={leftMs}
+        onCancel={close}
+      />
     );
   }
   return null;
@@ -192,7 +211,7 @@ function AddressStep({
     setInvalid(false);
     // Opened inside the click, before anything is awaited, or a browser blocks the tab. When no
     // sign-in starts, the address never comes, the tab closes, and the step says why.
-    openSignIn(signIn.start(trimmed)).catch(() => undefined);
+    openSignIn(signIn.start(trimmed), originOf(trimmed)).catch(() => undefined);
   };
 
   return (

@@ -1,7 +1,15 @@
-import { type OpenExternal, OpenExternalProvider, openInNewTab } from "@halonicjs/studio-kit";
+import {
+  type OpenExternal,
+  OpenExternalProvider,
+  type OpenExternalProviderProps,
+  openInNewTab,
+} from "@halonicjs/studio-kit";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { WorkspaceWindow, type WorkspaceWindowProps } from "./workspace-window.tsx";
+
+/** The kit's sign-in opener (`kit.open-sign-in`), read off the provider's props: `index.ts` is at its size limit. */
+type OpenSignIn = NonNullable<OpenExternalProviderProps["openSignIn"]>;
 
 /** A {@link WorkspaceWindow} drawn into a page by {@link mountWorkspaceWindow}. */
 export interface MountedWorkspaceWindow {
@@ -28,7 +36,7 @@ export function mountWorkspaceWindow(
   element: Element,
   props: WorkspaceWindowProps,
   openExternal: OpenExternal = openInNewTab,
-  openSignIn: OpenExternal = openExternal,
+  openSignIn: OpenSignIn = (address) => openExternal(address),
 ): MountedWorkspaceWindow {
   const root = createRoot(element);
   const render = (shown: WorkspaceWindowProps) =>

@@ -55,9 +55,26 @@ export async function openInNewTab(address: ExternalAddress): Promise<void> {
   tab.location.href = url;
 }
 
+/**
+ * Opens a page on which the person signs in (`kit.open-sign-in`). `origin` is the origin of the
+ * service the feature signs in to, such as `https://paperclip.acme.test`: the desktop app's shell
+ * opens the page in its sign-in window only when the page's scheme, host and port are exactly
+ * those, so a feature that hands over the wrong page is caught. An opener that has no use for it,
+ * such as a new tab, ignores it.
+ *
+ * @returns a promise that settles once the page is open
+ * @throws (the promise rejects) only when a pending address didn't arrive, as `OpenExternal`
+ */
+export type OpenSignIn = (address: ExternalAddress, origin: string) => Promise<void>;
+
+/** `openExternal` as an `OpenSignIn`, for a shell that gives no sign-in opener of its own. */
+function signInWith(openExternal: OpenExternal): OpenSignIn {
+  return (address) => openExternal(address);
+}
+
 const OpenExternalContext = createContext<OpenExternal>(openInNewTab);
 
-const OpenSignInContext = createContext<OpenExternal>(openInNewTab);
+const OpenSignInContext = createContext<OpenSignIn>(signInWith(openInNewTab));
 
 /** The props of `OpenExternalProvider`. */
 export interface OpenExternalProviderProps {
@@ -66,7 +83,7 @@ export interface OpenExternalProviderProps {
    * How a sign-in page opens (`kit.open-sign-in`), such as the desktop app's small browser window
    * over Studio. Left out, a sign-in page opens with `openExternal`, as every other page.
    */
-  readonly openSignIn?: OpenExternal;
+  readonly openSignIn?: OpenSignIn;
   readonly children: ReactNode;
 }
 
@@ -81,7 +98,7 @@ export interface OpenExternalProviderProps {
  */
 export function OpenExternalProvider({
   openExternal,
-  openSignIn = openExternal,
+  openSignIn = signInWith(openExternal),
   children,
 }: OpenExternalProviderProps) {
   return (
@@ -99,8 +116,9 @@ export function useOpenExternal(): OpenExternal {
 /**
  * How a sign-in page opens where a component renders (`kit.open-sign-in`): a feature calls it, in
  * place of `useOpenExternal()`, for a page where the person signs in, such as a Paperclip approval
- * page or a Google consent page, and for no other page.
+ * page or a Google consent page, and for no other page, with the origin of the service it signs in
+ * to.
  */
-export function useOpenSignIn(): OpenExternal {
+export function useOpenSignIn(): OpenSignIn {
   return useContext(OpenSignInContext);
 }

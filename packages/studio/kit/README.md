@@ -2513,8 +2513,10 @@ for the address and hands it to the system browser:
 
 **Sign-in pages.** A feature opens a page where the person signs in, such as a Paperclip approval
 page or a Google consent page, with `useOpenSignIn()` instead of `useOpenExternal()`
-(`kit.open-sign-in`). The provider's optional `openSignIn` opens it: on Windows the desktop app
-opens it as a small window of the user's own browser, centred on Studio. Without `openSignIn`,
+(`kit.open-sign-in`), and passes the origin of the service it signs in to, such as
+`openSignIn(page, "https://paperclip.acme.test")`. The provider's optional `openSignIn` opens it:
+on Windows the desktop app opens it as a small window of the user's own browser, centred on
+Studio, only when the page is on exactly that origin. Without `openSignIn`,
 a sign-in page opens with `openExternal`, as every other page.
 
 Without a provider, the link uses `openInNewTab`. A known address opens in a new tab with

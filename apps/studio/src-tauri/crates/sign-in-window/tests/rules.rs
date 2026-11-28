@@ -86,6 +86,8 @@ fn anything_but_an_existing_exe_on_a_drive_is_refused() {
     assert_eq!(browser_exe(&command, |_| false), None);
 }
 
+/// Each address is on its own origin, so only the address check counts
+/// here; `origin.rs` checks the origin.
 #[test]
 fn https_and_plain_http_to_this_computer_may_open() {
     for address in [
@@ -95,7 +97,7 @@ fn https_and_plain_http_to_this_computer_may_open() {
         "http://127.0.0.1:3100/x",
         "http://[::1]:3100/x",
     ] {
-        assert!(sign_in_url(address).is_some(), "{address:?}");
+        assert!(sign_in_url(address, address).is_some(), "{address:?}");
     }
 }
 
@@ -114,7 +116,7 @@ fn any_other_address_is_refused() {
         "chrome://settings",
         "--disable-web-security",
     ] {
-        assert!(sign_in_url(address).is_none(), "{address:?}");
+        assert!(sign_in_url(address, address).is_none(), "{address:?}");
     }
 }
 
@@ -123,19 +125,23 @@ fn an_address_with_a_password_is_refused() {
     let mut url = Url::parse("https://paperclip.acme.test/").expect("an address");
     url.set_username("user").expect("a user name");
     url.set_password(Some("fake")).expect("a password");
-    assert!(sign_in_url(url.as_str()).is_none());
+    assert!(sign_in_url(url.as_str(), "https://paperclip.acme.test").is_none());
 }
 
 #[test]
 fn the_address_is_one_app_argument_with_the_size_and_place() {
-    let url = sign_in_url("https://paperclip.acme.test/a b?q=\"x\" --y").expect("an address");
+    let url = sign_in_url(
+        "https://paperclip.acme.test/a b?q=\"x\" --y",
+        "https://paperclip.acme.test",
+    )
+    .expect("an address");
     let rect = Rect {
         x: 10,
         y: -20,
         width: 800,
         height: 600,
     };
-    let arguments = launch_arguments(&url, rect);
+    let arguments = launch_arguments(&url, rect, 1.0);
     assert_eq!(
         arguments,
         [

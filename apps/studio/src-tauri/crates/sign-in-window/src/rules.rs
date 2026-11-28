@@ -76,9 +76,22 @@ fn is_drive_path(text: &str) -> bool {
 }
 
 /// The address a sign-in may open: an absolute `https` address, or plain
-/// `http` to this computer, with no user name or password in it. Anything
-/// else is `None`.
-pub fn sign_in_url(text: &str) -> Option<Url> {
+/// `http` to this computer, with no user name or password in it, on exactly
+/// the scheme, host and port of `allowed_origin`, the origin of the service
+/// the caller signs in to (HAL-20663). The origin must be such an address
+/// too. Anything else is `None`.
+pub fn sign_in_url(text: &str, allowed_origin: &str) -> Option<Url> {
+    let url = openable(text)?;
+    let allowed = openable(allowed_origin)?;
+    let same_origin = url.scheme() == allowed.scheme()
+        && url.host() == allowed.host()
+        && url.port_or_known_default() == allowed.port_or_known_default();
+    same_origin.then_some(url)
+}
+
+/// `text` as an absolute `https` address, or plain `http` to this computer,
+/// with no user name or password in it.
+fn openable(text: &str) -> Option<Url> {
     let url = Url::parse(text).ok()?;
     if !url.username().is_empty() || url.password().is_some() {
         return None;
@@ -130,10 +143,37 @@ fn centred(owner_start: i32, owner_size: u32, size: u32, area_start: i32, area_s
     i32::try_from(start).unwrap_or(area_start)
 }
 
+/// `rect`, in physical pixels, in the screen coordinates Chromium's
+/// `--window-size` and `--window-position` take: device-independent pixels,
+/// the physical ones divided by the monitor's `scale_factor` (1.5 on a
+/// display scaled to 150 %). Without it the window would start half again
+/// as big, away from Halonic. A scale that isn't a positive number counts
+/// as 1.
+pub fn browser_rect(rect: Rect, scale_factor: f64) -> Rect {
+    let scale = if scale_factor.is_finite() && scale_factor > 0.0 {
+        scale_factor
+    } else {
+        1.0
+    };
+    Rect {
+        x: to_dip(f64::from(rect.x), scale),
+        y: to_dip(f64::from(rect.y), scale),
+        width: to_dip(f64::from(rect.width), scale).unsigned_abs(),
+        height: to_dip(f64::from(rect.height), scale).unsigned_abs(),
+    }
+}
+
+/// `as` saturates, so a scale far below 1 can't wrap the result around.
+fn to_dip(physical: f64, scale: f64) -> i32 {
+    (physical / scale).round() as i32
+}
+
 /// The browser's command line: the address as one `--app=` argument, and
-/// the window's size and place. Each is one argument of its own, started
-/// without a shell, so nothing in the address can add another.
-pub fn launch_arguments(url: &Url, rect: Rect) -> [String; 3] {
+/// the window's size and place, `rect` in physical pixels converted with
+/// [`browser_rect`]. Each is one argument of its own, started without a
+/// shell, so nothing in the address can add another.
+pub fn launch_arguments(url: &Url, rect: Rect, scale_factor: f64) -> [String; 3] {
+    let rect = browser_rect(rect, scale_factor);
     [
         format!("--app={url}"),
         format!("--window-size={},{}", rect.width, rect.height),

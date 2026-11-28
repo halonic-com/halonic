@@ -1,4 +1,4 @@
-import { pendingSignInLifetimeMs } from "@halonicjs/google-setup";
+import { googleAuthEndpoint, pendingSignInLifetimeMs } from "@halonicjs/google-setup";
 import { Button, Callout, Spinner, useOpenSignIn } from "@halonicjs/studio-kit";
 import { failureLine } from "@halonicjs/studio-shell";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
@@ -37,6 +37,9 @@ type SignIn =
   | { readonly kind: "timed-out" }
   | { readonly kind: "dropped" }
   | { readonly kind: "failed"; readonly line: string; readonly retry: () => void };
+
+/** Where Google's consent page is: the sign-in window opens only a page there (`kit.open-sign-in`). */
+const googleSignInOrigin = new URL(googleAuthEndpoint).origin;
 
 /**
  * **Sign in with Google** and what the step says while it waits (design 3.5, items 1 and 2).
@@ -78,7 +81,7 @@ export function SignInPanel(props: SignInPanelProps) {
       (url) => setSignIn({ kind: "waiting", address: url }),
       () => {},
     );
-    openSignIn(address).catch((error: unknown) => {
+    openSignIn(address, googleSignInOrigin).catch((error: unknown) => {
       setSignIn({
         kind: "failed",
         line: failureLine("start the sign-in", error),
@@ -134,7 +137,7 @@ export function SignInPanel(props: SignInPanelProps) {
       <Waiting
         problem={cancelProblem}
         below={whileWaiting}
-        onOpenAgain={() => void openSignIn(signIn.address)}
+        onOpenAgain={() => void openSignIn(signIn.address, googleSignInOrigin)}
         onCancel={() => void cancelWaiting()}
       />
     );
