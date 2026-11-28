@@ -1,5 +1,12 @@
 import type { MessagingId } from "@halonicjs/ports";
-import { Button, ChevronDownIcon, enter, isComposing, leave } from "@halonicjs/studio-kit";
+import {
+  Button,
+  ChevronDownIcon,
+  enter,
+  isComposing,
+  leave,
+  TextArea,
+} from "@halonicjs/studio-kit";
 import {
   type KeyboardEvent,
   type MouseEvent,
@@ -29,24 +36,23 @@ export interface AskBoxProps {
 }
 
 /**
- * The 640 px box with the prompt look's 24 px corners and edge, but the dialogs' shadow, because it
- * floats over any app (HAL-19142); in dark it also lifts by a 1 px white line along its top edge. On a screen narrower than the box and its 32 px margin, the
- * margin is 16 px. It never grows past its window, so a long answer scrolls the exchanges instead of
- * pushing the footer out of sight (HAL-19213).
+ * The 640 px box on the new design's panel: the theme's 8 px panel corner on the raised surface,
+ * with the dialogs' shadow and its 1 px edge, because it floats over any app (HAL-20746). On a
+ * screen narrower than the box and its 32 px margin, the margin is 16 px. It never grows past its
+ * window, so a long answer scrolls the exchanges instead of pushing the footer out of sight
+ * (HAL-19213).
  */
-const boxClasses = [
-  "flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-prompt bg-surface-raised text-fg shadow-3",
-  "border border-border-prompt",
-  "inset-shadow-[0_1px_0_light-dark(transparent,rgb(255_255_255/0.06))]",
-].join(" ");
+const boxClasses =
+  "flex max-h-full w-full max-w-[640px] flex-col overflow-hidden rounded-panel bg-surface-raised text-fg shadow-3";
 
 /**
- * The agent chip's outline: a 32 px pill drawn before the text box, 2 px down so it centres on the
- * 36 px round Ask. The loading skeleton takes it too, so when the agents arrive the text box moves
- * only by the name's width minus the skeleton's 64 px name bar (HAL-20415).
+ * The agent chip's outline: a 32 px pill drawn before the text box, 2 px up from the message box's
+ * last line so it centres on the 36 px round Ask. The loading skeleton takes it too, so when the
+ * agents arrive the text box moves only by the name's width minus the skeleton's 64 px name bar
+ * (HAL-20415).
  */
 const agentChipShape =
-  "order-first mt-0.5 flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border py-0.5 ps-0.5 pe-2";
+  "order-first mb-0.5 flex h-8 max-w-48 shrink-0 items-center gap-1.5 rounded-full border border-border py-0.5 ps-0.5 pe-2";
 
 /** The agent chip: the outline with the agent's picture, its name and a chevron (design section 4). */
 const agentChipClasses = `${agentChipShape} text-body text-fg hover:bg-surface-muted focus-ring`;
@@ -208,9 +214,10 @@ interface QuestionRowProps {
 }
 
 /**
- * The box's top row: the text box first, so the focus starts there, then the picked agent's
- * chip, drawn before it, and **Ask**, a round arrow: grey while there's nothing it can send (an
- * empty box, or the agents still loading), blue once it can (HAL-19142).
+ * The box's top row, the kit's message box (`TextArea`'s prompt look): the text box first, so the
+ * focus starts there, then the picked agent's chip, drawn before it, and **Ask**, a round arrow:
+ * grey while there's nothing it can send (an empty box, or the agents still loading), blue once it
+ * can (HAL-19142, HAL-20746).
  */
 function QuestionRow({
   name,
@@ -226,20 +233,47 @@ function QuestionRow({
   const value =
     model.state.kind === "ready" || model.state.kind === "opening" ? model.state.text : "";
   return (
-    <div className="flex shrink-0 items-start gap-2 px-3.5 py-3">
-      <textarea
+    <div className="shrink-0 p-3">
+      <TextArea
         ref={text}
-        // biome-ignore lint/a11y/noAutofocus: the box opens to type a question, and the focus starts here.
+        look="prompt"
         autoFocus
-        rows={1}
         aria-label={placeholder}
-        aria-describedby={keysId}
+        {...(keysId === undefined ? {} : { describedBy: keysId })}
         placeholder={placeholder}
         value={value}
         onChange={(event) => model.type(event.target.value)}
         onKeyDown={onKeyDown}
-        className="max-h-40 min-h-control-md flex-1 resize-none bg-transparent py-1.5 text-heading font-normal text-fg outline-none [field-sizing:content] placeholder:text-fg-subtle"
+        // An empty leading keeps the box's 7 px round end: the chip, drawn first, fills it.
+        leading={null}
+        trailing={
+          <AgentAndAsk
+            name={name}
+            model={model}
+            picking={picking}
+            onAgent={onAgent}
+            ask={ask}
+            value={value}
+          />
+        }
       />
+    </div>
+  );
+}
+
+/** The message box's trailing parts: the chip, drawn before the text by `order-first`, and **Ask**. */
+function AgentAndAsk({
+  name,
+  model,
+  picking,
+  onAgent,
+  ask,
+  value,
+}: Pick<QuestionRowProps, "name" | "model" | "picking" | "onAgent" | "ask"> & {
+  readonly value: string;
+}) {
+  return (
+    <>
       {name === undefined ? (
         // Nothing to pick yet, so no button: the chip's outline from the first frame, with its skeleton inside.
         <span className={agentChipShape}>
@@ -271,7 +305,7 @@ function QuestionRow({
         aria-keyshortcuts="Enter"
         onClick={() => model.send()}
       />
-    </div>
+    </>
   );
 }
 

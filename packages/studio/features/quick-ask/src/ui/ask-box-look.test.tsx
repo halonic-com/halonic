@@ -21,6 +21,40 @@ function askButton(page: HTMLElement): HTMLButtonElement {
   return button;
 }
 
+afterEach(() => document.documentElement.removeAttribute("data-theme"));
+
+// The new design's panel and message box (HAL-20746).
+verifies("quick-ask.box-look", () => {
+  describe("the box on the new parts", () => {
+    it("draws the box on the panel corner with the dialogs' shadow, in light and dark", async () => {
+      for (const theme of ["light", "dark"]) {
+        document.documentElement.setAttribute("data-theme", theme);
+        const { page } = await openBox(new FakeMessenger([chat(chief)]));
+        const classes = page.querySelector('[role="dialog"]')?.className.split(" ") ?? [];
+
+        expect(classes, theme).toEqual(
+          expect.arrayContaining(["rounded-panel", "bg-surface-raised", "shadow-3"]),
+        );
+        expect(classes, theme).not.toContain("border");
+        unmountAll();
+      }
+    });
+
+    it("puts the question in the kit's message box, with the chip and Ask inside and the focus in the text", async () => {
+      const { page } = await openBox(new FakeMessenger([chat(chief)]));
+      const messageBox = textBox(page).closest(".rounded-composer");
+
+      expect(messageBox).toBeInstanceOf(HTMLElement);
+      expect(messageBox?.className).toContain("shadow-composer");
+      expect(
+        messageBox?.querySelector('button[aria-label="Ask Chief. Change agent."]'),
+      ).not.toBeNull();
+      expect(messageBox?.contains(askButton(page))).toBe(true);
+      expect(document.activeElement).toBe(textBox(page));
+    });
+  });
+});
+
 // The parts the design's stills draw (HAL-18594 section 4, Noah's visual pass; check HAL-19083).
 verifies("quick-ask.box", () => {
   describe("the box's look", () => {
