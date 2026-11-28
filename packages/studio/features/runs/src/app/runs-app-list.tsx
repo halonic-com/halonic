@@ -22,6 +22,8 @@ export interface RunsAppListProps {
   readonly selected: string | undefined;
   /** Opens a run, for a row's click and Enter. */
   readonly onOpen: (id: string) => void;
+  /** Opens a run in a new tab, for a row's Ctrl-click, Cmd-click or middle click. */
+  readonly onOpenInNewTab?: (id: string) => void;
   /** Opens the Costs view, from the summary line. */
   readonly onCosts: () => void;
 }
@@ -42,6 +44,7 @@ export function RunsAppList({
   timeZone,
   selected,
   onOpen,
+  onOpenInNewTab,
   onCosts,
 }: RunsAppListProps) {
   const summary = todaySummary(runs, { now, timeZone });
@@ -74,6 +77,7 @@ export function RunsAppList({
         }))}
         groupHeadingLevel={2}
         onOpen={onOpen}
+        {...(onOpenInNewTab === undefined ? {} : { onOpenInNewTab })}
         {...(selected === undefined ? {} : { current: selected })}
       />
     </section>

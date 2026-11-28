@@ -1,8 +1,9 @@
-import { type PlacePage, placePages } from "../place-words.ts";
+import { type PlacePage, placePages, type TextInFile } from "../place-words.ts";
 import type { Step, StepContext } from "../runner.ts";
 import { clickWhenShown, lastWords, waitForText } from "../screen.ts";
 import { screenText } from "../words.ts";
 import { onWorkspaceWithoutSettings } from "./open-demo.ts";
+import { inWideWindow } from "./wide-window.ts";
 
 /** How long a place's page may take to load its first list. */
 const pageWaitMs = 30_000;
@@ -27,6 +28,7 @@ export const placesOpen: Step = {
     "inbox.page",
     "inbox.request",
     "runs.app-list",
+    "runs.list-column",
     "library.library-place",
     "library.library-page",
     "source-control.changes-page",
@@ -59,8 +61,30 @@ async function checkPlace(
     if (page.failed !== undefined && text.includes(page.failed.text)) return page.failed.code;
     return page.shows.some((line) => text.includes(line.text)) ? "shown" : undefined;
   });
-  if (shown.value === "shown") return undefined;
-  return { code: shown.value ?? noPage, note: `${name}: ${lastWords(shown.text)}` };
+  if (shown.value !== "shown") {
+    return { code: shown.value ?? noPage, note: `${name}: ${lastWords(shown.text)}` };
+  }
+  return page.wide === undefined ? undefined : checkWide(context, name, page.wide);
+}
+
+/**
+ * Widens the window and waits for the page's `wide` text, such as the Runs page's empty content
+ * pane beside its list (`runs.list-column`); fails as `NO_<PLACE>_WIDE_PAGE` without it.
+ */
+async function checkWide(
+  context: StepContext,
+  name: string,
+  wide: TextInFile,
+): Promise<PlaceFailure | undefined> {
+  const outcome = await inWideWindow(context, async () => {
+    const shown = await waitForText(context, pageWaitMs, (text) =>
+      text.includes(wide.text) ? "shown" : undefined,
+    );
+    if (shown.value === "shown") return { passed: true };
+    const note = `${name}, in a wide window: ${lastWords(shown.text)}`;
+    return { passed: false, code: `NO_${name.toUpperCase()}_WIDE_PAGE`, note };
+  });
+  return outcome.passed ? undefined : { code: outcome.code, note: outcome.note };
 }
 
 /**

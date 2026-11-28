@@ -59,6 +59,8 @@ export {
   type SandboxStart,
   useSandboxStart,
 } from "./sandbox-cant-run/use-sandbox-start.ts";
+// The Runs page's two columns, for the e2e page that photographs them (`runs.list-column`).
+export { RunsAppView } from "./ui/runs-app-view.tsx";
 
 /** One run as the Runs list reads it: its summary. */
 export interface SourcedRun {

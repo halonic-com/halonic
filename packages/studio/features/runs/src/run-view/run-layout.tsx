@@ -1,13 +1,28 @@
 import { shortRunId } from "@halonicjs/app";
 import { Button, EmptyState, List, StatusChip } from "@halonicjs/studio-kit";
 import { type EngineWords, PageBackLinkSlot } from "@halonicjs/studio-shell";
-import { type ReactNode, useRef } from "react";
+import { createContext, type ReactNode, useContext, useRef } from "react";
 import type { SourcedRun } from "../api.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
 import { runPageWords } from "../run-words.ts";
 import type { RunAgain } from "./run-again.ts";
 import { RunAgainFailed } from "./run-again-failed.tsx";
 import { type RunPageContext, runHeader } from "./run-page-model.ts";
+
+/**
+ * Whether the run's title shows on a phone too. A run's own tab hides it there, as the top bar
+ * names the run; in the Runs page's content pane the top bar says "Runs", so the pane shows it
+ * (`runs.list-column`).
+ */
+const TitleOnPhone = createContext(false);
+
+/**
+ * Shows the run's title on a phone for the run pages inside it, as the Runs page's content pane
+ * does.
+ */
+export function RunTitleOnPhone({ children }: { readonly children: ReactNode }) {
+  return <TitleOnPhone value={true}>{children}</TitleOnPhone>;
+}
 
 /** What stands where the receipt and Every step go while the log isn't read: a skeleton, or why not. */
 export function LogUnread({
@@ -63,6 +78,8 @@ export function RunLayout({
   readonly children: ReactNode;
 }) {
   const header = runHeader(run, context);
+  const titleOnPhone = useContext(TitleOnPhone);
+  const titleHidden = phone && !titleOnPhone;
   // Run again, in the header or in the failed banner, takes focus once Review has trusted the workspace.
   const page = useRef<HTMLDivElement>(null);
   const focusRunAgain = () =>
@@ -78,7 +95,7 @@ export function RunLayout({
       <header className="flex flex-col gap-1">
         <p className="text-small text-fg-muted">{header.kindLabel}</p>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className={phone ? "sr-only" : "text-title"}>{header.title}</h1>
+          <h1 className={titleHidden ? "sr-only" : "text-title"}>{header.title}</h1>
           <StatusChip tone={header.chip.tone} dot={header.chip.dot}>
             {header.chip.word}
           </StatusChip>

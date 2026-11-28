@@ -4,6 +4,7 @@ import { type EngineWords, engineWordsOf, type PlaceViewProps } from "@halonicjs
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { type RunnableWorkflow, RunStartHostService, SampleHintService } from "../api.ts";
 import { AllRunsService } from "../app/all-runs-feed.ts";
+import { paneContext } from "../app/runs-panes.ts";
 import { listRows } from "../list/list-rows.ts";
 import { useSampleRuns } from "../list/run-model-path.ts";
 import type { RunRow } from "../list/run-row.ts";
@@ -20,6 +21,8 @@ import {
 } from "../list/runs-filter.ts";
 import { useAnnounceFilterChange } from "../list/use-filter-announcement.ts";
 import { FailureReason, RefreshFailedLine } from "../load-failure.tsx";
+import { RunTitleOnPhone } from "../run-view/run-layout.tsx";
+import { RunPage } from "../run-view/run-page.tsx";
 import { emptyListWords, pageWords } from "../run-words.ts";
 import { type RunsList, RunsListService, type RunsListState } from "../runs-list.ts";
 import { DayList, runColumns, sampleCandidates } from "./day-list.tsx";
@@ -28,18 +31,26 @@ import type { PressRun } from "./press-run-line.tsx";
 import { RunsAppView } from "./runs-app-view.tsx";
 
 /**
- * The Runs place's page: the Runs app's list of every workspace's and team's runs where the app
- * provides `AllRunsService`, else the open workspace's runs, from `RunsListService`.
+ * The Runs place's page: the Runs app's list of every workspace's and team's runs, with the open
+ * run beside it, where the app provides `AllRunsService`, else the open workspace's runs, from
+ * `RunsListService`.
  */
 export function RunsPage({ context }: PlaceViewProps) {
-  const { openItem } = context;
+  const { openItem, openItemInNewTab } = context;
   const allRuns = context.services.find(AllRunsService);
   if (allRuns !== undefined) {
     return (
       <RunsAppView
         feed={allRuns}
         engine={engineWordsOf(context)}
-        {...(openItem === undefined ? {} : { openRun: openItem })}
+        // The content pane draws the run's own page, a new one per run, with its title on a phone
+        // too, where the top bar says "Runs" (`runs.list-column`).
+        runPane={(item, ways) => (
+          <RunTitleOnPhone key={item.id}>
+            <RunPage item={item} context={paneContext(context, ways)} />
+          </RunTitleOnPhone>
+        )}
+        {...(openItemInNewTab === undefined ? {} : { openInNewTab: openItemInNewTab })}
       />
     );
   }

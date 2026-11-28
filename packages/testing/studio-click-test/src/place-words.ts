@@ -12,6 +12,11 @@ export interface PlacePage {
   readonly shows: readonly TextInFile[];
   /** The line the page shows when its first load fails, and the code the results table gives it. */
   readonly failed?: TextInFile & { readonly code: string };
+  /**
+   * A text the page must also show in a wide window, where it has room for a second pane; the
+   * installed app's 800 × 600 window shows one pane, so the step widens it to look.
+   */
+  readonly wide?: TextInFile;
 }
 
 const placeNames = "packages/studio/shell/src/points/frame.ts";
@@ -36,11 +41,13 @@ export const placePages: readonly PlacePage[] = [
   },
   {
     // The desktop Runs place is the Runs app (HAL-18725). A fresh install's demo has no run yet,
-    // so its summary line says so (run 45705698354).
+    // so its summary line says so (run 45705698354). In a wide window, its content pane shows
+    // beside the list with no run open (`runs.list-column`).
     place: { text: "Runs", file: placeNames },
     shows: [
       { text: "No runs yet today.", file: "packages/studio/features/runs/src/app/app-run.ts" },
     ],
+    wide: { text: "No run open", file: "packages/studio/features/runs/src/ui/runs-app-view.tsx" },
   },
   {
     // The Library opens on Skills the first time. Its load failure is built from the tab's name,

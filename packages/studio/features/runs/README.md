@@ -108,7 +108,7 @@ const [install] = blockedSites(events, { limit: entrySiteLimit });
 
 ## The run page
 
-A run is its own item kind, `run`, one run per tab. A row of the Runs list, or a child run's **Open run**, opens it in the active tab through the shell's `openItem`. The page reads the same `RunsList`, so it moves on with the run (requirement `runs.run-page`). A run's tab stays open when the run leaves the workspace (the kind's `tab.exists` is always true): the page says so itself. What it shows is worked out in `run-view/run-page-model.ts`:
+A run is its own item kind, `run`, one run per tab. A row of the Runs list, or a child run's **Open run**, opens it in the active tab through the shell's `openItem`. Where the app provides `AllRunsService`, the Runs page has two columns instead (requirement `runs.list-column`, `app/runs-panes.ts`): a row's click shows the run page in the content pane beside the list, a Ctrl-click opens it in a new tab, and a run the pane's page opens shows in the pane. The page reads the same `RunsList`, so it moves on with the run (requirement `runs.run-page`). A run's tab stays open when the run leaves the workspace (the kind's `tab.exists` is always true): the page says so itself. What it shows is worked out in `run-view/run-page-model.ts`:
 
 ```ts
 import { runBanner, runHeader } from "./run-view/run-page-model.ts";

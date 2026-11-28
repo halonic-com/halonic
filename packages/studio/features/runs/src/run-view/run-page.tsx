@@ -52,8 +52,16 @@ import { useRunChanges } from "./use-run-changes.ts";
 /** The command that opens the workspace page at its Budget block (`features/workspace`). */
 const openBudgetCommand = "workspace.open-budget";
 
-/** The `run` item kind's page: one run of the open workspace, from `RunsListService`. */
-export function RunPage({ item, context, step, asked }: ItemViewProps) {
+/**
+ * The `run` item kind's page: one run of the open workspace, from `RunsListService`. It is also
+ * the Runs page's content pane (`runs.list-column`), which has no item sections to give it.
+ */
+export function RunPage({
+  item,
+  context,
+  step,
+  asked,
+}: Pick<ItemViewProps, "item" | "context" | "step" | "asked">) {
   const { openPlace, openItem } = context;
   const instructionTrust = context.services.find(InstructionTrustHostService);
   const sandboxStartCheck = context.services.find(sandboxStartCheckKey);

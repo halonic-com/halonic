@@ -36,6 +36,14 @@ fed made-up data, so the spacing under each section's name is the app's. The Age
 `load…` function in their `api.ts`, which loads the view only when called. The phone's Settings
 sheet isn't taken yet.
 
+## Runs page
+
+`runs-page-<empty|open|one-pane>-<light|dark>.png` is the Runs page in the two-column layout
+(HAL-20729): the Runs app's list column of made-up Acme runs with no run open, then with a waiting
+run open in the content pane, then a 390 px window with the run alone under **Back to Runs**. The
+page is in the workflows feature's `e2e/pages/runs-page.tsx`, drawn from the runs feature's `api`
+entry point; its spec is `e2e/runs-page.spec.ts`.
+
 ## Agent map
 
 `agent-map-<light|dark>.png` is an agent's page on Flow, with a card on each side of the map, from
