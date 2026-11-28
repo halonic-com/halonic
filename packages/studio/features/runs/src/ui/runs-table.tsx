@@ -1,5 +1,6 @@
 import { shortRunId } from "@halonicjs/app";
 import {
+  ContentHeader,
   IconTile,
   List,
   type ListColumnsRow,
@@ -10,7 +11,7 @@ import {
 } from "@halonicjs/studio-kit";
 import type { AllRunsRow } from "../app/source-rows.ts";
 import { runsByDay } from "../list/run-groups.ts";
-import { pageWords, whenWords } from "../run-words.ts";
+import { emptyListWords, pageWords, whenWords } from "../run-words.ts";
 import { tookWords } from "../time-words.ts";
 import { runColumns, StartedByWithTooltip } from "./day-list.tsx";
 
@@ -40,27 +41,32 @@ export interface RunsTableProps {
 
 /**
  * The content pane while no run is open (`runs.runs-table`): "All runs" with the Runs page's
- * sentence, then every run in the list column as a table, newest first under a heading per day,
- * with what the list's rows have no room for: the run's short id, what started it and how long it
- * took. A click or Enter on a row opens its run, as in the list.
+ * sentence in the kit's content-pane header, then every run in the list column as a table, newest
+ * first under a heading per day, with what the list's rows have no room for: the run's short id,
+ * what started it and how long it took. A click or Enter on a row opens its run, as in the list.
+ * With no runs, the Runs page's "No runs yet" stands in for the table.
  */
 export function RunsTable({ rows, now, timeZone, onOpen, onOpenInNewTab }: RunsTableProps) {
   const locale = useFormatLocale();
   return (
-    <section aria-labelledby="runs-table-title" className="flex min-w-0 flex-col">
-      <header className="flex min-h-16 shrink-0 items-center gap-4 border-b border-border px-4">
-        <IconTile>
-          <PlaceIcon name="runs" />
-        </IconTile>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <h2 id="runs-table-title" className="truncate text-body-strong">
-            {runsTableWords.title}
-          </h2>
-          <p className="truncate text-small text-fg-muted">{pageWords.sentence}</p>
-        </div>
-      </header>
+    <section
+      aria-label={runsTableWords.title}
+      data-part="runs-table"
+      className="flex min-w-0 flex-col"
+    >
+      {/* The kit's header draws a shadow where the design has a hairline; that variant is the
+          kit's to add, for Code and Changes too. */}
+      <ContentHeader
+        picture={
+          <IconTile>
+            <PlaceIcon name="runs" />
+          </IconTile>
+        }
+        title={runsTableWords.title}
+        line={pageWords.sentence}
+      />
       <div className="flex flex-col px-2 pb-4">
-        <ColumnNames />
+        {rows.length === 0 ? null : <ColumnNames />}
         <List
           label={runsTableWords.title}
           groups={runsByDay(rows, { now, timeZone }).map((group) => ({
@@ -70,6 +76,7 @@ export function RunsTable({ rows, now, timeZone, onOpen, onOpenInNewTab }: RunsT
           }))}
           groupHeadingLevel={3}
           columns={runColumns}
+          empty={{ title: emptyListWords.noRunsTitle }}
           onOpen={onOpen}
           {...(onOpenInNewTab === undefined ? {} : { onOpenInNewTab })}
         />
@@ -80,8 +87,9 @@ export function RunsTable({ rows, now, timeZone, onOpen, onOpenInNewTab }: RunsT
 
 /**
  * The names over the columns, for the eye: each row's sentence already says them to a screen
- * reader. The widths are the kit's List columns' own (`columnWidthClasses`), and the names show
- * only while the List draws its rows as columns (`@list-wide`), so they line up with the cells.
+ * reader. The kit's List draws no column names, so the widths, the row's `px-4` and `gap-3` are
+ * copies of its `columnWidthClasses` and row padding, kept in step by hand until the List names its
+ * columns itself. They show only while the List draws its rows as columns (`@list-wide`).
  */
 function ColumnNames() {
   const names = runsTableWords.columns;
@@ -99,7 +107,7 @@ function ColumnNames() {
 }
 
 /**
- * A run as a table row: its chip, with the dot while it runs or needs someone, its short id, what
+ * A run as a table row: its chip, with the dot while it's live (running, needs you), its short id, what
  * ran over its line, what started it, and when it started over how long it took. A failed run's
  * line is the kit's error reason, in `danger`.
  */
@@ -116,10 +124,7 @@ function tableRow(
     cells: {
       status: {
         value: (
-          <StatusChip
-            tone={row.chip.tone}
-            dot={row.phase === "running" || row.phase === "needs-you"}
-          >
+          <StatusChip tone={row.chip.tone} dot={row.chip.dot === true}>
             {row.chip.word}
           </StatusChip>
         ),
@@ -132,7 +137,8 @@ function tableRow(
       },
     },
     label: row.label,
-    ...(row.phase === "failed" ? { error: { reason: row.line, chip: row.chip.word } } : {}),
+    // Failed, not Couldn't try, which the Runs page keeps neutral too.
+    ...(row.chip.tone === "danger" ? { error: { reason: row.line, chip: row.chip.word } } : {}),
   };
 }
 

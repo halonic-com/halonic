@@ -29,6 +29,7 @@ export const placesOpen: Step = {
     "inbox.request",
     "runs.app-list",
     "runs.list-column",
+    "runs.runs-table",
     "library.library-place",
     "library.library-page",
     "source-control.changes-page",
@@ -68,8 +69,8 @@ async function checkPlace(
 }
 
 /**
- * Widens the window and waits for the page's `wide` text, such as the Runs page's empty content
- * pane beside its list (`runs.list-column`); fails as `NO_<PLACE>_WIDE_PAGE` without it.
+ * Widens the window and waits for the page's `wide` text, such as the runs table in the Runs
+ * page's content pane beside its list (`runs.runs-table`); fails as `NO_<PLACE>_WIDE_PAGE` without it.
  */
 async function checkWide(
   context: StepContext,

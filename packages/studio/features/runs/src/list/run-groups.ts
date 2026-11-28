@@ -33,7 +33,10 @@ export interface GroupedRun {
 export interface RunGroup<Run extends GroupedRun> {
   /** `needs-you`, `failed`, `running`, or `day` for a day of ended runs. */
   readonly kind: "needs-you" | "failed" | "running" | "day";
-  /** "Needs you", "Failed", "Running", "Earlier today", "Yesterday", then "Fri 6 Nov". */
+  /**
+   * "Needs you", "Failed", "Running", "Earlier today", "Yesterday", then "Fri 6 Nov"; in the runs
+   * table, "Today" in place of "Earlier today".
+   */
   readonly heading: string;
   /** Newest first. */
   readonly runs: readonly Run[];
@@ -142,7 +145,7 @@ function isUnseenFailure(
   );
 }
 
-/** Ended runs, one group per day they started in the user's zone, in the order given. */
+/** The runs given, one group per day they started in the user's zone, in the order given. */
 function dayGroups<Run extends GroupedRun>(
   runs: readonly Run[],
   context: RunGroupsContext,
@@ -163,7 +166,7 @@ function dayGroups<Run extends GroupedRun>(
 }
 
 /**
- * Heads a day by its first instant: "Earlier today", "Yesterday", then "Fri 6 Nov", with the
+ * Heads a day by its first instant: `todayHeading` ("Earlier today" or "Today"), "Yesterday", then "Fri 6 Nov", with the
  * year when it isn't this one. The formatters are made once, and each day is worked out once,
  * however many runs it holds.
  */

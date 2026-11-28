@@ -67,7 +67,7 @@ export function workflowAppRun(
     line: row.line,
     where,
     by: { kind: "workflow" },
-    chip: { word: row.chip.word, tone: row.chip.tone },
+    chip: { word: row.chip.word, tone: row.chip.tone, dot: row.chip.dot },
     label: row.label,
     item: { kind: "run", hub: summary.hubId, id: summary.id },
     startedBy: {
@@ -169,7 +169,7 @@ export function teamAppRun(run: TeamRunFields, context: TeamRowContext): AllRuns
       context.agent === undefined
         ? { kind: "agent", name: teamRowWords.unknownAgent }
         : { kind: "agent", name: context.agent.name, id: run.agent },
-    chip: { word: look.word, tone: look.tone },
+    chip: { word: look.word, tone: look.tone, dot: run.state === "running" },
     label: teamRowWords.label(look.word, title, line, context.where),
     notice: {
       startedByMe: false,

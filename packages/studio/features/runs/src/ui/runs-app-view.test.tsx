@@ -77,7 +77,7 @@ function paneText(root: HTMLElement): string | null | undefined {
 
 /** Whether the content pane shows the runs table, which it does while no run is open. */
 function paneShowsTable(root: HTMLElement): boolean {
-  return root.querySelector('[data-part="run-pane"] #runs-table-title') !== null;
+  return root.querySelector('[data-part="run-pane"] [data-part="runs-table"]') !== null;
 }
 
 verifies("runs.app-sources", () => {

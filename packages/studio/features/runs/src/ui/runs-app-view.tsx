@@ -152,9 +152,10 @@ function useRunsPanes() {
   const listColumn = useRef<HTMLDivElement>(null);
   const pane = useRef<HTMLDivElement>(null);
   const show = (item: RunItem) => {
-    // A row of the runs table in the pane goes with the run's page coming in, as in one pane.
-    const fromPane = pane.current?.contains(document.activeElement) === true;
-    if (!onePane && !fromPane) return setOpen(item);
+    // A row of the runs table goes with the run's page coming in, as in one pane. Only the table:
+    // a run the open run's page opens on its own keeps the focus as it was.
+    const fromTable = open === undefined && pane.current?.contains(document.activeElement) === true;
+    if (!onePane && !fromTable) return setOpen(item);
     flushSync(() => setOpen(item));
     pane.current?.querySelector<HTMLElement>("button")?.focus();
   };

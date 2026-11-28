@@ -43,7 +43,7 @@ const { startedBy: _schedule, ...teamFields } = row("team_run_9c", {
   line: "ACME-7 Fix the login",
   where: "Paperclip · Acme",
   by: { kind: "agent", name: "Ada" },
-  chip: { word: "Running", tone: "running" },
+  chip: { word: "Running", tone: "running", dot: true },
   label: "Running, Ada · CTO, ACME-7 Fix the login, Paperclip · Acme.",
   notice: { startedByMe: false },
 });
@@ -54,6 +54,17 @@ const failedRow = row("run_01jd7m", {
   line: "Couldn't read 2 invoices",
   chip: { word: "Failed", tone: "danger" },
 });
+const waitingRow = row("run_01jc8t", {
+  phase: "running",
+  line: "Waiting until Monday 09:00",
+  chip: { word: "Waiting", tone: "neutral", dot: false },
+});
+const cantTryRow = row("run_01jc7x", {
+  phase: "failed",
+  line: "Couldn't try: no model set",
+  chip: { word: "Couldn't try", tone: "neutral", dot: false },
+});
+const dotSelector = "span.rounded-full.size-1\\.5";
 
 function showTable(rows: readonly AllRunsRow[]) {
   const onOpen = vi.fn();
@@ -119,12 +130,32 @@ verifies("runs.runs-table", () => {
       const text = rowText(root, "team_run_9c");
       expect(text).not.toContain("Every Friday");
       expect(text).not.toContain("took");
-      const dots = root.querySelectorAll(
-        '[data-row-id="team_run_9c"] span.rounded-full.size-1\\.5',
+      expect(
+        root.querySelectorAll(`[data-row-id="team_run_9c"] ${dotSelector}`).length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("gives the dot only to a live run, not to one that waits or is done", () => {
+      const { root } = showTable([waitingRow, workspaceRow]);
+      expect(root.querySelectorAll(dotSelector)).toHaveLength(0);
+      expect(rowText(root, "run_01jc8t")).toContain("Waiting");
+    });
+
+    it("shows the routine's name as Started by's tooltip", () => {
+      const { root } = showTable([workspaceRow]);
+      const words = [...root.querySelectorAll('[data-row-id="run_01jd8b"] span')].find(
+        (each) => each.textContent === "Every Friday",
       );
-      expect(dots.length).toBeGreaterThan(0);
-      const { root: doneRoot } = showTable([workspaceRow]);
-      expect(doneRoot.querySelectorAll("span.rounded-full.size-1\\.5")).toHaveLength(0);
+      const tooltipId = words?.getAttribute("aria-describedby");
+      expect(tooltipId).toBeTruthy();
+      expect(document.getElementById(tooltipId ?? "")?.textContent).toBe("Weekly report routine");
+    });
+
+    it("says No runs yet with no column names while there are no runs", () => {
+      const { root } = showTable([]);
+      expect(root.querySelector("h2")?.textContent).toBe("All runs");
+      expect(root.textContent).toContain("No runs yet");
+      expect(root.querySelector('[data-part="column-names"]')).toBeNull();
     });
 
     it("writes a failed run's line in the danger colour", () => {
@@ -133,6 +164,15 @@ verifies("runs.runs-table", () => {
         (each) => each.textContent === "Couldn't read 2 invoices",
       );
       expect(line?.className).toContain("text-danger");
+    });
+
+    it("keeps a run that couldn't try neutral, as the Runs page does", () => {
+      const { root } = showTable([cantTryRow]);
+      const line = [...root.querySelectorAll('[data-row-id="run_01jc7x"] span')].find(
+        (each) => each.textContent === "Couldn't try: no model set",
+      );
+      expect(line?.className).not.toContain("text-danger");
+      expect(root.querySelectorAll(dotSelector)).toHaveLength(0);
     });
 
     it("opens a run on a click, and in a new tab on a Ctrl-click", () => {
@@ -146,11 +186,11 @@ verifies("runs.runs-table", () => {
   });
 
   describe("RunsAppView's runs table", () => {
-    it("replaces the table with the run's page and focuses its first button", () => {
-      const root = render(
+    function showView(rows: readonly AllRunsRow[]) {
+      return render(
         <NarrowProvider narrow={false}>
           <RunsAppView
-            feed={feedOf([workspaceRow])}
+            feed={feedOf(rows)}
             engine={engineWordsOf({})}
             runPane={(item) => <button type="button">{`Run again ${item.id}`}</button>}
             now={() => now}
@@ -158,14 +198,31 @@ verifies("runs.runs-table", () => {
           />
         </NarrowProvider>,
       );
+    }
+
+    function pressTableRow(root: HTMLElement, id: string) {
       const cell = root.querySelector<HTMLElement>(
-        '[data-part="run-pane"] [data-row-id="run_01jd8b"] [role="gridcell"]',
+        `[data-part="runs-table"] [data-row-id="${id}"] [role="gridcell"]`,
       );
       // jsdom's click doesn't move the focus, so the row takes it first, as a real press would.
       act(() => cell?.focus());
       act(() => cell?.click());
-      expect(root.querySelector("#runs-table-title")).toBeNull();
+    }
+
+    it("replaces the table with the run's page and focuses its first button", () => {
+      const root = showView([workspaceRow]);
+      pressTableRow(root, "run_01jd8b");
+      expect(root.querySelector('[data-part="runs-table"]')).toBeNull();
       expect(document.activeElement?.textContent).toBe("Run again run_01jd8b");
+    });
+
+    it("counts a run opened from the table, so its failure leaves Failed in the list", () => {
+      const root = showView([failedRow]);
+      const listHeadings = () =>
+        [...root.querySelectorAll('[data-part="list-column"] h2')].map((each) => each.textContent);
+      expect(listHeadings()).toContain("Failed");
+      pressTableRow(root, "run_01jd7m");
+      expect(listHeadings()).not.toContain("Failed");
     });
   });
 });

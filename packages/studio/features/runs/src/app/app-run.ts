@@ -27,7 +27,8 @@ export interface AppRun extends GroupedRun {
   /** Where it runs: the workspace, or "Paperclip · Acme". */
   readonly where: string;
   readonly by: RunBy;
-  readonly chip: { readonly word: string; readonly tone: StatusChipTone };
+  /** The status chip, with its dot only while the run is live (running, needs you), as the Runs page draws it. */
+  readonly chip: { readonly word: string; readonly tone: StatusChipTone; readonly dot?: boolean };
   /** The sentence a screen reader hears for the row, ending with a full stop. */
   readonly label: string;
 }
