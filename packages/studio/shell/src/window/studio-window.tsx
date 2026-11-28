@@ -398,6 +398,7 @@ function StudioWindowBody(props: StudioWindowProps) {
               tabs={tabs}
               announcer={announcer}
               contextFor={contextFor}
+              pageItems={readers.pageItems}
               backLink
             />
           )}

@@ -118,6 +118,14 @@ export interface WorkspaceContext {
    */
   readonly activeItem?: ActiveItemSource;
   /**
+   * Names the item a place's page shows inside it, such as the run the Runs page has open in its
+   * content pane, so `activeItem` gives that item while the tab shows the place
+   * (`shell.page-item`); `null` says the page shows none any more. Not `showItem`, which opens an
+   * item: this only says what is in view. The window gives it to the view of a place it draws in a
+   * desktop tab; anything else, and a phone, has none.
+   */
+  readonly setPageItem?: (item: ItemRef | null) => void;
+  /**
    * The name of the page the window shows, so a feature can say what the user is looking at, such
    * as the Assistant panel's "Looking at: Home": on the desktop the active tab's, as its tab names
    * it ("Home", "Changes", an item's name), on a phone the phone page's, as its top bar names it.

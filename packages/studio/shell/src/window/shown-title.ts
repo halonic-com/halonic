@@ -2,19 +2,27 @@ import { useEffect, useMemo, useState } from "react";
 import { currentLocation, type TabSet } from "../tabs/tab-set.ts";
 import type { ActiveItemSource, ShownTitleSource } from "../workspace-context.ts";
 import { activeItemOf } from "./active-item.ts";
+import { PageItems } from "./page-items.ts";
 
-/** What the active tab shows, as the window gives it to the desktop's features: its item and name. */
-export function tabReadersOf(tabs: TabSet): {
+/**
+ * What the active tab shows, as the window gives it to the desktop's features: its item, or the
+ * item its place's page set in `pageItems`, and its name.
+ */
+export function tabReadersOf(
+  tabs: TabSet,
+  pageItems?: PageItems,
+): {
   readonly activeItem: ActiveItemSource;
   readonly shownTitle: ShownTitleSource;
 } {
-  return { activeItem: activeItemOf(tabs), shownTitle: shownTitleOf(tabs) };
+  return { activeItem: activeItemOf(tabs, pageItems), shownTitle: shownTitleOf(tabs) };
 }
 
 /**
  * What the window gives its features about the page it shows: on the desktop the active tab's
  * item and name, on a phone the name of the phone's own page (`phoneTitle`, as its top bar shows
- * it). The same objects every render, so a feature's subscription stays.
+ * it), and the desktop's `pageItems`, which a place's page in a tab sets (`shell.page-item`).
+ * The same objects every render, so a feature's subscription stays.
  */
 export function useShownReaders(
   tabs: TabSet,
@@ -22,14 +30,19 @@ export function useShownReaders(
 ): {
   readonly desktop: ReturnType<typeof tabReadersOf>;
   readonly phone: { readonly shownTitle: ShownTitleSource };
+  readonly pageItems: PageItems;
 } {
   const [phone] = useState(() => phoneShownTitle(phoneTitle));
   // After the render that moved the phone, so a listener reads the new name.
   useEffect(() => phone.show(phoneTitle), [phone, phoneTitle]);
-  return useMemo(
-    () => ({ desktop: tabReadersOf(tabs), phone: { shownTitle: phone.source } }),
-    [tabs, phone],
-  );
+  return useMemo(() => {
+    const pageItems = new PageItems(tabs);
+    return {
+      desktop: tabReadersOf(tabs, pageItems),
+      phone: { shownTitle: phone.source },
+      pageItems,
+    };
+  }, [tabs, phone]);
 }
 
 /**

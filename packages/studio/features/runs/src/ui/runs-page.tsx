@@ -36,7 +36,7 @@ import { RunsAppView } from "./runs-app-view.tsx";
  * `RunsListService`.
  */
 export function RunsPage({ context }: PlaceViewProps) {
-  const { openItem, openItemInNewTab } = context;
+  const { openItem, openItemInNewTab, setPageItem } = context;
   const allRuns = context.services.find(AllRunsService);
   if (allRuns !== undefined) {
     return (
@@ -51,6 +51,7 @@ export function RunsPage({ context }: PlaceViewProps) {
           </RunTitleOnPhone>
         )}
         {...(openItemInNewTab === undefined ? {} : { openInNewTab: openItemInNewTab })}
+        {...(setPageItem === undefined ? {} : { setPageItem })}
       />
     );
   }

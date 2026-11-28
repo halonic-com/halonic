@@ -236,3 +236,49 @@ verifies("runs.list-column", () => {
     });
   });
 });
+
+verifies("shell.page-item", () => {
+  describe("RunsAppView names the open run to the shell", () => {
+    function showNaming(narrow = false) {
+      const setPageItem = vi.fn();
+      const root = render(
+        <NarrowProvider narrow={narrow}>
+          <RunsAppView
+            feed={feedOf({ rows: [workspaceRow, teamRow] })}
+            engine={engineWordsOf({})}
+            runPane={(item) => <p>{`Run page ${item.id}`}</p>}
+            setPageItem={setPageItem}
+            now={() => now}
+            timeZone="Europe/Madrid"
+          />
+        </NarrowProvider>,
+      );
+      return { root, setPageItem };
+    }
+
+    it("names the run a row opens in the content pane, and none while the table shows", () => {
+      const { root, setPageItem } = showNaming();
+      expect(setPageItem).not.toHaveBeenCalled();
+
+      clickRow(root, "w1");
+
+      expect(setPageItem).toHaveBeenLastCalledWith(workspaceRow.item);
+    });
+
+    it("clears it on Back in one pane, and when the page closes", () => {
+      const { root, setPageItem } = showNaming(true);
+      clickRow(root, "w1");
+      const back = [...root.querySelectorAll("button")].find(
+        (button) => button.textContent === "Back to Runs",
+      );
+      act(() => back?.click());
+      expect(setPageItem).toHaveBeenLastCalledWith(null);
+
+      clickRow(root, "w1");
+      expect(setPageItem).toHaveBeenLastCalledWith(workspaceRow.item);
+      unmountAll();
+
+      expect(setPageItem).toHaveBeenLastCalledWith(null);
+    });
+  });
+});

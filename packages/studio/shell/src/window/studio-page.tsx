@@ -1,6 +1,8 @@
+import { useContext, useMemo } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
 import { HomePage } from "../home/home-page.tsx";
 import { HomeView } from "../home/home-view.tsx";
+import { TabPageContext } from "../item-page/remembered-view.ts";
 import { BackLinkSlotProvider } from "../page/back-link-slot.tsx";
 import { PageBackLink } from "../page/page-back-link.tsx";
 import type { PhonePageMemory } from "../phone/page-memory.tsx";
@@ -13,6 +15,7 @@ import { homeLocation, type TabLocation, type TabSet } from "../tabs/tab-set.ts"
 import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 import { ItemView, itemOfLocationKey } from "./item-view.tsx";
+import type { PageItems } from "./page-items.ts";
 
 /** What a place's view gets: the context of the feature that added the place. */
 export interface PlaceViewProps {
@@ -43,6 +46,8 @@ export interface StudioPageProps {
   readonly backLink?: boolean;
   /** The phone page's memory, handed to a place's view (`PlaceViewProps`). */
   readonly memory?: PhonePageMemory | undefined;
+  /** Where a place's view in a desktop tab names the item it shows (`setPageItem`). */
+  readonly pageItems?: PageItems;
 }
 
 /**
@@ -67,6 +72,7 @@ export function StudioPage({
   contextFor,
   backLink = false,
   memory,
+  pageItems,
 }: StudioPageProps) {
   const { contributions } = shell;
   if (location.key === homeLocation.key) {
@@ -113,6 +119,7 @@ export function StudioPage({
         context={contextFor(place.featureId)}
         {...(sub === "" ? {} : { sub })}
         memory={memory}
+        pageItems={pageItems}
       />
     );
   }
@@ -152,22 +159,43 @@ function PlaceView({
   context,
   sub,
   memory,
+  pageItems,
 }: {
   readonly place: Registered<PlaceContribution>;
   readonly name: string;
   readonly context: WorkspaceContext;
   readonly sub?: string;
   readonly memory: PhonePageMemory | undefined;
+  readonly pageItems: PageItems | undefined;
 }) {
+  const setPageItem = usePageItemSetter(pageItems);
   return (
     <LoadedView<PlaceViewProps>
       view={place}
       name={name}
       props={{
-        context,
+        context: setPageItem === undefined ? context : { ...context, setPageItem },
         ...(sub === undefined ? {} : { sub }),
         ...(memory === undefined ? {} : { memory }),
       }}
     />
   );
+}
+
+/**
+ * The `setPageItem` of a place's view in a desktop tab: it keeps the item for that tab and place,
+ * the same function while both stay. A page outside a tab, such as the phone's, gets none.
+ */
+function usePageItemSetter(
+  pageItems: PageItems | undefined,
+): WorkspaceContext["setPageItem"] | undefined {
+  const page = useContext(TabPageContext);
+  const tabId = page?.tabId;
+  const locationKey = page?.locationKey;
+  return useMemo(() => {
+    if (pageItems === undefined || tabId === undefined || locationKey === undefined) {
+      return undefined;
+    }
+    return (item) => pageItems.set(tabId, locationKey, item);
+  }, [pageItems, tabId, locationKey]);
 }
