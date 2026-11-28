@@ -2,4 +2,4 @@
 "@halonicjs/app-studio": patch
 ---
 
-A Paperclip sign-in started from the Inbox now opens its approval page in the small sign-in window over Halonic, as it does from Settings › Connections.
+On Windows, a Paperclip sign-in started from the Inbox now opens its approval page in the same small sign-in window as Settings › Connections.
