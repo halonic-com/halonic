@@ -2,7 +2,7 @@
 
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { createShell } from "../shell.ts";
 import { FakeTimers } from "../test-support/fake-timers.ts";
 import { MapTarget } from "../test-support/map-target.ts";
@@ -37,7 +37,7 @@ function workspaceOf(shell: ReturnType<typeof setUp>["shell"], engineReady?: Pro
 afterEach(unmountAll);
 
 verifies("shell.engine-starting", () => {
-  it("is starting until the workspace's engine open settles, and announces nothing", async () => {
+  it("is starting until the workspace's engine open settles, and tells the window's engine nothing", async () => {
     const { shell, events } = setUp();
     const open = handSettled();
     const workspace = workspaceOf(shell, open.promise);
@@ -83,9 +83,21 @@ verifies("shell.engine-starting", () => {
     const globex = workspaceOf(shell, open.promise);
     const acme = workspaceOf(shell);
 
-    const acmeLine = render(<EngineLine engine={shell.engine} starting={acme.engineStarting} />);
+    const acmeLine = render(
+      <EngineLine
+        engine={shell.engine}
+        announcer={shell.announcer}
+        starting={acme.engineStarting}
+      />,
+    );
     expect(acmeLine.textContent).toBe("");
-    const line = render(<EngineLine engine={shell.engine} starting={globex.engineStarting} />);
+    const line = render(
+      <EngineLine
+        engine={shell.engine}
+        announcer={shell.announcer}
+        starting={globex.engineStarting}
+      />,
+    );
     expect(line.textContent).toBe("Starting the engine…");
 
     await act(async () => {
@@ -93,5 +105,55 @@ verifies("shell.engine-starting", () => {
       await open.promise;
     });
     expect(line.textContent).toBe("");
+  });
+
+  it('announces "Starting the engine…" once, politely, and nothing when the line goes', async () => {
+    const { shell } = setUp();
+    const announce = vi.spyOn(shell.announcer, "announce");
+    const open = handSettled();
+    const globex = workspaceOf(shell, open.promise);
+
+    const line = render(
+      <EngineLine
+        engine={shell.engine}
+        announcer={shell.announcer}
+        starting={globex.engineStarting}
+      />,
+    );
+    expect(line.textContent).toBe("Starting the engine…");
+    expect(announce.mock.calls).toEqual([["Starting the engine…", "polite"]]);
+
+    await act(async () => {
+      open.resolve();
+      await open.promise;
+    });
+    expect(line.textContent).toBe("");
+    expect(announce).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces nothing for a workspace whose engine has started", async () => {
+    const { shell } = setUp();
+    const announce = vi.spyOn(shell.announcer, "announce");
+    const started = workspaceOf(shell, Promise.resolve());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    render(
+      <EngineLine
+        engine={shell.engine}
+        announcer={shell.announcer}
+        starting={started.engineStarting}
+      />,
+    );
+    render(
+      <EngineLine
+        engine={shell.engine}
+        announcer={shell.announcer}
+        starting={workspaceOf(shell).engineStarting}
+      />,
+    );
+
+    expect(announce).not.toHaveBeenCalled();
   });
 });

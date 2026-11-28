@@ -1,5 +1,6 @@
 import { InfoIcon } from "@halonicjs/studio-kit";
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
+import type { Announcer } from "../announcer/announcer.ts";
 import { welcomeOpenWords } from "../welcome/welcome-open-words.ts";
 import type { ShellEngine } from "./engine-connection.ts";
 import type { EngineStarting } from "./engine-starting.ts";
@@ -7,6 +8,8 @@ import type { EngineStarting } from "./engine-starting.ts";
 /** Props for {@link EngineLine}. */
 export interface EngineLineProps {
   readonly engine: ShellEngine;
+  /** The window's announcer, which reads "Starting the engine…" once when the line shows it. */
+  readonly announcer: Announcer;
   /** Whether the shown workspace's engine still starts; left out, it doesn't. */
   readonly starting?: EngineStarting | undefined;
 }
@@ -17,12 +20,18 @@ export interface EngineLineProps {
  * the top of the panel, never once per section, while `engine.stale`; pages keep what they showed. It isn't
  * a live region: the engine announces the change once (VK T2-F30, state coverage D1).
  * While the shown workspace's engine starts, as when a workspace shows before its engine
- * (HAL-19965), the line says "Starting the engine…", the Recent row's approved step (HAL-19613).
+ * (HAL-19965), the line says "Starting the engine…", the Recent row's approved step (HAL-19613),
+ * and the announcer reads it once, politely, so a screen reader hears why a Run or an answer waits
+ * (WCAG 2.2 SC 4.1.3). Nothing is read when that line goes.
  */
-export function EngineLine({ engine, starting }: EngineLineProps) {
+export function EngineLine({ engine, announcer, starting }: EngineLineProps) {
   const stale = useEngineStale(engine);
   const startingNow = useStarting(starting);
   const line = lineOf(engine, stale, startingNow);
+  const startingShown = line === welcomeOpenWords.steps.engine;
+  useEffect(() => {
+    if (startingShown) announcer.announce(welcomeOpenWords.steps.engine, "polite");
+  }, [announcer, startingShown]);
   if (line === undefined) {
     return null;
   }

@@ -2,7 +2,8 @@
  * Whether one open workspace's engine is still starting: the workspace shows from its files while
  * the shell opens its engine (HAL-19965). It belongs to the workspace, not to the window's
  * `ShellEngine`, so opening a second folder never says the first one's engine stopped answering.
- * Nothing is announced; the frame's engine line says "Starting the engine…" while it starts.
+ * The window's engine is never told; the frame's engine line says "Starting the engine…" while it
+ * starts, and the announcer reads that once.
  */
 export class EngineStarting {
   #starting: boolean;
