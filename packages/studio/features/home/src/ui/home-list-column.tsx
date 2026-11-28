@@ -1,7 +1,11 @@
 import { type AiChats, AiChatsService } from "@halonicjs/studio-feature-assistant/api";
-import { Button, List, PlusIcon } from "@halonicjs/studio-kit";
-import type { HomeListColumnProps, WorkspaceContext } from "@halonicjs/studio-shell";
-import { useEffect, useRef, useState } from "react";
+import { Button, List, PlusIcon, useToastStore } from "@halonicjs/studio-kit";
+import {
+  errorReasonFor,
+  type HomeListColumnProps,
+  type WorkspaceContext,
+} from "@halonicjs/studio-shell";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { homeWords } from "../home-words.ts";
 import { keptOpenChat, type ListedChat } from "../open-chat.ts";
 
@@ -9,25 +13,62 @@ import { keptOpenChat, type ListedChat } from "../open-chat.ts";
  * Home's list column (`home.list-column`): "New chat" first, then the folder's AI chats, newest
  * message first, or "No chats yet." when there are none. A picked chat opens in the content pane;
  * a Ctrl-click, Cmd-click or middle click opens it as its tab. The shell sets the column's width.
- * Without the Assistant the column is empty, and the pane shows Home's sections.
+ * Without the Assistant the column is empty, and the pane shows Home's sections. A failed read
+ * shows its reason and "Try again" under "New chat", above the list it last showed; a failed
+ * "New chat" shows a danger toast, as the other features do.
  */
 export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) {
   const chats = context.services.find(AiChatsService);
-  const listed = useListedChats(chats, context, open, setOpen);
+  const toasts = useToastStore();
+  const { listed, failure, retrying, retry } = useListedChats(chats, context, open, setOpen);
+  const newChatButton = useRef<HTMLButtonElement>(null);
+  const tryAgainPressed = useRef(false);
+  // Try again goes away once its read works. If the focus fell to the page with it, it moves to
+  // New chat; someone who went elsewhere during a slow read keeps their place.
+  useEffect(() => {
+    if (!tryAgainPressed.current || retrying) return;
+    tryAgainPressed.current = false;
+    if (failure === undefined && focusFellToPage()) newChatButton.current?.focus();
+  }, [failure, retrying]);
   if (chats === undefined) return null;
   const newChat = async () => {
     try {
       setOpen(await chats.newChat(context));
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      context.announcer.announce(`${homeWords.newChatFailed} ${reason}`, "assertive");
+      const reason = errorReasonFor(error);
+      // A danger toast is an alert, which a screen reader reads; announcing it too says it twice.
+      if (toasts === null) {
+        context.announcer.announce(`${homeWords.newChatFailed} ${reason}`, "assertive");
+      } else {
+        toasts.show({ tone: "danger", title: homeWords.newChatFailed, text: reason });
+      }
     }
   };
   return (
     <nav aria-label={homeWords.title} className="flex min-w-0 flex-col gap-2 py-2">
-      <Button variant="ghost" icon={<PlusIcon />} onClick={() => void newChat()}>
+      <Button
+        ref={newChatButton}
+        variant="ghost"
+        icon={<PlusIcon />}
+        onClick={() => void newChat()}
+      >
         {homeWords.newChat}
       </Button>
+      {failure !== undefined && (
+        <p className="flex flex-wrap items-center gap-2 px-3 text-small text-fg-muted">
+          {`${homeWords.chatsFailed} ${failure.reason}`}
+          <Button
+            variant="ghost"
+            busy={retrying}
+            onClick={() => {
+              tryAgainPressed.current = true;
+              retry();
+            }}
+          >
+            {homeWords.tryAgain}
+          </Button>
+        </p>
+      )}
       <ChatList
         chats={listed}
         open={open}
@@ -36,6 +77,11 @@ export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) 
       />
     </nav>
   );
+}
+
+/** Whether nothing has the focus, as when the focused control left the page. */
+function focusFellToPage(): boolean {
+  return document.activeElement === null || document.activeElement === document.body;
 }
 
 /** The AI chats under "New chat", or "No chats yet." when there are none; nothing while they load. */
@@ -68,17 +114,27 @@ function ChatList({
 
 /**
  * The AI chats, read again after each change to the list. A chat that leaves the list closes in
- * the pane (`keptOpenChat`). A failed read keeps what the list showed and says what failed. The
- * subscription keys on the service only: the context is a new object on each window draw, so it is
- * read through `latest`.
+ * the pane (`keptOpenChat`). A failed read keeps what the list showed, announces what failed and
+ * hands back its reason as `failure` until a read works; `retry` reads again, with `retrying` true
+ * until that read is done. Each failure is a new object, so the same reason twice still changes
+ * it. The subscription keys on the service only: the context is a new object on each window draw,
+ * so it is read through `latest`.
  */
 function useListedChats(
   chats: AiChats | undefined,
   context: WorkspaceContext,
   open: string | undefined,
   setOpen: (id: string | undefined) => void,
-): readonly ListedChat[] | undefined {
+): {
+  readonly listed: readonly ListedChat[] | undefined;
+  readonly failure: { readonly reason: string } | undefined;
+  readonly retrying: boolean;
+  readonly retry: () => void;
+} {
   const [listed, setListed] = useState<readonly ListedChat[] | undefined>(undefined);
+  const [failure, setFailure] = useState<{ readonly reason: string } | undefined>(undefined);
+  const [retrying, setRetrying] = useState(false);
+  const readAgain = useRef<() => Promise<void>>(async () => {});
   const latest = useRef({ listed, open, setOpen, context });
   latest.current = { listed, open, setOpen, context };
   useEffect(() => {
@@ -89,22 +145,29 @@ function useListedChats(
       const { listed: before, open: shown, setOpen: show } = latest.current;
       latest.current = { ...latest.current, listed: next };
       setListed(next);
+      setFailure(undefined);
       const kept = keptOpenChat(shown, before, next);
       if (kept !== shown) show(kept);
     };
     const fail = (reason: string) => {
       if (!current) return;
+      setFailure({ reason });
       latest.current.context.announcer.announce(`${homeWords.chatsFailed} ${reason}`, "assertive");
     };
-    const read = () => void readChats(chats, latest.current.context, take, fail);
-    read();
-    const stop = chats.subscribe(latest.current.context, read);
+    const read = () => readChats(chats, latest.current.context, take, fail);
+    readAgain.current = read;
+    void read();
+    const stop = chats.subscribe(latest.current.context, () => void read());
     return () => {
       current = false;
       stop();
     };
   }, [chats]);
-  return listed;
+  const retry = useCallback(() => {
+    setRetrying(true);
+    void readAgain.current().finally(() => setRetrying(false));
+  }, []);
+  return { listed, failure, retrying, retry };
 }
 
 /** Reads the chats once, handing them to `take`, or the reason they couldn't be read to `fail`. */
@@ -117,6 +180,6 @@ async function readChats(
   try {
     take(await chats.list(context));
   } catch (error) {
-    fail(error instanceof Error ? error.message : String(error));
+    fail(errorReasonFor(error));
   }
 }
