@@ -314,3 +314,6 @@ export interface ShareChoice {
 export const ShareChoiceService: ServiceKey<ShareChoice> = serviceKey<ShareChoice>(
   "source-control.share-choice",
 );
+
+export { ChangesList, ChangesListService } from "./changes-list.ts";
+export type { ChangesListState } from "./changes-list-state.ts";

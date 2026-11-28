@@ -191,9 +191,7 @@ export async function openFolder(
     services,
     name,
     engineReady: backgroundEngine,
-    folderFacts: folderFactsOf(services, (error) =>
-      console.error("The rail couldn't read the folder's history", error),
-    ),
+    folderFacts: folderFactsOf(services),
   });
   const outside = showFilesOutside(services, shell.toasts, workspace);
   const saving = scope === undefined ? undefined : savingOf(scope, workspace, name, outside.onHeld);

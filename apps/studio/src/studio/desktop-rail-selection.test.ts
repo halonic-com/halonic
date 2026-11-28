@@ -61,7 +61,7 @@ verifies("studio.desktop-rail-selection", () => {
     expect(entryFor("search:invoices")).toBeUndefined();
   });
 
-  it("opens only pages a desktop feature adds", () => {
+  it("opens only pages a desktop feature or the shell adds as a place", () => {
     const places = new Set<string>(shell.contributions.places.list().map((place) => place.id));
     const opened = entries.flatMap((entry) => (entry.opens === undefined ? [] : [entry.opens]));
     expect(opened.length).toBeGreaterThan(0);

@@ -62,7 +62,7 @@ export class RailStore {
         const holder = all.find((other) => other !== entry && other.holds.includes(place));
         if (holder !== undefined) {
           throw new ShellError(
-            `rail.add: the entry "${entry.id}" holds the kind "${key}", whose place "${place}" the entry "${holder.id}" holds. Hold the place in one entry only.`,
+            `The rail's entries: the entry "${entry.id}" holds the kind "${key}", whose place "${place}" the entry "${holder.id}" holds. Hold the place in one entry only.`,
           );
         }
       }

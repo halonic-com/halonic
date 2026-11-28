@@ -1,9 +1,6 @@
 import { InboxService, waitingCount } from "@halonicjs/studio-feature-inbox/api";
 import { RunsListService } from "@halonicjs/studio-feature-runs/api";
-import {
-  type ChangesRead,
-  ChangesSourceService,
-} from "@halonicjs/studio-feature-source-control/api";
+import { ChangesListService, type ChangesRead } from "@halonicjs/studio-feature-source-control/api";
 import type {
   FolderFacts,
   FolderFactsSource,
@@ -20,42 +17,36 @@ const gitStates: Readonly<Record<ChangesRead["kind"], FolderGitState>> = {
   "nested-repository": "inside-a-larger-repository",
 };
 
-/** The services a folder's facts come from; each may be missing, as in a browser. */
-interface FactServices {
-  readonly changes: ChangesSourceLike | undefined;
-  readonly runs: SubscribableState<{ readonly runs: readonly unknown[] }> | undefined;
-  readonly inbox:
-    | SubscribableState<{ readonly items: Parameters<typeof waitingCount>[0] }>
-    | undefined;
-}
-
-interface ChangesSourceLike {
-  readonly read: () => Promise<ChangesRead>;
-  readonly subscribe: (listener: () => void) => () => void;
-}
-
-interface SubscribableState<State> {
+/** A service whose state the facts read, and that says when it may have changed. */
+interface Watched<State> {
   readonly state: State;
   subscribe(listener: () => void): () => void;
 }
 
+/** The services a folder's facts come from; each may be missing, as the Inbox in a browser. */
+interface FactServices {
+  /** The Changes list, which reads the folder's history for the Changes page too. */
+  readonly changes: Watched<{ readonly read: ChangesRead | undefined }> | undefined;
+  readonly runs: Watched<{ readonly runs: readonly unknown[] }> | undefined;
+  readonly inbox: Watched<{ readonly items: Parameters<typeof waitingCount>[0] }> | undefined;
+}
+
 /**
  * The open folder's facts for the icon rail (`studio.folder-facts`), read from the folder's own
- * services: its history for the git state, the Runs list for recorded runs, the Inbox for what
- * waits. Studio opens workspace projects only for now, so the kind is a workspace project with
- * items; spotting a code folder inside comes with the Code entry's page (P5).
+ * services: the Changes list for the git state, the Runs list for recorded runs, the Inbox for
+ * what waits. They read git and runs themselves, so the facts add no work of their own. Studio
+ * opens workspace projects only for now, so the kind is a workspace project with items; spotting
+ * a code folder inside comes with the Code entry's page (P5).
  */
 export class FolderFactsFromServices implements FolderFactsSource {
   readonly #services: FactServices;
-  readonly #onError: (error: unknown) => void;
   readonly #listeners = new Set<() => void>();
   #git: FolderGitState = "repository";
   #facts: FolderFacts;
   #stop: (() => void) | undefined;
 
-  constructor(services: FactServices, onError: (error: unknown) => void) {
+  constructor(services: FactServices) {
     this.#services = services;
-    this.#onError = onError;
     this.#facts = this.#read();
   }
 
@@ -78,27 +69,17 @@ export class FolderFactsFromServices implements FolderFactsSource {
 
   #start(): void {
     const { changes, runs, inbox } = this.#services;
+    const changed = () => this.#changed();
     const stops = [
-      changes?.subscribe(() => void this.#readGit()),
-      runs?.subscribe(() => this.#changed()),
-      inbox?.subscribe(() => this.#changed()),
+      changes?.subscribe(changed),
+      runs?.subscribe(changed),
+      inbox?.subscribe(changed),
     ];
     this.#stop = () => {
       for (const stop of stops) stop?.();
     };
-    void this.#readGit();
-  }
-
-  async #readGit(): Promise<void> {
-    const changes = this.#services.changes;
-    if (changes === undefined) return;
-    try {
-      this.#git = gitStates[(await changes.read()).kind];
-      this.#changed();
-    } catch (error) {
-      // Git answering with an error leaves the last state; the Changes page shows the error itself.
-      this.#onError(error);
-    }
+    // What changed before the first listener came, such as a run starting, shows at once.
+    this.#changed();
   }
 
   #changed(): void {
@@ -109,7 +90,10 @@ export class FolderFactsFromServices implements FolderFactsSource {
   }
 
   #read(): FolderFacts {
-    const { runs, inbox } = this.#services;
+    const { changes, runs, inbox } = this.#services;
+    // Until the history's first answer, and while it can't be read, the last state stays.
+    const read = changes?.state.read;
+    if (read !== undefined) this.#git = gitStates[read.kind];
     return {
       kind: "workspace-project",
       hasItems: true,
@@ -122,21 +106,15 @@ export class FolderFactsFromServices implements FolderFactsSource {
 }
 
 /** The facts of a folder whose services are built: `shell.services.instantiate(services)` ran. */
-export function folderFactsOf(
-  services: ServiceTarget,
-  onError: (error: unknown) => void,
-): FolderFactsSource {
-  return new FolderFactsFromServices(
-    {
-      changes: find(services, ChangesSourceService),
-      runs: find(services, RunsListService),
-      inbox: find(services, InboxService),
-    },
-    onError,
-  );
+export function folderFactsOf(services: ServiceTarget): FolderFactsSource {
+  return new FolderFactsFromServices({
+    changes: find(services, ChangesListService),
+    runs: find(services, RunsListService),
+    inbox: find(services, InboxService),
+  });
 }
 
-/** A service the folder may not have, as Inbox in a browser without one. */
+/** A service the folder may not have, as the Inbox in a browser without one. */
 function find<Service>(services: ServiceTarget, key: ServiceKey<Service>): Service | undefined {
   return services.has(key) ? services.get(key) : undefined;
 }
