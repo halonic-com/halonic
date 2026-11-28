@@ -157,7 +157,8 @@ verifies("shell.studio-window", () => {
     const tabs = container.querySelector('[role="tablist"][aria-label="Open tabs"]');
     expect(tabs).not.toBeNull();
     expect(container.querySelector("header")?.contains(tabs)).toBe(false);
-    expect(container.querySelector("[data-framed-panel]")?.contains(tabs)).toBe(true);
+    expect(container.querySelector("[data-panel-tabs]")?.contains(tabs)).toBe(true);
+    expect(container.querySelector("[data-framed-panel]")?.contains(tabs)).toBe(false);
     expect(container.querySelector("header")?.textContent).toContain("Halonic Studio");
     expect(container.querySelector('button[aria-label="Back"]')).not.toBeNull();
     expect(container.querySelector('nav[aria-label="Location"]')).toBeNull();

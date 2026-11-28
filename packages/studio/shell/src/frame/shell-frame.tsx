@@ -20,6 +20,7 @@ import {
   useEscapeClosesTopLayer,
   useInputModality,
   useNarrowFromWidth,
+  useNarrowWindow,
   usePresentationFromWidth,
   useWindowFocusForAnnouncer,
 } from "./frame-effects.ts";
@@ -49,8 +50,8 @@ export interface ShellFrameProps {
    */
   readonly titleBar?: ReactNode;
   /**
-   * The workspace's tabs on the desktop, `WindowTabStrip`: the framed panel's first row, above the
-   * engine's line and the page (`shell.frame`, P3 of the HAL-20617 build plan).
+   * The workspace's tabs on the desktop, `WindowTabStrip`: on the frame, right above the framed
+   * panel and its engine's line and page (`shell.frame`, P3 of the HAL-20617 build plan).
    */
   readonly tabs?: ReactNode;
   /**
@@ -175,18 +176,22 @@ export function ShellFrame(props: ShellFrameProps) {
 /**
  * The desktop's framed panel beside the sidebar (`kit.framed-sidebar`): the engine's line, the
  * page and the status bar. Its classes, not the kit's `FramedPanel`, because on a phone the same
- * element stays as a `contents` box, so `main` keeps its place in the tree (`shell.frame`).
+ * element stays as a `contents` box, so `main` keeps its place in the tree (`shell.frame`). Under
+ * the window tabs in a wide window its top start corner is square, so the active first tab's line
+ * runs into its own.
  */
 const panel = `flex min-h-0 min-w-0 flex-1 flex-col ${framedPanelClass("studio")}`;
 
 /**
- * The framed panel's classes: 8px from the sidebar, as a margin rather than the row's gap, since
- * the sidebar's resize edge sits between them as a flex item of its own. With the sidebar in the
- * Places drawer, or no sidebar, the panel takes the whole row; on a phone it's only a `contents` box.
+ * The column that holds the window tabs, on the frame, over the framed panel: 8px from the
+ * sidebar, as a margin rather than the row's gap, since the sidebar's resize edge sits between
+ * them as a flex item of its own. With the sidebar in the Places drawer, or no sidebar, it takes
+ * the whole row; on a phone it's only a `contents` box.
  */
-function desktopPanelClass(desktop: boolean, besideSidebar: boolean): string {
+function desktopColumnClass(desktop: boolean, besideSidebar: boolean): string {
   if (!desktop) return "contents";
-  return besideSidebar ? `ms-2 ${panel}` : panel;
+  const column = "flex min-h-0 min-w-0 flex-1 flex-col";
+  return besideSidebar ? `ms-2 ${column}` : column;
 }
 
 /**
@@ -282,8 +287,9 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
 }
 
 /**
- * The desktop's framed panel: the engine's line, the page with the side panel and the toasts, and
- * the status bar. On a phone the same two boxes stay, as `contents`, so the page keeps its place.
+ * The desktop's window tabs on the frame, then the framed panel under them: the engine's line, the
+ * page with the side panel and the toasts, and the status bar. On a phone the same boxes stay, as
+ * `contents`, so the page keeps its place.
  */
 function FramedContent(props: {
   readonly desktop: boolean;
@@ -292,31 +298,46 @@ function FramedContent(props: {
   readonly children: ReactNode;
 }) {
   const { desktop, frame } = props;
+  const narrow = useNarrowWindow();
+  const tabs = desktop && frame.tabs !== undefined;
+  // A narrow window folds the tabs into one button, so no active tab joins the panel's corner.
+  const squareCorner = tabs && !narrow;
   return (
     <div
-      data-framed-panel={desktop ? "" : undefined}
-      className={desktopPanelClass(desktop, props.besideSidebar)}
+      data-framed-column={desktop ? "" : undefined}
+      className={desktopColumnClass(desktop, props.besideSidebar)}
     >
-      {desktop && frame.tabs !== undefined ? (
-        // Over the panel's 1px start border, so the active tab starts where the panel does and
-        // joins it (the approved mockup, v26 on HAL-20617).
-        <div data-panel-tabs="" className="-ms-px flex shrink-0 items-end gap-0.5 pt-1">
+      {tabs ? (
+        // On the frame, so an inactive tab's hover fill shows and the active tab, the panel's
+        // fill, joins the panel under it (the approved mockup, v26 on HAL-20617). In a wide window
+        // it's clipped across, so the active first tab's start curve doesn't spill onto the frame
+        // beside the panel; folded, there's no curve, and a clip would cut the button's focus ring.
+        // As high folded as with the tabs, so the panel doesn't move when the window narrows.
+        <div
+          data-panel-tabs=""
+          className={`flex min-h-9.5 shrink-0 items-end gap-0.5 pt-1 ${squareCorner ? "overflow-x-clip" : ""}`}
+        >
           {frame.tabs}
         </div>
       ) : null}
-      {desktop ? <EngineLine engine={frame.engine} starting={frame.engineStarting} /> : null}
-      <div className={desktop ? "relative flex min-h-0 flex-1" : "contents"}>
-        {props.children}
-        {frame.panel}
-        <ToastRegion store={frame.toasts} />
+      <div
+        data-framed-panel={desktop ? "" : undefined}
+        className={desktop ? `${panel} ${squareCorner ? "rounded-ss-none" : ""}` : "contents"}
+      >
+        {desktop ? <EngineLine engine={frame.engine} starting={frame.engineStarting} /> : null}
+        <div className={desktop ? "relative flex min-h-0 flex-1" : "contents"}>
+          {props.children}
+          {frame.panel}
+          <ToastRegion store={frame.toasts} />
+        </div>
+        {desktop ? (
+          <DesktopStatusBar
+            badges={frame.badges}
+            statusBar={frame.statusBar}
+            saveNote={frame.saveNote}
+          />
+        ) : null}
       </div>
-      {desktop ? (
-        <DesktopStatusBar
-          badges={frame.badges}
-          statusBar={frame.statusBar}
-          saveNote={frame.saveNote}
-        />
-      ) : null}
     </div>
   );
 }

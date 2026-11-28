@@ -44,15 +44,42 @@ function renderFrame() {
 }
 
 verifies("shell.frame", () => {
-  it("puts the window tabs at the top of the framed panel, above the page, not in the title bar", () => {
+  it("puts the window tabs on the frame right above the framed panel, not in the title bar", () => {
     const container = renderFrame();
     const panel = container.querySelector("[data-framed-panel]");
     const tabs = container.querySelector('[role="tablist"]');
+    const row = container.querySelector("[data-panel-tabs]");
+    const rowClasses = row?.className.split(" ") ?? [];
 
     expect(container.querySelector("header")?.contains(tabs)).toBe(false);
-    expect(panel?.contains(tabs)).toBe(true);
-    const main = panel?.querySelector("main") ?? null;
-    expect(tabs?.compareDocumentPosition(main as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(row?.contains(tabs)).toBe(true);
+    // Outside the element with the panel's fill, on no fill of its own, so the frame shows under
+    // the tabs and the active tab's fill stands out from it (HAL-21209).
+    expect(panel?.contains(tabs)).toBe(false);
+    expect(panel?.className).toContain("bg-surface");
+    expect(rowClasses.filter((name) => name.startsWith("bg-"))).toEqual([]);
+    // Right before the panel in one column, with no inset, so the active tab starts at its edge.
+    expect(row?.nextElementSibling).toBe(panel);
+    expect(rowClasses.filter((name) => /^-?[mp][sx]-/.test(name))).toEqual([]);
+    expect(panel?.querySelector("main")).not.toBeNull();
+  });
+
+  it("squares the panel's top start corner under the tabs only while a tab can join it", () => {
+    const container = renderFrame();
+    const panel = container.querySelector("[data-framed-panel]");
+    expect(panel?.className.split(" ")).toContain("rounded-ss-none");
+
+    act(() => media.resize(800));
+    expect(panel?.className.split(" ")).not.toContain("rounded-ss-none");
+  });
+
+  it("clips the tab row across only in a wide window, so the folded button's focus ring stays whole", () => {
+    const container = renderFrame();
+    const row = container.querySelector("[data-panel-tabs]");
+    expect(row?.className.split(" ")).toContain("overflow-x-clip");
+
+    act(() => media.resize(800));
+    expect(row?.className.split(" ")).not.toContain("overflow-x-clip");
   });
 
   it("shows no tabs on a phone", () => {
