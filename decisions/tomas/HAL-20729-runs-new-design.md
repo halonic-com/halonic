@@ -3,6 +3,7 @@
 - Task: HAL-20729
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20729 (the plan Liam approved, Sofia's design check on HAL-20755, and Julian's review of #6861 asking for these amendments)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:igshZKFqkcMTMEBQdutNU100LBM/SugaZoovr64Iab0oSzbAQUiqh8/FPdJKfeDqtgGk3JakWNIt8cSmV1GRCA==
 
 ## What changes
 
