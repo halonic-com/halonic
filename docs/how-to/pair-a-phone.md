@@ -50,7 +50,9 @@ budget, CEO strategy, secret and join approvals, and any Paperclip decision with
 a destructive option, such as cancelling a task tree. With the default settings
 these wait for the computer; the phone answers the rest, apart from action
 requests and cards with several questions, a multi-select question, checkboxes
-or a verdict per item, which always wait for the computer. To let phones answer
+or a verdict per item, which always wait for the computer. The phone doesn't answer Paperclip tasks assigned
+to you, mentions or connection requests either; you answer those in Paperclip.
+To let phones answer
 the risky ones too, turn on **Let phones answer risky approvals** in **Settings › Remote**;
 the desktop app asks "Let phones answer risky approvals?" in a window of its own.
 The switch is off until you turn it on, and the phone asks its owner for a
