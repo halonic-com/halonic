@@ -109,26 +109,6 @@ export {
 } from "./copy-button/clipboard.tsx";
 export { COPIED_FOR_MS, CopyButton, type CopyButtonProps } from "./copy-button/copy-button.tsx";
 export { copyText } from "./copy-button/copy-text.ts";
-export { Dialog } from "./dialog/dialog.tsx";
-export type {
-  ConfirmingDialogProps,
-  DialogAlternative,
-  DialogCancelReason,
-  DialogConfirm,
-  DialogProps,
-  DialogSize,
-  FooterlessDialogProps,
-} from "./dialog/dialog-props.ts";
-export {
-  type ModalLiveRegion,
-  type ModalLiveRegions,
-  ModalRegionsProvider,
-  type ModalRegionsProviderProps,
-  type PushModalRegions,
-  useModalPolite,
-} from "./dialog/modal-regions.tsx";
-export { useModalOpen } from "./dialog/open-modals.ts";
-export { PaletteBox, type PaletteBoxProps } from "./dialog/palette-box.tsx";
 export {
   Disclosure,
   type DisclosureProps,
@@ -305,6 +285,8 @@ export {
   type MenuTriggerProps,
 } from "./menu/menu.tsx";
 export { breakableAtSeparators, MiddleCut, middleCutAt } from "./middle-cut/middle-cut.tsx";
+// biome-ignore lint/performance/noReExportAll: keeps the barrel under the file-size limit; the names are listed in that file
+export * from "./modal-exports.ts";
 export {
   type EnterMove,
   type EnterOptions,

@@ -532,6 +532,23 @@ while it's open. Focus starts where `initialFocus` says, the search box, since t
 opened to type. **One difference:** a click on the overlay cancels even after typing. A Dialog
 stops doing that to keep a form's work, but a palette's words are no work to lose.
 
+## BlockingDialog
+
+A modal the user can't close, for an app that can't work until something is done, such as a
+sign-in (`kit.blocking-dialog`). It looks like a Dialog without the ✕ or a footer: a title, one
+line under it and its content. Escape, a click on the overlay and a close the browser makes by
+itself don't close it; the screen unmounts it once the thing is done. It has `aria-modal="true"`,
+is named by its title and described by its line. Use `Dialog` for anything the user may cancel.
+
+## SignInModal and SignInBand
+
+How every app shows a needed sign-in (`kit.sign-in-prompt`); the shell's `SignInPrompt` draws
+them, so features don't. `SignInModal` puts the sign-ins an app can't work without in a
+`BlockingDialog`, one row each with the provider's logo (or its first letter) and **Sign in**.
+`SignInBand` puts the others in a band under the title bar with no dismiss button, and says
+"Couldn't check your sign-ins." with **Try again** when a state couldn't be read. A waiting row
+shows the phrase to check in the browser; a failed one says so as an alert.
+
 ## EmptyState
 
 A list, page or panel with nothing in it yet, or a search with no results. With `tone="error"`,

@@ -7,6 +7,7 @@ import {
 import { defineFeature, type WorkspaceContext } from "@halonicjs/studio-shell";
 import { SECTION_LINE, SECTION_TITLE } from "./connections-words.ts";
 import * as diagnosticsWords from "./diagnostics/sync-diagnostics-words.ts";
+import { paperclipSignIn } from "./sign-in-needed/paperclip-sign-in.ts";
 
 /** Whether the engine serves connections; without them the section never shows. */
 export function connectionsAvailable(
@@ -36,7 +37,8 @@ export function diagnosticsAvailable(
  * `ServerEngineService`, the section starts with the Messaging engine row and its Pair with a
  * server dialog (`connections.engine-row`, `connections.server-pair-dialog`). Next to the section,
  * Settings › Sync diagnostics shows how the engine kept them up to date
- * (`connections.sync-diagnostics`).
+ * (`connections.sync-diagnostics`). It adds the Paperclip sign-in every app shows while a
+ * connection is signed out (`connections.paperclip-sign-in-needed`).
  */
 export const connectionsFeature = defineFeature({
   id: "connections",
@@ -48,6 +50,7 @@ export const connectionsFeature = defineFeature({
     SyncDiagnosticsService,
   ],
   register(studio) {
+    studio.signIns.add(paperclipSignIn);
     studio.sidebarFooter.add({
       id: "connections.account-switcher",
       order: 100,
