@@ -92,6 +92,8 @@ export function writeFixtureRepo(
   const dependencyList = JSON.parse(readFileSync(realDependencyListPath, "utf8"));
   const list = {
     ...dependencyList,
+    // Empty, because the real list names Dockerfiles that a fixture repo doesn't have.
+    images: {},
     dependencies: {
       ...dependencyList.dependencies,
       ...options.extraDependencies,

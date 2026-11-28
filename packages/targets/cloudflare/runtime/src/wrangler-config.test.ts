@@ -23,10 +23,18 @@ function quotedNames(list: string): string[] {
   return [...list.matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? "");
 }
 
-function valuesOf(key: string): string[] {
-  return [...config.matchAll(new RegExp(`^${key}\\s*=\\s*"([^"]+)"`, "gm"))].map(
+function valuesOf(key: string, text = config): string[] {
+  return [...text.matchAll(new RegExp(`^${key}\\s*=\\s*"([^"]+)"`, "gm"))].map(
     (match) => match[1] ?? "",
   );
+}
+
+/** The bodies of every `[[header]]` table, up to the next table. */
+function tablesOf(header: string): string {
+  const escaped = header.replaceAll(".", "\\.");
+  return [...config.matchAll(new RegExp(`^\\[\\[${escaped}\\]\\]\\n((?:(?!\\[).*\\n?)*)`, "gm"))]
+    .map((match) => match[1] ?? "")
+    .join("\n");
 }
 
 verifies("runtime.durable-object-migrations", () => {
@@ -40,7 +48,9 @@ verifies("runtime.durable-object-migrations", () => {
     });
 
     it("binds each class once, and nothing else", async () => {
-      expect(valuesOf("class_name").sort()).toEqual([...(await fixedClassNames())].sort());
+      expect(valuesOf("class_name", tablesOf("durable_objects.bindings")).sort()).toEqual(
+        [...(await fixedClassNames())].sort(),
+      );
     });
 
     it("never deletes or renames a class", () => {
