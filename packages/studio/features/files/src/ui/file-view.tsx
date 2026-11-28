@@ -366,6 +366,7 @@ export function FileView({ item, context, list }: FileViewProps) {
       <FileHeader
         path={path}
         titleRef={title}
+        inPane={inPane}
         actions={{
           openAsItem: openAsItem(),
           rename: renameInTree,

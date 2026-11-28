@@ -63,7 +63,7 @@ verifies("files.code-page", () => {
     // The file's own section names the pane, so there is one region named `orders.ts`.
     expect(content?.hasAttribute("aria-label")).toBe(false);
     expect(page.querySelectorAll('section[aria-label="orders.ts"]')).toHaveLength(1);
-    expect(content?.querySelector("h1")?.textContent).toBe("orders.ts");
+    expect(content?.querySelector("h2")?.textContent).toBe("orders.ts");
     expect(openedEditors.at(-1)?.text).toBe("// src/checkout/orders.ts\n");
     expect(openedEditors.filter((editor) => !editor.destroyed)).toHaveLength(1);
     expect(rowNamed(page, "src/checkout/orders.ts").getAttribute("aria-selected")).toBe("true");

@@ -42,11 +42,12 @@ function shownName(node: TreeNode, nameRoom: NameRoom, isOpenFile: boolean): str
 }
 
 /**
- * A tree row in the list column (requirement `files.ui.tree-rows`): at least 36px high with 8px
- * corners, 10px inside the column's edges through the tree's own padding.
+ * A tree row in the list column (requirement `files.ui.tree-rows`), the new design's tree row
+ * (HAL-20742): 32px high with 8px corners, 10px inside the column's edges through the tree's own
+ * padding. It only grows for a name field's message.
  */
 const treeRowClasses =
-  "group flex min-h-9 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-surface-muted aria-selected:text-body-strong aria-selected:not-focus-visible:selected-forced";
+  "group flex min-h-control-md w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-surface-muted aria-selected:text-body-strong aria-selected:not-focus-visible:selected-forced";
 
 /** The file a menu is open for, with where it opened. */
 interface RowMenu extends ContextMenuTarget {
@@ -290,7 +291,7 @@ export function FilesTree({
               // weight (`files.ui.tree-rows`). In high contrast both marks are outlines: the open
               // file's steps aside while the row has keyboard focus, so the focus outline shows.
               className={treeRowClasses}
-              style={{ paddingLeft: `${row.depth * 16 + 8}px` }}
+              style={{ paddingLeft: `${row.depth * 16 + 13}px` }}
               // A Ctrl-click, Cmd-click or middle click opens a file in a new tab, as a run row's
               // does (`files.ui.file-tab`). A Ctrl-click on a folder opens or closes it as a click
               // does; a middle click leaves a folder as it is.
@@ -306,7 +307,7 @@ export function FilesTree({
               onContextMenu={(event) => rightClicked(node, event)}
             >
               <span
-                className="inline-grid size-icon-md shrink-0 place-items-center *:size-full"
+                className="inline-grid size-icon-sm shrink-0 place-items-center *:size-full"
                 aria-hidden="true"
               >
                 {node.kind === "folder" && (open ? <ChevronDownIcon /> : <ChevronRightIcon />)}

@@ -324,15 +324,15 @@ verifies("files.ui.tree-search", () => {
 });
 
 verifies("files.ui.tree-rows", () => {
-  it("draws rows 36px high with 8px corners, 10px inside the column, 16px in per level", async () => {
+  it("draws rows 32px high with 8px corners, 10px inside the column, 13px in and 16px more per level", async () => {
     const page = await show(["src/index.ts"]);
     act(() => rowNamed(page, "src").click());
     const classes = rowNamed(page, "src").className.split(" ");
-    expect(classes).toContain("min-h-9");
+    expect(classes).toContain("min-h-control-md");
     expect(classes).toContain("rounded-sm");
     expect(page.querySelector('[role="tree"]')?.className.split(" ")).toContain("px-2.5");
-    expect(rowNamed(page, "src").style.paddingLeft).toBe("8px");
-    expect(rowNamed(page, "src/index.ts").style.paddingLeft).toBe("24px");
+    expect(rowNamed(page, "src").style.paddingLeft).toBe("13px");
+    expect(rowNamed(page, "src/index.ts").style.paddingLeft).toBe("29px");
   });
 
   it("gives the hovered row and the open file's row one fill, and the open file medium weight", async () => {

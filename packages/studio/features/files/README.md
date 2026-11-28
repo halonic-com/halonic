@@ -17,7 +17,7 @@ The Files feature of the Studio: the workspace's file tree, and (in later change
 - `pressKey` is all of the tree's keyboard: arrows, Home, End, `*`, type-ahead, Enter, F2 and Delete. A key held with Ctrl, Meta or Alt is left unhandled, so copy and app shortcuts still work. It returns the new state and, for Enter, F2 and Delete, an intent for the Studio to act on.
 - `cutInMiddle` shortens a long name and keeps its ending.
 
-`code-page.ts` and `ui/code-page.tsx` are Code's page, which the rail's Code entry opens (`files.code-page`): the tree in the list column, and the file picked there in the content pane, in place of the last one; a Ctrl-click opens a file in a new tab. `treeContext` gives the tree a context whose `openItem` shows a file in the pane instead of the tab.
+`code-page.ts` and `ui/code-page.tsx` are Code's page, which the rail's Code entry opens (`files.code-page`): the tree in the list column, and the file picked there in the content pane, in place of the last one; a Ctrl-click opens a file in a new tab. `treeContext` gives the tree a context whose `openItem` shows a file in the pane instead of the tab. `ui/code-list-column.tsx` is its list column, which takes `open` and `setOpen` like a place's list column, so the window can draw it later: the title, the search field, the All and Problems chips (`files.code-list-chips`, the rule in `tree/tree-filter.ts`) and the tree. In the pane, the file's head is the content-pane header (`files.code-pane-header`).
 
 ## Example
 
