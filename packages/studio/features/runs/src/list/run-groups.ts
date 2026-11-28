@@ -166,9 +166,9 @@ function dayGroups<Run extends GroupedRun>(
 }
 
 /**
- * Heads a day by its first instant: `todayHeading` ("Earlier today" or "Today"), "Yesterday", then "Fri 6 Nov", with the
- * year when it isn't this one. The formatters are made once, and each day is worked out once,
- * however many runs it holds.
+ * Heads a day by its first instant: `todayHeading` ("Earlier today" or "Today"), "Yesterday",
+ * then "Fri 6 Nov", with the year when it isn't this one. The formatters are made once, and each
+ * day is worked out once, however many runs it holds.
  */
 function dayHeadings(context: RunGroupsContext, todayHeading: string): (day: number) => string {
   const today = dayStart(context.now, context.timeZone).getTime();

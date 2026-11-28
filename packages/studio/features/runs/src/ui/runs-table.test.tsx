@@ -66,7 +66,7 @@ const cantTryRow = row("run_01jc7x", {
 });
 const dotSelector = "span.rounded-full.size-1\\.5";
 
-function showTable(rows: readonly AllRunsRow[]) {
+function showTable(rows: readonly AllRunsRow[], read = { loaded: true, failed: false }) {
   const onOpen = vi.fn();
   const onOpenInNewTab = vi.fn();
   const root = render(
@@ -74,6 +74,8 @@ function showTable(rows: readonly AllRunsRow[]) {
       rows={rows}
       now={now}
       timeZone="Europe/Madrid"
+      loaded={read.loaded}
+      failed={read.failed}
       onOpen={onOpen}
       onOpenInNewTab={onOpenInNewTab}
     />,
@@ -158,12 +160,34 @@ verifies("runs.runs-table", () => {
       expect(root.querySelector('[data-part="column-names"]')).toBeNull();
     });
 
+    it("shows the loading rows, not No runs yet, until every source has answered", () => {
+      const { root } = showTable([], { loaded: false, failed: false });
+      expect(root.textContent).not.toContain("No runs yet");
+      expect(root.querySelector('[aria-busy="true"]')).not.toBeNull();
+    });
+
+    it("shows only the header when a read failed and left no runs", () => {
+      const { root } = showTable([], { loaded: true, failed: true });
+      expect(root.querySelector("h2")?.textContent).toBe("All runs");
+      expect(root.textContent).not.toContain("No runs yet");
+      expect(root.querySelector('[aria-busy="true"]')).toBeNull();
+    });
+
+    it("shows the runs it has while a source is still answering", () => {
+      const { root } = showTable([workspaceRow], { loaded: false, failed: false });
+      expect(rowText(root, "run_01jd8b")).toContain("Weekly report");
+    });
+
     it("writes a failed run's line in the danger colour", () => {
       const { root } = showTable([failedRow]);
       const line = [...root.querySelectorAll('[data-row-id="run_01jd7m"] span')].find(
         (each) => each.textContent === "Couldn't read 2 invoices",
       );
       expect(line?.className).toContain("text-danger");
+      // The kit's error chip, with its dot, as on the Runs page (in the wide and stacked rows).
+      expect(
+        root.querySelectorAll(`[data-row-id="run_01jd7m"] ${dotSelector}`).length,
+      ).toBeGreaterThan(0);
     });
 
     it("keeps a run that couldn't try neutral, as the Runs page does", () => {

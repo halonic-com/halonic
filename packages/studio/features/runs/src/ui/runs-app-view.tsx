@@ -123,6 +123,8 @@ export function RunsAppView({
               rows={state.rows}
               now={now()}
               timeZone={timeZone}
+              loaded={state.loaded}
+              failed={state.error !== undefined || state.failures.length > 0}
               onOpen={actions.onOpen}
               {...(actions.onOpenInNewTab === undefined
                 ? {}
@@ -153,7 +155,8 @@ function useRunsPanes() {
   const pane = useRef<HTMLDivElement>(null);
   const show = (item: RunItem) => {
     // A row of the runs table goes with the run's page coming in, as in one pane. Only the table:
-    // a run the open run's page opens on its own keeps the focus as it was.
+    // a run the open run's page opens on its own is left as before this change (the keyed page
+    // goes, and the focus falls to the page's body).
     const fromTable = open === undefined && pane.current?.contains(document.activeElement) === true;
     if (!onePane && !fromTable) return setOpen(item);
     flushSync(() => setOpen(item));

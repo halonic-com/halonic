@@ -33,6 +33,10 @@ export interface RunsTableProps {
   readonly now: Date;
   /** The user's IANA time zone. */
   readonly timeZone: string;
+  /** Whether every source has answered once; until then, with no rows yet, the loading rows show. */
+  readonly loaded: boolean;
+  /** Whether a source's last read, or listing the sources, failed; the list column says which. */
+  readonly failed: boolean;
   /** Opens a run, for a row's click and Enter. */
   readonly onOpen: (id: string) => void;
   /** Opens a run in a new tab, for a row's Ctrl-click, Cmd-click or middle click. */
@@ -44,10 +48,10 @@ export interface RunsTableProps {
  * sentence in the kit's content-pane header, then every run in the list column as a table, newest
  * first under a heading per day, with what the list's rows have no room for: the run's short id,
  * what started it and how long it took. A click or Enter on a row opens its run, as in the list.
- * With no runs, the Runs page's "No runs yet" stands in for the table.
+ * With no runs, the Runs page's loading rows stand in for the table until every source has
+ * answered, then its "No runs yet", or nothing when a read failed, as the list column says so.
  */
-export function RunsTable({ rows, now, timeZone, onOpen, onOpenInNewTab }: RunsTableProps) {
-  const locale = useFormatLocale();
+export function RunsTable(props: RunsTableProps) {
   return (
     <section
       aria-label={runsTableWords.title}
@@ -66,22 +70,53 @@ export function RunsTable({ rows, now, timeZone, onOpen, onOpenInNewTab }: RunsT
         line={pageWords.sentence}
       />
       <div className="flex flex-col px-2 pb-4">
-        {rows.length === 0 ? null : <ColumnNames />}
-        <List
-          label={runsTableWords.title}
-          groups={runsByDay(rows, { now, timeZone }).map((group) => ({
-            id: group.heading,
-            heading: { name: group.heading },
-            rows: group.runs.map((row) => tableRow(row, { timeZone, locale })),
-          }))}
-          groupHeadingLevel={3}
-          columns={runColumns}
-          empty={{ title: emptyListWords.noRunsTitle }}
-          onOpen={onOpen}
-          {...(onOpenInNewTab === undefined ? {} : { onOpenInNewTab })}
-        />
+        <TableBody {...props} />
       </div>
     </section>
+  );
+}
+
+/** The column names and the runs, or what stands in for them while there are none. */
+function TableBody({
+  rows,
+  now,
+  timeZone,
+  loaded,
+  failed,
+  onOpen,
+  onOpenInNewTab,
+}: RunsTableProps) {
+  const locale = useFormatLocale();
+  if (rows.length === 0 && !loaded) {
+    return (
+      <List
+        label={runsTableWords.title}
+        rows={[]}
+        columns={runColumns}
+        loading
+        loadingLabel={emptyListWords.loading}
+      />
+    );
+  }
+  // A failed read that left no rows isn't "No runs yet": the list column says what failed.
+  if (rows.length === 0 && failed) return null;
+  return (
+    <>
+      {rows.length === 0 ? null : <ColumnNames />}
+      <List
+        label={runsTableWords.title}
+        groups={runsByDay(rows, { now, timeZone }).map((group) => ({
+          id: group.heading,
+          heading: { name: group.heading },
+          rows: group.runs.map((row) => tableRow(row, { timeZone, locale })),
+        }))}
+        groupHeadingLevel={3}
+        columns={runColumns}
+        empty={{ title: emptyListWords.noRunsTitle }}
+        onOpen={onOpen}
+        {...(onOpenInNewTab === undefined ? {} : { onOpenInNewTab })}
+      />
+    </>
   );
 }
 
@@ -107,9 +142,9 @@ function ColumnNames() {
 }
 
 /**
- * A run as a table row: its chip, with the dot while it's live (running, needs you), its short id, what
- * ran over its line, what started it, and when it started over how long it took. A failed run's
- * line is the kit's error reason, in `danger`.
+ * A run as a table row: its chip, with the dot while it's live (running, needs you), its short
+ * id, what ran over its line, what started it, and when it started over how long it took. A
+ * failed run's line is the kit's error reason, in `danger`, with the kit's error chip and its dot.
  */
 function tableRow(
   row: AllRunsRow,
@@ -142,7 +177,7 @@ function tableRow(
   };
 }
 
-/** What started the run, with the routine's name in a tooltip; nothing when the source doesn't say. */
+/** What started the run, with the routine's name in a tooltip; nothing when no source says. */
 function startedByCell(startedBy: AllRunsRow["startedBy"]) {
   if (startedBy === undefined) return null;
   if (startedBy.tooltip === undefined) return startedBy.words;

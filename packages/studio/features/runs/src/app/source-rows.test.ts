@@ -40,7 +40,7 @@ verifies("runs.app-sources", () => {
         title: "Support reply",
         where: "Acme Ops",
         by: { kind: "workflow" },
-        chip: { word: "Done", tone: "success" },
+        chip: { word: "Done", tone: "success", dot: false },
         item: { kind: "run", hub: "acme", id: "run_mfx3k2a1_01jd8q" },
       });
       expect(row?.label).toMatch(/^Run 01jd8q, Support reply, .*\.$/);
@@ -51,6 +51,15 @@ verifies("runs.app-sources", () => {
       expect(workflowAppRun({ summary: test }, workflowContext, "Acme Ops")).toBeUndefined();
       const free = workflowAppRun({ summary: summaryWith({}) }, workflowContext, "Acme Ops");
       expect(free?.cost).toEqual({ kind: "none" });
+    });
+
+    it("gives a live run's chip its dot, as the Runs page draws it", () => {
+      const running = workflowAppRun(
+        { summary: summaryWith({ status: "running", state: "draft" }) },
+        workflowContext,
+        "Acme Ops",
+      );
+      expect(running?.chip).toEqual({ word: "Running", tone: "running", dot: true });
     });
   });
 
@@ -77,15 +86,16 @@ verifies("runs.app-sources", () => {
         ["queued", "succeeded", "failed", "timed-out", "cancelled", "interrupted"] as const
       ).map((state) => {
         const row = teamAppRun(agentRun({ state }), teamContext);
-        return [state, row.chip.word, row.chip.tone, row.phase];
+        return [state, row.chip.word, row.chip.tone, row.chip.dot, row.phase];
       });
+      // Only a running run is live: a queued one hasn't started, so its chip has no dot.
       expect(looks).toEqual([
-        ["queued", "Queued", "neutral", "running"],
-        ["succeeded", "Done", "success", "succeeded"],
-        ["failed", "Failed", "danger", "failed"],
-        ["timed-out", "Failed", "danger", "failed"],
-        ["cancelled", "Stopped", "neutral", "stopped"],
-        ["interrupted", "Stopped", "neutral", "stopped"],
+        ["queued", "Queued", "neutral", false, "running"],
+        ["succeeded", "Done", "success", false, "succeeded"],
+        ["failed", "Failed", "danger", false, "failed"],
+        ["timed-out", "Failed", "danger", false, "failed"],
+        ["cancelled", "Stopped", "neutral", false, "stopped"],
+        ["interrupted", "Stopped", "neutral", false, "stopped"],
       ]);
     });
 
