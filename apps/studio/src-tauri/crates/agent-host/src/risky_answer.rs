@@ -69,9 +69,17 @@ impl RiskyAnswer {
 /// approve reaches, by name only, then the answer the person picked.
 fn question_of(confirmation: &Map<String, Value>) -> String {
     let text = |name: &str| confirmation.get(name).and_then(Value::as_str).map(one_line);
-    let from = text("from").unwrap_or_else(|| "An agent".to_owned());
     let title = text("title").unwrap_or_default();
-    let mut lines = vec![format!("{from} asks: {title}")];
+    // Only the host's flag makes the item the person's own: an agent may
+    // call itself "you".
+    let from_you = confirmation.get("fromYou").and_then(Value::as_bool) == Some(true);
+    let first = if from_you {
+        format!("You asked: {title}")
+    } else {
+        let from = text("from").unwrap_or_else(|| "An agent".to_owned());
+        format!("{from} asks: {title}")
+    };
+    let mut lines = vec![first];
     if let Some(reach) = confirmation.get("reach").and_then(Value::as_object) {
         lines.push(String::new());
         lines.extend(reach_lines(reach));
