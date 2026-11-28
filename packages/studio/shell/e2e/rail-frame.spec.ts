@@ -85,3 +85,41 @@ test("at 640px the Places button sits on the rail's axis", async ({ page }) => {
   const places = await box(page.locator("header").getByRole("button", { name: "Places" }));
   expect(places.x + places.width / 2).toBe(railAxis);
 });
+
+/** The WCAG relative luminance of a computed `rgb(r, g, b)` colour. */
+function luminance(colour: string): number {
+  const channels =
+    colour
+      .match(/\d+(\.\d+)?/g)
+      ?.slice(0, 3)
+      .map(Number) ?? [];
+  if (channels.length !== 3) {
+    throw new Error(`"${colour}" isn't an rgb() colour.`);
+  }
+  const [red = 0, green = 0, blue = 0] = channels.map((channel) => {
+    const value = channel / 255;
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+}
+
+/**
+ * `shell.rail-dot-seat`: the white dot lies on the selected drawing's dark glass in dark too, not
+ * on a fill in the near-white text colour (HAL-21048, post-merge check HAL-21037). Playwright has
+ * no `verifies()`; the jsdom test in `icon-rail.test.tsx` names the requirement.
+ */
+test("at 1280px in dark the white dot reads at 3:1 or more on the selected drawing", async ({
+  page,
+}) => {
+  const rail = await openWindow(page, wide);
+  await page.evaluate(() => {
+    document.documentElement.setAttribute("data-theme", "dark");
+  });
+  const home = rail.getByRole("button", { name: "Home", exact: true });
+  const fill = await home
+    .locator('[data-place-icon="home-filled"] path[fill="currentColor"]')
+    .evaluate((path) => getComputedStyle(path).fill);
+  const contrast = (1 + 0.05) / (luminance(fill) + 0.05);
+  expect(fill).toBe("rgb(10, 22, 48)");
+  expect(contrast).toBeGreaterThanOrEqual(3);
+});

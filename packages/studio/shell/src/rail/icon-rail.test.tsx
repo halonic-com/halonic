@@ -242,3 +242,23 @@ verifies("shell.rail", () => {
     });
   });
 });
+
+verifies("shell.rail-dot-seat", () => {
+  describe("the selected drawing's glass", () => {
+    it("fills the selected drawing in the dark glass and leaves the others in the text colour", () => {
+      const rail = renderRail();
+      const glass = rail.button("Home").querySelector("[data-rail-glass]");
+      expect(glass?.classList.contains("text-rail-glass")).toBe(true);
+      expect(glass?.querySelector('[data-place-icon="home-filled"]')).not.toBeNull();
+      expect(rail.button("Inbox").querySelector("[data-rail-glass]")).toBeNull();
+      expect(rail.button("Inbox").querySelector('[data-place-icon="inbox"]')).not.toBeNull();
+    });
+
+    it("moves the glass with the selection", () => {
+      const rail = renderRail();
+      act(() => rail.button("Inbox").click());
+      expect(rail.button("Inbox").querySelector("[data-rail-glass]")).not.toBeNull();
+      expect(rail.button("Home").querySelector("[data-rail-glass]")).toBeNull();
+    });
+  });
+});
