@@ -27,6 +27,7 @@ import { useSettingsOpening } from "../settings/settings-opening.ts";
 import type { Shell } from "../shell.ts";
 import { useHelpMenu } from "../sidebar/help-menu.ts";
 import { studioTab } from "../sidebar/sidebar-views.tsx";
+import { SignInPrompt } from "../sign-in-needed/sign-in-prompt.tsx";
 import { usePageHeadingFocus, usePageHeadingFocusAfterDialog } from "../tabs/history-moves.ts";
 import { TabPages } from "../tabs/tab-pages.tsx";
 import { currentLocation } from "../tabs/tab-set.ts";
@@ -53,7 +54,7 @@ import { type ChosenFormat, WindowFormatLocale } from "./window-format.tsx";
 import { useWindowOpeners } from "./window-openers.ts";
 import { windowPanelParts } from "./window-panel.tsx";
 import { useOpenSettings } from "./window-settings.ts";
-import { useActiveTabPage, useActiveTabTitle, useWindowTitle } from "./window-title.ts";
+import { appName, useActiveTabPage, useActiveTabTitle, useWindowTitle } from "./window-title.ts";
 import { type StudioSwitcher, withActions } from "./with-actions.ts";
 
 // The switcher's types live with `withActions`, which reads them; the window still offers them.
@@ -269,6 +270,7 @@ function StudioWindowBody(props: StudioWindowProps) {
   // The same list each render, so the sidebar subscribes to the places' signals only once.
   const places = useMemo(() => contributions.places.list(), [contributions]);
   const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
+  const signIns = useMemo(() => contributions.signIns.list(), [contributions]);
   useClosingGoneItemTabs(tabs, kinds, contextFor, phone.retitle);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
   const placeOfKind = (kind: string) => contributions.itemKinds.get(kind)?.place;
@@ -351,7 +353,17 @@ function StudioWindowBody(props: StudioWindowProps) {
       phoneBadges={<HeaderBadges registry={shell.badges} layout="strip" />}
       dialogs={props.dialogs}
       panel={panel.slot}
-      strips={<Strips strips={contributions.strips.list()} contextFor={contextFor} />}
+      strips={
+        <>
+          <SignInPrompt
+            window="studio"
+            appTitle={appName}
+            signIns={signIns}
+            contextFor={contextFor}
+          />
+          <Strips strips={contributions.strips.list()} contextFor={contextFor} />
+        </>
+      }
       rail={column.rail}
       sidebar={column.sidebar}
       statusBar={

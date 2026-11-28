@@ -13,7 +13,7 @@ import {
   useWaitedMs,
   WaitingLine,
 } from "@halonicjs/studio-kit";
-import { StrictMode, useEffect, useMemo, useState } from "react";
+import { StrictMode, useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   useDocumentLanguage,
@@ -27,6 +27,7 @@ import { PageErrorBoundary } from "../page/page-error-boundary.tsx";
 import type { FocusedAppContribution } from "../points/frame.ts";
 import type { Registered } from "../points/point-store.ts";
 import type { Shell } from "../shell.ts";
+import { SignInPrompt } from "../sign-in-needed/sign-in-prompt.tsx";
 import { LoadedView } from "../view-loading.tsx";
 import { welcomeOpenWords } from "../welcome/welcome-open-words.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
@@ -234,15 +235,31 @@ function FocusedPage({
     }),
     [shell, app.featureId, workspace],
   );
+  const contextFor = useCallback(
+    (featureId: string): WorkspaceContext => ({
+      ...context,
+      ...shell.services.contextFor(featureId, workspace.services),
+    }),
+    [context, shell, workspace],
+  );
+  const signIns = useMemo(() => shell.contributions.signIns.list(), [shell]);
+  const prompt = (
+    <SignInPrompt window={app.id} appTitle={app.title} signIns={signIns} contextFor={contextFor} />
+  );
   const page = (
     <PageErrorBoundary pageKey={app.id} pageName={app.title}>
       <LoadedView<PlaceViewProps> view={app} name={app.title} props={{ context }} />
     </PageErrorBoundary>
   );
-  return app.panel === true ? (
-    <main className={`flex min-h-0 flex-1 flex-col ${focusedPanelClass}`}>{page}</main>
-  ) : (
-    <div className="flex min-h-0 flex-1 flex-col">{page}</div>
+  return (
+    <>
+      {prompt}
+      {app.panel === true ? (
+        <main className={`flex min-h-0 flex-1 flex-col ${focusedPanelClass}`}>{page}</main>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">{page}</div>
+      )}
+    </>
   );
 }
 
