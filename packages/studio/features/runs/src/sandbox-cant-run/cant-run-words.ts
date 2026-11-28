@@ -13,7 +13,7 @@ export const cantRunWords = {
    * The line while the first check hasn't answered, and the description of every control it turns
    * off (HAL-19614).
    */
-  hostStarting: "Agent host is still starting",
+  hostStarting: "Starting the agent host…",
   checkAgain: runPageWords.sandboxCheckAgain,
   checking: "Checking…",
   docsBase: runPageWords.sandboxDocsBase,
