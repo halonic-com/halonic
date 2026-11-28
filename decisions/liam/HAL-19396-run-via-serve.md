@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-19396 (option A, decided by Liam on the task; the signature is the reviewer's, since Liam wrote the pull request)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:m3exXnHZEuzA28nEYbNPtaAHm3y4Y1GbkMIi9BQbljgQfG831hHbOwD8zl1LxKvWy6craiQN/b60jfz7ShqTAQ==
 
 The phone part of the first-run flow has you start the demo run and approve
 it on the phone, but `halonic run` refused while `serve` held the engine,
