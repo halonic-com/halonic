@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { Button } from "../button/button.tsx";
 import { Checkbox } from "../checkbox/checkbox.tsx";
 import { RadioGroup, type RadioOption } from "../radio/radio-group.tsx";
@@ -45,6 +45,21 @@ export interface QuestionFormProps {
   readonly busy?: boolean;
   /** Submit is off for this reason too, such as the source being offline: the `id` of its line. */
   readonly unavailable?: { readonly reason: string } | undefined;
+  /**
+   * Places the questions and **Submit** apart, such as the questions in a card's scrolling body
+   * and Submit in its foot, which never scrolls. The form then takes no box of its own
+   * (`display: contents`), so both parts sit in the card's layout. Without it, Submit follows the
+   * questions.
+   */
+  readonly arrange?: ((parts: QuestionFormParts) => ReactNode) | undefined;
+}
+
+/** What `QuestionForm` hands its `arrange` to place. */
+export interface QuestionFormParts {
+  /** The questions, then "Answered 24 Nov" once answered, unless the card says it itself. */
+  readonly questions: ReactNode;
+  /** **Submit** with why it's off; nothing once answered. */
+  readonly submit: ReactNode;
 }
 
 type Picked = ReadonlyMap<string, ReadonlySet<string>>;
@@ -65,6 +80,7 @@ export function QuestionForm({
   onSubmit,
   busy = false,
   unavailable,
+  arrange,
 }: QuestionFormProps) {
   const [picking, setPicking] = useState<Picked>(new Map());
   const answeredId = useId();
@@ -77,17 +93,8 @@ export function QuestionForm({
     setPicking((before) => new Map(before).set(question, options));
   };
 
-  return (
-    <form
-      className="flex flex-col gap-4"
-      data-question-form
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (ready && answered === undefined && unavailable === undefined && !busy) {
-          onSubmit(formAnswers(questions, picked));
-        }
-      }}
-    >
+  const fieldsets = (
+    <>
       {questions.map((question) => (
         <QuestionFieldset
           key={question.id}
@@ -98,23 +105,46 @@ export function QuestionForm({
         />
       ))}
       {answered === undefined ? null : <AnsweredLine id={answeredId} answered={answered} />}
-      {answered === undefined ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="submit"
-            variant="primary"
-            busy={busy}
-            unavailable={unavailable ?? (ready ? undefined : { reason: hintId })}
-          >
-            {questionFormWords.submit}
-          </Button>
-          {unavailable === undefined && !ready ? (
-            <p id={hintId} className="text-small text-fg-muted">
-              {questionFormWords.answerEach}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
+    </>
+  );
+  const submit =
+    answered === undefined ? (
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="submit"
+          variant="primary"
+          busy={busy}
+          unavailable={unavailable ?? (ready ? undefined : { reason: hintId })}
+        >
+          {questionFormWords.submit}
+        </Button>
+        {unavailable === undefined && !ready ? (
+          <p id={hintId} className="text-small text-fg-muted">
+            {questionFormWords.answerEach}
+          </p>
+        ) : null}
+      </div>
+    ) : null;
+
+  return (
+    <form
+      className={arrange === undefined ? "flex flex-col gap-4" : "contents"}
+      data-question-form
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (ready && answered === undefined && unavailable === undefined && !busy) {
+          onSubmit(formAnswers(questions, picked));
+        }
+      }}
+    >
+      {arrange === undefined ? (
+        <>
+          {fieldsets}
+          {submit}
+        </>
+      ) : (
+        arrange({ questions: <div className="flex flex-col gap-4">{fieldsets}</div>, submit })
+      )}
     </form>
   );
 }

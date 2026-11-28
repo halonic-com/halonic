@@ -136,6 +136,55 @@ verifies("kit.question-form", () => {
   });
 });
 
+verifies("kit.question-form-arrange", () => {
+  it("hands the questions and Submit to `arrange` apart, and Submit outside the questions still sends", async () => {
+    const onSubmit = vi.fn();
+    const { container } = render(
+      <QuestionForm
+        questions={questions}
+        onSubmit={onSubmit}
+        arrange={({ questions: asked, submit: button }) => (
+          <>
+            <div data-part="body">{asked}</div>
+            <div data-part="foot">{button}</div>
+          </>
+        )}
+      />,
+    );
+    const body = container.querySelector('[data-part="body"]');
+    const foot = container.querySelector('[data-part="foot"]');
+    expect(body?.querySelectorAll("fieldset")).toHaveLength(2);
+    expect(foot?.contains(submit(container))).toBe(true);
+    expect(foot?.querySelector("fieldset")).toBeNull();
+    expect(container.querySelector("form")?.className).toBe("contents");
+
+    await click(labelled(container, "Separate repo"));
+    await click(submit(container));
+    expect(onSubmit).toHaveBeenCalledWith([{ question: "repo", options: ["separate"] }]);
+  });
+
+  it("hands `arrange` no Submit once the form is answered", () => {
+    const { container } = render(
+      <QuestionForm
+        questions={questions}
+        onSubmit={vi.fn()}
+        answered={{
+          answers: [{ question: "repo", options: ["mono"] }],
+          at: new Date(2026, 10, 24),
+        }}
+        arrange={({ questions: asked, submit: button }) => (
+          <>
+            {asked}
+            <div data-part="foot">{button}</div>
+          </>
+        )}
+      />,
+    );
+    expect(container.querySelector('[data-part="foot"]')?.childElementCount).toBe(0);
+    expect(container.textContent).toContain("Answered 24 Nov");
+  });
+});
+
 verifies("kit.question-form-answered-radios", () => {
   describe("QuestionForm, answered", () => {
     it("describes each answered radio by the answered line", () => {

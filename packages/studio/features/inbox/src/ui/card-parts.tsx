@@ -37,13 +37,12 @@ export const cardClasses =
 /** The scrolling body of a card, above its bar; see {@link cardClasses}. */
 export const cardBodyClasses = "flex flex-col gap-4 overflow-y-auto p-4 short:overflow-visible";
 /**
- * An agent's bar of answers, under its body; see {@link cardClasses}. A form of several questions
- * can be taller than the card, which would clip its Submit out of reach, so the bar takes at most
- * half the window and scrolls on its own beyond that (`inbox.card-bar-reach`). In a short window
- * it stays whole, as the item pane scrolls the card.
+ * An agent's foot, under its body; see {@link cardClasses}. It never shrinks or scrolls, so the
+ * body is the card's one scroll area: a form of several questions scrolls there, while the lines
+ * and **Submit** in the foot stay in view (`inbox.card-bar-reach`). In a short window the item
+ * pane scrolls the whole card.
  */
-export const agentCardBarClasses =
-  "flex max-h-[50dvh] shrink-0 flex-col gap-3 overflow-y-auto border-t border-border p-4 short:max-h-none short:overflow-visible";
+export const agentCardFootClasses = "flex shrink-0 flex-col gap-3 border-t border-border p-4";
 
 interface CardHeaderProps {
   readonly titleId: string;

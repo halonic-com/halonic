@@ -79,21 +79,3 @@ verifies("inbox.card-surface", () => {
     expect(surfaceOf(root)).toEqual(cardClasses.split(" "));
   });
 });
-
-verifies("inbox.card-bar-reach", () => {
-  // Run 46169816593: a two-item verdicts form outgrew the card in a 600px window, and its
-  // Submit sat past the card's clipped edge, where neither scrolling nor a click reached it.
-  it("lets an agent's bar of answers scroll on its own, at most half the window tall", async () => {
-    const bar = (await agentCard()).querySelector("section > div:last-child");
-    expect(bar?.className.split(" ")).toEqual(
-      expect.arrayContaining(["max-h-[50dvh]", "shrink-0", "overflow-y-auto"]),
-    );
-  });
-
-  it("leaves the bar whole in a short window, where the item pane scrolls the card", async () => {
-    const bar = (await agentCard()).querySelector("section > div:last-child");
-    expect(bar?.className.split(" ")).toEqual(
-      expect.arrayContaining(["short:max-h-none", "short:overflow-visible"]),
-    );
-  });
-});

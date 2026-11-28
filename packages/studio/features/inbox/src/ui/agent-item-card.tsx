@@ -12,7 +12,6 @@ import type {
 } from "@halonicjs/ports";
 import {
   Button,
-  Callout,
   ExternalLink,
   Field,
   QuestionForm,
@@ -32,8 +31,9 @@ import {
 } from "../agent/agent-item-text.ts";
 import { AgentAttachments } from "./agent-attachments.tsx";
 import { AgentMarkdown } from "./agent-markdown.tsx";
+import { CannotRun } from "./cannot-run.tsx";
 import {
-  agentCardBarClasses,
+  agentCardFootClasses,
   CardHeader,
   cardBodyClasses,
   cardClasses,
@@ -157,35 +157,68 @@ export function AgentItemCard({
   const label = source?.label;
   const stepper = asksForAStepper(item, cannotRun);
 
+  const head = (
+    <>
+      <Asker from={item.from} agents={agents}>
+        <CardHeader
+          titleId={titleId}
+          title={agentItemTitle(item)}
+          heading={heading}
+          since={[label, since].filter((part) => part != null).join(" · ")}
+        />
+      </Asker>
+      {work === undefined ? null : <p className="text-small text-fg-muted">{workLine(work)}</p>}
+      <AgentBody text={agentItemBody(item)} />
+      <AgentAttachments attachments={item.attachments} read={readAttachment} />
+    </>
+  );
+  const lines = (
+    <>
+      <ReasonLine
+        id={reasonId}
+        item={item}
+        ended={ended}
+        decided={decided}
+        down={down}
+        onEndedRead={onEndedRead}
+      />
+      <FailedLine {...failedLineOf(sent, send)} />
+    </>
+  );
+
+  if (item.questions !== undefined && !stepper) {
+    // The questions scroll with the body and the foot holds only the lines and Submit, so a
+    // failure shows next to the Submit that was just pressed (`inbox.card-bar-reach`).
+    return (
+      <section aria-labelledby={titleId} className={cardClasses}>
+        <QuestionForm
+          questions={item.questions}
+          answered={answeredWith(item, sent, reasonId)}
+          busy={sent.kind === "sending"}
+          unavailable={unavailable}
+          onSubmit={(answers) => void send({ kind: "answers", answers })}
+          arrange={({ questions, submit }) => (
+            <>
+              <div className={cardBodyClasses}>
+                {head}
+                {questions}
+                <PageLink item={item} />
+              </div>
+              <div className={agentCardFootClasses}>
+                {lines}
+                {submit}
+              </div>
+            </>
+          )}
+        />
+      </section>
+    );
+  }
   return (
     <section aria-labelledby={titleId} className={cardClasses}>
-      <div className={cardBodyClasses}>
-        <Asker from={item.from} agents={agents}>
-          <CardHeader
-            titleId={titleId}
-            title={agentItemTitle(item)}
-            heading={heading}
-            since={[label, since].filter((part) => part != null).join(" · ")}
-          />
-        </Asker>
-        {work === undefined ? null : <p className="text-small text-fg-muted">{workLine(work)}</p>}
-        <AgentBody text={agentItemBody(item)} />
-        <AgentAttachments attachments={item.attachments} read={readAttachment} />
-      </div>
-      <div className={agentCardBarClasses}>
-        <ReasonLine
-          id={reasonId}
-          item={item}
-          ended={ended}
-          decided={decided}
-          down={down}
-          onEndedRead={onEndedRead}
-        />
-        <FailedLine
-          onRetry={sent.kind === "failed" ? () => void send(sent.answer) : null}
-          detail={sent.kind === "failed" ? failureDetailOf(sent.error) : null}
-          manual={sent.kind === "bad-answer" ? badAnswerLine : null}
-        />
+      <div className={cardBodyClasses}>{head}</div>
+      <div className={agentCardFootClasses}>
+        {lines}
         {!stepper || ended !== undefined ? null : (
           <CannotRun
             reasons={cannotRun ?? []}
@@ -196,11 +229,8 @@ export function AgentItemCard({
         )}
         <AnswerControls
           item={item}
-          stepper={stepper}
-          sent={sent}
-          ended={ended !== undefined}
+          hidden={stepper || ended !== undefined}
           unavailable={unavailable}
-          answeredReason={reasonId}
           busy={busy}
           send={(chosen) => void send(chosen)}
         />
@@ -212,47 +242,20 @@ export function AgentItemCard({
 
 interface AnswerControlsProps {
   readonly item: AgentItem;
-  /** It's an action request, answered through the stepper or its **Decline**. */
-  readonly stepper: boolean;
-  readonly sent: Sent;
-  /** It ended elsewhere: the buttons and the reply field go, a form of questions stays, ticked. */
-  readonly ended: boolean;
+  /** An action request, answered through the stepper or its **Decline**, or it ended elsewhere. */
+  readonly hidden: boolean;
   readonly unavailable: { readonly reason: string } | undefined;
-  /** The `id` of the callout that says how the item was answered. */
-  readonly answeredReason: string;
   readonly busy: (chosen: InboxAnswer) => boolean;
   readonly send: (chosen: InboxAnswer) => void;
 }
 
 /**
- * How the person answers an item that isn't an action request: a form of its questions when it
- * asks several (`inbox.question-cards`), else a button per option with any note fields
- * (`inbox.option-note`), else a written reply.
+ * How the person answers an item that asks one thing: a button per option with any note fields
+ * (`inbox.option-note`), else a written reply. A form of several questions is the card's own.
  */
-function AnswerControls({
-  item,
-  stepper,
-  sent,
-  ended,
-  unavailable,
-  answeredReason,
-  busy,
-  send,
-}: AnswerControlsProps) {
+function AnswerControls({ item, hidden, unavailable, busy, send }: AnswerControlsProps) {
   const [reply, setReply] = useState("");
-  if (stepper) return null;
-  if (item.questions === undefined && ended) return null;
-  if (item.questions !== undefined) {
-    return (
-      <QuestionForm
-        questions={item.questions}
-        answered={answeredWith(item, sent, answeredReason)}
-        busy={sent.kind === "sending"}
-        unavailable={unavailable}
-        onSubmit={(answers) => send({ kind: "answers", answers })}
-      />
-    );
-  }
+  if (hidden) return null;
   if (item.options.length === 0) {
     return (
       <ReplyField
@@ -319,6 +322,15 @@ function sameChoice(sending: InboxAnswer, chosen: InboxAnswer): boolean {
   return JSON.stringify(sending) === JSON.stringify(chosen);
 }
 
+/** The failure line for where the answer is: **Try again** sends the same answer. */
+function failedLineOf(sent: Sent, send: (chosen: InboxAnswer) => Promise<void>) {
+  return {
+    onRetry: sent.kind === "failed" ? () => void send(sent.answer) : null,
+    detail: sent.kind === "failed" ? failureDetailOf(sent.error) : null,
+    manual: sent.kind === "bad-answer" ? badAnswerLine : null,
+  };
+}
+
 function sentAfter(result: AnswerResult, chosen: InboxAnswer): Sent {
   switch (result.outcome) {
     case "answered":
@@ -375,59 +387,6 @@ function decidedLine(item: AgentItem, sent: Sent): string | null {
   return sent.kind === "elsewhere"
     ? answeredLine(false, sent.by, sent.answeredAt, undefined)
     : null;
-}
-
-interface CannotRunProps {
-  readonly reasons: readonly string[];
-  readonly unavailable: { readonly reason: string } | undefined;
-  readonly busy: boolean;
-  readonly onDecline: () => void;
-}
-
-/**
- * An action request Halonic can't run: the reasons as plain text, never Markdown, and **Decline**,
- * so the agent hears it won't run. Nothing here can run it. Without reasons it shows nothing.
- */
-function CannotRun({ reasons, unavailable, busy, onDecline }: CannotRunProps) {
-  if (reasons.length === 0) return null;
-  return (
-    <>
-      <Callout tone="attention" title="Halonic can't run this card's stepper:">
-        <ul className="list-disc pl-5">
-          {reasons.map((reason) => (
-            <li key={reason} className="wrap-break-word">
-              <QuotedAsCode text={reason} />
-            </li>
-          ))}
-        </ul>
-      </Callout>
-      <div>
-        <Button variant="secondary" unavailable={unavailable} busy={busy} onClick={onDecline}>
-          Decline
-        </Button>
-      </div>
-    </>
-  );
-}
-
-/**
- * A reason with what the validator quotes in backticks (a stepper's name, an address) set in code
- * type, without the backticks. Nothing else is read as Markdown. A stray backtick with no partner
- * leaves the whole reason as it came.
- */
-function QuotedAsCode({ text }: { readonly text: string }) {
-  const parts = text.split("`");
-  const balanced = parts.length % 2 === 1;
-  if (!balanced) return text;
-  return parts.map((part, index) =>
-    index % 2 === 1 ? (
-      <code key={index} className="font-mono text-code">
-        {part}
-      </code>
-    ) : (
-      part
-    ),
-  );
 }
 
 interface ReplyFieldProps {
