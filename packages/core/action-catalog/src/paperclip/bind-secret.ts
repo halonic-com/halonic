@@ -1,5 +1,6 @@
 import { type StepperDefinition, strictParameters } from "@halonicjs/action-steppers";
 import {
+  bindableVariable,
   paperclipCompany,
   paperclipHost,
   secretName,
@@ -28,7 +29,7 @@ export const definition: StepperDefinition<Record<string, string | number>> = {
     company: paperclipCompany,
     name: secretName,
     agent: { kind: "text", pattern: /^[A-Za-z][A-Za-z0-9._-]{0,47}$/ },
-    variable: secretName,
+    variable: bindableVariable,
   }),
   steps: [
     {

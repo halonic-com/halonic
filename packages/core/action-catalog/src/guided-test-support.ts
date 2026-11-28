@@ -4,6 +4,7 @@ import {
   stepperRequestFormat,
   validateStepperRequest,
 } from "@halonicjs/action-steppers";
+import { parse } from "@halonicjs/schema-kit";
 import { shippedCatalog } from "./catalog.ts";
 
 type Parameters = Record<string, string | number>;
@@ -47,6 +48,19 @@ export function addressesOffOrigin(
     const host = /^https:\/\/([a-z0-9.-]+)\/[^?#@:]*$/.exec(address)?.[1];
     return host === undefined || !hosts.includes(host);
   });
+}
+
+/** The names a request could try to smuggle a key's value in (task HAL-17553, Done when). */
+export const valueNames = ["value", "secret", "key", "token"] as const;
+
+/** Each of {@link valueNames} the definition's parameters accept next to valid ones: there must be none. */
+export function acceptedValueNames(
+  definition: StepperDefinition,
+  parameters: Record<string, string>,
+): string[] {
+  return valueNames.filter(
+    (name) => parse(definition.parameters, { ...parameters, [name]: "sk-acme-0000" }).ok,
+  );
 }
 
 /** Result fields and inputs a user could be asked to type a secret into: there must be none on a guided definition. */
