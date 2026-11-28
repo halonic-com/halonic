@@ -32,6 +32,7 @@ export default defineConfig({
         "new-item-row": `${import.meta.dirname}/e2e/pages/new-item-row.html`,
         "stacked-cards": `${import.meta.dirname}/e2e/pages/stacked-cards.html`,
         "inline-link": `${import.meta.dirname}/e2e/pages/inline-link.html`,
+        "rail-frame": `${import.meta.dirname}/e2e/pages/rail-frame.html`,
       },
     },
   },

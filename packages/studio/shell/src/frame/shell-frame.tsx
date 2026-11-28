@@ -185,6 +185,15 @@ function desktopPanelClass(desktop: boolean, besideSidebar: boolean): string {
 }
 
 /**
+ * The desktop's frame: 8px on the right and at the bottom. The rail is the window's first 64px
+ * (the approved mockup, v26 on HAL-20617), so the frame's 8px on the left is there only without it.
+ */
+function desktopFrameClass(desktop: boolean, hasRail: boolean): string {
+  if (!desktop) return "bg-surface";
+  return hasRail ? "bg-app-frame pe-2 pb-2" : "bg-app-frame px-2 pb-2";
+}
+
+/**
  * On a short phone window (400 % zoom, a phone held sideways) the bars would leave the page no room,
  * so the column scrolls as one, bars included, as a kit Dialog does (component specs 8, "Short of
  * room"). The content still fills the room left, so the bottom navigation stays at the bottom of a
@@ -209,10 +218,12 @@ function FrameLayers(props: ShellFrameProps & { readonly presentation: Presentat
   return (
     <div
       data-layout={props.presentation}
-      className={`flex h-dvh flex-col text-fg ${desktop ? "bg-app-frame px-2 pb-2" : "bg-surface"}`}
+      className={`flex h-dvh flex-col text-fg ${desktopFrameClass(desktop, props.rail !== undefined)}`}
     >
       {desktop ? (
-        <header className="flex h-titlebar shrink-0 items-end gap-0.5 ps-1">
+        <header
+          className={`flex h-titlebar shrink-0 items-end gap-0.5 ${drawer.narrow ? "ps-1" : ""}`}
+        >
           {drawer.narrow ? (
             <span className="self-center">
               <PlacesButton

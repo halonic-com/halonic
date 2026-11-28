@@ -28,8 +28,8 @@ verifies("shell.frame", () => {
   it("reaches past the sidebar's width, so the tabs start where the framed panel does", () => {
     const container = render(<TitleBarStart sidebarWidth={300}>Halonic Studio</TitleBarStart>);
 
-    expect(TITLE_BAR_START_PAST_SIDEBAR).toBe(2);
-    expect(start(container).style.minWidth).toBe("302px");
+    expect(TITLE_BAR_START_PAST_SIDEBAR).toBe(6);
+    expect(start(container).style.minWidth).toBe("306px");
   });
 
   it("takes only its own width in a narrow window, where the sidebar is the Places drawer", () => {

@@ -4,11 +4,11 @@ import { SIDEBAR_DEFAULT_WIDTH } from "../sidebar/sidebar-width.ts";
 
 /**
  * How far the title bar's start reaches past the sidebar's width, so the window tabs after it
- * start where the framed panel does (`kit.framed-sidebar`): the panel sits the frame's 8px and
- * the 8px gap from the window's edge, plus the sidebar; the title bar's content starts the frame's
- * 8px and its own 4px in, and 2px of gap separate it from the tabs. So 8 + 8 − 8 − 4 − 2 = 2.
+ * start where the framed panel does (`kit.framed-sidebar`): the panel sits 8px past the sidebar
+ * (with the rail, the width given here), and the title bar's content starts where the sidebar's
+ * column does, with 2px of gap before the tabs. So 8 − 2 = 6.
  */
-export const TITLE_BAR_START_PAST_SIDEBAR = 2;
+export const TITLE_BAR_START_PAST_SIDEBAR = 6;
 
 /** Props for {@link TitleBarStart}. */
 export interface TitleBarStartProps {
