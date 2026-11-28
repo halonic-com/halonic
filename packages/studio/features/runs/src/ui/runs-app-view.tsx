@@ -136,7 +136,9 @@ export function RunsAppView({
 /**
  * The open run and the panes' focus. In one pane the list and the run replace each other, so the
  * focused row or button would go with them: the focus moves to "Back to Runs" when a run opens,
- * and back to the run's row when it closes, as the Messenger's one pane does.
+ * as the Messenger's one pane does. When a run closes, by Back or by **Go to Runs** on its page,
+ * the pressed button goes with it in either layout, so the focus moves to the list: to the run's
+ * row while it's listed, else to the first row.
  */
 function useRunsPanes() {
   // The shell says a phone is narrow too.
@@ -152,9 +154,8 @@ function useRunsPanes() {
   const close = () => {
     const closed = open?.id;
     flushSync(() => setOpen(undefined));
-    if (!onePane || closed === undefined) return;
-    const rows = listColumn.current?.querySelectorAll<HTMLElement>("[data-row-id]") ?? [];
-    const row = [...rows].find((each) => each.getAttribute("data-row-id") === closed);
+    const rows = [...(listColumn.current?.querySelectorAll<HTMLElement>("[data-row-id]") ?? [])];
+    const row = rows.find((each) => each.getAttribute("data-row-id") === closed) ?? rows[0];
     row?.querySelector<HTMLElement>('[role="gridcell"]')?.focus();
   };
   return { onePane, open, listColumn, pane, show, close };

@@ -86,6 +86,7 @@ verifies("studio-click-test.places-open", () => {
       const outcome = await placesOpen.run(studio.context);
       expect(outcome).toMatchObject({ passed: false, code: "NO_RUNS_WIDE_PAGE" });
       expect(outcome.passed ? "" : outcome.note).toContain("Runs, in a wide window:");
+      expect(studio.windowSize).toEqual({ width: 800, height: 600 });
     });
 
     const texts = placePages.flatMap((page) => [

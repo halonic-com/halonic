@@ -199,7 +199,7 @@ verifies("runs.list-column", () => {
       expect(heading?.className).not.toContain("sr-only");
     });
 
-    it("closes a run that left the workspace when its page leads to Runs", async () => {
+    it("closes a run that left the workspace when its page leads to Runs, focusing its row", async () => {
       const { source } = fakeSource([]);
       const list = new RunsList(source);
       await act(() => list.refresh());
@@ -220,9 +220,14 @@ verifies("runs.list-column", () => {
         if (button === undefined) throw new Error("no Go to Runs yet");
         return button;
       });
+      // jsdom's click doesn't move the focus, so the button takes it first, as a real press would.
+      act(() => goToRuns.focus());
       act(() => goToRuns.click());
       expect(openPlace).not.toHaveBeenCalled();
       expect(paneText(root)).toContain("No run open");
+      expect(document.activeElement?.closest("[data-row-id]")?.getAttribute("data-row-id")).toBe(
+        "w1",
+      );
     });
   });
 });
