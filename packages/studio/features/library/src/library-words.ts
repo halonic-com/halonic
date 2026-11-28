@@ -13,7 +13,7 @@ export const libraryKinds: readonly LibraryItemKind[] = [
 interface KindWords {
   /** The tab's label and the plural in the page's lines. */
   readonly plural: string;
-  /** The one sentence under the title. */
+  /** The kind's one sentence: under the title on a phone, in the content pane on the desktop. */
   readonly sentence: string;
   /** "No skills match …": knowledge is the one kind that takes "matches". */
   readonly matches: string;
@@ -88,7 +88,7 @@ export function countLine(kind: LibraryItemKind, count: number, blocked = 0): st
   return blocked > 0 ? `${line} · ${blocked} blocked` : line;
 }
 
-/** The one sentence under the title for the tab. */
+/** The kind's one sentence: under the title on a phone, in the content pane on the desktop. */
 export function tabSentence(kind: LibraryItemKind): string {
   return kindWords[kind].sentence;
 }

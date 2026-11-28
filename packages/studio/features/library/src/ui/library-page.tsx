@@ -1,13 +1,6 @@
 import type { LibraryItemKind } from "@halonicjs/app";
 import { type BrokenFileActions, brokenFileMenu } from "@halonicjs/studio-feature-files/api";
-import {
-  Button,
-  TabList,
-  TabPanel,
-  usePresentation,
-  useTabIds,
-  useToastStore,
-} from "@halonicjs/studio-kit";
+import { Button, FilterChips, usePresentation, useToastStore } from "@halonicjs/studio-kit";
 import {
   brokenFileWords,
   errorMessageFor,
@@ -154,12 +147,12 @@ function findEntry(listing: LibraryListing, place: LibraryEntryPlace): LibraryEn
 const noBrokenFiles: readonly FileWithErrors[] = [];
 
 /**
- * The tabs, Connectors with the count of its files that didn't load: "Connectors 1", read
+ * The kinds' chips, Connectors with the count of its files that didn't load: "Connectors 1", read
  * "Connectors, 1 problem" (C348 ST4).
  */
-function libraryTabs(brokenConnectors: number) {
+function libraryChips(brokenConnectors: number) {
   return libraryKinds.map((each) => ({
-    id: each,
+    value: each,
     label: tabLabel(each),
     ...(each === "connector" && brokenConnectors > 0
       ? {
@@ -174,9 +167,10 @@ function libraryTabs(brokenConnectors: number) {
 }
 
 /**
- * The Library: one sentence, four tabs (Skills, Knowledge, Collections, Connectors) and, under
- * them, the shell's overview page with that tab's items and their "Used by". The Library
- * place shows it ({@link LibraryPlace}).
+ * The Library's list: on the desktop, four kind chips (Skills, Knowledge, Collections,
+ * Connectors) and, under them, the shell's overview page with that kind's items and their "Used
+ * by"; on a phone, one kind's sentence and its items, with no chips. The Library place shows it in
+ * the list column ({@link LibraryPlace}).
  */
 export function LibraryPage({
   host,
@@ -192,9 +186,8 @@ export function LibraryPage({
   brokenActions = {},
 }: LibraryPageProps) {
   const phone = usePresentation() === "phone";
-  const ids = useTabIds();
   const brokenConnectors = useBrokenFiles(filesWithErrors, "connector");
-  const tabs = useMemo(() => libraryTabs(brokenConnectors.length), [brokenConnectors.length]);
+  const chips = useMemo(() => libraryChips(brokenConnectors.length), [brokenConnectors.length]);
   const { load, retry } = useListing(host, kind);
   // Only connectors are files the shared check reads; the other tabs have no broken rows.
   const broken = kind === "connector" ? brokenConnectors : noBrokenFiles;
@@ -293,9 +286,19 @@ export function LibraryPage({
         ]),
   ];
 
-  // A phone shows one kind's list on its own page, with no tabs to be a panel of.
-  const content = (
-    <>
+  return (
+    <div ref={page}>
+      {/* On a phone the top bar names the kind's list, so the heading says the same. Margin, not
+          padding: the shell focuses it, and its focus ring must fit inside the scrolling page. */}
+      <h1 className={phone ? "sr-only" : "mx-4 mt-4 text-title"}>
+        {phone ? tabLabel(kind) : "Library"}
+      </h1>
+      {/* On the desktop the content pane beside the list column says what the kind is. */}
+      {phone && <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>}
+      {/* A phone shows one kind's list on its own page, so it has no chips. */}
+      {!phone && (
+        <FilterChips label="Library" options={chips} value={kind} onChange={onKindChange} />
+      )}
       {load.state === "loaded" && load.stale !== undefined && (
         <p className="flex flex-wrap items-center gap-2 px-4 py-2 text-small text-fg-muted">
           {showingLastList(kind, load.stale.reason)}
@@ -340,29 +343,6 @@ export function LibraryPage({
           ? { newButton: { label, onClick: () => onNew(kind) } }
           : {})}
       />
-    </>
-  );
-
-  return (
-    <div ref={page}>
-      {/* On a phone the top bar names the kind's list, so the heading says the same. Margin, not
-          padding: the shell focuses it, and its focus ring must fit inside the scrolling page. */}
-      <h1 className={phone ? "sr-only" : "mx-4 mt-4 text-title"}>
-        {phone ? tabLabel(kind) : "Library"}
-      </h1>
-      <p className="px-4 pt-2 text-small text-fg-muted">{tabSentence(kind)}</p>
-      {!phone && (
-        <div className="px-4 py-2">
-          <TabList label="Library" tabs={tabs} selected={kind} onSelect={onKindChange} ids={ids} />
-        </div>
-      )}
-      {phone ? (
-        content
-      ) : (
-        <TabPanel ids={ids} tabs={tabs} selected={kind}>
-          {content}
-        </TabPanel>
-      )}
     </div>
   );
 }

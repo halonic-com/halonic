@@ -79,24 +79,21 @@ async function show(
   return page;
 }
 
+/** The kinds' chips: the radios of the row named "Library", not the hub chips under the search. */
+function kindChips(page: HTMLElement): HTMLInputElement[] {
+  return [...page.querySelectorAll<HTMLInputElement>('[aria-label="Library"] input[type="radio"]')];
+}
+
 function button(page: HTMLElement, name: string): HTMLButtonElement | undefined {
   return [...page.querySelectorAll("button")].find((each) => each.textContent?.includes(name));
 }
 
 verifies("library.library-page", () => {
-  it("shows four tabs, the tab's sentence, its rows with Used by and its New button", async () => {
+  it("shows four kind chips, the selected one on, its rows with Used by and its New button", async () => {
     const page = await show(hostWith({ skill: skills }), { onNew: () => undefined });
-    const tabs = [...page.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent);
-    // The kit sets each label twice in the tab, one copy hidden to keep the width steady.
-    expect(tabs).toEqual([
-      "SkillsSkills",
-      "KnowledgeKnowledge",
-      "CollectionsCollections",
-      "ConnectorsConnectors",
-    ]);
-    expect(page.textContent).toContain(
-      "Instructions your agents can pick up when a task calls for them.",
-    );
+    const chips = kindChips(page).map((chip) => chip.closest("label")?.textContent);
+    expect(chips).toEqual(["Skills", "Knowledge", "Collections", "Connectors"]);
+    expect(kindChips(page).map((chip) => chip.checked)).toEqual([true, false, false, false]);
     expect(page.textContent).toContain("Acme refunds");
     expect(page.textContent).toContain("Used by Support");
     expect(page.textContent).toContain("No skills in beta yet.");
@@ -107,15 +104,14 @@ verifies("library.library-page", () => {
     const host = hostWith({});
     const page = await show(host, { kind: "knowledge", onNew: () => undefined });
     expect(host.list).toHaveBeenCalledWith("knowledge");
-    expect(page.textContent).toContain("Documents your agents can search.");
     expect(page.textContent).toContain("No knowledge yet");
     expect(button(page, "New")).toBeUndefined();
   });
 
-  it("reports the selected tab to the app", async () => {
+  it("reports the chip the user picks to the app", async () => {
     const onKindChange = vi.fn();
     const page = await show(hostWith({}), { onKindChange });
-    const connectors = [...page.querySelectorAll<HTMLElement>('[role="tab"]')][3];
+    const connectors = kindChips(page)[3];
     act(() => connectors?.click());
     expect(onKindChange).toHaveBeenCalledWith("connector");
   });
@@ -217,6 +213,24 @@ verifies("library.library-page", () => {
     expect(button(without, "Open the docs folder")).toBeUndefined();
   });
 
+  it("puts the kind's sentence under the title on a phone, and none on the desktop", async () => {
+    const phone = render(
+      <PresentationProvider presentation="phone">
+        <LibraryPage
+          host={hostWith({})}
+          kind="knowledge"
+          onKindChange={() => undefined}
+          onOpen={() => undefined}
+          onOpenInNewTab={() => undefined}
+        />
+      </PresentationProvider>,
+    );
+    await settled();
+    expect(phone.querySelector("h1 + p")?.textContent).toBe("Documents your agents can search.");
+    const desktop = await show(hostWith({}), { kind: "knowledge" });
+    expect(desktop.textContent).not.toContain("Documents your agents can search.");
+  });
+
   it("tells a phone to put knowledge in the docs folder on the computer, with no button", async () => {
     const root = render(
       <PresentationProvider presentation="phone">
@@ -259,7 +273,7 @@ verifies("library.library-page", () => {
     const page = render(<Switching />);
     await settled();
     expect(page.textContent).toContain("Acme refunds");
-    const knowledge = [...page.querySelectorAll<HTMLElement>('[role="tab"]')][1];
+    const knowledge = kindChips(page)[1];
     act(() => knowledge?.click());
     expect(page.textContent).not.toContain("Acme refunds");
   });

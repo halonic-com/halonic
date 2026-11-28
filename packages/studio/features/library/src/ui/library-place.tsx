@@ -19,6 +19,7 @@ import { NewSkillHostService } from "../new-skill-host.ts";
 import { sharedHubKey } from "../shared-hub-key.ts";
 import { requestSkillInstructionsFocus } from "../skill-focus-request.ts";
 import type { SkillRef } from "../skill-host.ts";
+import { LibraryColumns } from "./library-columns.tsx";
 import { LibraryKindList } from "./library-kind-list.tsx";
 import { LibraryPage, type LibraryPageProps } from "./library-page.tsx";
 import { NewCollectionDialog } from "./new-collection-dialog.tsx";
@@ -237,20 +238,23 @@ function LibraryKindView({ context, sub }: PlaceViewProps) {
     connector:
       newConnectorHost && (() => prepareThen(newConnectorHost, () => setMakingConnector({}))),
   });
+  const list = (
+    <LibraryPage
+      host={host}
+      kind={kind}
+      onKindChange={show}
+      announceState={(key, text) => context.announcer.announceState(key, text)}
+      onOpen={(each, entry) => openItem?.(refOf(each, entry))}
+      onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
+      {...openAsFile}
+      {...(desktop ? openDocsFolder(context.showSidebarView, toasts) : {})}
+      {...(onNew === undefined ? {} : { onNew })}
+      {...brokenFilesOf(context, toasts)}
+    />
+  );
   return (
     <>
-      <LibraryPage
-        host={host}
-        kind={kind}
-        onKindChange={show}
-        announceState={(key, text) => context.announcer.announceState(key, text)}
-        onOpen={(each, entry) => openItem?.(refOf(each, entry))}
-        onOpenInNewTab={(each, entry) => openItemInNewTab?.(refOf(each, entry))}
-        {...openAsFile}
-        {...(desktop ? openDocsFolder(context.showSidebarView, toasts) : {})}
-        {...(onNew === undefined ? {} : { onNew })}
-        {...brokenFilesOf(context, toasts)}
-      />
+      <LibraryColumns kind={kind}>{list}</LibraryColumns>
       {openedFile !== undefined && (
         <OpenAsFileSheet
           host={host}
