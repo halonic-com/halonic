@@ -97,6 +97,7 @@ export function runAgentTools(options: RunAgentToolsOptions): HalonicTool[] {
         agent: agent.id,
         clock,
         log: options.log,
+        runs: options.runs,
       }),
     );
   }
