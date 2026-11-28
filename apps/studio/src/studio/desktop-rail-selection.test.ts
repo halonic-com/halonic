@@ -17,6 +17,12 @@ const shell = createShell({ ...desktopFeatures, host: "desktop-app", platform: "
 const entries = shell.contributions.rail.shown(everyEntry);
 const placeOfKind = (kind: string) => shell.contributions.itemKinds.get(kind)?.place;
 
+/** The item kind of a tab key `kind/hub/id`, or `undefined` for a place's key such as `inbox`. */
+function itemKindOf(key: string): string | undefined {
+  const [kind, hub, ...id] = key.split("/");
+  return hub === undefined || id.length === 0 ? undefined : kind;
+}
+
 function entryFor(key: string) {
   return selectedRailEntry(entries, { key, title: key }, placeOfKind);
 }
@@ -51,6 +57,7 @@ verifies("studio.desktop-rail-selection", () => {
       ["connector/acme/mail", "library"],
       ["run/run-1", "runs"],
       ["run-file/run-1/out.txt", "runs"],
+      ["code/workspace/files", "code"],
       ["file/workspace/src/index.ts", "code"],
     ])("puts %s in %s", (key, expected) => {
       expect(entryFor(key)).toBe(expected);
@@ -61,10 +68,18 @@ verifies("studio.desktop-rail-selection", () => {
     expect(entryFor("search:invoices")).toBeUndefined();
   });
 
-  it("opens only pages a desktop feature or the shell adds as a place", () => {
+  it("opens only pages a desktop feature or the shell adds as a place, or a feature as an item kind", () => {
     const places = new Set<string>(shell.contributions.places.list().map((place) => place.id));
     const opened = entries.flatMap((entry) => (entry.opens === undefined ? [] : [entry.opens]));
     expect(opened.length).toBeGreaterThan(0);
-    for (const key of opened) expect(places).toContain(key);
+    for (const key of opened) {
+      const kind = itemKindOf(key);
+      if (kind === undefined) expect(places).toContain(key);
+      else expect(shell.contributions.itemKinds.get(kind)).toBeDefined();
+    }
+  });
+
+  it("opens Code's page, an item kind Files adds, from the Code entry", () => {
+    expect(entries.find((entry) => entry.id === "code")?.opens).toBe("code/workspace/files");
   });
 });
