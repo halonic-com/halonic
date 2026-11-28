@@ -3,6 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Field } from "../field/field.tsx";
+import { RadioGroup } from "../radio/radio-group.tsx";
 import { click, render, unmountAll } from "../test/render.tsx";
 import { Checkbox } from "./checkbox.tsx";
 
@@ -204,5 +205,71 @@ verifies("kit.checkbox", () => {
   it("fills Highlight when checked in high contrast", () => {
     const { container } = render(<Checkbox label="All" checked onChange={vi.fn()} />);
     expect(boxIn(container).className).toContain("checkbox-forced");
+  });
+});
+
+verifies("kit.checkbox-words", () => {
+  const longWords = "I understand this can download new code when it starts";
+
+  function labelsOf(container: HTMLElement): { checkbox: HTMLElement; radio: HTMLElement } {
+    const [checkbox, radio] = Array.from(container.querySelectorAll("label"));
+    return { checkbox: checkbox as HTMLElement, radio: radio as HTMLElement };
+  }
+
+  function renderBoth(): HTMLElement {
+    return render(
+      <>
+        <Checkbox checked={false} onChange={vi.fn()}>
+          {longWords}
+        </Checkbox>
+        <RadioGroup
+          label="Connect with"
+          options={[{ value: "address", label: longWords }]}
+          value={null}
+          onChange={vi.fn()}
+        />
+      </>,
+    ).container;
+  }
+
+  it("sets its box on the first line of its words, 2px down and 4px on a phone", () => {
+    const { container } = render(
+      <Checkbox checked={false} onChange={vi.fn()}>
+        {longWords}
+      </Checkbox>,
+    );
+    const label = container.querySelector("label") as HTMLElement;
+    expect(label.className).toContain("items-start");
+    expect(label.className).not.toContain("items-center");
+    // The 16px box in a 20px line, and in a phone's 24px line.
+    const boxHolder = boxIn(container).parentElement as HTMLElement;
+    expect(boxHolder.className).toContain("mt-0.5");
+    expect(boxHolder.className).toContain("phone:mt-1");
+  });
+
+  it("shows its words at a Radio label's size, on a phone too", () => {
+    const { checkbox, radio } = labelsOf(renderBoth());
+    for (const size of ["text-body", "phone:text-input-touch"]) {
+      expect(radio.className.split(" ")).toContain(size);
+      expect(checkbox.className.split(" ")).toContain(size);
+    }
+  });
+
+  it("keeps one line of words mid-way in its 48px target, as a Radio's option", () => {
+    const { checkbox, radio } = labelsOf(renderBoth());
+    for (const space of ["phone:py-3", "touch:py-3", "phone:min-h-touch", "touch:min-h-touch"]) {
+      expect(radio.className.split(" ")).toContain(space);
+      expect(checkbox.className.split(" ")).toContain(space);
+    }
+  });
+
+  it("puts a Radio's circle and a Checkbox's box the same distance down", () => {
+    const container = renderBoth();
+    const boxHolder = boxIn(container).parentElement as HTMLElement;
+    const circle = container.querySelector('input[type="radio"]') as HTMLElement;
+    for (const offset of ["mt-0.5", "phone:mt-1"]) {
+      expect(circle.className.split(" ")).toContain(offset);
+      expect(boxHolder.className.split(" ")).toContain(offset);
+    }
   });
 });

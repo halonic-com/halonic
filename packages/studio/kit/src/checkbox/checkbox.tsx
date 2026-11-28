@@ -87,6 +87,19 @@ const markClasses = [
   "peer-checked:grid peer-indeterminate:grid",
 ].join(" ");
 
+/**
+ * A checkbox with words follows the Radio's rule, so the two match side by side (a QuestionForm):
+ * the words are 16px on 24px lines on a phone, and the box starts on their first line, where it
+ * stays when they wrap. The 12px above and below keeps one line mid-way in the 48px target.
+ */
+const wordsLabel = [
+  "inline-flex items-start gap-2 text-body phone:text-input-touch",
+  "phone:min-h-touch phone:py-3 touch:min-h-touch touch:py-3",
+].join(" ");
+
+/** 2px down in a 20px line, 4px in a phone's 24px line: the Radio circle's place. */
+const boxOnFirstLine = "mt-0.5 phone:mt-1";
+
 function boxState(
   unavailable: boolean,
   invalid: boolean,
@@ -184,9 +197,9 @@ export function Checkbox(props: CheckboxProps) {
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: the input is inside `inside`, which Biome can't see
     <label
-      className={`group/checkbox inline-flex items-center gap-2 text-body phone:min-h-touch touch:min-h-touch ${cursor} ${isUnavailable ? "text-fg-disabled text-forced-disabled" : "text-fg"}`}
+      className={`group/checkbox ${wordsLabel} ${cursor} ${isUnavailable ? "text-fg-disabled text-forced-disabled" : "text-fg"}`}
     >
-      <span className="relative inline-grid size-4 shrink-0">{inside}</span>
+      <span className={`relative inline-grid size-4 shrink-0 ${boxOnFirstLine}`}>{inside}</span>
       {props.children}
     </label>
   );

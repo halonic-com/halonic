@@ -40,6 +40,17 @@ export const checkboxSection: PartSection = {
   notApplicable: "read-only, busy, loading",
   rows: [
     { name: "Default", copies: () => <Choices /> },
+    {
+      // Narrow enough to wrap at every width: the box stays on the first line, as a Radio's circle.
+      name: "Wrapped words",
+      copies: () => (
+        <div className="w-56">
+          <Checkbox checked onChange={ignore}>
+            I understand this can download new code when it starts
+          </Checkbox>
+        </div>
+      ),
+    },
     { name: "Hover", force: "hover", target: "input", copies: () => <Box /> },
     { name: "Focus", force: "focus", target: "input", copies: () => <Box /> },
     { name: "Unavailable", copies: () => <Choices unavailable /> },

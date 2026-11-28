@@ -1430,6 +1430,10 @@ when it stands without words, as in a List row.
 **On a phone or a touch screen** the box stays 16px, and a checkbox with words is at least 48px
 high, words included. A box without words takes taps in a 48px square round it (`hit-touch`).
 
+**With words** it follows the Radio's rule, so the two match side by side: the box sits on the
+first line of its words, where it stays when they wrap, and on a phone the words are 16px on 24px
+lines.
+
 **Unavailable** means clicks and Space change nothing, so a mixed box stays mixed too.
 
 **In a Field** a checkbox with words is named by its words alone: the Field's label stays above it

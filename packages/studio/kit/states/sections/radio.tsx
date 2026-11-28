@@ -53,6 +53,22 @@ export const radioSection: PartSection = {
     { name: "Default", copies: () => <Ways /> },
     { name: "Hover", force: "hover", target: "input[value='command']", copies: () => <Ways /> },
     { name: "Focus", force: "focus", target: "input[value='address']", copies: () => <Ways /> },
+    {
+      // The Checkbox's "Wrapped words" row, as a Radio: the circle stays on the first line.
+      name: "Wrapped label",
+      copies: () => (
+        <div className="w-56">
+          <RadioGroup
+            label="Connect with"
+            options={[
+              { value: "command", label: "A local command that starts when an agent needs it" },
+            ]}
+            value="command"
+            onChange={ignore}
+          />
+        </div>
+      ),
+    },
     { name: "Rows", copies: () => <Computers /> },
     {
       name: "Rows, focus",
