@@ -12,6 +12,8 @@
 //! - [`open_guided`] and [`open_page`]: a guided step's page, and a
 //!   `browser` block's address checked against the web origins.
 //! - [`account`]: where the token and the signed-in account are kept.
+//! - [`paperclip_admin`]: the separate Paperclip admin key of rows C1 and
+//!   C5, kept against the origin and company of the connection's entry.
 //! - [`DeviceFlow::sign_in`]: GitHub's device-flow sign-in, which runs
 //!   only while its stepper is open and stores the token with [`account`].
 //! - [`RecordFiles`]: each request's record, one user-only file per
@@ -25,6 +27,7 @@ mod call;
 mod device_flow;
 mod kinds;
 mod opens;
+pub mod paperclip_admin;
 mod pattern;
 mod private_file;
 mod record_check;
