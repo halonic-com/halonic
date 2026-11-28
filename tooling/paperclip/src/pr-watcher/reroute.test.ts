@@ -110,7 +110,7 @@ verifies("paperclip.pr-watcher-reroute", () => {
   test("moves nothing for a free reviewer, an approved, draft or red head, or a working run", async () => {
     const cases = [
       watcher({ limits: {} }),
-      watcher({ extra: { approvals: [{ by: "Liam", head: "5701aaa" }] } }),
+      watcher({ extra: { approvals: [{ by: "Julian", head: "5701aaa" }] } }),
       watcher({ extra: { draft: true } }),
       watcher({ extra: { ciOkOnHead: "failure" } }),
       watcher({ held: task(5701, agents.liam, { branch: mateoBranch, running: true }) }),

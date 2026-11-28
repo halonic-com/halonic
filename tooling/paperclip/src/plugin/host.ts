@@ -17,7 +17,7 @@ import { automaticNoteIds, isAutomaticNote } from "./front-bot-notes.ts";
  * The PR watcher's Paperclip, on top of the plugin host's API. This is the
  * only file that changes a task through the SDK: `doneOnly` lets the watcher
  * set `done`, `handoffOnly` lets it give a task to one agent with status
- * `todo` (its reviewer, HAL-17675), `todoOnly` lets its unblock sweep set `todo`
+ * `todo` (its reviewer, HAL-17675, or back to its author, HAL-21150), `todoOnly` lets its unblock sweep set `todo`
  * on a blocked task (HAL-17692), a wake pick up a parked task Paperclip
  * won't wake as it is (HAL-17869) and a held head's task in any status
  * (HAL-18147), `highOnly` lets a long review wait raise
@@ -299,7 +299,7 @@ export function paperclipHost(
       return "written";
     },
     async handOff(taskId, { from, to }, body, key, options = {}) {
-      // Re-read: the author may have handed it on, closed it or started a run during the pass.
+      // Re-read: the holder may have handed it on, closed it or started a run during the pass.
       const issue = await host.issues.get(taskId, companyId);
       const run = issue?.activeRun;
       const waiting = options.overQueuedRun === true && waitingRunStatuses.has(run?.status ?? "");

@@ -1,7 +1,6 @@
 import { type CloseGuards, guardDone } from "./close-guards.ts";
 import { type ConflictFiles, conflictFilesOf } from "./conflict-files.ts";
 import {
-  branchesOwner,
   candidates,
   closedOutcome,
   type Decision,
@@ -14,6 +13,7 @@ import {
 } from "./decide.ts";
 import type { FoundPulls, PullRef } from "./discover.ts";
 import { type PullFactsReader, pullKey } from "./facts.ts";
+import { handBackStep } from "./hand-back-step.ts";
 import type { ReviewerRoute } from "./handoff.ts";
 import { type HeldHead, withHeld } from "./held.ts";
 import { emptyMemory, isSelf, readMemory } from "./memory.ts";
@@ -26,11 +26,12 @@ import {
   type MonitorCheck,
 } from "./monitor-dedupe.ts";
 import { fallbackAheadMs, moveMonitor, postponeUntil } from "./monitors.ts";
-import { type Paperclip, type TaskRow, waitingRunStatuses } from "./paperclip.ts";
+import type { Paperclip, TaskRow } from "./paperclip.ts";
 import type { RebaseOnly } from "./rebase-only.ts";
 import { noReroute, rerouteStep } from "./reroute.ts";
 import { reviewSteps } from "./review-steps.ts";
 import { noReviewWait, noteReviewWait, oldestFirst, type WaitRow } from "./review-wait.ts";
+import { ownerOf, reroutablePulls, reviewerHeldPulls } from "./reviewer-held.ts";
 import type { ReviewerLimits } from "./reviewer-limits.ts";
 import { type StackRebase, stackStep } from "./stack-rebase.ts";
 import type { PullSummary } from "./wake-status.ts";
@@ -112,6 +113,8 @@ export interface TickSummary {
   readonly rerouted: number;
   /** Tasks noted because both reviewers are limited (HAL-19203). */
   readonly bothLimited: number;
+  /** Tasks given back to their author after their reviewer's verdict (HAL-21150). */
+  readonly handedBack: number;
   /** Every handed-over head still waiting for its approval, oldest handoff first. */
   readonly longestWaits: readonly WaitRow[];
   readonly failed: readonly string[];
@@ -123,12 +126,6 @@ interface TickRefs {
   readonly found: FoundPulls;
   /** The facts of every pull request whose author or reviewer holds its task, or why they couldn't be read. */
   readonly facts: ReadonlyMap<string, PullFacts> | Error;
-}
-
-/** The agent every branch names, by its id, when there is one and Paperclip knows it. */
-function ownerOf(branches: readonly string[], owners: ReadonlyMap<string, string>) {
-  const key = branchesOwner(branches);
-  return key === undefined ? undefined : owners.get(key);
 }
 
 /** The pull requests of a task whose author holds it and isn't running: the ones worth reading. */
@@ -144,39 +141,6 @@ function watchedPulls(
     owners,
   );
   return owner !== undefined && owner === task.assigneeAgentId && !task.running ? pulls : [];
-}
-
-/**
- * The pull requests of a task its reviewer (Liam or Julian, not its author)
- * holds with no run going: read only for the review-wait note (HAL-17760).
- */
-function reviewerHeldPulls(
-  task: TaskRow,
-  found: FoundPulls,
-  owners: ReadonlyMap<string, string>,
-): readonly PullRef[] {
-  const pulls = found.get(task.identifier) ?? [];
-  const holder = task.assigneeAgentId;
-  const reviewers = [owners.get("liam"), owners.get("julian"), owners.get("nora")];
-  const author = ownerOf(
-    pulls.map((ref) => ref.branch),
-    owners,
-  );
-  const held = holder !== null && reviewers.includes(holder) && holder !== author;
-  return held && !task.running ? pulls : [];
-}
-
-/**
- * The same, but a run that is only queued or parked doesn't count: moving a
- * limited reviewer's task cancels it (HAL-19203).
- */
-function reroutablePulls(
-  task: TaskRow,
-  found: FoundPulls,
-  owners: ReadonlyMap<string, string>,
-): readonly PullRef[] {
-  const working = task.running && !waitingRunStatuses.has(task.runStatus ?? "");
-  return working ? [] : reviewerHeldPulls({ ...task, running: false }, found, owners);
 }
 
 function factsOf(ref: PullRef, facts: TickRefs["facts"]): PullFacts {
@@ -196,11 +160,14 @@ function needsMemory(task: TaskRow, pulls: readonly PullFacts[]): boolean {
   return wakes.length > 0 || closedOutcome(pulls)?.kind === "done";
 }
 
+/** The facts of a task its reviewer holds with no run going; none for any other task. */
+function reviewerFacts(task: TaskRow, refs: TickRefs): PullFacts[] {
+  return reviewerHeldPulls(task, refs.found, refs.owners).map((ref) => factsOf(ref, refs.facts));
+}
+
 /** A retargeted or failed-workflow wake for a task its reviewer holds (HAL-19031); undefined for any other task. */
 async function reviewerTask(options: TickOptions, task: TaskRow, refs: TickRefs) {
-  const pulls = reviewerHeldPulls(task, refs.found, refs.owners).map((ref) =>
-    factsOf(ref, refs.facts),
-  );
+  const pulls = reviewerFacts(task, refs);
   const holder = task.assigneeAgentId;
   if (pulls.length === 0 || holder === null) {
     return undefined;
@@ -357,9 +324,7 @@ function reviewStepsOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
 
 /** The review-wait step for a task its reviewer holds; nothing for any other task. */
 function reviewWaitOf(options: TickOptions, task: TaskRow, refs: TickRefs) {
-  const pulls = reviewerHeldPulls(task, refs.found, refs.owners).map((ref) =>
-    factsOf(ref, refs.facts),
-  );
+  const pulls = reviewerFacts(task, refs);
   if (pulls.length === 0) {
     return Promise.resolve(noReviewWait);
   }
@@ -395,6 +360,7 @@ const zero: Counts = {
   priorityRaised: 0,
   rerouted: 0,
   bothLimited: 0,
+  handedBack: 0,
 };
 
 function one(yes: boolean): number {
@@ -408,6 +374,10 @@ async function checkTask(
   refs: TickRefs,
   waits: WaitRow[],
 ): Promise<Counts> {
+  const back = await handBackStep(options, task, reviewerFacts(task, refs), refs.owners);
+  if (back !== "none") {
+    return { ...zero, checked: 1, done: one(back === "done"), handedBack: one(back === "handed") };
+  }
   const decision = await decideTask(options, task, refs);
   if (decision === undefined) {
     return zero;
@@ -438,6 +408,7 @@ async function checkTask(
     priorityRaised: one(waited.raised),
     rerouted: one(moved.rerouted),
     bothLimited: one(moved.bothLimited),
+    handedBack: 0,
   };
 }
 
