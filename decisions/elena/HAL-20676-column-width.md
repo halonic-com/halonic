@@ -12,7 +12,7 @@
 
 Tests changed to follow:
 - `sidebar-resize-edge.test.tsx`: the maximum, End, the stop at the end and the drag now expect 380 where they expected 640; the Home, End, Enter test starts at 300px, inside the new limits;
-- the rail's Settings and Inbox are found under the `nav` named "Apps" in `settings-window.test.tsx`, `settings-open-page.test.tsx`, `studio-window.test.tsx`, `icon-rail.test.tsx`, `e2e/settings-open-page.spec.ts` and the app's `served-studio.test.ts`, `served-wait-context.test.ts` and `start-studio.places.test.ts`. What each checks is unchanged.
+- the rail's Settings and Inbox are found under the `nav` named "Apps" in `settings-window.test.tsx`, `settings-open-page.test.tsx`, `studio-window.test.tsx`, `icon-rail.test.tsx`, `e2e/settings-open-page.spec.ts` and the app's `served-studio.test.ts`, `served-wait-context.test.ts` and `start-studio.places.test.ts`. What each checks is unchanged. The installed-app click test (`packages/testing/studio-click-test`, `placesList`) looks for a place in the `nav` named "Places" or "Apps", so its steps still find Home, the Inbox and Settings on the rail.
 
 New tests (`column-width.test.tsx`): 34% of the window inside 180 to 380px; the column follows the window; a width the person set stays until the edge resets it. No test was skipped or weakened.
 

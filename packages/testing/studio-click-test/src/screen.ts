@@ -55,7 +55,8 @@ export async function clickXPathWhenShown(
 }
 
 /**
- * An XPath for a place, such as Overview, by its name in the sidebar's Places list. Only there:
+ * An XPath for a place, such as Overview, by its name in the sidebar's Places list or on the icon
+ * rail, where Home, the Inbox and Settings now sit (HAL-20676). Only there:
  * the window's "1 open tab" menu is a closed popover holding a hidden button named after the
  * open tab, and it comes first in the page, so a plain {@link buttonNamed} finds that one and the
  * click is refused (HAL-19099).
@@ -64,8 +65,11 @@ export function placeNamed(text: string): string {
   return `${placesList}${buttonNamed(text)}`;
 }
 
-/** The sidebar's Places list, a `nav` named "Places" (`places-list.tsx`). */
-export const placesList = "//nav[@aria-label='Places']";
+/**
+ * The sidebar's Places list, a `nav` named "Places" (`places-list.tsx`), or the icon rail beside
+ * it, a `nav` named "Apps" (`icon-rail.tsx`).
+ */
+export const placesList = "//nav[@aria-label='Places' or @aria-label='Apps']";
 
 /**
  * Reads the page until `found` returns something, for at most `waitMs`, and
