@@ -151,10 +151,13 @@ verifies("shell.studio-window", () => {
     expect(ran).toEqual(["go"]);
   });
 
-  it("shows the title bar with its mark, Back and Forward and the window tabs, the sidebar and Home in a new workspace", () => {
+  it("shows the title bar with its mark, Back and Forward, the window tabs above the page, the sidebar and Home in a new workspace", () => {
     const { container, link } = renderWindow();
 
-    expect(container.querySelector('[role="tablist"][aria-label="Open tabs"]')).not.toBeNull();
+    const tabs = container.querySelector('[role="tablist"][aria-label="Open tabs"]');
+    expect(tabs).not.toBeNull();
+    expect(container.querySelector("header")?.contains(tabs)).toBe(false);
+    expect(container.querySelector("[data-framed-panel]")?.contains(tabs)).toBe(true);
     expect(container.querySelector("header")?.textContent).toContain("Halonic Studio");
     expect(container.querySelector('button[aria-label="Back"]')).not.toBeNull();
     expect(container.querySelector('nav[aria-label="Location"]')).toBeNull();

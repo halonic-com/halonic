@@ -19,7 +19,6 @@ import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
-import { RAIL_WIDTH } from "../rail/window-rail.tsx";
 import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import { useAvailableSections } from "../settings/available-sections.ts";
@@ -110,10 +109,10 @@ export interface StudioWindowProps {
 
 /**
  * The whole Studio window, put together from the shell's parts. On the desktop
- * (`shell.studio-window`): the Halonic Studio mark, Back, Forward and the window tabs in the title
- * bar, with the features' items at its right end (`shell.title-bar-items`), the icon rail and the
- * list column beside it (`shell.rail-frame`), the active tab's page with the last five kept
- * mounted, the
+ * (`shell.studio-window`): the Halonic Studio mark, Back and Forward in the title bar, with the
+ * features' items at its right end (`shell.title-bar-items`), the icon rail and the list column
+ * beside it (`shell.rail-frame`), the window tabs above the content pane (`shell.frame`), the
+ * active tab's page with the last five kept mounted, the
  * status bar items with the save note at its right end, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
  * Settings opens over it (`shell.settings-window`) from the context's `openSettings`, the
  * rail's Settings button and, in the desktop app, Mod ,.
@@ -337,15 +336,16 @@ function StudioWindowBody(props: StudioWindowProps) {
       language={props.language}
       titleBar={
         <>
-          <TitleBarStart sidebarWidth={sidebarWidth.width + RAIL_WIDTH}>
+          <TitleBarStart>
             <TitleBarBrand />
             <HistoryButtons tabs={tabs} />
           </TitleBarStart>
-          <WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />
+          <span className="flex-1" />
           {panel.button}
           <TitleBarItems items={contributions.titleBar.list()} contextFor={contextFor} />
         </>
       }
+      tabs={<WindowTabStrip tabs={tabs} onNewTab={palette.show} windowKeys={{ host, platform }} />}
       badges={headerBadges}
       saveNote={<StatusBarSaveNote saving={workspace.saving} />}
       phoneBadges={<HeaderBadges registry={shell.badges} layout="strip" />}

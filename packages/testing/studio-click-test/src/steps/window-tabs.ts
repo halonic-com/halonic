@@ -5,7 +5,7 @@ import { basicsText, buttonLabels } from "../words.ts";
 import { onWorkspaceWithoutSettings } from "./open-demo.ts";
 import { inWideWindow } from "./wide-window.ts";
 
-/** Every tab in the title bar's strip. */
+/** Every tab in the Open tabs strip, above the content pane. */
 export const tabXpath = `//*[@role='tablist' and @aria-label='${basicsText.openTabs.text}']//*[@role='tab']`;
 
 const tabWaitMs = 10_000;
