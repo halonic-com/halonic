@@ -47,7 +47,7 @@ verifies("studio-click-test.card-steps", () => {
     it("posts the Inbox copy as the board and asks the agent for the Messenger copy", async () => {
       const cardsFile = await emptyCardsFile();
       const { call, calls } = fakeCall(1);
-      const setup = { companyId: "co1", chatId: "chat-1", cardsFile };
+      const setup = { companyId: "co1", agentId: "agent-1", chatId: "chat-1", cardsFile };
       // What the agent reads while the seed waits for its copy.
       let asking = "";
       const seeded = await seedCard(call, setup, planCard, async () => {
@@ -71,7 +71,7 @@ verifies("studio-click-test.card-steps", () => {
       const asked = JSON.parse(asking);
       expect(asked).toEqual([
         {
-          issueId: "chat-1",
+          path: "/api/issues/chat-1/interactions",
           body: expect.objectContaining({
             payload: expect.objectContaining({
               prompt: "Approve the Acme launch plan? (Messenger)",
@@ -90,7 +90,12 @@ verifies("studio-click-test.card-steps", () => {
 
     it("wakes the agent again, then throws when it never posts its copy", async () => {
       const { call, calls } = fakeCall(undefined);
-      const setup = { companyId: "co1", chatId: "chat-1", cardsFile: await emptyCardsFile() };
+      const setup = {
+        companyId: "co1",
+        agentId: "agent-1",
+        chatId: "chat-1",
+        cardsFile: await emptyCardsFile(),
+      };
       await expect(seedCard(call, setup, yesNoCard, async () => undefined)).rejects.toThrow(
         "the agent never posted the yes-no card on its chat",
       );
@@ -119,7 +124,12 @@ verifies("studio-click-test.card-steps", () => {
 verifies("studio-click-test.list-card-steps", () => {
   it("puts a suggested-task card's prompt in its title, since its payload has none", async () => {
     const { call, calls } = fakeCall(undefined);
-    const setup = { companyId: "co1", chatId: "chat-1", cardsFile: await emptyCardsFile() };
+    const setup = {
+      companyId: "co1",
+      agentId: "agent-1",
+      chatId: "chat-1",
+      cardsFile: await emptyCardsFile(),
+    };
     await expect(seedCard(call, setup, suggestedTasksCard, async () => undefined)).rejects.toThrow(
       "never posted",
     );

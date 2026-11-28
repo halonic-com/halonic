@@ -194,8 +194,13 @@ export function missingParts(wanted: readonly string[], text: string): string {
  * rows whose whole text isn't known, such as an Inbox row with its meta line.
  */
 export function rowContaining(text: string): string {
+  return `(${rowsContaining(text)})[last()]`;
+}
+
+/** An XPath for every row, cell or button whose text holds `text`, in page order. */
+export function rowsContaining(text: string): string {
   const control = "(self::button or @role='button' or @role='gridcell' or @role='option')";
-  return `(//*[${control} and contains(normalize-space(), ${xpathString(text)})])[last()]`;
+  return `//*[${control} and contains(normalize-space(), ${xpathString(text)})]`;
 }
 
 /** Clicks the row holding `text` once it shows, waiting at most `waitMs`. */

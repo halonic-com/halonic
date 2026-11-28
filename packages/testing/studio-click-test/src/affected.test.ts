@@ -25,6 +25,9 @@ const cardSteps = [
   "card-checkbox",
   "card-verdicts",
   "card-suggested-tasks",
+  "card-hire",
+  "card-strategy",
+  "card-decision",
 ];
 const everyStep = clickTestSteps.map((step) => step.id);
 

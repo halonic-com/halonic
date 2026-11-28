@@ -1,5 +1,6 @@
 import type { Step } from "./runner.ts";
 import { addAccount } from "./steps/add-account.ts";
+import { cardDecision, cardHire, cardStrategy } from "./steps/approval-cards.ts";
 import {
   cardCheckbox,
   cardOneQuestion,
@@ -68,6 +69,9 @@ export const clickTestSteps: readonly Step[] = [
   cardCheckbox,
   cardVerdicts,
   cardSuggestedTasks,
+  cardHire,
+  cardStrategy,
+  cardDecision,
   disconnect,
   demoWorkspace,
   windowTabs,

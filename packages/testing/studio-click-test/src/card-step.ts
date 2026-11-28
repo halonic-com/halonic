@@ -1,8 +1,16 @@
-import { type CardFixture, promptOn, type Surface, surfaces } from "./card-fixtures.ts";
+import { promptOn, type SeedFixture, type Surface, surfaces } from "./card-fixtures.ts";
 import type { CardRecord, CardRef } from "./card-seed.ts";
 import { messengerWindowLabel } from "./main-window.ts";
 import type { Step, StepContext, StepOutcome } from "./runner.ts";
-import { clickRow, clickWhenShown, lastWords, waitForText, xpathString } from "./screen.ts";
+import {
+  clickRow,
+  clickWhenShown,
+  lastWords,
+  pollEveryMs,
+  rowsContaining,
+  waitForText,
+  xpathString,
+} from "./screen.ts";
 import { openAppWindow } from "./steps/app-window.ts";
 import { closeDialogs, onWorkspace, openPlace } from "./steps/open-demo.ts";
 import { seedNames } from "./test-paperclip.ts";
@@ -21,6 +29,8 @@ const cardWaitMs = 150_000;
 const answerPolls = 15;
 /** How long an open card's Back to Inbox gets to show; without an open card there's none. */
 const backWaitMs = 2_000;
+/** How long a row opened by its type gets to show the copy's prompt before the next is tried. */
+const rowOpenMs = 4_000;
 
 /**
  * What a card step clicks on one surface once its copy shows: `card` is an XPath for that copy,
@@ -37,7 +47,7 @@ export interface CardStepSpec {
   readonly id: string;
   readonly title: string;
   readonly requirements: readonly string[];
-  readonly fixture: CardFixture;
+  readonly fixture: SeedFixture;
   readonly clicks: Readonly<Record<Surface, AnswerClicks>>;
   readonly answered: Readonly<Record<Surface, AnswerCheck>>;
 }
@@ -85,7 +95,7 @@ async function answerOn(
 ): Promise<StepOutcome> {
   const prompt = promptOn(spec.fixture, surface);
   const shown =
-    surface === "Inbox" ? await openInInbox(context, prompt) : await openInChat(context);
+    surface === "Inbox" ? await openInInbox(context, spec.fixture) : await openInChat(context);
   if (!shown.passed) return shown;
   const card = await waitForText(context, cardWaitMs, (text) =>
     text.includes(prompt) ? true : undefined,
@@ -101,7 +111,8 @@ async function answerOn(
  * answered card open, and in the 800 px window that card hides the list, so the step goes back to
  * the list first, as step 9 does (run 46006509779).
  */
-async function openInInbox(context: StepContext, prompt: string): Promise<StepOutcome> {
+async function openInInbox(context: StepContext, fixture: SeedFixture): Promise<StepOutcome> {
+  const prompt = promptOn(fixture, "Inbox");
   const workspace = await onWorkspace(context);
   if (!workspace.passed) return workspace;
   await closeDialogs(context);
@@ -109,11 +120,52 @@ async function openInInbox(context: StepContext, prompt: string): Promise<StepOu
     return { passed: false, code: "NO_INBOX", note: "No Inbox in Places." };
   }
   await clickWhenShown(context, screenText.backToInbox.text, backWaitMs);
-  if (await clickRow(context, prompt, cardWaitMs)) return { passed: true };
+  const opened =
+    fixture.record === "approval"
+      ? await openRowShowing(context, fixture.inboxRow, prompt)
+      : await clickRow(context, prompt, cardWaitMs);
+  if (opened) return { passed: true };
   const { text } = await waitForText(context, 0, () => undefined);
   // The shell log has the engine's lines up to the failure, for whoever looks into it next.
   const log = await context.shellLog();
   return { passed: false, code: "NO_ROW", note: `${lastWords(text)}\nshell.log:\n${log}` };
+}
+
+/**
+ * Opens the rows holding `rowText`, last first, until one shows `prompt`, for at most the card
+ * wait. An approval's row says only its type, and both copies, step 9's card too, can say the
+ * same, so a row that shows another title is closed again with Back to Inbox.
+ */
+export async function openRowShowing(
+  context: StepContext,
+  rowText: string,
+  prompt: string,
+): Promise<boolean> {
+  const rows = rowsContaining(rowText);
+  for (let read = 0; read < cardWaitMs / pollEveryMs; read += 1) {
+    const count = await context.driver.count(rows);
+    for (let index = count; index >= 1; index -= 1) {
+      if (await openedShowing(context, `(${rows})[${index}]`, prompt)) return true;
+    }
+    await context.sleep(pollEveryMs);
+  }
+  return false;
+}
+
+/** Clicks `row` open and says whether it shows `prompt`; one that doesn't is closed again. */
+async function openedShowing(context: StepContext, row: string, prompt: string): Promise<boolean> {
+  const clicked = await context.driver.click(row).then(
+    () => true,
+    // A row the list dropped since it was counted is no row to open.
+    () => false,
+  );
+  if (!clicked) return false;
+  const shown = await waitForText(context, rowOpenMs, (text) =>
+    text.includes(prompt) ? true : undefined,
+  );
+  if (shown.value === true) return true;
+  await clickWhenShown(context, screenText.backToInbox.text, backWaitMs);
+  return false;
 }
 
 /**

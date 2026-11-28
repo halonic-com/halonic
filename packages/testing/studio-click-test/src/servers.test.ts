@@ -213,6 +213,7 @@ verifies("studio-click-test.paperclip-steps", () => {
       expect(seeded).toEqual({
         companyId: "co1",
         approvalId: "a1",
+        agentId: "ag1",
         chatId: "chat1",
         cardsFile: file,
       });
