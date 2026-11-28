@@ -12,6 +12,7 @@ use serde::Deserialize;
 use serde_json::Value;
 
 pub use crate::kinds::{Method, Risk};
+use crate::operation_route::{OperationRoute, operation_route};
 use crate::pattern::Pattern;
 use crate::services::{Service, service};
 use crate::target::{TargetPart, parse_target};
@@ -84,6 +85,8 @@ pub struct GuidedRoute {
 pub struct RouteList {
     pub calls: BTreeMap<StepKey, CallRoute>,
     pub guided: BTreeMap<StepKey, GuidedRoute>,
+    /// Steps the shell runs as one of its own operations (`operation_route`).
+    pub operations: BTreeMap<StepKey, OperationRoute>,
     /// The pages `browser` blocks may open (note, 7.1).
     pub web_origins: Vec<WebOrigin>,
 }
@@ -106,25 +109,26 @@ pub(crate) struct WebOriginFile {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct RouteFile {
-    kind: String,
-    definition: String,
-    version: u32,
-    step: u32,
-    service: String,
-    risk: Risk,
-    placeholders: BTreeMap<String, String>,
-    method: Option<Method>,
-    path: Option<String>,
-    body: Option<Vec<BodyFieldFile>>,
-    keep: Option<Vec<String>>,
-    address: Option<String>,
-    target: Option<String>,
+pub(crate) struct RouteFile {
+    pub kind: String,
+    pub definition: String,
+    pub version: u32,
+    pub step: u32,
+    pub service: String,
+    pub risk: Risk,
+    pub placeholders: BTreeMap<String, String>,
+    pub method: Option<Method>,
+    pub path: Option<String>,
+    pub body: Option<Vec<BodyFieldFile>>,
+    pub keep: Option<Vec<String>>,
+    pub address: Option<String>,
+    pub target: Option<String>,
+    pub operation: Option<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct BodyFieldFile {
+pub(crate) struct BodyFieldFile {
     name: String,
     kind: String,
     pattern: Option<String>,
@@ -161,6 +165,13 @@ impl RouteList {
                     .calls
                     .insert(key, call_route(route).map_err(|e| format!("{named}: {e}"))?)
                     .is_some(),
+                "operation" => list
+                    .operations
+                    .insert(
+                        key,
+                        operation_route(route).map_err(|e| format!("{named}: {e}"))?,
+                    )
+                    .is_some(),
                 "guided" => {
                     let guided = guided_route(route, &list.web_origins)
                         .map_err(|e| format!("{named}: {e}"))?;
@@ -176,7 +187,10 @@ impl RouteList {
     }
 }
 
-fn placeholders(route: &RouteFile, used: &[&str]) -> Result<BTreeMap<String, Pattern>, String> {
+pub(crate) fn placeholders(
+    route: &RouteFile,
+    used: &[&str],
+) -> Result<BTreeMap<String, Pattern>, String> {
     let declared: Vec<&str> = route.placeholders.keys().map(String::as_str).collect();
     if used.len() != declared.len() || !used.iter().all(|name| declared.contains(name)) {
         return Err("the placeholders don't match the template's".to_owned());
@@ -189,8 +203,8 @@ fn placeholders(route: &RouteFile, used: &[&str]) -> Result<BTreeMap<String, Pat
 }
 
 fn call_route(route: RouteFile) -> Result<CallRoute, String> {
-    if route.address.is_some() {
-        return Err("a call has no address".to_owned());
+    if route.address.is_some() || route.operation.is_some() {
+        return Err("a call has no address or operation".to_owned());
     }
     let service = service(&route.service)
         .ok_or_else(|| format!("the shell doesn't send to the service `{}`", route.service))?;
@@ -253,7 +267,7 @@ pub(crate) fn is_kept_name(name: &str) -> bool {
             .all(|segment| segment.len() <= MAX_KEPT_SEGMENT_CHARS && is_name(segment))
 }
 
-fn body_field(field: BodyFieldFile) -> Result<BodyField, String> {
+pub(crate) fn body_field(field: BodyFieldFile) -> Result<BodyField, String> {
     if !is_name(&field.name) {
         return Err(format!("`{}` isn't a body field name", field.name));
     }
@@ -285,6 +299,7 @@ fn guided_route(route: RouteFile, origins: &[WebOrigin]) -> Result<GuidedRoute, 
         || route.body.is_some()
         || route.keep.is_some()
         || route.target.is_some()
+        || route.operation.is_some()
     {
         return Err("a guided step has only an address".to_owned());
     }
