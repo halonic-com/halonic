@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: HAL-20741; HAL-20617 build plan, phases P3 and P5; HAL-20673 rail flows, section 2; HAL-20773
 
-The shell shall let one feature set Home's view through `home.setView`, as two slots: a list column and a content pane. The shell shall own Home's layout, and the feature only fills the slots. The shell shall show the list column beside the content pane, about 34% of the page wide and at most 380px, give the content pane Home's sections as the shell draws them, and give both slots the context of the feature that set them. The shell shall keep which item is open, so an item the list column opens shows in the content pane. The content pane shall not be a second main landmark. While the window is narrower than 900px, the shell shall show one pane at a time: the list column, or the open item under "Back to Home", which leads back to the list column. When an item opens in one pane, the shell shall move the focus to "Back to Home"; when it closes, the shell shall move the focus to that item's row, or to the first row if that row is gone. Where the Studio shows the phone layout, the shell shall show Home's sections alone until the phone's own Home is designed. While no feature sets Home's view, the shell shall show Home's sections alone. If a second feature sets it, then the shell shall throw a `ShellError` that names both features.
+The shell shall let one feature set Home's view through `home.setView`, as two slots: a list column and a content pane. The shell shall own Home's layout, and the feature only fills the slots. The shell shall show the list column beside the content pane, about 34% of the page wide and at most 380px, give the content pane Home's sections as the shell draws them, and give both slots the context of the feature that set them. The shell shall keep which item is open, so an item the list column opens shows in the content pane. The content pane shall not be a second main landmark. While the window is narrower than 900px, the shell shall show one pane at a time: the list column, or the open item under "Back to Home", which leads back to the list column. When an item opens in one pane, the shell shall move the focus to "Back to Home"; when it closes, the shell shall move the focus to that item's row, or to the first row if that row is gone, or to the list column's first control if it shows no row. Where the Studio shows the phone layout, the shell shall show Home's sections alone until the phone's own Home is designed. While no feature sets Home's view, the shell shall show Home's sections alone. If a second feature sets it, then the shell shall throw a `ShellError` that names both features.
 
 ## Examples
 
@@ -26,6 +26,9 @@ The shell shall let one feature set Home's view through `home.setView`, as two s
 - Given _home_ sets Home's view, the window is 800px wide and "triage" is open,
   when "triage" leaves the list and the person presses "Back to Home",
   then the focus is on the first row.
+- Given _home_ sets Home's view, the window is 800px wide and the list column shows no row,
+  when the person opens a new chat and presses "Back to Home",
+  then the focus is on the list column's first control, "New chat".
 - Given _home_ sets Home's view,
   when Home is shown on a phone,
   then it shows Home's sections alone.

@@ -8,13 +8,13 @@ import {
 } from "@halonicjs/studio-kit";
 import { type ReactNode, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { focusRow, visibleRowIds } from "../overview/row-focus.ts";
 import type {
   HomeContentPaneProps,
   HomeListColumnProps,
   HomeViewContribution,
 } from "../points/home.ts";
 import type { Registered } from "../points/point-store.ts";
-import { focusRow, visibleRowIds } from "../overview/row-focus.ts";
 import { LoadedView } from "../view-loading.tsx";
 import type { WorkspaceContext } from "../workspace-context.ts";
 
@@ -100,11 +100,15 @@ export function HomeView({ view, context, sections, name }: HomeViewProps) {
   );
 }
 
+/** What can take the keyboard focus in the list column, for a column that draws no row. */
+const focusable = 'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 /**
  * The open item and the panes' focus. In one pane the list column and the open item replace each
  * other, so the focused row or button would be hidden with them: the focus moves to "Back to Home"
  * when an item opens, as the Runs page's one pane does. When the item closes, the focus moves to
- * its row (the element with its `data-row-id`) while the column lists it, else to the first row.
+ * its row (the element with its `data-row-id`) while the column lists it, else to the first row,
+ * else, while the column draws no row, to its first control.
  */
 function useHomePanes() {
   const narrow = useNarrow();
@@ -119,7 +123,8 @@ function useHomePanes() {
     const list = column.current;
     if (list === null || open === undefined || focusRow(list, open)) return;
     const [first] = visibleRowIds(list);
-    if (first !== undefined) focusRow(list, first);
+    if (first !== undefined && focusRow(list, first)) return;
+    list.querySelector<HTMLElement>(focusable)?.focus();
   };
   return { narrow, open, setOpen, column, back };
 }
