@@ -21,6 +21,8 @@ const emojiNames: Record<ReactionEmoji, string> = {
  */
 export const phoneReactionWords = {
   you: "You",
+  /** The button after a message's chips, the keyboard's and screen reader's way to the sheet. */
+  add: "Add a reaction",
   name: (emoji: ReactionEmoji) => emojiNames[emoji],
   /** A chip's name for a screen reader: "Thumbs up, 2: you and Chief". */
   chip: (emoji: ReactionEmoji, names: readonly string[]) =>
