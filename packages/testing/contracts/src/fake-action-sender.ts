@@ -32,9 +32,10 @@ export interface SentActionCall {
 }
 
 /**
- * How a stand-in service answers a call. `fields`: the answer's top-level
- * fields, from which the sender keeps only the route's. `error`: the
- * service's own message for a failed status.
+ * How a stand-in service answers a call. `fields`: the answer's fields, from
+ * which the sender keeps only the route's, walking a dotted name one object
+ * key at a time (`keptFields`). `error`: the service's own message for a
+ * failed status.
  */
 export type StandInAnswer =
   | { status: number; fields?: Readonly<Record<string, unknown>>; error?: string }

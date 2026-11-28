@@ -141,6 +141,18 @@ verifies("action-steppers.check-gate-request", () => {
       );
     });
 
+    it("throws for a required expect name that is kept but dotted, since `expect` takes plain names", () => {
+      const dotted = {
+        ...readRun,
+        keep: ["status", "environment.id"],
+        requiredExpect: ["environment.id"],
+      };
+
+      expect(() => routesOf(definition([dotted]))).toThrow(
+        "github.approve-deployment@1 step 1: requiredExpect environment.id isn't a plain name",
+      );
+    });
+
     it("throws for a parameter rule whose parameter doesn't exist", () => {
       const broken = definition([
         {

@@ -68,7 +68,10 @@ function bodyFieldOf(field: CallBodyField, fields: Fields, where: string): Actio
   return { name: field.name, kind: "string", pattern: patternOf(field.name, parameter) };
 }
 
-/** Each field a check's `requires` and `requiredExpect` name must be kept, and each parameter exist. */
+/**
+ * Each field a check's `requires` and `requiredExpect` name must be kept, and each parameter exist.
+ * A `requiredExpect` name must also be plain, since a request's `expect` takes no dotted name.
+ */
 function assertCheckNames(step: CheckStep, fields: Fields, where: string): void {
   for (const rule of step.requires ?? []) {
     assert(step.keep.includes(rule.name), `${where}: requires ${rule.name} isn't a kept field`);
@@ -76,6 +79,7 @@ function assertCheckNames(step: CheckStep, fields: Fields, where: string): void 
   }
   for (const name of step.requiredExpect ?? []) {
     assert(step.keep.includes(name), `${where}: requiredExpect ${name} isn't a kept field`);
+    assert(!name.includes("."), `${where}: requiredExpect ${name} isn't a plain name`);
   }
 }
 
@@ -162,7 +166,7 @@ function routeOf(
  *   parameter, keeps a field under a name `isActionKeptName` refuses (more
  *   than 3 dotted keys, or a list index), a list field whose parameter isn't an
  *   integer, a `requires` rule or `requiredExpect` name a field its check doesn't
- *   keep or a parameter that doesn't exist, or the parameters weren't built with
+ *   keep or a parameter that doesn't exist, a dotted `requiredExpect` name, or the parameters weren't built with
  *   `strictParameters`: a bug in the reviewed definition, which the catalog's tests catch
  *
  * @example

@@ -107,7 +107,8 @@ const stepFields = ["step", "outcome", "status", "kept", "failure", "error", "by
 /**
  * Checks a value against the allow-list of an `action-result` answer
  * (requirement `ports.agent-messaging-actions`). Every field must be on the
- * list and hold what it says: kept fields are plain values under plain names,
+ * list and hold what it says: kept fields are plain values under the names
+ * `isActionKeptName` allows (a plain name, or up to 3 of them joined by `.`),
  * error text is marked untrusted and at most 300 characters, and `kept`,
  * `failure` and `error` appear only on the outcome they belong to. So an
  * account name, a token or a whole answer body can't ride along under any
