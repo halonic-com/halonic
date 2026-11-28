@@ -84,7 +84,12 @@ function watchCommand(time: FakeTime) {
   const setup = acmeRunsSetup(acmeRuns);
   return routinesCommandWith({
     ...setup,
-    engine: { ...setup.engine, clock: time.clock, setTimer: time.setTimer },
+    engine: {
+      ...setup.engine,
+      clock: time.clock,
+      setTimer: time.setTimer,
+      onWokeUp: time.onWokeUp,
+    },
   });
 }
 
@@ -117,11 +122,7 @@ verifies("cli.commands.routines.watch", () => {
 
     // The next tick after 15:00 starts the run due at 15:00.
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil(
-      "the second watch line",
-      () => wokenUp(time) && io.stdout.length > 1,
-      slowWatch,
-    );
+    await time.wakeAndSettle();
     expect(io.stdout[1]).toMatch(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u);
     const [started] = await storedRuns();
     expect(started).toMatchObject({
@@ -166,11 +167,7 @@ verifies("cli.commands.routines.watch", () => {
     });
 
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil(
-      "the second watch line",
-      () => wokenUp(time) && io.stdout.length > 1,
-      slowWatch,
-    );
+    await time.wakeAndSettle();
     expect(io.stdout[1]).toBe("✕ Hourly follow-up didn't start · due 15:00 · see why with --debug");
     expect(io.stderr.join("\n")).toContain("Routine support/hourly-follow-up didn't start:");
     expect(await storedRuns()).toEqual([]);
@@ -235,7 +232,7 @@ verifies("cli.commands.routines.watch", () => {
     ]);
 
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil("the started line", () => wokenUp(time) && io.stdout.length > 2, slowWatch);
+    await time.wakeAndSettle();
     expect(io.stdout.slice(2)).toEqual([
       expect.stringMatching(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
     ]);
@@ -272,7 +269,7 @@ verifies("cli.commands.routines.watch", () => {
     ]);
 
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil("the started line", () => wokenUp(time) && io.stdout.length > 2, slowWatch);
+    await time.wakeAndSettle();
     expect(io.stdout.slice(2)).toEqual([
       expect.stringMatching(/^✓ Started Hourly follow-up · run \w{6} · due 15:00$/u),
     ]);
@@ -316,7 +313,7 @@ verifies("cli.commands.routines.watch", () => {
     ]);
 
     time.set("2026-11-10T15:00:10.000Z");
-    await waitUntil("the next tick", () => wokenUp(time), slowWatch);
+    await time.wakeAndSettle();
     expect(io.stdout).toHaveLength(2);
     expect(await storedRuns()).toEqual([]);
 
