@@ -33,7 +33,7 @@ const summaries: Readonly<Record<string, AliasSummary>> = {
 };
 
 const codexRefused = "This model can't be used with Codex. Choose another.";
-const claudeRefused = "Claude Code can use Anthropic models only.";
+const claudeRefused = "Claude Code can use Anthropic models only. Choose another.";
 const endpoint = "Make sure this endpoint supports the Responses API.";
 
 /** Coder's Model page, on `model` in `harness`, with a host that tells `told`; `null`, it can't tell. */
@@ -75,7 +75,7 @@ verifies("agents.configuration.harness-model", () => {
   it("says OpenCode can use Anthropic models only", async () => {
     const page = await modelPage("gpt", "opencode");
 
-    expect(page.textContent).toContain("OpenCode can use Anthropic models only.");
+    expect(page.textContent).toContain("OpenCode can use Anthropic models only. Choose another.");
   });
 
   it("asks a Codex agent on an OpenAI-compatible provider to check the endpoint", async () => {
