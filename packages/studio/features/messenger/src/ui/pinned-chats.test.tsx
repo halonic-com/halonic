@@ -192,6 +192,8 @@ verifies("messenger.pinned-chats", () => {
     expect(pageSaid(page)).not.toContain("You can pin up to 3 chats.");
     await press(byText(page, "main button", "Back to chats"));
     expect(byText(page, "nav p", "You can pin up to 3 chats.")).toBeDefined();
+    // The toast said it; the list coming back doesn't read it again.
+    expect(pageSaid(page)).not.toContain("You can pin up to 3 chats.");
   });
 
   it("puts Pin chat first in the ··· menu, before Mark as unread", async () => {

@@ -116,7 +116,7 @@ export function MessengerPage({
     select(channel);
   };
   const pinning = useChatPinning(pins, rows);
-  usePinsFullToast(pinning.fullCount, onePane && panelFirst);
+  const toasted = usePinsFullToast(pinning.fullCount, onePane && panelFirst);
   // Leaving finds the row that takes the channel's place in the order the list shows it.
   const { said, leave } = useLeft(list, shownOrder(rows, pinning.pinned));
   const left = () => {
@@ -136,7 +136,12 @@ export function MessengerPage({
         {/* The page's heading and status come first, so they read before the list, and stay while
           one pane shows the chat; both are out of the flow, so they take no room. */}
         <h1 className="sr-only">{messengerWords.title}</h1>
-        <PageStatus said={said} pinning={pinning} listHidden={onePane && panelFirst} />
+        <PageStatus
+          said={said}
+          pinning={pinning}
+          silent={onePane && panelFirst}
+          toasted={toasted}
+        />
         {onePane && panelFirst ? null : (
           <ListColumn listRef={list} onePane={onePane} connected={connected}>
             <ChatsColumn
@@ -200,39 +205,49 @@ export function MessengerPage({
 
 /**
  * The page's status region: what Leave said, and "You can pin up to 3 chats." on every pin that
- * finds them all taken, except while one pane shows the chat, where its toast says it.
+ * finds them all taken, except a pin whose toast said it (one pane), even once the list is back.
  */
 function PageStatus({
   said,
   pinning,
-  listHidden,
+  silent,
+  toasted,
 }: {
   readonly said: { readonly text: string; readonly count: number };
   readonly pinning: ChatPinning;
-  readonly listHidden: boolean;
+  /** One pane shows the chat, so a toast says it. */
+  readonly silent: boolean;
+  /** The last full pin a toast said. */
+  readonly toasted: number;
 }) {
+  const sayPinsFull = pinning.full && !silent && pinning.fullCount !== toasted;
   return (
     <p role="status" className="sr-only" data-page-status>
       <span key={said.count}>{said.text}</span>
-      <span key={`pins-${pinning.fullCount}`}>
-        {pinning.full && !listHidden ? messengerWords.pinsFull : ""}
-      </span>
+      <span key={`pins-${pinning.fullCount}`}>{sayPinsFull ? messengerWords.pinsFull : ""}</span>
     </p>
   );
 }
 
 /**
  * While one pane shows the chat, the list's "You can pin up to 3 chats." isn't on screen, so a
- * pin that finds them all taken says it in a toast instead (Noah's look check on HAL-21047).
+ * pin that finds them all taken says it in a toast instead (Noah's look check on HAL-21047),
+ * closing the last one first so two never stack. Gives the full pin the last toast said.
  */
-function usePinsFullToast(fullCount: number, listHidden: boolean): void {
+function usePinsFullToast(fullCount: number, listHidden: boolean): number {
   const toasts = useToastStore();
-  const shown = useRef(fullCount);
+  const seen = useRef(fullCount);
+  const open = useRef<string | undefined>(undefined);
+  const [toasted, setToasted] = useState(0);
   useEffect(() => {
-    if (fullCount === shown.current) return;
-    shown.current = fullCount;
-    if (listHidden) toasts?.show({ tone: "info", title: messengerWords.pinsFull });
+    if (fullCount === seen.current) return;
+    seen.current = fullCount;
+    if (!listHidden || toasts === undefined || toasts === null) return;
+    if (open.current !== undefined) toasts.close(open.current);
+    open.current = toasts.show({ tone: "info", title: messengerWords.pinsFull });
+    setToasted(fullCount);
   }, [fullCount, listHidden, toasts]);
+  return toasted;
 }
 
 /** The rows in the order the list shows them: the pinned ones first (`messenger.pinned-chats`). */
