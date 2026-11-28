@@ -96,6 +96,11 @@ const placeLinks = (root: HTMLElement) => [
   ...root.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Places"] a'),
 ];
 
+/** The rail's entries, Settings left out: it sits apart, outside the list. */
+const railEntries = (root: HTMLElement) => [
+  ...root.querySelectorAll<HTMLButtonElement>('nav[aria-label="Places"] li button'),
+];
+
 const stopped = (root: HTMLElement) =>
   root.textContent?.includes("This page stopped working") === true;
 
@@ -126,6 +131,28 @@ afterEach(async () => {
   restoreDialogs();
 });
 
+/** Opens the column's place named `label` and checks its page draws without stopping. */
+async function openPlace(label: string) {
+  placeLinks(element)
+    .find((candidate) => candidate.textContent === label)
+    ?.click();
+  await vi.waitFor(
+    // The sidebar's row: the icon rail marks its own selected entry too, a button with no text.
+    () => expect(element.querySelector('a[aria-current="page"]')?.textContent).toBe(label),
+    { timeout: 4_000 },
+  );
+  // Pages load on demand: wait out the import, then until the page drew its heading or
+  // stopped, and tell which. Only the import gets the wider limit.
+  await vi.waitFor(() => expect(loading(element), `${label} still loading`).toBe(false), {
+    timeout: IMPORT_LIMIT_MS,
+  });
+  await vi.waitFor(
+    () => expect(stopped(element) || element.querySelector("main h1") !== null).toBe(true),
+    { timeout: 4_000 },
+  );
+  expect(stopped(element), `the ${label} place stopped working`).toBe(false);
+}
+
 verifies("studio.entry", () => {
   // The shell only lets a feature look up the services it lists, so a page that looks up one
   // more stops working in the real app while its package tests pass (HAL-11189).
@@ -142,27 +169,22 @@ verifies("studio.entry", () => {
       timeout: 4_000,
     });
 
-    const labels = placeLinks(element).map((link) => link.textContent ?? "");
-    for (const label of labels) {
-      const link = placeLinks(element).find((candidate) => candidate.textContent === label);
-      link?.click();
-      await vi.waitFor(
-        // The sidebar's row: the icon rail marks its own selected entry too, a button with no text.
-        () => expect(element.querySelector('a[aria-current="page"]')?.textContent).toBe(label),
-        { timeout: 4_000 },
-      );
-      // Pages load on demand: wait out the import, then until the page drew its heading or
-      // stopped, and tell which. Only the import gets the wider limit.
-      await vi.waitFor(() => expect(loading(element), `${label} still loading`).toBe(false), {
-        timeout: IMPORT_LIMIT_MS,
+    // The list column shows the places of the rail's selected entry, so each entry in turn.
+    const visited = new Set<string>();
+    const entryCount = railEntries(element).length;
+    for (let index = 0; index < entryCount; index++) {
+      const entry = railEntries(element)[index];
+      entry?.click();
+      await vi.waitFor(() => expect(entry?.getAttribute("aria-current")).toBe("page"), {
+        timeout: 4_000,
       });
-      await vi.waitFor(
-        () => expect(stopped(element) || element.querySelector("main h1") !== null).toBe(true),
-        { timeout: 4_000 },
-      );
-      expect(stopped(element), `the ${label} place stopped working`).toBe(false);
+      const labels = placeLinks(element).map((link) => link.textContent ?? "");
+      for (const label of labels.filter((unseen) => !visited.has(unseen))) {
+        visited.add(label);
+        await openPlace(label);
+      }
     }
-    expect(labels).toEqual(expect.arrayContaining(["Inbox", "Library"]));
+    expect([...visited]).toEqual(expect.arrayContaining(["Home", "Inbox", "Library"]));
     // Room for every place to use its import limit.
   }, 120_000);
 });

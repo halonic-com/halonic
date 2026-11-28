@@ -297,12 +297,10 @@ verifies("shell.studio-window", () => {
   });
 
   describe("when Settings closes", () => {
-    const settingsRow = (container: HTMLElement) =>
-      Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
-        (button) => button.textContent === "Settings",
+    const railSettings = (container: HTMLElement) =>
+      container.querySelector<HTMLButtonElement>(
+        'nav[aria-label="Places"] [aria-label="Settings"]',
       );
-    const places = (container: HTMLElement) =>
-      container.querySelector<HTMLButtonElement>('button[aria-label="Places"]');
     const pressEscape = (container: HTMLElement) =>
       act(() => {
         container
@@ -310,33 +308,21 @@ verifies("shell.studio-window", () => {
           ?.dispatchEvent(new Event("cancel", { cancelable: true }));
       });
 
-    it("gives the focus back to the sidebar's Settings row in a wide window", () => {
-      const { container } = renderWindow();
-      act(() => settingsRow(container)?.focus());
-      act(() => settingsRow(container)?.click());
-      expect(container.querySelector("dialog[open]")).not.toBeNull();
+    it.each([1280, 700])(
+      "gives the focus back to the rail's Settings button in a window %ipx wide",
+      (width) => {
+        act(() => media.resize(width));
+        const { container } = renderWindow();
+        act(() => railSettings(container)?.focus());
+        act(() => railSettings(container)?.click());
+        expect(container.querySelector("dialog[open]")).not.toBeNull();
 
-      pressEscape(container);
+        pressEscape(container);
 
-      expect(container.querySelector("dialog[open]")).toBeNull();
-      expect(document.activeElement).toBe(settingsRow(container));
-    });
-
-    it("gives the focus back to the Places button when it opened from the narrow drawer", () => {
-      act(() => media.resize(700));
-      const { container } = renderWindow();
-      act(() => places(container)?.click());
-      act(() => settingsRow(container)?.focus());
-      act(() => settingsRow(container)?.click());
-      // The dialog takes the focus, so the drawer closes and hides its row.
-      act(() => container.querySelector<HTMLElement>("dialog[open] button")?.focus());
-      expect(places(container)?.getAttribute("aria-expanded")).toBe("false");
-
-      pressEscape(container);
-
-      expect(container.querySelector("dialog[open]")).toBeNull();
-      expect(document.activeElement).toBe(places(container));
-    });
+        expect(container.querySelector("dialog[open]")).toBeNull();
+        expect(document.activeElement).toBe(railSettings(container));
+      },
+    );
   });
 });
 

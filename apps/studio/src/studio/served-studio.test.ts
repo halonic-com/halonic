@@ -79,15 +79,16 @@ afterEach(async () => {
   element.remove();
 });
 
-/** The Inbox row of the Places list, once the window has drawn it. */
+/** The rail's Inbox, which opens the Inbox page, once the window has drawn it. */
+const railInbox = 'nav[aria-label="Places"] li button[aria-label^="Inbox"]';
+
+/** The rail's Inbox button, once the window has drawn it. */
 function inboxLink(): Promise<HTMLElement> {
   return vi.waitFor(
     () => {
-      const link = [...element.querySelectorAll('nav[aria-label="Places"] a')].find(
-        (a) => a.textContent === "Inbox",
-      );
-      expect(link).toBeDefined();
-      return link as HTMLElement;
+      const button = element.querySelector<HTMLElement>(railInbox);
+      expect(button).not.toBeNull();
+      return button as HTMLElement;
     },
     { timeout: 4_000 },
   );
@@ -111,8 +112,7 @@ verifies("studio.served-inbox", () => {
     await vi.waitFor(() => expect(asked).toContain("/api/waiting-runs"), { timeout: 4_000 });
     await vi.waitFor(
       () => {
-        const places = [...element.querySelectorAll('nav[aria-label="Places"] a')];
-        expect(places.map((link) => link.textContent)).toContain("Inbox");
+        expect(element.querySelector(railInbox)).not.toBeNull();
       },
       { timeout: 4_000 },
     );
@@ -169,7 +169,9 @@ verifies("studio.served-inbox", () => {
           : Response.json({ runs: [waiting], agents: { writer: "Writer" } }),
     });
 
-    // With a run waiting, the Inbox row carries its count as well as its name.
+    // The Inbox's row shows in the list column once the rail's Inbox is picked; with a run
+    // waiting, it carries its count as well as its name.
+    (await inboxLink()).click();
     const inbox = await vi.waitFor(
       () => {
         const link = [...element.querySelectorAll('nav[aria-label="Places"] a')].find((a) =>
@@ -346,11 +348,12 @@ verifies("studio.served-google-setup-accounts", () => {
       [...element.querySelectorAll<HTMLElement>("a, button, td[role=gridcell]")].find((e) =>
         text.test(e.textContent ?? ""),
       );
-    await waitUntil("the Inbox place to be in the window", () => find(/^Inbox/) !== undefined, {
+    const inbox = () => element.querySelector<HTMLElement>(railInbox);
+    await waitUntil("the Inbox place to be in the window", () => inbox() !== null, {
       timeout: 10_000,
     });
-    expect(find(/^Library/)).toBeUndefined();
-    find(/^Inbox/)?.click();
+    expect(element.querySelector('nav[aria-label="Places"] [aria-label^="Library"]')).toBeNull();
+    inbox()?.click();
     await waitUntil(
       "the Google setup item to be listed",
       () => find(/Set up Google for kim@acme.example/) !== undefined,

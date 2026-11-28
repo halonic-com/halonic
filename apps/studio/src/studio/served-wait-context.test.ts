@@ -159,7 +159,12 @@ verifies("studio.served-wait-context", () => {
 
         // Home's Needs you row starts with the same meta line.
         await shown('main [aria-label="Needs you"] span', /^Support reply · Sample answers · run/);
-        (await shown('nav[aria-label="Places"] a', /Inbox/)).click();
+        // The rail's Inbox on the desktop, the bottom navigation's on a phone.
+        const inbox =
+          host.name === "phone"
+            ? shown('nav[aria-label="Places"] a', /Inbox/)
+            : shown('nav[aria-label="Places"] li button[aria-label^="Inbox"]', /.*/);
+        (await inbox).click();
         // Home stays drawn behind the Inbox, so its Needs you row is left out.
         const inboxRow = 'main table:not([aria-label="Needs you"]) [role=gridcell]';
         (await shown(inboxRow, /Support reply · Sample answers · run/)).click();

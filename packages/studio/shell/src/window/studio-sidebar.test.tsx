@@ -59,7 +59,10 @@ function inboxPlace(waiting: WaitingCount): Registered<PlaceContribution> {
   };
 }
 
-function renderSidebar(places: readonly Registered<PlaceContribution>[]) {
+function renderSidebar(
+  places: readonly Registered<PlaceContribution>[],
+  leftOut?: ReadonlySet<string>,
+) {
   const tabs = new TabSet();
   const announcer = createAnnouncer({ timers: new FakeTimers() });
   const context = { services: { get: () => undefined }, announcer } as unknown as WorkspaceContext;
@@ -71,6 +74,7 @@ function renderSidebar(places: readonly Registered<PlaceContribution>[]) {
       platform="windows"
       contextFor={() => context}
       onSearch={() => {}}
+      leftOut={leftOut}
     />,
   );
   const inbox = () =>
@@ -112,6 +116,16 @@ verifies("shell.place-signal-changes", () => {
     unmountAll();
 
     expect(waiting.listeners.size).toBe(0);
+  });
+});
+
+verifies("shell.rail-frame", () => {
+  it("leaves out the places the rail names, and still listens to their signals", () => {
+    const waiting = new WaitingCount();
+    waiting.set(2);
+    const { inbox } = renderSidebar([inboxPlace(waiting)], new Set(["inbox"]));
+    expect(inbox()).toBeUndefined();
+    expect(waiting.listeners.size).toBe(1);
   });
 });
 

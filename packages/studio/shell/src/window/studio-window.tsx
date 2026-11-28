@@ -19,7 +19,7 @@ import { PhoneTopBarSlot } from "../phone/phone-top-bar-actions.tsx";
 import { usePhonePlaces } from "../phone/use-phone-places.ts";
 import type { ItemRef } from "../points/item-kinds.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
-import { RAIL_WIDTH, useWindowRailParts } from "../rail/window-rail.tsx";
+import { RAIL_WIDTH } from "../rail/window-rail.tsx";
 import type { ResourceWatch } from "../resources/resource-watch.ts";
 import { announceSaveNotes } from "../save/save-note-words.ts";
 import { useAvailableSections } from "../settings/available-sections.ts";
@@ -47,9 +47,9 @@ import { useShownPlaces } from "./shown-places.ts";
 import { useShownReaders } from "./shown-title.ts";
 import { StudioPage } from "./studio-page.tsx";
 import { StudioPhonePage, StudioPhoneTopBar } from "./studio-phone.tsx";
-import { StudioSidebar } from "./studio-sidebar.tsx";
 import type { StudioWorkspace } from "./studio-workspace.ts";
 import { TitleBarStart, useSidebarWidth } from "./title-bar-start.tsx";
+import { useWindowColumn } from "./window-column.tsx";
 import { type ChosenFormat, WindowFormatLocale } from "./window-format.tsx";
 import { useWindowOpeners } from "./window-openers.ts";
 import { windowPanelParts } from "./window-panel.tsx";
@@ -111,11 +111,12 @@ export interface StudioWindowProps {
 /**
  * The whole Studio window, put together from the shell's parts. On the desktop
  * (`shell.studio-window`): the Halonic Studio mark, Back, Forward and the window tabs in the title
- * bar, with the features' items at its right end (`shell.title-bar-items`), the sidebar, the
- * active tab's page with the last five kept mounted, the
+ * bar, with the features' items at its right end (`shell.title-bar-items`), the icon rail and the
+ * list column beside it (`shell.rail-frame`), the active tab's page with the last five kept
+ * mounted, the
  * status bar items with the save note at its right end, and the Ctrl K palette, opened from the Search box, Mod K, **+** and Ctrl T.
  * Settings opens over it (`shell.settings-window`) from the context's `openSettings`, the
- * sidebar's Settings row and, in the desktop app, Mod ,.
+ * rail's Settings button and, in the desktop app, Mod ,.
  *
  * On a phone (`shell.studio-phone`): the top bar with Back and **Search**, the page of the phone
  * place the user is in, and the bottom navigation, with Android's back handled by the shell. The
@@ -182,9 +183,9 @@ function StudioWindowBody(props: StudioWindowProps) {
   // A page opened from a dialog that closes as it opens it, such as Ctrl K's palette or a Settings
   // section: the dialog's focus return mustn't win over the `h1`.
   const focusPageOpenedFromDialog = usePageHeadingFocusAfterDialog();
-  // Settings closes as one of its sections opens a page. In a narrow window its opener, the closed
-  // drawer's Settings row, is hidden, so Settings gives the focus to Places, and that must come
-  // before the page's `h1` takes it, at every width (C383 SP1).
+  // Settings closes as one of its sections opens a page. Its focus return, to its opener or to
+  // Places when the opener is hidden, must come before the page's `h1` takes it, at every width
+  // (C383 SP1).
   const focusOpenedPage = () =>
     settings.opening === undefined ? focusNewPage() : focusPageOpenedFromDialog();
   const { openPlaceHere, openHere, openItemInNewTab } = useWindowOpeners({
@@ -269,18 +270,11 @@ function StudioWindowBody(props: StudioWindowProps) {
   const sidebarSwitcher = withActions(props.switcher, { runCommand });
   // The same list each render, so the sidebar subscribes to the places' signals only once.
   const places = useMemo(() => contributions.places.list(), [contributions]);
-  const sidebarViews = useMemo(() => contributions.sidebarViews.list(), [contributions]);
   const kinds = useMemo(() => contributions.itemKinds.list(), [contributions]);
   useClosingGoneItemTabs(tabs, kinds, contextFor, phone.retitle);
   usePhoneBackButton(!desktop, shell.closeStack, phone);
   const placeOfKind = (kind: string) => contributions.itemKinds.get(kind)?.place;
   useOpenPageAcrossLayouts({ desktop, tabs, phone, placeOfKind, showSettings: showSettingsDialog });
-  const rail = useWindowRailParts({
-    rail: contributions.rail,
-    source: workspace.folderFacts,
-    tabs,
-    placeOfKind,
-  });
   // Read on every phone move and signal change, so the bottom bar's counts follow (HAL-13371).
   const shown = useShownPlaces(places, contextFor);
   useWindowKeys({ host, platform, tabs, toasts: shell.toasts, onNewTab: palette.show });
@@ -309,6 +303,21 @@ function StudioWindowBody(props: StudioWindowProps) {
     </>
   );
   const help = useHelpMenu(contributions.help, contextFor);
+  const column = useWindowColumn({
+    contributions,
+    workspace,
+    placeOfKind,
+    places,
+    announcer,
+    platform,
+    contextFor,
+    onSearch: palette.show,
+    onSettings: () => openSettings(),
+    help,
+    switcher: sidebarSwitcher,
+    view: { selected: sidebarView, select: setSidebarView },
+    width: sidebarWidth.sidebar,
+  });
   const panel = windowPanelParts({
     panels: contributions.panelWindows.list(),
     state: panelWindow,
@@ -344,25 +353,8 @@ function StudioWindowBody(props: StudioWindowProps) {
       dialogs={props.dialogs}
       panel={panel.slot}
       strips={<Strips strips={contributions.strips.list()} contextFor={contextFor} />}
-      rail={rail.element}
-      sidebar={
-        <StudioSidebar
-          places={places}
-          views={sidebarViews}
-          selectedView={sidebarView}
-          onSelectView={setSidebarView}
-          tabs={tabs}
-          announcer={announcer}
-          platform={platform}
-          contextFor={contextFor}
-          onSearch={palette.show}
-          onSettings={() => openSettings()}
-          help={help}
-          switcher={sidebarSwitcher}
-          {...sidebarWidth.sidebar}
-          footer={contributions.sidebarFooter.item()}
-        />
-      }
+      rail={column.rail}
+      sidebar={column.sidebar}
       statusBar={
         <>
           <StatusBarItems items={contributions.statusBar.list()} contextFor={contextFor} />
