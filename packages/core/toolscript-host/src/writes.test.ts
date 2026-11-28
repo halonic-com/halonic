@@ -46,6 +46,31 @@ describe("batches, touches and previews", () => {
       expect(confirmed).toEqual([]);
     });
 
+    it("counts a batch's items when single calls follow it, stopping at the call limit", async () => {
+      const sent: string[] = [];
+      const capability = acmeCapability("acme.set-note@1", {
+        call: async (args) => {
+          sent.push(String((args as { name: string }).name));
+          return null;
+        },
+      });
+      const items = [
+        { use: "acme.set-note@1", args: { name: "a" } },
+        { use: "acme.set-note@1", args: { name: "b" } },
+      ];
+      const { result, confirmed } = await runAcme(
+        async (ctx) => {
+          await ctxCall(ctx, "batch", items);
+          await setNote(ctx, { name: "c" });
+          await setNote(ctx, { name: "d" });
+        },
+        { capabilities: [capability], header: { limits: { calls: 3 } } },
+      );
+      expect(result).toMatchObject({ ok: false, reason: "limit.calls" });
+      expect(confirmed).toHaveLength(2);
+      expect(sent).toEqual(["a", "b", "c"]);
+    });
+
     it("refuses an irreversible write in a batch before confirm", async () => {
       const items = [
         { use: "acme.set-note@1", args: { name: "a" } },

@@ -89,6 +89,8 @@ export class HostRun {
     args: ToolScriptIsolateValue,
     context: ToolScriptCallContext,
   ): Promise<ToolScriptIsolateValue> {
+    // A batch's items count one each, so the isolate's own count can fall short of ours.
+    if (this.calls.length + 1 > this.#callLimit) throw new ToolScriptStop("limit.calls");
     const prepared = this.#prepare(capability, args);
     if (capability.kind === "write") await this.#confirm([prepared], context);
     return this.#send(prepared, context);
@@ -171,7 +173,11 @@ export class HostRun {
     if (fromHeader.length === 0 && fromCapability.length === 0) return write;
     return {
       ...write,
-      preview: { fromHeader, fromCapability: Object.freeze([...fromCapability]) },
+      // A copy, so `confirm` can't change the artifact header's own list.
+      preview: {
+        fromHeader: Object.freeze([...fromHeader]),
+        fromCapability: Object.freeze([...fromCapability]),
+      },
     };
   }
 
