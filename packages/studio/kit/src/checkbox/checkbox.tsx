@@ -90,7 +90,8 @@ const markClasses = [
 /**
  * A checkbox with words follows the Radio's rule, so the two match side by side (a QuestionForm):
  * the words are 16px on 24px lines on a phone, and the box starts on their first line, where it
- * stays when they wrap. The 12px above and below keeps one line mid-way in the 48px target.
+ * stays when they wrap. The 12px above and below keeps one 24px line mid-way in a phone's 48px
+ * target; a wider touch screen's 20px line sits 2px higher, as a Radio's does.
  */
 const wordsLabel = [
   "inline-flex items-start gap-2 text-body phone:text-input-touch",

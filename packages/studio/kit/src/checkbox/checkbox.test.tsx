@@ -255,7 +255,7 @@ verifies("kit.checkbox-words", () => {
     }
   });
 
-  it("keeps one line of words mid-way in its 48px target, as a Radio's option", () => {
+  it("has a Radio option's 12px above and below its words in a 48px target, on a phone or a touch screen", () => {
     const { checkbox, radio } = labelsOf(renderBoth());
     for (const space of ["phone:py-3", "touch:py-3", "phone:min-h-touch", "touch:min-h-touch"]) {
       expect(radio.className.split(" ")).toContain(space);
