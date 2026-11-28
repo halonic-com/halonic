@@ -251,6 +251,25 @@ verifies("remote.phone-reactions", () => {
       expect(sheetTitle()).toBe("React to Elena's message");
     });
 
+    it("takes a keyboard to the sheet through Add a reaction, and back to it on close", async () => {
+      await openReacted();
+      const stops = [...(messageLi("m1")?.querySelectorAll<HTMLElement>("button") ?? [])];
+      const add = stops.at(-1);
+      expect(
+        stops.map((each) => each.getAttribute("aria-label") ?? each.getAttribute("data-chip")),
+      ).toEqual(["👍", "👀", "Add a reaction"]);
+      expect(add?.tabIndex).toBe(0);
+      expect(add?.className).toContain("sr-only");
+      expect(add?.className).toContain("group-focus-within/reactable:not-sr-only");
+      act(() => add?.focus());
+      // A focused button's Enter is its click.
+      await act(async () => add?.click());
+      expect(sheetTitle()).toBe("React to Elena's message");
+      await act(async () => buttonNamed("Close")?.click());
+      expect(sheet()).toBeNull();
+      expect(document.activeElement).toBe(add);
+    });
+
     it("reads every page of the chat's reactions", async () => {
       const { scene } = await openChannel(messages);
       const first = scene.tunnel.sentOf("msg-read").findLast((each) => each.what === "reactions");

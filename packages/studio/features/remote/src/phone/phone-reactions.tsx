@@ -1,5 +1,5 @@
 import { type MessageReaction, type ReactionEmoji, reactionEmoji } from "@halonicjs/ports";
-import { Button, SheetFrame, useWriteClipboard } from "@halonicjs/studio-kit";
+import { AddReactionIcon, Button, SheetFrame, useWriteClipboard } from "@halonicjs/studio-kit";
 import {
   type MouseEvent,
   type PointerEvent,
@@ -23,7 +23,8 @@ const MOVE_SLOP_PX = 10;
  * A finger that moves and a mouse open nothing. On a touch screen the long-press takes over the
  * system's text selection on the message, which is why the sheet has "Copy text"; a mouse still
  * selects text. Android's own long-press, and a screen reader's double-tap-and-hold, arrive as a
- * context menu, which opens the sheet too.
+ * context menu, which opens the sheet too. A keyboard or a switch reaches it through the "Add a
+ * reaction" button after the chips (HAL-21252), the desktop's route.
  */
 export function Reactable({
   reactions,
@@ -41,9 +42,37 @@ export function Reactable({
 }) {
   const press = useLongPress(onLongPress);
   return (
-    <div {...press} className="pointer-coarse:select-none [-webkit-touch-callout:none]">
+    <div
+      {...press}
+      className="group/reactable pointer-coarse:select-none [-webkit-touch-callout:none]"
+    >
       {children}
       <ReactionChips reactions={reactions} end={end} onToggle={onToggle} />
+      <AddReaction end={end} onOpen={onLongPress} />
+    </div>
+  );
+}
+
+/**
+ * The round "Add a reaction" button after a message's chips. It is in the tab order but out of
+ * sight and takes no room until focus is inside its message, so a finger's chat looks as before.
+ * The kit's sheet puts focus back on it when it closes, as on any opener.
+ */
+function AddReaction({ end, onOpen }: { readonly end: boolean; readonly onOpen: () => void }) {
+  return (
+    <div className={`flex ${end ? "justify-end" : ""}`}>
+      <button
+        type="button"
+        data-add-reaction
+        aria-label={words.add}
+        aria-haspopup="dialog"
+        onClick={onOpen}
+        className="focus-ring sr-only flex size-8 items-center justify-center rounded-full border border-border-strong bg-surface text-fg-muted group-focus-within/reactable:not-sr-only group-focus-within/reactable:mt-1.5"
+      >
+        <span className="size-4">
+          <AddReactionIcon />
+        </span>
+      </button>
     </div>
   );
 }
