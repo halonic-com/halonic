@@ -6,8 +6,10 @@ import { definition as cloudflareEnableEmailRouting } from "./cloudflare/enable-
 import { definition as deviceCheckAndroidBuild } from "./device/check-android-build.ts";
 import { definition as deviceCheckPhonePairing } from "./device/check-phone-pairing.ts";
 import { definition as deviceCheckWindowsBuild } from "./device/check-windows-build.ts";
+import { definition as githubApproveDeployment } from "./github/approve-deployment.ts";
 import { definition as githubChangeBranchProtection } from "./github/change-branch-protection.ts";
 import { definition as githubChangeRuleset } from "./github/change-ruleset.ts";
+import { definition as githubConfigureEnvironment } from "./github/configure-environment.ts";
 import { definition as githubCreateActionsVariable } from "./github/create-actions-variable.ts";
 import { definition as githubRemoveRunner } from "./github/remove-runner.ts";
 import { definition as githubSetActionsSecret } from "./github/set-actions-secret.ts";
@@ -57,6 +59,10 @@ export const catalogEntries = {
     definition: deviceCheckWindowsBuild,
     sourceHash: "05abd4bf8afb20c21cc723a4c7b80b128906f33af7dfd39d987557e528e8aecd",
   },
+  "github/approve-deployment": {
+    definition: githubApproveDeployment,
+    sourceHash: "41a732e369d111bac2a313b7745eec3736d4c73efaa7ce0c3d11003f1070ca13",
+  },
   "github/change-branch-protection": {
     definition: githubChangeBranchProtection,
     sourceHash: "550859c92d4a843122817d78068dbe34203f14fa9bb2fa4d333cad7c793ca36a",
@@ -64,6 +70,10 @@ export const catalogEntries = {
   "github/change-ruleset": {
     definition: githubChangeRuleset,
     sourceHash: "ec543dcfb7588f1755323ab67e7eb6ee85d6ed32cd613d3af5198d79dc2cf39b",
+  },
+  "github/configure-environment": {
+    definition: githubConfigureEnvironment,
+    sourceHash: "956e545684fb07ab1cfdf628e996e33997f420225ee00d4ee13b8297f442c89c",
   },
   "github/create-actions-variable": {
     definition: githubCreateActionsVariable,
