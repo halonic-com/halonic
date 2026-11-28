@@ -35,6 +35,8 @@ export type SignInOutcome = "signed-in" | "failed";
 export interface SignInAttempt {
   /** The phrase the browser shows too, so the user can check it is this sign-in, if any. */
   readonly phrase: string | undefined;
+  /** The page the user approves the sign-in on, which the window opens in the browser, if any. */
+  readonly approvalUrl?: string | undefined;
   /** Settles when the sign-in ends; an expired or refused one is `failed`. */
   readonly finished: Promise<SignInOutcome>;
 }
@@ -49,8 +51,8 @@ export interface SignInContribution {
   readonly id: string;
   /** Who the user signs in to, as the prompt names it, such as "Paperclip". */
   readonly provider: string;
-  /** The provider's logo: an image's URL, such as an imported SVG. */
-  readonly logo: string;
+  /** The provider's logo: an image's URL, such as an imported SVG; without one, its first letter. */
+  readonly logo?: string | undefined;
   /** What the band says the sign-in is for, as in "Sign in to Google to use {purpose}." */
   readonly purpose: string;
   /** The focused apps that can't work without it. Studio's own window is never blocked. */

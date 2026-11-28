@@ -80,7 +80,12 @@ function pending(): Promise<SignInOutcome> {
 function needs(
   window: SignInWindow,
   signIns: readonly Registered<SignInContribution>[],
-  options: { channel?: SignInChannel; timers?: FakeTimers; log?: () => void } = {},
+  options: {
+    channel?: SignInChannel;
+    timers?: FakeTimers;
+    log?: () => void;
+    openExternal?: (url: string) => void;
+  } = {},
 ): SignInNeeds {
   const result = new SignInNeeds({
     window,
@@ -88,6 +93,7 @@ function needs(
     contextFor: () => context,
     channel: options.channel ?? new FakeChannelHub().channel(),
     timers: options.timers ?? new FakeTimers(),
+    openExternal: options.openExternal ?? (() => undefined),
     log: options.log ?? (() => undefined),
   });
   result.start();
@@ -199,9 +205,14 @@ verifies("shell.sign-in-needed", () => {
         });
         const contribution = signIn(host, "sign-in", provider, blocking, async () => ({
           phrase: "blue-otter",
+          approvalUrl: "https://sign-in.acme.test/approve",
           finished,
         }));
-        const inbox = needs("inbox", [contribution], { channel: hub.channel() });
+        const opened: string[] = [];
+        const inbox = needs("inbox", [contribution], {
+          channel: hub.channel(),
+          openExternal: (url) => opened.push(url),
+        });
         const messenger = needs("messenger", [contribution], { channel: hub.channel() });
         const shownIn = (window: SignInNeeds) => [
           ...window.current().blocking,
@@ -212,6 +223,7 @@ verifies("shell.sign-in-needed", () => {
         await vi.waitFor(() =>
           expect(shownIn(inbox)[0]?.progress).toEqual({ kind: "waiting", phrase: "blue-otter" }),
         );
+        expect(opened).toEqual(["https://sign-in.acme.test/approve"]);
         host.needs.set("sign-in", []);
         finish("signed-in");
         await signingIn;

@@ -19,7 +19,7 @@ export interface ShownSignIn {
   /** Unique in the prompt: the sign-in's id and the need's, joined by "/". */
   readonly key: string;
   readonly provider: string;
-  readonly logo: string;
+  readonly logo: string | undefined;
   readonly purpose: string;
   /** The need's name, such as the connection's. */
   readonly name: string;
@@ -44,6 +44,8 @@ export interface SignInNeedsOptions {
   readonly contextFor: (featureId: string) => WorkspaceContext;
   readonly channel: SignInChannel;
   readonly timers: Pick<AnnouncerTimers, "now">;
+  /** Opens a sign-in's approval page in the browser. */
+  readonly openExternal: (url: string) => void;
   /** Where errors go; `console.error` by default. */
   readonly log?: (message: string, error: unknown) => void;
 }
@@ -124,6 +126,9 @@ export class SignInNeeds {
     let outcome: SignInOutcome;
     try {
       const attempt = await signIn.start(this.options.contextFor(signIn.featureId), needId);
+      if (attempt.approvalUrl !== undefined) {
+        this.options.openExternal(attempt.approvalUrl);
+      }
       this.setProgress(key, { kind: "waiting", phrase: attempt.phrase });
       outcome = await attempt.finished;
     } catch (error) {
