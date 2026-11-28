@@ -40,8 +40,8 @@ import { windowTabs } from "./steps/window-tabs.ts";
  * Welcome, then Settings (HAL-18867), whose steps open the demo again first, then the Try it steps (HAL-18869),
  * which read step 1's chat in the reopened demo, then Writer's Model page in Codex (HAL-18930),
  * on Writer's page as Try it leaves it, then the other places (HAL-18870), then the focus ring
- * after Open demo, which closes and reopens the demo, and the wait card's answers, whose run
- * the Runs app would otherwise list in the places step (HAL-20621). The
+ * after Open demo, which closes and reopens the demo, and the wait card's answers, which
+ * leave their run waiting in the Inbox (HAL-20621). The
  * Paperclip steps come straight after Connect Paperclip because a restart after a failing step
  * signed step 3's connection out (runs 45722257989 to 45733391864, HAL-19027), so a failure in
  * between would fail them too; the restart step now checks that this no longer happens.

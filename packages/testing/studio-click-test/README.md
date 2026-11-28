@@ -102,8 +102,8 @@ they come straight after Settings so they find step 1's chat in that reopened de
 has no step: the desktop app doesn't load the Assistant feature. Step 30 puts Writer in Codex
 for the Model page's check (HAL-18930) on the page Try it leaves open, and back on Halonic. Step 31
 opens the other places (HAL-18870), so its page visits come after Try it has read the chat.
-Steps 32 and 33 come last (HAL-20621): step 32 closes and reopens the demo, and step 33's run
-would otherwise show in the Runs app that step 31 expects empty; it leaves that run waiting.
+Steps 32 and 33 come last (HAL-20621): step 32 closes and reopens the demo, and step 33 leaves
+its run waiting in the Inbox.
 The app opens at 800 × 600, a narrow window
 where the sidebar sits behind ☰ Places and the tabs fold into "1 open tab ▾", so each basics step
 sizes the window to 1280 × 800 first and gives it its size back afterwards (HAL-19048).
