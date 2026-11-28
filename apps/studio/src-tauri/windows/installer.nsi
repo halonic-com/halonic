@@ -1933,7 +1933,12 @@ FunctionEnd
   Delete "$INSTDIR\${title}.exe"
   System::Call 'kernel32::CreateHardLinkW(w "$INSTDIR\${title}.exe", w "$INSTDIR\${MAINBINARYNAME}.exe", p 0) i .r0'
   ${If} $0 = 0
+    ClearErrors
     CopyFiles /SILENT "$INSTDIR\${MAINBINARYNAME}.exe" "$INSTDIR\${title}.exe"
+    ; Without the frame the shortcut starts nothing, so say so in the install log.
+    ${If} ${Errors}
+      DetailPrint "Couldn't link or copy ${MAINBINARYNAME}.exe to ${title}.exe."
+    ${EndIf}
   ${EndIf}
 !macroend
 

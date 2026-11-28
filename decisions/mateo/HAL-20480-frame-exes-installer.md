@@ -11,7 +11,9 @@ start them with no arguments instead of `Halonic.exe --app inbox|messenger`. The
 windows, so window managers such as FancyZones and Snap keep each app's place apart from
 Studio's. The installer waits for a frame still closing before it replaces or removes its exe,
 the uninstaller removes the frames and their saved places, and it still removes a shortcut made
-before the frames.
+before the frames. A downgrade to a version from before the frames leaves the frame exes behind
+in the install folder; that version's shortcuts don't start them, and its uninstaller doesn't
+remove them.
 
 `studio.installer-focused-apps` changes its wording to say so; its template test checks the new
 target, and gains checks for the hard links, the wait and the uninstall. `studio.app-icons`'s template test
