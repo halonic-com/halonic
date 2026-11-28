@@ -18,6 +18,12 @@ export interface RailButtonProps {
    */
   readonly icon: (selected: boolean) => ReactNode;
   readonly selected: boolean;
+  /**
+   * What the selected button is current as: `page` (the default) when the shown page is its app's,
+   * `true` when it was picked but opened no page, so a screen reader doesn't hear it as the page
+   * that shows (`kit.rail-button`). Ignored while not selected.
+   */
+  readonly current?: "page" | "true";
   readonly onSelect: () => void;
   /** Shown only while its value is above 0. */
   readonly count?: RailButtonCount;
@@ -37,6 +43,8 @@ const circle = [
   "group/rail-button relative grid size-10 shrink-0 place-items-center rounded-full focus-ring transition-colors",
   "hover:bg-surface-muted active:bg-surface-muted aria-[current=page]:bg-surface-muted",
   "forced-colors:aria-[current=page]:border-2 forced-colors:aria-[current=page]:border-[Highlight]",
+  "aria-[current=true]:bg-surface-muted",
+  "forced-colors:aria-[current=true]:border-2 forced-colors:aria-[current=true]:border-[Highlight]",
 ].join(" ");
 
 /**
@@ -59,14 +67,23 @@ const scaling = [
 /**
  * One app in the icon rail on the window's left edge (build plan P2 on HAL-20617): its 24px drawing
  * in a 40px circle, the name as a tooltip beside it, and a count badge at the circle's top end.
- * The selected button is `aria-current="page"` with the circle filled and the selected drawing.
+ * The selected button is `aria-current="page"` with the circle filled and the selected drawing, or
+ * `aria-current="true"` with the same look when `current` says it opened no page.
  * The rail lays the buttons out and draws the travelling point of light; this is one button.
  *
  * @example
  * <RailButton label="Messenger" icon={(selected) => <MessengerIcon selected={selected} />}
  *   selected={app === "messenger"} onSelect={() => open("messenger")} />
  */
-export function RailButton({ label, icon, selected, onSelect, count, href }: RailButtonProps) {
+export function RailButton({
+  label,
+  icon,
+  selected,
+  current = "page",
+  onSelect,
+  count,
+  href,
+}: RailButtonProps) {
   const { anchor, trigger, popover } = useTooltip({ text: label, isName: true, side: "beside" });
   const shownCount = count !== undefined && count.value > 0 ? count : undefined;
   const select = (event: MouseEvent) => {
@@ -76,7 +93,7 @@ export function RailButton({ label, icon, selected, onSelect, count, href }: Rai
   const target = {
     ...anchor,
     ...trigger,
-    "aria-current": selected ? ("page" as const) : undefined,
+    "aria-current": selected ? current : undefined,
     // The badge is drawn as a mark, so the name says it: "Messenger, 2 unread".
     "aria-label": shownCount === undefined ? label : `${label}, ${shownCount.name}`,
     className: circle,

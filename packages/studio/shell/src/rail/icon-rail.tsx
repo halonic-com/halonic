@@ -46,6 +46,10 @@ export interface IconRailProps {
  * on the selected entry, or on one with no page yet, leaves the tab as it is. Settings opens its dialog over the page and is never selected. The one white
  * dot rests on the selected entry and travels to a newly selected one (`RailDot`).
  *
+ * The rail is a `nav` named "Apps", apart from the sidebar's "Places" (`shell.rail-current`). Only
+ * the entry that holds the active tab's page is `aria-current="page"`; one picked that opened no
+ * page is selected as `aria-current="true"`, so a screen reader doesn't hear it as the page.
+ *
  * Ctrl-click, Cmd-click and middle-click into a new tab, and links in place of buttons, come with
  * the frame (P3 PR 2b), once the kit's `RailButton` reports how it was clicked.
  *
@@ -83,6 +87,7 @@ export function IconRail({ entries, tabs, placeOfKind, onSettings, column }: Ico
               label={entry.label}
               icon={(isSelected) => <RailIcon name={entry.icon} selected={isSelected} />}
               selected={entry.id === selected}
+              current={entry.id === tabEntry ? "page" : "true"}
               onSelect={() => open(entry)}
             />
           </li>

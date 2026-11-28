@@ -93,6 +93,21 @@ verifies("kit.rail-button", () => {
     expect(isOpen(tooltip)).toBe(true);
     expect(tooltip.dataset["side"]).toBe("beside");
   });
+
+  it("marks a selected button that opened no page as current, not as the page", async () => {
+    const { target } = renderButton({ selected: true, current: "true" });
+    expect(target.getAttribute("aria-current")).toBe("true");
+    expect(target.className).toContain("aria-[current=true]:bg-surface-muted");
+    expect(target.className).toContain("forced-colors:aria-[current=true]:border-[Highlight]");
+    expect(target.querySelector("svg")?.getAttribute("data-selected")).toBe("true");
+    const css = await buildCss(["aria-[current=true]:bg-surface-muted"]);
+    expect(css).toContain('[aria-current="true"]');
+  });
+
+  it("is not current while not selected", () => {
+    const { target } = renderButton({ selected: false, current: "true" });
+    expect(target.hasAttribute("aria-current")).toBe(false);
+  });
 });
 
 verifies("kit.rail-button-motion", () => {
