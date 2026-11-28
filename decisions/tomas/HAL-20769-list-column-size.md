@@ -3,6 +3,7 @@
 - Task: HAL-20769, one list-column size for every new-design screen
 - Approval: Liam chose option A (one kit value, `listColumnClass`, with a 208px floor) on HAL-20769
 - Kind: internal
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:PEYXHyWDRPTYVrB9a3lPF1Qsedfnak9Ter8DQAlpmMyt5TdFf4PFGb1USut4tgRjrBCjEN+cVRBugqfz9EO1Aw==
 
 ## What changes
 
