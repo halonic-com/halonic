@@ -11,7 +11,7 @@ const noFill = "rgba(0, 0, 0, 0)";
 interface DrawnDialog {
   readonly listWidth?: string;
   readonly holderWidth?: string;
-  readonly rows?: "both" | "current only";
+  readonly rows?: "both" | "current only" | "other only";
   readonly otherFill?: string;
   readonly darkFill?: string;
 }
@@ -27,7 +27,9 @@ function studioWithColumns(drawn: DrawnDialog = {}): FakeStudio {
   button(studio, "main", screenText.places.text, () => {
     button(studio, "main", buttonLabels.settings.text, () => {
       button(studio, "main", settingsText.appearance.text, () => {
-        const rows = drawn.rows === "current only" ? [current] : [current, other];
+        const rows = { both: [current, other], "current only": [current], "other only": [other] }[
+          drawn.rows ?? "both"
+        ];
         for (const part of [list, ...rows]) studio.elements.set(part, 1);
         studio.styles.set(`${list} width`, drawn.listWidth ?? "272px");
         studio.styles.set(`${holder} width`, drawn.holderWidth ?? "800px");
@@ -114,6 +116,13 @@ verifies("studio-click-test.settings-two-columns-look", () => {
       );
       expect(outcome).toMatchObject({ passed: false, code: "NO_SECTION_ROWS" });
       expect(outcome.passed ? "" : outcome.note).toContain("Screen: Acme");
+    });
+
+    it("fails as NO_SECTION_ROWS when the list has other rows but no current row", async () => {
+      const outcome = await settingsTwoColumns.run(
+        studioWithColumns({ rows: "other only" }).context,
+      );
+      expect(outcome).toMatchObject({ passed: false, code: "NO_SECTION_ROWS" });
     });
   });
 });

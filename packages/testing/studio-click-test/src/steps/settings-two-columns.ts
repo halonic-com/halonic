@@ -74,7 +74,9 @@ async function listColumnWidth(context: StepContext): Promise<StepOutcome> {
   return { passed: false, code: "LIST_COLUMN_WIDTH", note: said };
 }
 
-/** Reads the current row's fill and another row's, and fails unless only the current one has one. */
+/**
+ * Reads the current row's fill and another row's, and fails unless only the current one has one.
+ */
 async function rowFills(
   context: StepContext,
   theme: string,

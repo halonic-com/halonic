@@ -22,3 +22,5 @@ When the click test opens Settings on Appearance, it shall read the width the ap
   then the step fails as `FILL_NOT_THEMED`.
 - Given a list with only the current row,
   then the step fails as `NO_SECTION_ROWS`, with the screen's text.
+- Given a list with other rows but no current row,
+  then the step fails as `NO_SECTION_ROWS`.
