@@ -307,6 +307,56 @@ verifies("home.list-column", () => {
     expect(document.activeElement).toBe(promptBox);
   });
 
+  it("moves the focus to New chat when a list change clears the line from a focused Try again", async () => {
+    const { service, change } = fakeChats([summary("triage", "Triage")]);
+    const list = service.list;
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    act(() => button(page, "Try again")?.focus());
+    service.list = list;
+    await change([summary("triage", "Triage")]);
+    expect(button(page, "Try again")).toBeUndefined();
+    expect(document.activeElement).toBe(button(page, "New chat"));
+  });
+
+  it("moves the focus to New chat when a list change clears the line after a failed Try again", async () => {
+    const { service, change } = fakeChats([summary("triage", "Triage")]);
+    const list = service.list;
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    const tryAgain = button(page, "Try again");
+    await act(async () => {
+      tryAgain?.focus();
+      tryAgain?.click();
+    });
+    expect(document.activeElement).toBe(tryAgain);
+    service.list = list;
+    await change([summary("triage", "Triage")]);
+    expect(button(page, "Try again")).toBeUndefined();
+    expect(document.activeElement).toBe(button(page, "New chat"));
+  });
+
+  it("counts a Try again once: a later failure cleared from the page leaves the focus there", async () => {
+    const { service, change } = fakeChats([summary("triage", "Triage")]);
+    const list = service.list;
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    const page = await show(contextWith(service));
+    service.list = list;
+    await act(async () => {
+      button(page, "Try again")?.focus();
+      button(page, "Try again")?.click();
+    });
+    expect(document.activeElement).toBe(button(page, "New chat"));
+    act(() => button(page, "New chat")?.blur());
+    service.list = async () => Promise.reject(new EngineNotAnswering());
+    await change([]);
+    expect(button(page, "Try again")).toBeDefined();
+    service.list = list;
+    await change([summary("triage", "Triage")]);
+    expect(button(page, "Try again")).toBeUndefined();
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("shows the failure line right under New chat", async () => {
     const { service } = fakeChats([]);
     service.list = async () => Promise.reject(new EngineNotAnswering());

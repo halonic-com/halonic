@@ -55,6 +55,17 @@ function hostWith(
   };
 }
 
+/** A host with skills, and `notify` to say something changed, as the host does. */
+function staleHost() {
+  let notify: () => void = () => undefined;
+  const host = hostWith({ skill: skills });
+  host.subscribe = (read) => {
+    notify = read;
+    return () => {};
+  };
+  return { host, notify: () => notify() };
+}
+
 async function settled(): Promise<void> {
   await act(async () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -149,6 +160,47 @@ verifies("library.library-page", () => {
     await settled();
     expect(page.textContent).not.toContain("Couldn't load skills.");
     expect(page.textContent).toContain("Acme refunds");
+  });
+
+  it("moves the focus to the first row when a focused Try again's read clears the line", async () => {
+    const { host, notify } = staleHost();
+    const page = await show(host);
+    host.list.mockRejectedValueOnce(new Error("ECONNRESET"));
+    act(() => notify());
+    await settled();
+    const tryAgain = button(page, "Try again");
+    act(() => {
+      tryAgain?.focus();
+      tryAgain?.click();
+    });
+    await settled();
+    expect(button(page, "Try again")).toBeUndefined();
+    expect(document.activeElement).not.toBe(document.body);
+    expect(document.activeElement?.closest("[data-row-id]")?.textContent).toContain("Acme refunds");
+  });
+
+  it("leaves the focus where it is when a change from the host clears the line", async () => {
+    const { host, notify } = staleHost();
+    const page = await show(host);
+    const fail = async () => {
+      host.list.mockRejectedValueOnce(new Error("ECONNRESET"));
+      act(() => notify());
+      await settled();
+      expect(button(page, "Try again")).toBeDefined();
+    };
+    const readAgain = async () => {
+      act(() => notify());
+      await settled();
+      expect(button(page, "Try again")).toBeUndefined();
+    };
+    await fail();
+    await readAgain();
+    expect(document.activeElement).toBe(document.body);
+    const search = page.querySelector<HTMLInputElement>('input[type="search"]');
+    await fail();
+    act(() => search?.focus());
+    await readAgain();
+    expect(document.activeElement).toBe(search);
   });
 
   it("holds the only New button in the empty state, with no search field", async () => {

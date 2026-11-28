@@ -3,6 +3,8 @@ import { Button, List, PlusIcon, useToastStore } from "@halonicjs/studio-kit";
 import {
   errorReasonFor,
   type HomeListColumnProps,
+  useRefocusWhenGone,
+  useTellWhenGoneWithFocus,
   type WorkspaceContext,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -22,14 +24,9 @@ export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) 
   const toasts = useToastStore();
   const { listed, failure, retrying, retry } = useListedChats(chats, context, open, setOpen);
   const newChatButton = useRef<HTMLButtonElement>(null);
-  const tryAgainPressed = useRef(false);
-  // Try again goes away once its read works. If the focus fell to the page with it, it moves to
-  // New chat; someone who went elsewhere during a slow read keeps their place.
-  useEffect(() => {
-    if (!tryAgainPressed.current || retrying) return;
-    tryAgainPressed.current = false;
-    if (failure === undefined && focusFellToPage()) newChatButton.current?.focus();
-  }, [failure, retrying]);
+  // Try again goes once a read works, whichever read it was. If it held the focus and the focus
+  // fell to the page with it, the focus moves to New chat; anyone elsewhere keeps their place.
+  const tryAgainGone = useRefocusWhenGone(() => newChatButton.current?.focus());
   if (chats === undefined) return null;
   const newChat = async () => {
     try {
@@ -55,19 +52,12 @@ export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) 
         {homeWords.newChat}
       </Button>
       {failure !== undefined && (
-        <p className="flex flex-wrap items-center gap-2 px-3 text-small text-fg-muted">
-          {`${homeWords.chatsFailed} ${failure.reason}`}
-          <Button
-            variant="ghost"
-            busy={retrying}
-            onClick={() => {
-              tryAgainPressed.current = true;
-              retry();
-            }}
-          >
-            {homeWords.tryAgain}
-          </Button>
-        </p>
+        <FailureLine
+          reason={failure.reason}
+          retrying={retrying}
+          onTryAgain={retry}
+          onGoneWithFocus={tryAgainGone}
+        />
       )}
       <ChatList
         chats={listed}
@@ -79,9 +69,28 @@ export function HomeListColumn({ context, open, setOpen }: HomeListColumnProps) 
   );
 }
 
-/** Whether nothing has the focus, as when the focused control left the page. */
-function focusFellToPage(): boolean {
-  return document.activeElement === null || document.activeElement === document.body;
+/** Why the chats couldn't be read, with Try again; tells `onGoneWithFocus` if it goes with the focus. */
+function FailureLine({
+  reason,
+  retrying,
+  onTryAgain,
+  onGoneWithFocus,
+}: {
+  readonly reason: string;
+  readonly retrying: boolean;
+  readonly onTryAgain: () => void;
+  readonly onGoneWithFocus: () => void;
+}) {
+  const tryAgain = useRef<HTMLButtonElement>(null);
+  useTellWhenGoneWithFocus(tryAgain, onGoneWithFocus);
+  return (
+    <p className="flex flex-wrap items-center gap-2 px-3 text-small text-fg-muted">
+      {`${homeWords.chatsFailed} ${reason}`}
+      <Button ref={tryAgain} variant="ghost" busy={retrying} onClick={onTryAgain}>
+        {homeWords.tryAgain}
+      </Button>
+    </p>
+  );
 }
 
 /** The AI chats under "New chat", or "No chats yet." when there are none; nothing while they load. */

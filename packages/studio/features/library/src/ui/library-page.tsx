@@ -17,6 +17,8 @@ import {
   OverviewPage,
   targetAfterRemoving,
   useBrokenFiles,
+  useRefocusWhenGone,
+  useTellWhenGoneWithFocus,
   visibleRowIds,
 } from "@halonicjs/studio-shell";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -223,6 +225,41 @@ function LibraryTitle({
 }
 
 /**
+ * The line above a list that a later read couldn't refresh, with Try again; tells
+ * `onGoneWithFocus` if it goes while Try again holds the focus.
+ */
+function StaleLine({
+  kind,
+  reason,
+  refreshing,
+  onTryAgain,
+  onGoneWithFocus,
+}: {
+  readonly kind: LibraryItemKind;
+  readonly reason: string | undefined;
+  readonly refreshing: boolean;
+  readonly onTryAgain: () => void;
+  readonly onGoneWithFocus: () => void;
+}) {
+  const tryAgain = useRef<HTMLButtonElement>(null);
+  useTellWhenGoneWithFocus(tryAgain, onGoneWithFocus);
+  return (
+    <p className="flex flex-wrap items-center gap-2 px-4 py-2 text-small text-fg-muted">
+      {showingLastList(kind, reason)}
+      <Button
+        ref={tryAgain}
+        variant="ghost"
+        busy={refreshing}
+        busyLabel={tryingAgain}
+        onClick={onTryAgain}
+      >
+        Try again
+      </Button>
+    </p>
+  );
+}
+
+/**
  * The Library's list: on the desktop, four kind chips (Skills, Knowledge, Collections,
  * Connectors) and, under them, the shell's overview page with that kind's items and their "Used
  * by"; on a phone, one kind's sentence and its items, with no chips. The Library place shows it in
@@ -276,6 +313,13 @@ export function LibraryPage({
   }, []);
   // Runs after every render, to catch the row or the empty state when it appears.
   useEffect(applyFocus);
+  // The stale-list line goes once a read works. If its Try again held the focus and the focus fell
+  // to the page, it moves to the first row, or to the empty state's title when there is none.
+  const staleLineGone = useRefocusWhenGone(() => {
+    const first = page.current === null ? undefined : visibleRowIds(page.current)[0];
+    if (page.current !== null && first !== undefined) focusRow(page.current, first);
+    else emptyTitle.current?.focus();
+  });
   const focusOn = (target: FocusTarget) => {
     pendingFocus.current = { target, listAtStart: latestLoad.current };
     applyFocus();
@@ -353,17 +397,13 @@ export function LibraryPage({
         <FilterChips label="Library" options={chips} value={kind} onChange={onKindChange} />
       )}
       {load.state === "loaded" && load.stale !== undefined && (
-        <p className="flex flex-wrap items-center gap-2 px-4 py-2 text-small text-fg-muted">
-          {showingLastList(kind, load.stale.reason)}
-          <Button
-            variant="ghost"
-            busy={load.refreshing === true}
-            busyLabel={tryingAgain}
-            onClick={retry}
-          >
-            Try again
-          </Button>
-        </p>
+        <StaleLine
+          kind={kind}
+          reason={load.stale.reason}
+          refreshing={load.refreshing === true}
+          onTryAgain={retry}
+          onGoneWithFocus={staleLineGone}
+        />
       )}
       <OverviewPage
         key={kind}
