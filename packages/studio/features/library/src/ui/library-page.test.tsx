@@ -183,6 +183,19 @@ verifies("library.library-page", () => {
     }
   });
 
+  it("draws Try again's focus ring inside the button, where the list column can't clip it", async () => {
+    const { host, notify } = staleHost();
+    const page = await show(host);
+    host.list.mockRejectedValueOnce(new Error("ECONNRESET"));
+    act(() => notify());
+    await settled();
+    const tryAgain = button(page, "Try again") as HTMLElement;
+    // Whole classes: "focus-ring" is a substring of "focus-ring-inset".
+    const classes = tryAgain.className.split(" ");
+    expect(classes).toContain("focus-ring-inset");
+    expect(classes).not.toContain("focus-ring");
+  });
+
   it("moves the focus to the first row when a focused Try again's read clears the line", async () => {
     const { host, notify } = staleHost();
     const page = await show(host);

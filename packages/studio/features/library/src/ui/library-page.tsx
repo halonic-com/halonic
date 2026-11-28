@@ -245,13 +245,16 @@ function StaleLine({
   useTellWhenGoneWithFocus(tryAgain, onGoneWithFocus);
   return (
     // As Home's failure line: Try again on its own row, pulled out by the ghost button's edge and
-    // padding, so its label starts where the sentence starts (HAL-20925).
+    // padding, so its label starts where the sentence starts (HAL-20925). Pulled out, the button's
+    // edge is 3px from the scrolling list column's edge (past it on touch), where the column
+    // clips an outer focus ring, so the ring is drawn inside the button (HAL-20948).
     <p className="flex flex-col items-start gap-1 px-4 py-2 text-small text-fg-muted">
       <span>{showingLastList(kind, reason)}</span>
       <span className="-ms-3.25 phone:-ms-4.25 touch:-ms-4.25">
         <Button
           ref={tryAgain}
           variant="ghost"
+          ring="inset"
           busy={refreshing}
           busyLabel={tryingAgain}
           onClick={onTryAgain}
