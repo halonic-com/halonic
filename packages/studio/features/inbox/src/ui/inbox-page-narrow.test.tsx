@@ -98,7 +98,7 @@ verifies("inbox.narrow-window", () => {
     expect(hidden(root, "list")).toBe(true);
     expect(hidden(root, "item")).toBe(false);
     expect(pane(root, "item").classList.contains("flex-1")).toBe(true);
-    expect(root.querySelector(".w-90")).toBeNull();
+    expect(root.querySelector(".max-w-95")).toBeNull();
     const back = backToInbox(root);
     expect(back).toBeDefined();
 
@@ -111,7 +111,7 @@ verifies("inbox.narrow-window", () => {
 
   it("keeps both panes side by side at 1280 × 800, with no Back to Inbox", async () => {
     const root = await openInbox("1280 × 800");
-    expect(pane(root, "list").classList.contains("w-90")).toBe(true);
+    expect(pane(root, "list").classList.contains("max-w-95")).toBe(true);
     expect(hidden(root, "item")).toBe(false);
     await click(rowCell(root, 1));
     expect(hidden(root, "list")).toBe(false);

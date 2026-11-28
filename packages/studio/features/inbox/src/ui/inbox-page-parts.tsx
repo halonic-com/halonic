@@ -57,15 +57,19 @@ export function InboxPanes({
   );
 }
 
+/** The list column's size beside the open item: 34 % of the page, at most 380 px. */
+const listColumnClass = "flex w-[34%] max-w-95 shrink-0";
+
 /**
- * The list's column: 360 px beside the card, else (one pane at a time) the whole page, and gone
- * while an item is open. On the window's frame (`framed`) it has no line of its own.
+ * The list's column: 34 % of the page, at most 380 px, beside the card, as the new design's list
+ * column (`inbox.list-column`), else (one pane at a time) the whole page, and gone while an item
+ * is open. On the window's frame (`framed`) it has no line of its own.
  */
 export function listPaneClass(onePane: boolean, itemOpen: boolean, framed = false): string {
   if (!onePane)
     return framed
-      ? "flex w-90 shrink-0 flex-col"
-      : "flex w-90 shrink-0 flex-col border-e border-border";
+      ? `${listColumnClass} flex-col`
+      : `${listColumnClass} flex-col border-e border-border`;
   return `${itemOpen ? "hidden" : "flex"} w-full flex-col`;
 }
 
