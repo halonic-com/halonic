@@ -190,6 +190,11 @@ export interface InboxItemOption {
    */
   noteLabel?: string;
   /**
+   * On a question's option only: picking it takes a written answer, which goes in the question
+   * answer's `text` (requirement `ports.agent-messaging-questions`). Only `true` counts.
+   */
+  freeText?: boolean;
+  /**
    * Set by the provider only, on its own options that turn an item down, such as an approval's
    * Reject and Request changes: picking one grants nothing, so a `risky` item's confirmation may
    * skip it. Never set on an option an agent wrote, such as a decision's, whatever its ID

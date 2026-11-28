@@ -44,6 +44,7 @@ const option = {
   noteRequired: true,
   noteLabel: "Why",
   declines: true,
+  freeText: true,
 } satisfies Required<InboxItemOption>;
 
 const question = {
@@ -53,6 +54,7 @@ const question = {
   options: [option],
   required: true,
   preselected: ["approve"],
+  allowOther: true,
 } satisfies Required<InboxQuestion>;
 
 const action = {

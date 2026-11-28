@@ -29,6 +29,11 @@ export interface InboxQuestion {
    * A suggestion isn't an answer: only what the person sends is.
    */
   preselected?: readonly string[];
+  /**
+   * Apps offer an extra "Other" choice, answered in writing in the answer's `text`. Only `true`
+   * counts. A question takes at most one written-text choice: "Other" or one `freeText` option.
+   */
+  allowOther?: boolean;
 }
 
 /** The person's answer to one {@link InboxQuestion}: the IDs of the options picked, in the order offered. */
@@ -36,7 +41,13 @@ export interface InboxQuestionAnswer {
   /** The question's `id`. */
   question: string;
   options: readonly string[];
-  /** A written answer the source kept with it, such as Paperclip's "other" text. Apps don't send one yet. */
+  /**
+   * The written answer, such as Paperclip's `otherText`. It belongs to the picked `freeText`
+   * option when there is one, and must not be blank then. Otherwise, when the question has
+   * `allowOther`, it is the "Other" answer, which a single-select question takes only with no
+   * option picked; blank after trimming, it counts as no answer. A question with neither keeps
+   * it as its source's own note, such as a verdict's reason.
+   */
   text?: string;
 }
 
@@ -54,7 +65,8 @@ export interface InboxQuestionsAnswer {
  * Whether an `answers` answer fits an item's questions: every question it
  * names is one the item asks, named once; every option it picks is one that
  * question offers, picked once; a `single` question has at most one option and
- * a `required` one at least one.
+ * a `required` one at least one, or "Other" text that isn't blank; and its
+ * `text` is one the question takes (see {@link InboxQuestionAnswer.text}).
  *
  * @example
  * questionsAnswerFits(questions, { kind: "answers", answers: [{ question: "repo", options: ["separate"] }] });
@@ -67,13 +79,15 @@ export function questionsAnswerFits(
   if (new Set(named).size !== named.length) return false;
   const fits = answer.answers.every((each) => {
     const question = questions.find((asked) => asked.id === each.question);
-    return question !== undefined && optionsFit(question, each.options);
+    return (
+      question !== undefined && optionsFit(question, each.options) && writtenFits(question, each)
+    );
   });
   if (!fits) return false;
   return questions.every(
     (question) =>
       !question.required ||
-      answer.answers.some((each) => each.question === question.id && each.options.length > 0),
+      answer.answers.some((each) => each.question === question.id && isAnswered(question, each)),
   );
 }
 
@@ -81,6 +95,27 @@ function optionsFit(question: InboxQuestion, picked: readonly string[]): boolean
   if (new Set(picked).size !== picked.length) return false;
   if (question.selection === "single" && picked.length > 1) return false;
   return picked.every((option) => question.options.some((offered) => offered.id === option));
+}
+
+// One `text` per question, so at most one written-text choice: a picked `freeText` option owns
+// the text, or else it is "Other", which a single-select question takes only instead of an option.
+// A question with neither keeps text as its source's own note, such as a verdict's reason.
+function writtenFits(question: InboxQuestion, answer: InboxQuestionAnswer): boolean {
+  const freeText = answer.options.filter((id) =>
+    question.options.some((offered) => offered.id === id && offered.freeText === true),
+  );
+  if (freeText.length > 1) return false;
+  if (freeText.length === 1) return isWritten(answer.text);
+  if (answer.text === undefined || question.allowOther !== true) return true;
+  return question.selection === "multiple" || answer.options.length === 0;
+}
+
+function isAnswered(question: InboxQuestion, answer: InboxQuestionAnswer): boolean {
+  return answer.options.length > 0 || (question.allowOther === true && isWritten(answer.text));
+}
+
+function isWritten(text: string | undefined): boolean {
+  return (text ?? "").trim() !== "";
 }
 
 /**
