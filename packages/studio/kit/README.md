@@ -150,7 +150,9 @@ The rail's white dot is the shell's (`shell.rail-dot`); the theme holds its valu
 `--ease-dot`, the times `--duration-dot-lead` (360ms) and `--duration-dot-streak` (400ms), the
 ring's `--color-rail-pulse`, `--ease-pulse-ring` and `--duration-dot-pulse-ring` (500ms), and
 `--duration-rail-fade` (150ms) for reduced motion. The dot and the ring have the same colour in
-light and dark.
+light and dark. The dot lies on the selected drawing's fill, `--color-rail-glass`
+(`kit.rail-glass-token`): the icons' deep blue glass, `#0a1630` in light and dark, while the
+drawing's edge stays in the text colour (`shell.rail-dot-seat`).
 
 A card that ended settles away (`kit.settle`, imported from `@halonicjs/studio-kit/settle`): `useSettling` keeps it in its
 list while it shows its final state, one line from `finalState` ("Approved by Ada · 14:02",

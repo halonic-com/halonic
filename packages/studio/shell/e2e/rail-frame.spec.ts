@@ -103,23 +103,48 @@ function luminance(colour: string): number {
   return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
 }
 
+/** The WCAG contrast of two computed colours. */
+function contrast(first: string, second: string): number {
+  const [lighter, darker] = [luminance(first), luminance(second)].sort((a, b) => b - a);
+  return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05);
+}
+
+async function selectedHomeInDark(page: Page) {
+  const rail = await openWindow(page, wide);
+  await page.evaluate(() => {
+    document.documentElement.setAttribute("data-theme", "dark");
+    // The buttons' colours ease to the dark theme's; reading a style starts those transitions,
+    // and finishing them reads the dark colours at once, without waiting.
+    getComputedStyle(document.documentElement).color;
+    for (const animation of document.getAnimations()) {
+      animation.finish();
+    }
+  });
+  const home = rail.getByRole("button", { name: "Home", exact: true });
+  return { home, solid: home.locator('[data-place-icon="home-filled"] path[fill="currentColor"]') };
+}
+
 /**
  * `shell.rail-dot-seat`: the white dot lies on the selected drawing's dark glass in dark too, not
- * on a fill in the near-white text colour (HAL-21048, post-merge check HAL-21037). Playwright has
- * no `verifies()`; the jsdom test in `icon-rail.test.tsx` names the requirement.
+ * on a fill in the near-white text colour, and the drawing's edge keeps the text colour so the
+ * drawing reads on the dark circle (HAL-21048, post-merge check HAL-21037). Playwright has no
+ * `verifies()`; the jsdom test in `icon-rail.test.tsx` names the requirement.
  */
 test("at 1280px in dark the white dot reads at 3:1 or more on the selected drawing", async ({
   page,
 }) => {
-  const rail = await openWindow(page, wide);
-  await page.evaluate(() => {
-    document.documentElement.setAttribute("data-theme", "dark");
-  });
-  const home = rail.getByRole("button", { name: "Home", exact: true });
-  const fill = await home
-    .locator('[data-place-icon="home-filled"] path[fill="currentColor"]')
-    .evaluate((path) => getComputedStyle(path).fill);
-  const contrast = (1 + 0.05) / (luminance(fill) + 0.05);
+  const { solid } = await selectedHomeInDark(page);
+  const fill = await solid.evaluate((path) => getComputedStyle(path).fill);
   expect(fill).toBe("rgb(10, 22, 48)");
-  expect(contrast).toBeGreaterThanOrEqual(3);
+  expect(contrast("rgb(255, 255, 255)", fill)).toBeGreaterThanOrEqual(3);
+});
+
+test("at 1280px in dark the selected drawing's edge reads at 3:1 or more on its circle", async ({
+  page,
+}) => {
+  const { home, solid } = await selectedHomeInDark(page);
+  const edge = await solid.evaluate((path) => getComputedStyle(path).stroke);
+  const circle = await home.evaluate((button) => getComputedStyle(button).backgroundColor);
+  expect(circle).toBe("rgb(13, 28, 62)");
+  expect(contrast(edge, circle)).toBeGreaterThanOrEqual(3);
 });
