@@ -228,7 +228,7 @@ function ItemChoice({
       <Changes changes={changes} />
       {/* Side by side only where the pane holds three (512px+): its width, not the window's. */}
       <div
-        className={`flex gap-4 ${phone ? "flex-col" : "flex-col @lg:flex-row @lg:items-stretch"}`}
+        className={`flex gap-4 ${phone ? "flex-col" : "flex-col @tiles-wide:flex-row @tiles-wide:items-stretch"}`}
       >
         <Tile
           title={mergeWords.yours}

@@ -373,6 +373,20 @@ describe("theme.css built by Tailwind: breakpoints", () => {
     expect(css).not.toMatch(/\\:flex/);
   });
 
+  it("writes nothing for Tailwind's own @lg: container size, which the theme clears too", async () => {
+    const css = await buildCss(["@lg:flex-row"]);
+    expect(css).not.toMatch(/@container/);
+  });
+
+  it("puts tiles side by side from a 512px container with @tiles-wide: (merge choices, HAL-21011)", async () => {
+    const css = await buildCss(["@tiles-wide:flex-row", "@tiles-wide:items-stretch"]);
+    const start = css.indexOf("@container (width >= 512px) {");
+    expect(start).toBeGreaterThan(-1);
+    const block = css.slice(start, css.indexOf("\n  }", start));
+    expect(block).toMatch(/\.\\@tiles-wide\\:flex-row \{\s*flex-direction: row;/);
+    expect(block).toMatch(/\.\\@tiles-wide\\:items-stretch \{\s*align-items: stretch;/);
+  });
+
   it("uses no breakpoint variant the theme doesn't define, so no layout class compiles to nothing", () => {
     const studio = path.join(import.meta.dirname, "../..");
     const used = studioSources()
