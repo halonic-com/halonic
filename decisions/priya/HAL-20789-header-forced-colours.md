@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-20789, from the post-merge words and accessibility check on HAL-20783; a team decision with no board card
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:2F8tEafpERS2miWKw+rzT8YQKaRqEyFCJwFZUSiBqF1toZUzxN8qyRTN0FyWkEt0brdzEb9fg2B45lREP5soBQ==
 
 ## What changes
 
