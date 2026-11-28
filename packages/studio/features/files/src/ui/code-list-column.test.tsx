@@ -122,6 +122,14 @@ async function key(target: Element | null, name: string): Promise<void> {
   await settled();
 }
 
+function statusRegions(page: HTMLElement): Element[] {
+  return [...(codePane(page, "list")?.querySelectorAll('[role="status"]') ?? [])];
+}
+
+function noProblemsRegion(page: HTMLElement): Element | null | undefined {
+  return codePane(page, "list")?.querySelector("[data-tree-note]")?.closest('[role="status"]');
+}
+
 function shownPaths(page: HTMLElement): string[] {
   return [...page.querySelectorAll<HTMLElement>("[data-path]")].map(
     (row) => row.dataset["path"] ?? "",
@@ -146,12 +154,29 @@ verifies("files.code-list-chips", () => {
     expect(shownPaths(page)).toEqual(["src", "src/checkout", "src/checkout/refunds.ts"]);
   });
 
-  it("says no file has a problem in place of the tree", async () => {
+  it("says there are no problems in place of the tree, in a status region", async () => {
     const { page } = await showCodePage(withProblems(false));
+    // The line must land in a region already in the page, or a screen reader may not read it.
+    const regions = statusRegions(page);
     await pick(page, "Problems");
 
     expect(codePane(page, "list")?.querySelector('[role="tree"]')).toBeNull();
-    expect(codePane(page, "list")?.textContent).toContain("No file has a problem.");
+    expect(regions).toContain(noProblemsRegion(page));
+    expect(noProblemsRegion(page)?.textContent).toBe("No problems in your files.");
+  });
+
+  it("keeps the no-problems region while a search finds nothing", async () => {
+    const { page } = await showCodePage(withProblems(false));
+    await pick(page, "Problems");
+    const search = page.querySelector<HTMLInputElement>('input[type="search"]');
+    await typeInto(search, "orders");
+    expect(page.querySelector("[data-tree-note]")).toBeNull();
+    const regions = statusRegions(page);
+
+    await typeInto(search, "");
+
+    expect(regions).toContain(noProblemsRegion(page));
+    expect(noProblemsRegion(page)?.textContent).toBe("No problems in your files.");
   });
 
   it("searches among the files with a problem while Problems is on", async () => {
@@ -215,7 +240,7 @@ verifies("files.code-list-chips", () => {
     await key(field, "Enter");
     // The rename itself turned All on, so Problems goes back on before the Undo.
     await pick(page, "Problems");
-    expect(codePane(page, "list")?.textContent).toContain("No file has a problem.");
+    expect(codePane(page, "list")?.textContent).toContain("No problems in your files.");
 
     await undoFirstToast(toasts);
 
@@ -233,7 +258,7 @@ verifies("files.code-list-chips", () => {
     act(() => row.click());
     await key(row, "Delete");
     expect(chip(page, "Problems").checked).toBe(true);
-    expect(codePane(page, "list")?.textContent).toContain("No file has a problem.");
+    expect(codePane(page, "list")?.textContent).toContain("No problems in your files.");
 
     await undoFirstToast(toasts);
 
@@ -241,7 +266,7 @@ verifies("files.code-list-chips", () => {
     expect(document.activeElement).toBe(rowNamed(page, "src/checkout/refunds.ts"));
   });
 
-  it("moves Go to Files to the line that says no file has a problem", async () => {
+  it("moves Go to Files to the line that says there are no problems", async () => {
     const { page } = await showCodePage({
       host: { ...withProblems(false).host, read: async () => null },
     });
@@ -253,7 +278,7 @@ verifies("files.code-list-chips", () => {
     );
     act(() => goTo?.click());
 
-    expect(document.activeElement?.textContent).toBe("No file has a problem.");
+    expect(document.activeElement?.textContent).toBe("No problems in your files.");
   });
 
   it("turns All on for F2 in the pane, so the row's name field shows", async () => {

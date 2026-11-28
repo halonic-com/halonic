@@ -383,14 +383,14 @@ export function FilesSidebarView({
       {...(activePath === undefined ? {} : { activePath })}
     />
   );
-  const body =
-    search.searching && search.matches === 0 ? null : (
-      <TreeBody
-        tree={tree}
-        files={files}
-        noProblems={filter === "problems" && roots.length === 0}
-      />
-    );
+  const body = (
+    <TreeBody
+      tree={tree}
+      files={files}
+      noProblems={filter === "problems" && roots.length === 0}
+      noMatch={search.searching && search.matches === 0}
+    />
+  );
   return (
     <div ref={root} className="flex min-h-0 flex-col">
       <TitleLine title={title}>
