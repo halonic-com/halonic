@@ -79,14 +79,16 @@ export interface ActionStepSucceededEvent extends ActionEventBase {
  * status. `refused`: the sender refused the step before sending it.
  * `unreachable`: no answer. `malformed`: the parameters no longer pass the
  * definition's schema. `state-changed`: what the requester expected is no
- * longer so.
+ * longer so. `more-than-one`: a check's answer listed more than one match,
+ * and a step works on exactly one.
  */
 export type ActionStepFailure =
   | "service-error"
   | "refused"
   | "unreachable"
   | "malformed"
-  | "state-changed";
+  | "state-changed"
+  | "more-than-one";
 
 /** A step failed and the stepper stopped. `error`: the service's own message, capped, untrusted. */
 export interface ActionStepFailedEvent extends ActionEventBase {

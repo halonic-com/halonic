@@ -47,6 +47,7 @@ const failureWords: Readonly<Record<ActionStepFailure, string>> = {
   unreachable: "The service didn't answer.",
   malformed: "Its values no longer fit the reviewed step.",
   "state-changed": "What the requester saw has changed since they asked.",
+  "more-than-one": "The service found more than one match, and this step works on exactly one.",
 };
 
 /** How the step the stepper didn't send shows, once its check read a state the requester didn't see. */

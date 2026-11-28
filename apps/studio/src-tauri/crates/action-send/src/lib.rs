@@ -38,7 +38,7 @@ mod template;
 mod web;
 mod wipe;
 
-pub use answer::{MAX_ERROR_CHARS, MORE_THAN_ONE, error_text};
+pub use answer::{MAX_ERROR_CHARS, error_text};
 pub use ask::{AskSheet, Typed, TypedText};
 pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};
 pub use device_flow::{DEVICE_PAGE, DeviceFlow, NEVER_EXPIRES, is_client_id};
@@ -50,6 +50,8 @@ pub use record_check::{
 };
 pub use record_files::{KEEP_FINISHED_SECONDS, MAX_RECORD_BYTES, Record, RecordError, RecordFiles};
 pub use routes::{FORMAT, Risk, RouteList};
-pub use send::{Answer, ConfirmSheet, Dialogs, Outgoing, SendResult, Sender, Tokens, Transport};
+pub use send::{
+    Answer, ConfirmSheet, Dialogs, Outgoing, SendResult, Sender, Tokens, Transport, Unusable,
+};
 pub use services::{AnswerShape, CLOUDFLARE, GITHUB, SERVICES, Service, service};
 pub use sign_in::{Clock, CodeScreen, Keychain, SignInCancel, SignInResult, UserCode};

@@ -131,6 +131,20 @@ verifies("action-send-tauri.answers", () => {
       );
     });
 
+    it("takes more-than-one only on a successful status with nothing kept and no text", () => {
+      const unusable = { outcome: "answered", status: 200, kept: {}, unusable: "more-than-one" };
+      expect(readSendResult(unusable)).toEqual(unusable);
+      const malformed = [
+        { ...unusable, unusable: "The service found more than one match." },
+        { ...unusable, status: 404 },
+        { ...unusable, kept: { id: "acme-record" } },
+        { ...unusable, error: "The service found more than one match." },
+      ];
+      for (const answer of malformed) {
+        expect(failureOf(() => readSendResult(answer))).toBe("malformed-answer");
+      }
+    });
+
     it("caps the service's message even if the shell didn't", () => {
       const error = "x".repeat(maxActionErrorLength + 50);
       const result = readSendResult({ outcome: "answered", status: 500, kept: {}, error });

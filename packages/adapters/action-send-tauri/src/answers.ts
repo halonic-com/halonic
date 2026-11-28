@@ -60,14 +60,29 @@ function keptOf(value: unknown): Record<string, ActionValue> | undefined {
   return kept;
 }
 
+/**
+ * A `more-than-one` answer as the port names it: a successful status, nothing kept and no error
+ * text, so nothing the shell or the service wrote can ride along with it.
+ */
+function unusableOf(
+  status: number,
+  kept: Readonly<Record<string, ActionValue>>,
+  answer: Record<string, unknown>,
+): ActionSendResult | undefined {
+  const isSuccess = status >= 200 && status < 300;
+  if (answer["unusable"] !== "more-than-one" || !isSuccess) return undefined;
+  if (Object.keys(kept).length > 0 || answer["error"] !== undefined) return undefined;
+  return { outcome: "answered", status, kept, unusable: "more-than-one" };
+}
+
 function answeredOf(answer: Record<string, unknown>): ActionSendResult | undefined {
   const { status, error } = answer;
   const kept = keptOf(answer["kept"]);
   const isStatus =
     Number.isInteger(status) && (status as number) >= 100 && (status as number) <= 599;
-  if (!hasOnlyKeys(answer, "status", "kept", "error") || !isStatus || kept === undefined) {
-    return undefined;
-  }
+  const known = hasOnlyKeys(answer, "status", "kept", "error", "unusable");
+  if (!known || !isStatus || kept === undefined) return undefined;
+  if (answer["unusable"] !== undefined) return unusableOf(status as number, kept, answer);
   const result: ActionSendResult = { outcome: "answered", status: status as number, kept };
   if (error === undefined) return result;
   if (typeof error !== "string") return undefined;

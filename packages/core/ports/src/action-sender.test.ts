@@ -63,6 +63,20 @@ verifies("ports.action-sender", () => {
     expect([answered.outcome, cancelled.outcome]).toEqual(["answered", "cancelled"]);
     expect([nested, withToken]).toHaveLength(2);
   });
+
+  it("marks a successful answer that listed more than one match, with no text of its own", () => {
+    const unusable: ActionSendResult = {
+      outcome: "answered",
+      status: 200,
+      kept: {},
+      unusable: "more-than-one",
+    };
+    const text = "The service found more than one match.";
+    // @ts-expect-error: the only reason is `more-than-one`, never free text the caller would show
+    const worded: ActionSendResult = { ...unusable, unusable: text };
+    expect(unusable.outcome === "answered" && unusable.unusable).toBe("more-than-one");
+    expect([worded]).toHaveLength(1);
+  });
 });
 
 verifies("ports.action-records", () => {

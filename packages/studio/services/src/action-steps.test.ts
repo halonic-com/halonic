@@ -31,6 +31,19 @@ const variablesPage: ActionRoute = {
   address: "https://github.com/{owner}/{repo}/settings/variables/actions",
   placeholders: { owner: "[a-z]+", repo: "[a-z]+" },
 };
+const findVariable: ActionRoute = {
+  kind: "call",
+  definition: "github.set-variable",
+  version: 1,
+  step: 3,
+  service: "github",
+  risk: "routine",
+  method: "GET",
+  path: "/repos/{owner}/{repo}/actions/variables",
+  placeholders: { owner: "[a-z]+", repo: "[a-z]+" },
+  body: [],
+  keep: ["name"],
+};
 const placeholders = { owner: "acme", repo: "app" };
 const step = {
   definition: "github.set-variable",
@@ -47,7 +60,7 @@ async function setUp(
   answer: () => StandInAnswer = () => ({ status: 201, fields: { name: "ACME_MODE" } }),
 ) {
   const fake = new FakeActionSender({
-    routes: [setVariable, variablesPage],
+    routes: [setVariable, variablesPage, findVariable],
     answer,
     signInAs: { github: "acme-dev" },
   });
@@ -121,6 +134,25 @@ verifies("services.action-steps", () => {
         placeholders: { owner: "acme", repo: "../x" },
       });
       expect((await refused.records.read("req-1")).at(-1)).toMatchObject({ failure: "refused" });
+    });
+
+    it("records a check whose 2xx answer found more than one match as failed, not succeeded", async () => {
+      const { records, steps } = await setUp(() => ({ status: 200, matches: 2 }));
+      const check = { definition: "github.set-variable", version: 1, step: 3, placeholders };
+      expect(await steps.runStep("req-1", check)).toEqual({
+        outcome: "answered",
+        status: 200,
+        kept: {},
+        unusable: "more-than-one",
+      });
+      expect((await records.read("req-1")).at(-1)).toEqual({
+        type: "action.step.failed",
+        request: "req-1",
+        at,
+        step: 3,
+        failure: "more-than-one",
+        status: 200,
+      });
     });
 
     it("leaves only the start when the user cancels in the shell's dialog, so the step can run again", async () => {

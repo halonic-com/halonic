@@ -16,6 +16,7 @@ export {
   type ActionService,
   type ActionSignInResult,
   type ActionStepRef,
+  type ActionUnusable,
   type ActionValue,
   actionSenderVersion,
 } from "./action-sender.ts";

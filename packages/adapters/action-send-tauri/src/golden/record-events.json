@@ -82,6 +82,17 @@
       }
     },
     {
+      "case": "a check that found more than one match, with its status and no error",
+      "event": {
+        "type": "action.step.failed",
+        "request": "req-1",
+        "at": "2026-11-25T09:00:00.000Z",
+        "step": 1,
+        "failure": "more-than-one",
+        "status": 200
+      }
+    },
+    {
       "case": "a skipped step 100",
       "event": {
         "type": "action.step.skipped",

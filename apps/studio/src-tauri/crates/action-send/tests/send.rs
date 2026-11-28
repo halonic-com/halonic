@@ -61,7 +61,8 @@ fn a_step_on_the_list_goes_to_github_with_the_token_in_one_header() {
         SendResult::Answered {
             status: 204,
             kept: serde_json::Map::new(),
-            error: None
+            error: None,
+            unusable: None,
         }
     );
     let calls = network.calls();
@@ -179,6 +180,7 @@ fn a_redirect_is_not_followed_and_its_address_isnt_shown() {
         status,
         kept,
         error,
+        ..
     } = &result
     else {
         panic!("{result:?}")
@@ -204,7 +206,8 @@ fn only_the_routes_kept_fields_come_back() {
         SendResult::Answered {
             status: 200,
             kept: expected.as_object().cloned().unwrap_or_default(),
-            error: None
+            error: None,
+            unusable: None,
         }
     );
     assert_eq!(network.calls()[0].method, "GET");

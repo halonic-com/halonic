@@ -15,10 +15,10 @@ use serde_json::{Map, Value};
 use url::Url;
 
 use crate::account::Account;
-use crate::answer::{MORE_THAN_ONE, cleaned_text, kept_fields, redirect_text};
+use crate::answer::{MoreThanOne, cleaned_text, kept_fields, redirect_text};
 use crate::ask::{AskSheet, Mismatch, Typed, TypedText, body_bytes, checked, secret_fields};
 use crate::call::{PreparedCall, Refusal, SendRequest, prepare};
-use crate::routes::{Risk, RouteList};
+use crate::routes::{Method, Risk, RouteList};
 use crate::target::fill_target;
 use crate::wipe::{Wiped, wipe_bytes, wipe_text};
 
@@ -109,12 +109,25 @@ pub enum SendResult {
         kept: Map<String, Value>,
         #[serde(skip_serializing_if = "Option::is_none")]
         error: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        unusable: Option<Unusable>,
     },
     Refused {
         reason: Refusal,
     },
     Cancelled,
     Unreachable,
+}
+
+/// Why a check step's `2xx` answer can't be used: `ActionUnusable` in
+/// `@halonicjs/ports`. Studio words it itself, so no text goes back with it
+/// that could read as the service's (HAL-20267).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Unusable {
+    /// The list answer held more than one item, and a step works on exactly
+    /// one.
+    MoreThanOne,
 }
 
 /// Everything a send needs from the shell.
@@ -202,24 +215,31 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
                 status,
                 kept: Map::new(),
                 error: Some(redirect_text()),
+                unusable: None,
             };
         }
         let shape = call.route.service.answers;
         if (200..300).contains(&status) {
-            return match kept_fields(&answer, shape, &call.route.keep, &hidden) {
-                Ok(kept) => SendResult::Answered {
-                    status,
-                    kept,
-                    error: None,
-                },
-                Err(_) => {
-                    (self.log)(format!("action_send {step}: more than one match"));
-                    SendResult::Answered {
-                        status,
-                        kept: Map::new(),
-                        error: Some(MORE_THAN_ONE.to_owned()),
-                    }
+            let (kept, unusable) = match kept_fields(&answer, shape, &call.route.keep, &hidden) {
+                Ok(kept) => (kept, None),
+                // A write has already happened, so it keeps nothing but never
+                // reads as failed, which would invite a second run.
+                Err(MoreThanOne) if call.route.method != Method::Get => {
+                    (self.log)(format!(
+                        "action_send {step}: more than one match, kept nothing"
+                    ));
+                    (Map::new(), None)
                 }
+                Err(MoreThanOne) => {
+                    (self.log)(format!("action_send {step}: more than one match"));
+                    (Map::new(), Some(Unusable::MoreThanOne))
+                }
+            };
+            return SendResult::Answered {
+                status,
+                kept,
+                error: None,
+                unusable,
             };
         }
         let error = crate::answer::failure_text(&answer, shape, &hidden);
@@ -227,6 +247,7 @@ impl<T: Transport, K: Tokens, D: Dialogs> Sender<'_, T, K, D> {
             status,
             kept: Map::new(),
             error,
+            unusable: None,
         }
     }
 }

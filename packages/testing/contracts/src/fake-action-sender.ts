@@ -34,10 +34,16 @@ export interface SentActionCall {
 /**
  * How a stand-in service answers a call. `fields`: the answer's top-level
  * fields, from which the sender keeps only the route's. `error`: the
- * service's own message for a failed status.
+ * service's own message for a failed status. `matches`: how many items a
+ * list answer held; more than one makes a `GET` step's answer unusable.
  */
 export type StandInAnswer =
-  | { status: number; fields?: Readonly<Record<string, unknown>>; error?: string }
+  | {
+      status: number;
+      fields?: Readonly<Record<string, unknown>>;
+      error?: string;
+      matches?: number;
+    }
   | "unreachable";
 
 /** How the stand-in user answers the sender's native dialog. */
@@ -160,6 +166,11 @@ const cancelled = () => Promise.resolve<ActionSendResult>({ outcome: "cancelled"
 function resultOf(route: ActionCallRoute, answer: StandInAnswer): ActionSendResult {
   if (answer === "unreachable") return { outcome: "unreachable" };
   const succeeded = answer.status >= 200 && answer.status < 300;
+  const moreThanOne = (answer.matches ?? 1) > 1;
+  if (succeeded && moreThanOne && route.method === "GET") {
+    return { outcome: "answered", status: answer.status, kept: {}, unusable: "more-than-one" };
+  }
+  if (succeeded && moreThanOne) return { outcome: "answered", status: answer.status, kept: {} };
   if (succeeded) {
     return { outcome: "answered", status: answer.status, kept: keptFields(route, answer.fields) };
   }

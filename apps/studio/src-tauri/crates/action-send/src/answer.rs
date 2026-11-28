@@ -22,12 +22,8 @@ const REMOVED: &str = "[removed]";
 /// prefix.
 const LONG_KEY_CHARS: usize = 32;
 
-/// The text for a list answer with more than one item: a step reads or
-/// changes exactly one thing, so the shell keeps nothing from it.
-pub const MORE_THAN_ONE: &str =
-    "The service found more than one match, and this step works on exactly one. Nothing was kept.";
-
-/// A list answer held more than one item.
+/// A list answer held more than one item: a step reads or changes exactly
+/// one thing, so the shell keeps nothing from it.
 #[derive(Debug, PartialEq, Eq)]
 pub struct MoreThanOne;
 

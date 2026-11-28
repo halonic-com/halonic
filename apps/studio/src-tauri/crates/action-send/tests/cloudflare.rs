@@ -7,7 +7,7 @@
 mod support;
 
 use halonic_action_send::account;
-use halonic_action_send::{Answer, MORE_THAN_ONE, Refusal, RouteList, SendResult};
+use halonic_action_send::{Answer, Refusal, RouteList, SendResult, Unusable};
 use serde_json::{Map, Value, json};
 use support::{FakeDialogs, FakeKeychain, FakeLog, FakeNetwork, NOW, TOKEN, send_with};
 
@@ -144,6 +144,7 @@ fn an_envelope_keeps_the_route_fields_of_its_result() {
             status: 200,
             kept: kept(json!({ "name": "acme.example", "status": "active" })),
             error: None,
+            unusable: None,
         }
     );
 }
@@ -166,6 +167,7 @@ fn a_list_of_one_keeps_that_record_and_its_total_count() {
                 "total_count": 1,
             })),
             error: None,
+            unusable: None,
         }
     );
 }
@@ -181,12 +183,12 @@ fn an_empty_list_keeps_a_total_count_of_zero() {
             status: 200,
             kept: kept(json!({ "total_count": 0 })),
             error: None,
+            unusable: None,
         }
     );
 }
 
-#[test]
-fn a_list_of_two_or_a_total_count_above_one_keeps_nothing() {
+fn more_than_one() -> [Value; 2] {
     let two = json!({
         "success": true,
         "result": [record("aaaa0000aaaa0000aaaa0000aaaa0000", "192.0.2.1"), record("bbbb0000bbbb0000bbbb0000bbbb0000", "192.0.2.2")],
@@ -197,14 +199,46 @@ fn a_list_of_two_or_a_total_count_above_one_keeps_nothing() {
         "result": [record("aaaa0000aaaa0000aaaa0000aaaa0000", "192.0.2.1")],
         "result_info": { "count": 1, "total_count": 3 },
     });
-    for body in [two, one_of_many] {
+    [two, one_of_many]
+}
+
+#[test]
+fn a_check_answering_a_list_of_two_or_a_total_count_above_one_is_unusable() {
+    for body in more_than_one() {
         let (result, _) = send(find("www.acme.example"), answer(200, body));
         assert_eq!(
             result,
             SendResult::Answered {
                 status: 200,
                 kept: Map::new(),
-                error: Some(MORE_THAN_ONE.to_owned()),
+                error: None,
+                unusable: Some(Unusable::MoreThanOne),
+            }
+        );
+        let page = serde_json::to_value(&result).expect("serializes");
+        assert_eq!(page["unusable"], json!("more-than-one"));
+        assert!(page.get("error").is_none(), "{page}");
+    }
+}
+
+#[test]
+fn a_write_answering_a_list_of_more_than_one_keeps_nothing_and_still_succeeds() {
+    let update = json!({
+        "definition": "acme.update-dns-record",
+        "version": 1,
+        "step": 1,
+        "placeholders": { "zone_id": ZONE, "record_id": "372e67954025e0ba6aaa6d586b9e0b59" },
+    });
+    for body in more_than_one() {
+        let (result, network) = send(update.clone(), answer(200, body));
+        assert_eq!(network.calls()[0].method, "PATCH");
+        assert_eq!(
+            result,
+            SendResult::Answered {
+                status: 200,
+                kept: Map::new(),
+                error: None,
+                unusable: None,
             }
         );
     }
@@ -225,6 +259,7 @@ fn a_failure_shows_the_envelopes_errors_with_their_codes() {
             status: 403,
             kept: Map::new(),
             error: Some("Authentication error (code 10000)".to_owned()),
+            unusable: None,
         }
     );
 }

@@ -192,6 +192,10 @@ function answeredEvent(
   base: { request: string; at: string; step: number },
 ): ActionRecordEvent {
   const { status, kept, error } = result;
+  // A check that found more than one match failed, whatever its status; Studio words it itself.
+  if (result.unusable === "more-than-one") {
+    return { type: "action.step.failed", ...base, failure: "more-than-one", status };
+  }
   if (status >= 200 && status < 300) {
     return { type: "action.step.succeeded", ...base, status, kept };
   }
