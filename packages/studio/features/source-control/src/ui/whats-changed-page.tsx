@@ -30,6 +30,8 @@ export interface WhatChangedPageProps {
    * item's name is a visible `h2` under the list's `h1`, and there is no Back to Changes.
    */
   readonly inPane?: boolean;
+  /** In the pane, changes with each press that opens this item, so focus moves to its name again. */
+  readonly focusRequest?: number;
 }
 
 /**
@@ -51,9 +53,11 @@ export function WhatChangedPage({
   onBack,
   phone = false,
   inPane = false,
+  focusRequest = 0,
 }: WhatChangedPageProps) {
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), []);
+  // Each new press moves focus again; a read draws without changing `focusRequest`.
+  useEffect(() => heading.current?.focus(), [focusRequest]);
   const undoing = useUndoItem(list);
   const waitingId = useId();
   const headingId = useId();

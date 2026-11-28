@@ -29,8 +29,8 @@ export interface VersionItemsProps {
   readonly version: Version;
   readonly list: ChangesList;
   /**
-   * The level of the What's in it heading: 2 on the phone's version page, 3 in the desktop's content
-   * pane, 4 in History's details box.
+   * The level of the What's in it heading: 2 on the phone's version page, 3 in the desktop's
+   * content pane, 4 in History's details box.
    */
   readonly headingLevel: 2 | 3 | 4;
 }

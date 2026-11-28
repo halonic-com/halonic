@@ -55,11 +55,15 @@ verifies("source-control.list-column", () => {
       });
       expect(pane(root)?.querySelector("h2")?.textContent).toBe("Changes");
       expect(document.activeElement).toBe(getUpdates);
+      // The last item open, and gone in a read: the heading doesn't take the focus either.
+      openItem(root, "README.md");
+      act(() => getUpdates?.focus());
       fake.answer({ kind: "ready", changes: [] });
       await act(async () => {
         fake.wake();
         await settle();
       });
+      expect(pane(root)?.textContent).toContain("Nothing has changed since your last version.");
       expect(document.activeElement).toBe(getUpdates);
     });
 

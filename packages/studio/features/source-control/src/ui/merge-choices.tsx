@@ -226,7 +226,7 @@ function ItemChoice({
     <section aria-label={item.path} className="flex flex-col gap-2">
       <ItemHeading className="text-label break-all">{item.path}</ItemHeading>
       <Changes changes={changes} />
-      {/* Side by side only where the pane holds three, 512px or more: by its width, not the window's. */}
+      {/* Side by side only where the pane holds three (512px+): its width, not the window's. */}
       <div
         className={`flex gap-4 ${phone ? "flex-col" : "flex-col @lg:flex-row @lg:items-stretch"}`}
       >

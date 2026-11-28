@@ -187,6 +187,7 @@ export function ChangesView({
           open={nav.open}
           version={state.history.versions.find((version) => version.id === selection.versionId)}
           onVersionEscape={selection.focusVersionRow}
+          presses={selection.presses}
           developer={developer}
           openItem={openItem}
         />

@@ -6,6 +6,7 @@ import { act } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   agentChange,
+  historyRow,
   listColumn,
   openColumnsPage,
   pane,
@@ -18,11 +19,6 @@ import { unmountAll } from "../test-support/render.tsx";
 afterEach(unmountAll);
 
 const classesOf = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
-
-const historyRow = (root: HTMLElement, name: string) =>
-  [...root.querySelectorAll<HTMLElement>('[data-part="history-list"] [role="gridcell"]')].find(
-    (cell) => cell.textContent?.includes(name),
-  );
 
 verifies("source-control.list-column", () => {
   describe("Changes in a list column beside a content pane", () => {

@@ -30,6 +30,10 @@ export interface ColumnsPageOptions {
   /** A Get updates left half done, with its strip and Continue. */
   readonly left?: UpdateMerge;
   readonly history?: readonly Version[];
+  /** Makes reads fail with this until `fake.failReads(undefined)`. */
+  readonly failReads?: unknown;
+  /** Holds the first read until `releaseFirstRead` is called. */
+  readonly holdFirstRead?: boolean;
 }
 
 /**
@@ -46,7 +50,16 @@ export async function openColumnsPage(options: ColumnsPageOptions = {}) {
     after: lines("id: triage", "name: Triage", "model: gpt"),
   });
   fake.setTexts(readmeChange.path, { before: "a\n", after: "b\n" });
-  const list = new ChangesList(fake.source);
+  if (options.failReads !== undefined) fake.failReads(options.failReads);
+  let releaseFirstRead: () => void = () => {};
+  const held = new Promise<void>((resolve) => {
+    releaseFirstRead = resolve;
+  });
+  const read = fake.source.read;
+  const source = options.holdFirstRead
+    ? { ...fake.source, read: async () => held.then(read) }
+    : fake.source;
+  const list = new ChangesList(source);
   const view = <ChangesView list={list} />;
   const root = render(
     <ToastStoreProvider store={createToastStore()}>
@@ -57,8 +70,31 @@ export async function openColumnsPage(options: ColumnsPageOptions = {}) {
       )}
     </ToastStoreProvider>,
   );
-  await act(settle);
-  return { fake, root, list };
+  if (!options.holdFirstRead) await act(settle);
+  return { fake, root, list, releaseFirstRead };
+}
+
+/** History's row for the version named `name`. */
+export const historyRow = (root: HTMLElement, name: string) =>
+  [...root.querySelectorAll<HTMLElement>('[data-part="history-list"] [role="gridcell"]')].find(
+    (cell) => cell.textContent?.includes(name),
+  );
+
+/** Presses Enter on `cell`, as the keyboard opens a row. */
+export function pressEnter(cell: HTMLElement | undefined): void {
+  act(() => {
+    cell?.focus();
+    cell?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+}
+
+/** Presses Escape where focus is. */
+export function pressEscape(): void {
+  act(() => {
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+  });
 }
 
 /** The desktop's content pane, or `null` where there is none. */

@@ -7,6 +7,11 @@ import type { OpenItem } from "./use-open-item.ts";
 export interface PaneSelection {
   /** The version picked in History, shown in the pane; `undefined` when none is. */
   readonly versionId: string | undefined;
+  /**
+   * Counts the presses that opened something in the pane, the same item or version again included,
+   * so the pane moves focus to its heading on each press and never on a read.
+   */
+  readonly presses: number;
   /** Opens a changed item in the pane, in place of a version or the choices. */
   readonly openRow: (id: string) => void;
   /** Opens a version in the pane, in place of an item or the choices. */
@@ -30,6 +35,8 @@ export function usePaneSelection(
   besidePane: boolean,
 ): PaneSelection {
   const [versionId, setVersionId] = useState<string>();
+  const [presses, setPresses] = useState(0);
+  const pressed = () => setPresses((count) => count + 1);
   const close = useRef(nav.close);
   close.current = nav.close;
   const choosing = list.state.choosing;
@@ -43,15 +50,18 @@ export function usePaneSelection(
   };
   return {
     versionId,
+    presses,
     openRow: (id) => {
       leaveChoices();
       setVersionId(undefined);
       nav.show(id);
+      pressed();
     },
     pickVersion: (id) => {
       leaveChoices();
       nav.close();
       setVersionId(id);
+      pressed();
     },
     focusVersionRow: (id) => {
       listColumn.current
