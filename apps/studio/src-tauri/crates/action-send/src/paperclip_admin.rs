@@ -158,6 +158,26 @@ pub fn admin_key(
     backend.get(&key_name()?)
 }
 
+/// The admin key's sign-in: the connection it was made for, as that
+/// connection's keychain entry names it now, the board member who approved
+/// it, and the key. `None` when there is no usable key: none was stored, it
+/// expired, or the connection's entry is gone or now names another origin or
+/// company. The connection always comes from the sign-in's record and the
+/// connection's own entry, never from the page.
+pub fn admin_session(
+    backend: &dyn SecretBackend,
+    now: u64,
+) -> Result<Option<(PaperclipConnection, String, String)>, SecretError> {
+    let Some(record) = read_record(backend)? else {
+        return Ok(None);
+    };
+    let Some(connection) = connection_of(backend, &record.connection)? else {
+        return Ok(None);
+    };
+    let key = admin_key(backend, &connection, now)?;
+    Ok(key.map(|key| (connection, record.user, key)))
+}
+
 /// Stores a new admin key for `connection`, approved by `user`: the key
 /// first, then the record that points at it, so a failure halfway never
 /// leaves a record without its key.

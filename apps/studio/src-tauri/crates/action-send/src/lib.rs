@@ -30,6 +30,8 @@ mod device_flow;
 mod kinds;
 mod opens;
 pub mod paperclip_admin;
+pub mod paperclip_calls;
+mod paperclip_set_secret;
 mod paperclip_sign_in;
 mod pattern;
 mod private_file;
@@ -49,6 +51,7 @@ pub use ask::{AskSheet, Typed, TypedText};
 pub use call::{MAX_LIST_ITEMS, Refusal, SendRequest, StepRef};
 pub use device_flow::{DEVICE_PAGE, DeviceFlow, NEVER_EXPIRES, is_client_id};
 pub use opens::{ANY_PAGE_GAP_MS, OpenLimiter, SAME_PAGE_GAP_MS, open_guided, open_page};
+pub use paperclip_set_secret::{SET_SECRET, SetSecret, SetSecretStep};
 pub use paperclip_sign_in::{ApprovalScreen, PAPERCLIP, PaperclipSignIn};
 pub use pattern::{MAX_VALUE_CHARS, Pattern};
 pub use record_check::{
