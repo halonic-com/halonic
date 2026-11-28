@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20732 (P5 of the HAL-20617 build plan, approved by Liam on the task). Liam approves the change in review on HAL-20732.
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:aYSQMnA61hIr2KDzIzoTInTlmx0xeTBCP9/P4QJaKudDnwRvTr/IpUgTz+giF/1WkEjBx/XZNNc1OMsoggQUAw==
 - Task: HAL-20732
 
 ## What changes
