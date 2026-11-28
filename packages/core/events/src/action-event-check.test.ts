@@ -1,6 +1,6 @@
 import { typeTest, verifies } from "@halonicjs/testing-spec";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { checkActionEvent, maxActionErrorLength } from "./action-event-check.ts";
+import { checkActionEvent, isActionKeptName, maxActionErrorLength } from "./action-event-check.ts";
 import type { ActionEvent, ActionEventType } from "./action-events.ts";
 
 const at = "2026-11-24T13:00:00.000Z";
@@ -101,6 +101,21 @@ verifies("events.action-events", () => {
     ]);
     expect(problemsOf({ ...succeeded, kept: { "x-header": "a" } })).toEqual([
       "kept: a field name that isn't plain",
+    ]);
+  });
+
+  it("takes a kept name of up to 3 dotted keys, never in parameters or into a list", () => {
+    const succeeded = valid[4];
+    const kept = { "triggering_actor.login": "acme-dev", "head_commit.author.name": "Acme" };
+    expect(problemsOf({ ...succeeded, kept })).toEqual([]);
+    for (const name of ["a.b.c.d", "pull_requests.0", "pull_requests[0]", "a..b", "a."]) {
+      expect(isActionKeptName(name)).toBe(false);
+      expect(problemsOf({ ...succeeded, kept: { [name]: 1 } })).toEqual([
+        "kept: a field name that isn't plain",
+      ]);
+    }
+    expect(problemsOf({ ...valid[0], parameters: { "repo.owner": "acme" } })).toEqual([
+      "parameters: a field name that isn't plain",
     ]);
   });
 

@@ -4,6 +4,7 @@ export {
   actionOutcomes,
   actionStepFailures,
   checkActionEvent,
+  isActionKeptName,
   maxActionErrorLength,
   maxActionReasonLength,
   maxActionStep,

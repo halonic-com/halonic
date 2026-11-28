@@ -219,8 +219,8 @@ fn call_route(route: RouteFile) -> Result<CallRoute, String> {
         return Err("a GET has no body".to_owned());
     }
     let keep = route.keep.unwrap_or_default();
-    if !keep.iter().all(|name| !name.is_empty()) {
-        return Err("a kept field has no name".to_owned());
+    if let Some(name) = keep.iter().find(|name| !is_kept_name(name)) {
+        return Err(format!("`{name}` isn't a kept field name"));
     }
     Ok(CallRoute {
         service,
@@ -233,6 +233,24 @@ fn call_route(route: RouteFile) -> Result<CallRoute, String> {
         keep,
         target,
     })
+}
+
+/// The most object keys a kept field's dotted name may walk through.
+const MAX_KEPT_SEGMENTS: usize = 3;
+
+/// The most characters in one segment of a kept field's name, as
+/// `actionKeptProblem` in `@halonicjs/events` allows.
+const MAX_KEPT_SEGMENT_CHARS: usize = 64;
+
+/// A kept field's name: up to [`MAX_KEPT_SEGMENTS`] object keys joined by
+/// `.`, each a plain name. A segment can't start with a digit, so no name
+/// reaches into a list.
+pub(crate) fn is_kept_name(name: &str) -> bool {
+    let segments: Vec<&str> = name.split('.').collect();
+    segments.len() <= MAX_KEPT_SEGMENTS
+        && segments
+            .iter()
+            .all(|segment| segment.len() <= MAX_KEPT_SEGMENT_CHARS && is_name(segment))
 }
 
 fn body_field(field: BodyFieldFile) -> Result<BodyField, String> {

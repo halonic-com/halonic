@@ -76,7 +76,10 @@ fn answer_fields(body: Value, shape: AnswerShape) -> Result<Map<String, Value>, 
 }
 
 /// The route's kept fields that the answer has as plain values. Nothing
-/// when the answer isn't a JSON object. A text or number value that holds a
+/// when the answer isn't a JSON object. A dotted name such as
+/// `triggering_actor.login` walks into objects, one key per segment, and the
+/// value comes back under the dotted name; a path that is missing or passes
+/// through a non-object is left out. A text or number value that holds a
 /// `hidden` value (the token, a typed secret), or text that looks like a
 /// key, is left out, in case the service echoes one back.
 pub fn kept_fields(
@@ -92,7 +95,11 @@ pub fn kept_fields(
     Ok(keep
         .iter()
         .filter_map(|name| {
-            let value = fields.get(name)?;
+            let mut segments = name.split('.');
+            let mut value = fields.get(segments.next()?)?;
+            for segment in segments {
+                value = value.as_object()?.get(segment)?;
+            }
             let plain = match value {
                 Value::String(text) => {
                     !holds_hidden(text, hidden)

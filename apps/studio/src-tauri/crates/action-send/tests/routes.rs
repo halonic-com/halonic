@@ -115,6 +115,32 @@ fn a_get_with_a_body_or_a_body_listed_twice_is_refused() {
 }
 
 #[test]
+fn a_kept_name_with_an_index_or_more_than_three_segments_is_refused() {
+    let keeping = |name: &str| {
+        let name = name.to_owned();
+        with_first_route(move |route| route["keep"] = json!([name]))
+    };
+    assert!(keeping("triggering_actor.login").is_ok());
+    assert!(keeping("head_commit.author.name").is_ok());
+    let too_long = "a".repeat(65);
+    for bad in [
+        "a.b.c.d",
+        "pull_requests.0",
+        "pull_requests[0]",
+        "pull_requests.0.url",
+        "",
+        "a..b",
+        ".a",
+        "a.",
+        "x-header",
+        too_long.as_str(),
+    ] {
+        let refused = keeping(bad).expect_err(bad);
+        assert!(refused.contains("isn't a kept field name"), "{refused}");
+    }
+}
+
+#[test]
 fn a_guided_page_off_its_services_web_origins_is_refused() {
     for address in [
         "https://evil.example/{owner}/{repo}/settings/variables/actions/new",

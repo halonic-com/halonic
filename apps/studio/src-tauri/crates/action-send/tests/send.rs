@@ -211,6 +211,46 @@ fn only_the_routes_kept_fields_come_back() {
 }
 
 #[test]
+fn a_dotted_kept_name_keeps_a_nested_plain_value_under_that_name() {
+    let body = json!({
+        "status": "waiting",
+        "triggering_actor": { "login": "acme-dev", "site_admin": false },
+        "head_commit": { "author": { "name": "Acme Dev", "email": "dev@acme.example" } },
+        "pull_requests": [{ "url": "https://api.github.com/repos/acme/app/pulls/1" }],
+        "missing": "not an object"
+    });
+    let request = json!({ "definition": "acme.read-run", "version": 1, "step": 1, "placeholders": good_placeholders() });
+    let (result, _, _) = send(request, json_answer(200, body));
+    // `head_commit.author` is an object and `pull_requests.url` walks into a
+    // list, so both are left out; `missing.path` passes through a text.
+    let expected = json!({
+        "status": "waiting",
+        "triggering_actor.login": "acme-dev",
+        "triggering_actor.site_admin": false,
+        "head_commit.author.name": "Acme Dev"
+    });
+    assert_eq!(
+        result,
+        SendResult::Answered {
+            status: 200,
+            kept: expected.as_object().cloned().unwrap_or_default(),
+            error: None
+        }
+    );
+}
+
+#[test]
+fn a_nested_kept_value_holding_the_token_is_left_out() {
+    let body = json!({ "triggering_actor": { "login": format!("acme {TOKEN}") } });
+    let request = json!({ "definition": "acme.read-run", "version": 1, "step": 1, "placeholders": good_placeholders() });
+    let (result, _, _) = send(request, json_answer(200, body));
+    let SendResult::Answered { kept, .. } = &result else {
+        panic!("{result:?}")
+    };
+    assert!(kept.is_empty(), "{kept:?}");
+}
+
+#[test]
 fn the_token_is_never_in_a_result_or_a_log_line() {
     let request = json!({ "definition": "acme.read-run", "version": 1, "step": 1, "placeholders": good_placeholders() });
     let echoes = [

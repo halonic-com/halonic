@@ -8,6 +8,7 @@
 use serde_json::{Map, Value};
 
 use crate::answer::MAX_ERROR_CHARS;
+use crate::routes::is_kept_name;
 
 /// The longest id (request, digest, service, account) an event may hold.
 pub const MAX_ID_CHARS: usize = 200;
@@ -180,8 +181,8 @@ fn whole_number_problem(value: &Value, least: f64, most: f64) -> Option<&'static
     }
 }
 
-/// Plain values (or `null`) under plain names, so no object, list or long
-/// text can hide in a step's kept fields.
+/// Plain values (or `null`) under kept names (the dotted names `routes` takes),
+/// so no object, list or long text can hide in a step's kept fields.
 fn kept_problem(value: &Value) -> Option<&'static str> {
     let Some(kept) = value.as_object() else {
         return Some("not an object");
@@ -189,18 +190,10 @@ fn kept_problem(value: &Value) -> Option<&'static str> {
     if kept.len() > MAX_KEPT_FIELDS {
         return Some("too many fields");
     }
-    if !kept.keys().all(|name| is_plain_name(name)) {
-        return Some("a field name that isn't plain");
+    if !kept.keys().all(|name| is_kept_name(name)) {
+        return Some("a field name that isn't a kept name");
     }
     (!kept.values().all(is_plain_value)).then_some("a value that isn't plain")
-}
-
-/// `^[A-Za-z][A-Za-z0-9_]{0,63}$`.
-fn is_plain_name(name: &str) -> bool {
-    let mut characters = name.chars();
-    characters.next().is_some_and(|c| c.is_ascii_alphabetic())
-        && name.len() <= 64
-        && characters.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 fn is_plain_value(value: &Value) -> bool {

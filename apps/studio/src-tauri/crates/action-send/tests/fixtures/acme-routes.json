@@ -32,7 +32,7 @@
       "method": "GET",
       "path": "/repos/{owner}/{repo}/actions/runs/{runId}",
       "body": [],
-      "keep": ["status", "head_sha", "note"]
+      "keep": ["status", "head_sha", "note", "triggering_actor.login", "triggering_actor.site_admin", "head_commit.author.name", "head_commit.author", "pull_requests.url", "missing.path"]
     },
     {
       "kind": "call",

@@ -192,3 +192,28 @@ verifies("action-steppers.api-steps", () => {
     });
   });
 });
+
+verifies("action-steppers.kept-paths", () => {
+  describe("routesOf and kept names", () => {
+    it("keeps a dotted name of up to 3 keys on a check and a call", () => {
+      const check = { ...readEnvironment, keep: ["triggering_actor.login", "a.b.c"] };
+      const call = { ...setWaitTimer, keep: ["protection_rules_count", "policy.custom_branch"] };
+      const [checkRoute, callRoute] = routesOf(definition([check, call]));
+
+      expect(checkRoute).toMatchObject({ keep: ["triggering_actor.login", "a.b.c"] });
+      expect(callRoute).toMatchObject({ keep: ["protection_rules_count", "policy.custom_branch"] });
+    });
+
+    it("throws for a kept name the shell's route list would refuse", () => {
+      const bad = ["a.b.c.d", "pull_requests.0", "pull_requests[0]", "", "a..b", "x-header"];
+      for (const name of bad) {
+        const check = { ...readEnvironment, keep: [name] };
+        expect(() => routesOf(definition([check]))).toThrow(
+          `github.set-wait-timer@1 step 1: "${name}" isn't a kept field name`,
+        );
+        const call = { ...setWaitTimer, keep: [name] };
+        expect(() => routesOf(definition([call]))).toThrow(`"${name}" isn't a kept field name`);
+      }
+    });
+  });
+});

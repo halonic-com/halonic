@@ -1,3 +1,4 @@
+import { isActionKeptName } from "@halonicjs/events";
 import type { ActionBodyField, ActionCallRoute, ActionRoute } from "@halonicjs/ports";
 import { assert } from "@halonicjs/std";
 import type { CallBodyField, CheckStep, Step, StepperDefinition } from "./stepper-types.ts";
@@ -78,6 +79,14 @@ function assertCheckNames(step: CheckStep, fields: Fields, where: string): void 
   }
 }
 
+/** The step's kept names, each one `isActionKeptName` allows, as the shell's route list checks them. */
+function keptOf(keep: readonly string[], where: string): readonly string[] {
+  for (const name of keep) {
+    assert(isActionKeptName(name), `${where}: "${name}" isn't a kept field name`);
+  }
+  return keep;
+}
+
 function routeOf(
   definition: StepperDefinition,
   step: Step,
@@ -110,7 +119,7 @@ function routeOf(
         method: step.method,
         path: step.path,
         body,
-        keep: step.keep,
+        keep: keptOf(step.keep, where),
         placeholders,
       };
       return route;
@@ -130,7 +139,7 @@ function routeOf(
         method: "GET",
         path: step.path,
         body: [],
-        keep: step.keep,
+        keep: keptOf(step.keep, where),
         placeholders: placeholdersOf(step.path, fields, where),
       };
     case "input":
@@ -150,9 +159,10 @@ function routeOf(
  * `script` or `sign-in` step has no route.
  *
  * @throws Error when a step names a placeholder or body field that isn't a
- *   parameter, a list field whose parameter isn't an integer, a `requires`
- *   rule or `requiredExpect` name a field its check doesn't keep or a
- *   parameter that doesn't exist, or the parameters weren't built with
+ *   parameter, keeps a field under a name `isActionKeptName` refuses (more
+ *   than 3 dotted keys, or a list index), a list field whose parameter isn't an
+ *   integer, a `requires` rule or `requiredExpect` name a field its check doesn't
+ *   keep or a parameter that doesn't exist, or the parameters weren't built with
  *   `strictParameters`: a bug in the reviewed definition, which the catalog's tests catch
  *
  * @example
