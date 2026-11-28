@@ -1,6 +1,18 @@
 import type { RemoteControl } from "@halonicjs/ports";
 import { type ServiceKey, serviceKey } from "@halonicjs/studio-shell";
 
+export type { PhoneChatProps } from "./phone/phone-chat.tsx";
+
+/**
+ * The phone's chat, loaded only when called. Only for the screenshots CI takes for a reviewer
+ * (`docs/guides/e2e-screenshots.md`), which draw it from made-up messages and reactions. The app
+ * never calls it: the phone's Messenger tab opens the chat itself.
+ */
+export const loadPhoneChat = async () => {
+  const chat = await import("./phone/phone-chat.tsx");
+  return { PhoneChat: chat.PhoneChat };
+};
+
 /**
  * The host's {@link RemoteControl}, on loopback. The app provides it once the host has a pairing
  * service (task B2); until then nothing does, and Studio shows no Remote section.

@@ -4,6 +4,20 @@ import type { Messenger } from "./messenger.ts";
 
 export type { ConversationRow, DraftOutcome, Messenger, MessengerTab } from "./messenger.ts";
 export type { ShownChat } from "./shown-chat.ts";
+export type { TranscriptProps } from "./ui/transcript.tsx";
+
+/**
+ * A chat's transcript and the Messenger it reads through, loaded only when called. Only for the
+ * screenshots CI takes for a reviewer (`docs/guides/e2e-screenshots.md`), which draw it from a
+ * made-up `AgentMessaging`. The app never calls it: the Messenger's window shows the chat.
+ */
+export const loadMessengerTranscript = async () => {
+  const [transcript, messenger] = await Promise.all([
+    import("./ui/transcript.tsx"),
+    import("./messenger.ts"),
+  ]);
+  return { Transcript: transcript.Transcript, Messenger: messenger.Messenger };
+};
 
 /**
  * The open workspace's {@link Messenger}. It is made the first time it's

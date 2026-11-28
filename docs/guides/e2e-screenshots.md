@@ -138,6 +138,16 @@ the Inbox row's 48 px, the item header's 40 px and Needs you's 28 px (HAL-19666)
 their tints, one with a picture, a person's initials, a sender nobody named, and the Inbox's own
 items with no badge. The page draws them with the kit's `Avatar` and `KindIcon`.
 
+## Reactions
+
+`phone-reactions-chips-<light|dark>.png` is the phone's chat at 390 px with chips under a made-up
+agent's message and under the person's own, the person's 👍 pressed (HAL-20426), and
+`phone-reactions-sheet-<light|dark>.png` the same chat with the long-press sheet open on the
+agent's message. `messenger-reactions-row-<agent|own>-<light|dark>.png` is the desktop Messenger's
+chat in a 600 px pane with the **Add a reaction** row open beside "Morning" or "Thanks". The pages
+load the chat through `loadPhoneChat` in the remote feature's `api.ts` and the transcript through
+`loadMessengerTranscript` in the Messenger's; the spec is `e2e/reactions.spec.ts`.
+
 ## Pictures for halonic.dev
 
 `e2e/site-screenshots.spec.ts` takes the pictures the website shows (HAL-10732): the run page of a

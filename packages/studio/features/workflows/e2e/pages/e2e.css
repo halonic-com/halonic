@@ -16,6 +16,8 @@
 @source "../../../workspace/src";
 @source "../../../agents/src";
 @source "../../../team/src";
+@source "../../../remote/src";
+@source "../../../messenger/src";
 @source "../../../../shell/src";
 @source ".";
 @source not "../../../../**/*.md";

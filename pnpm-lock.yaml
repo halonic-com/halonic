@@ -5163,12 +5163,18 @@ importers:
       '@halonicjs/studio-feature-files':
         specifier: workspace:*
         version: link:../files
+      '@halonicjs/studio-feature-messenger':
+        specifier: workspace:*
+        version: link:../messenger
       '@halonicjs/studio-feature-models':
         specifier: workspace:*
         version: link:../models
       '@halonicjs/studio-feature-plugins':
         specifier: workspace:*
         version: link:../plugins
+      '@halonicjs/studio-feature-remote':
+        specifier: workspace:*
+        version: link:../remote
       '@halonicjs/studio-feature-runs':
         specifier: workspace:*
         version: link:../runs
