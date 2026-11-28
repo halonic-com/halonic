@@ -1,5 +1,11 @@
 // @vitest-environment jsdom
 import type { AiChats, ChatSummary } from "@halonicjs/studio-feature-assistant/api";
+import {
+  createToastStore,
+  ToastRegion,
+  type ToastStore,
+  ToastStoreProvider,
+} from "@halonicjs/studio-kit";
 import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act, useState } from "react";
@@ -81,12 +87,22 @@ function Home({ context }: { readonly context: WorkspaceContext }) {
   );
 }
 
-async function show(context: WorkspaceContext): Promise<HTMLElement> {
+/** Shows Home; with `toasts`, inside that toast store and with its region, as the shell has them. */
+async function show(context: WorkspaceContext, toasts?: ToastStore): Promise<HTMLElement> {
   element = document.createElement("div");
   document.body.append(element);
   const shown = element;
   root = createRoot(shown);
-  await act(async () => root?.render(<Home context={context} />));
+  const home =
+    toasts === undefined ? (
+      <Home context={context} />
+    ) : (
+      <ToastStoreProvider store={toasts}>
+        <Home context={context} />
+        <ToastRegion store={toasts} />
+      </ToastStoreProvider>
+    );
+  await act(async () => root?.render(home));
   return shown;
 }
 
@@ -133,7 +149,19 @@ verifies("home.list-column", () => {
     expect(pane(page)).toBe("Chat new-chat");
   });
 
-  it("says why a new chat couldn't start", async () => {
+  it("shows a toast with the reason when a new chat can't start, and doesn't announce it again", async () => {
+    const { service } = fakeChats([]);
+    service.newChat = async () => Promise.reject(new Error("The engine isn't answering."));
+    const context = contextWith(service);
+    const page = await show(context, createToastStore());
+    await act(async () => button(page, "New chat")?.click());
+    const toast = page.querySelector('[role="alert"]');
+    expect(toast?.textContent).toContain("Couldn't start a chat.");
+    expect(toast?.textContent).toContain("The engine isn't answering.");
+    expect(context.announcer.announce).not.toHaveBeenCalled();
+  });
+
+  it("says why a new chat couldn't start where no toasts are shown", async () => {
     const { service } = fakeChats([]);
     service.newChat = async () => Promise.reject(new Error("The engine isn't answering."));
     const context = contextWith(service);
@@ -184,6 +212,34 @@ verifies("home.list-column", () => {
       "Couldn't load the chats. The engine isn't answering.",
       "assertive",
     );
+  });
+
+  it("shows why the chats can't be read, and Try again reads them again", async () => {
+    const { service } = fakeChats([summary("triage", "Triage")]);
+    const list = service.list;
+    const failing = vi.fn(async () => Promise.reject(new Error("The engine isn't answering.")));
+    service.list = failing;
+    const page = await show(contextWith(service));
+    expect(page.textContent).toContain("Couldn't load the chats. The engine isn't answering.");
+    service.list = list;
+    await act(async () => button(page, "Try again")?.click());
+    expect(failing).toHaveBeenCalledOnce();
+    expect(rowTitles(page)).toEqual([expect.stringContaining("Triage")]);
+    expect(page.textContent).not.toContain("Couldn't load the chats.");
+    expect(button(page, "Try again")).toBeUndefined();
+  });
+
+  it("keeps the list it showed under the failure line when a later read fails", async () => {
+    const { service, change } = fakeChats([summary("triage", "Triage")]);
+    const page = await show(contextWith(service));
+    service.list = async () => Promise.reject(new Error("The engine isn't answering."));
+    await change([]);
+    const line = [...page.querySelectorAll("p")].find((each) =>
+      each.textContent?.includes("Couldn't load the chats. The engine isn't answering."),
+    );
+    const list = page.querySelector("table, [role='grid']");
+    expect(line?.compareDocumentPosition(list as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(rowTitles(page)).toEqual([expect.stringContaining("Triage")]);
   });
 });
 
