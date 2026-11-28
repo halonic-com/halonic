@@ -64,6 +64,9 @@ export const buttonLabels = {
   reject: { text: "Reject", file: "packages/adapters/paperclip-client/src/approval-words.ts" },
   // A card of questions, checkboxes, item verdicts or suggested tasks sends with this.
   submit: { text: "Submit", file: "packages/studio/kit/src/question-form/question-form.tsx" },
+  // The shell's own dialog before a risky approve is sent (HAL-20441), and its yes.
+  riskyApproveTitle: { text: "Approve this?", file: "apps/studio/src-tauri/src/native_dialogs.rs" },
+  riskyApproveButton: { text: "Approve", file: "apps/studio/src-tauri/src/native_dialogs.rs" },
 } as const;
 
 const welcomeFile = "packages/studio/shell/src/welcome/welcome.tsx";

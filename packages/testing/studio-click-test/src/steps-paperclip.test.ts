@@ -8,6 +8,7 @@ import {
   drawStyles,
   type FakeStudio,
   fakeStudio,
+  shellDialogKey,
 } from "./fake-studio.test-helper.ts";
 import { placesList } from "./screen.ts";
 import { composerBoxOf } from "./steps/conversation-look.ts";
@@ -25,6 +26,12 @@ import { disconnect, startMenuShortcuts } from "./steps/shortcuts-disconnect.ts"
 import { seedNames } from "./test-paperclip.ts";
 import { keys } from "./webdriver.ts";
 import { buttonLabels, screenText, words } from "./words.ts";
+
+/** The shell's confirmation before a risky approve, and its yes. */
+const riskyApprove = shellDialogKey(
+  buttonLabels.riskyApproveTitle.text,
+  buttonLabels.riskyApproveButton.text,
+);
 
 function main(studio: FakeStudio) {
   const window = studio.windows.get("main");
@@ -58,17 +65,27 @@ verifies("studio-click-test.paperclip-steps", () => {
     /**
      * A card whose Approve reaches the test Paperclip, or, with `reaches` false, doesn't. With
      * `staleLine`, the Inbox shows that line over it; with `staleAfter`, over the list after the
-     * answer, as a narrow window shows it once the card closed.
+     * answer, as a narrow window shows it once the card closed. With `asks` false, Approve opens
+     * no shell confirmation.
      */
-    function studioWithCard(reaches = true, staleLine = "", staleAfter = ""): FakeStudio {
+    function studioWithCard(
+      reaches = true,
+      staleLine = "",
+      staleAfter = "",
+      asks = true,
+    ): FakeStudio {
       const studio = connectedStudio({
         [screenText.inbox.text]: () => {
           main(studio).text = `Needs you ${screenText.strategyApproval.text}`;
           button(studio, "main", screenText.strategyApproval.text, () => {
             main(studio).text = `${staleLine}${screenText.strategyApproval.text} ${seedNames.card}`;
+            // An approval is risky: Approve opens the shell's own confirmation (HAL-21189).
             button(studio, "main", buttonLabels.approve.text, () => {
-              if (reaches) studio.paperclip.status = "approved";
-              main(studio).text = `${staleAfter}Needs you ${screenText.nothingWaiting.text} Done`;
+              if (!asks) return;
+              studio.shellDialogs.set(riskyApprove, () => {
+                if (reaches) studio.paperclip.status = "approved";
+                main(studio).text = `${staleAfter}Needs you ${screenText.nothingWaiting.text} Done`;
+              });
             });
           });
         },
@@ -76,13 +93,23 @@ verifies("studio-click-test.paperclip-steps", () => {
       return studio;
     }
 
-    it("opens the card, approves it and checks Paperclip has it approved", async () => {
+    it("opens the card, approves it, says yes in the shell and checks Paperclip has it approved", async () => {
+      // Run 46161437179: nobody answered the shell's confirmation, so the approval stayed pending.
       const studio = studioWithCard();
       await expect(inboxAnswer.run(studio.context)).resolves.toEqual({ passed: true });
       expect(studio.clicks.slice(-2)).toEqual([
         screenText.strategyApproval.text,
         buttonLabels.approve.text,
       ]);
+      expect(studio.shellPresses).toEqual([riskyApprove]);
+    });
+
+    it("fails as NO_SHELL_CONFIRMATION, with the shell log, when the shell's confirmation never shows", async () => {
+      const studio = studioWithCard(true, "", "", false);
+      await expect(inboxAnswer.run(studio.context)).resolves.toMatchObject({
+        code: "NO_SHELL_CONFIRMATION",
+        note: expect.stringContaining("engine: crashed"),
+      });
     });
 
     it("fails as PLAIN_ROW_FIT before the click when the row's title isn't clamped", async () => {
@@ -134,10 +161,13 @@ verifies("studio-click-test.paperclip-steps", () => {
           button(studio, "main", screenText.strategyApproval.text, () => {
             main(studio).text = `${screenText.strategyApproval.text} ${seedNames.card}`;
             button(studio, "main", buttonLabels.approve.text, () => {
-              studio.paperclip.status = "approved";
-              main(studio).text = `${seedNames.card} Answered at 14:22: Approve.`;
-              button(studio, "main", screenText.backToInbox.text, () => {
-                main(studio).text = `${staleLine}Needs you ${screenText.nothingWaiting.text} Done`;
+              studio.shellDialogs.set(riskyApprove, () => {
+                studio.paperclip.status = "approved";
+                main(studio).text = `${seedNames.card} Answered at 14:22: Approve.`;
+                button(studio, "main", screenText.backToInbox.text, () => {
+                  main(studio).text =
+                    `${staleLine}Needs you ${screenText.nothingWaiting.text} Done`;
+                });
               });
             });
           });

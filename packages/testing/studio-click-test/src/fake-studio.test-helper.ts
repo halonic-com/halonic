@@ -40,6 +40,13 @@ export interface FakeStudio {
   /** The element that has focus; undefined when the page itself has it. */
   focused: Focused | undefined;
   approval: string | undefined;
+  /**
+   * The shell's native dialogs that are open, keyed `<title> › <button>`, with what pressing that
+   * button does; pressing one closes it.
+   */
+  readonly shellDialogs: Map<string, () => void>;
+  /** Every shell dialog button a step pressed, keyed as `shellDialogs` is. */
+  readonly shellPresses: string[];
   /** What the fake test Paperclip answers: the card's status, the chat's comments, the key. */
   readonly paperclip: { status: string; comments: string[]; keyWorks: boolean | undefined };
   /** The seeded cards' copies by id, `inbox-<key>` and `messenger-<key>`; undefined fails the seed. */
@@ -72,6 +79,8 @@ export function fakeStudio(text = ""): FakeStudio {
     rects: new Map(),
     focused: undefined,
     approval: undefined,
+    shellDialogs: new Map(),
+    shellPresses: [],
     paperclip: { status: "pending", comments: [], keyWorks: true },
     cards: new Map(),
     windowSize: { width: 800, height: 600 },
@@ -173,10 +182,24 @@ export function fakeStudio(text = ""): FakeStudio {
       },
       mainWindow: "main",
       approveSignIn: async () => studio.approval,
+      pressShellDialog: async (dialog: string, buttonName: string) => {
+        const key = shellDialogKey(dialog, buttonName);
+        const press = studio.shellDialogs.get(key);
+        if (press === undefined) return `No "${dialog}" dialog with ${buttonName} showed.`;
+        studio.shellDialogs.delete(key);
+        studio.shellPresses.push(key);
+        press();
+        return undefined;
+      },
       paperclip,
     } satisfies StepContext,
   });
   return studio;
+}
+
+/** How `FakeStudio.shellDialogs` keys a shell dialog's button. */
+export function shellDialogKey(dialog: string, buttonName: string): string {
+  return `${dialog} › ${buttonName}`;
 }
 
 /** Adds a button to a window of the fake Studio. */

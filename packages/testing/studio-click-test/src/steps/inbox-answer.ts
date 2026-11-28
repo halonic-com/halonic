@@ -5,6 +5,7 @@ import { buttonLabels, screenText } from "../words.ts";
 import { inboxRowFit } from "./inbox-row-fit.ts";
 import { closeDialogs, onWorkspace, openPlace } from "./open-demo.ts";
 import { sidebarRowSize } from "./plain-row-size.ts";
+import { confirmApproveInShell } from "./shell-confirm.ts";
 
 /** How long the Inbox may take to read the newly connected Paperclip. */
 const cardWaitMs = 90_000;
@@ -72,8 +73,9 @@ async function backToList(
  * line says the Inbox shows what it read last, over the card or over the list after the answer
  * (HAL-19190). The card's row is exactly 72px high with a 48px avatar (HAL-20558, HAL-20675),
  * its title clamped to two lines, its meta line cut on one and its avatar's badge 20px
- * (HAL-20759). The click must reach the test Paperclip: its API says approved, and the card
- * leaves Needs you.
+ * (HAL-20759). An approval is risky, so Approve opens the shell's own confirmation, and the
+ * step says yes there (HAL-21189). The click must reach the test Paperclip: its API says
+ * approved, and the card leaves Needs you.
  */
 export const inboxAnswer: Step = {
   id: "inbox-answer",
@@ -89,6 +91,7 @@ export const inboxAnswer: Step = {
     "inbox.row-meta-wraps",
     "inbox.header-avatar",
     "inbox.proposal-page",
+    "studio.src-tauri.risky-answer-confirm",
   ],
   needs: ["connect-paperclip"],
   run: async (context) => {
@@ -118,6 +121,8 @@ export const inboxAnswer: Step = {
     if (!(await clickWhenShown(context, buttonLabels.approve.text, 10_000))) {
       return { passed: false, code: "NO_ANSWER_BUTTON", note: lastWords(card.text) };
     }
+    const confirmed = await confirmApproveInShell(context);
+    if (!confirmed.passed) return confirmed;
     const shownAnswered = await waitForText(context, 30_000, (text) =>
       text.includes(screenText.nothingWaiting.text) ? true : undefined,
     );
