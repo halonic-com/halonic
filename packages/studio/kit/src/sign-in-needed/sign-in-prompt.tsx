@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { Button } from "../button/button.tsx";
 import { LetterTile } from "../letter-tile/letter-tile.tsx";
 import { BlockingDialog } from "./blocking-dialog.tsx";
@@ -113,8 +113,9 @@ interface SignInRowProps {
 
 function SignInRow({ signIn, label, onSignIn }: SignInRowProps) {
   const waiting = signIn.progress.kind === "waiting";
+  const statusId = useId();
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col">
       <div className="flex items-center gap-3">
         {signIn.logo === undefined ? (
           <LetterTile name={signIn.provider} />
@@ -128,31 +129,31 @@ function SignInRow({ signIn, label, onSignIn }: SignInRowProps) {
           busy={waiting}
           busyLabel="Waiting…"
           name={`Sign in: ${signIn.provider}, ${signIn.name}`}
+          aria-describedby={statusId}
           onClick={() => onSignIn(signIn.key)}
         >
           Sign in
         </Button>
       </div>
-      <ProgressLine progress={signIn.progress} />
+      {/* The status line stays mounted, empty while idle: screen readers often skip a live
+          region inserted together with its text, and the phrase is the check against a wrong
+          approval page. */}
+      <p id={statusId} role="status" className="text-small text-fg-muted not-empty:mt-1">
+        {waitingText(signIn.progress)}
+      </p>
+      {signIn.progress.kind === "failed" ? (
+        <p role="alert" className="mt-1 text-small text-danger">
+          That sign-in didn't finish. Try again.
+        </p>
+      ) : null}
     </div>
   );
 }
 
-function ProgressLine({ progress }: { readonly progress: SignInRowProgress }) {
-  if (progress.kind === "waiting") {
-    const check = progress.phrase === undefined ? "" : ` Check that it shows: ${progress.phrase}`;
-    return (
-      <p role="status" className="text-small text-fg-muted">
-        {`Approve the sign-in in your browser.${check}`}
-      </p>
-    );
+function waitingText(progress: SignInRowProgress): string {
+  if (progress.kind !== "waiting") {
+    return "";
   }
-  if (progress.kind === "failed") {
-    return (
-      <p role="alert" className="text-small text-danger">
-        That sign-in didn't finish. Try again.
-      </p>
-    );
-  }
-  return null;
+  const check = progress.phrase === undefined ? "" : ` Check that it shows: ${progress.phrase}`;
+  return `Approve the sign-in in your browser.${check}`;
 }

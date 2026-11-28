@@ -111,6 +111,35 @@ verifies("kit.sign-in-prompt", () => {
     );
   });
 
+  it("keeps the waiting line's status region mounted and ties it to the Sign in button", () => {
+    const idle = row("Acme team");
+    const { container, rerender } = render(
+      <SignInModal app="Inbox" signIns={[idle]} onSignIn={() => undefined} />,
+    );
+    const dialog = dialogOf(container);
+    const status = dialog.querySelector('[role="status"]');
+    expect(status?.textContent).toBe("");
+    const signIn = dialog.querySelector("button");
+    expect(signIn?.getAttribute("aria-describedby")).toBe(status?.id);
+
+    rerender(
+      <SignInModal
+        app="Inbox"
+        signIns={[{ ...idle, progress: { kind: "waiting", phrase: "blue-otter" } }]}
+        onSignIn={() => undefined}
+      />,
+    );
+    expect(dialog.querySelector('[role="status"]')).toBe(status);
+    const waitingText = "Approve the sign-in in your browser. Check that it shows: blue-otter";
+    expect(status?.textContent).toBe(waitingText);
+    const describedBy = dialog.querySelector("button")?.getAttribute("aria-describedby") ?? "";
+    const description = describedBy
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent)
+      .join(" ");
+    expect(description).toBe(waitingText);
+  });
+
   it("draws the band without a dismiss button, and Try again when a state couldn't be read", async () => {
     const onTryAgain = vi.fn();
     const google = row("ada@acme.test", { key: "google/me", provider: "Google", purpose: "Gmail" });
