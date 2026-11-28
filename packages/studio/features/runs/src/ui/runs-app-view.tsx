@@ -2,7 +2,7 @@ import { BackIcon, Button, useNarrow } from "@halonicjs/studio-kit";
 import type { EngineWords } from "@halonicjs/studio-shell";
 import { type ReactNode, useCallback, useRef, useState, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
-import type { AllRunsFeed } from "../app/all-runs-feed.ts";
+import type { AllRunsFeed, AllRunsFeedState } from "../app/all-runs-feed.ts";
 import { RunsAppList } from "../app/runs-app-list.tsx";
 import { type PaneWays, type RunItem, rowActions, runsPanes } from "../app/runs-panes.ts";
 import { RefreshFailedLine } from "../load-failure.tsx";
@@ -124,7 +124,7 @@ export function RunsAppView({
               now={now()}
               timeZone={timeZone}
               loaded={state.loaded}
-              failed={state.error !== undefined || state.failures.length > 0}
+              failed={readFailed(state)}
               onOpen={actions.onOpen}
               {...(actions.onOpenInNewTab === undefined
                 ? {}
@@ -137,6 +137,11 @@ export function RunsAppView({
       ) : null}
     </div>
   );
+}
+
+/** Whether listing the sources, or a source's last read, failed. */
+function readFailed(state: AllRunsFeedState): boolean {
+  return state.error !== undefined || state.failures.length > 0;
 }
 
 /**
@@ -155,8 +160,8 @@ function useRunsPanes() {
   const pane = useRef<HTMLDivElement>(null);
   const show = (item: RunItem) => {
     // A row of the runs table goes with the run's page coming in, as in one pane. Only the table:
-    // a run the open run's page opens on its own is left as before this change (the keyed page
-    // goes, and the focus falls to the page's body).
+    // when the open run's page opens a run on its own, the keyed page goes and the focus falls to
+    // the page's body.
     const fromTable = open === undefined && pane.current?.contains(document.activeElement) === true;
     if (!onePane && !fromTable) return setOpen(item);
     flushSync(() => setOpen(item));

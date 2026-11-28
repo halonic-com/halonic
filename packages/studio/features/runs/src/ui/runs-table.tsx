@@ -33,7 +33,7 @@ export interface RunsTableProps {
   readonly now: Date;
   /** The user's IANA time zone. */
   readonly timeZone: string;
-  /** Whether every source has answered once; until then, with no rows yet, the loading rows show. */
+  /** Whether every source has answered once; until then, with no rows, the loading rows show. */
   readonly loaded: boolean;
   /** Whether a source's last read, or listing the sources, failed; the list column says which. */
   readonly failed: boolean;

@@ -240,6 +240,31 @@ verifies("runs.runs-table", () => {
       expect(document.activeElement?.textContent).toBe("Run again run_01jd8b");
     });
 
+    it("shows the loading rows until the feed's first read ends", () => {
+      const feed = { ...feedOf([]), state: { ...feedOf([]).state, loaded: false } };
+      const root = render(
+        <NarrowProvider narrow={false}>
+          <RunsAppView feed={feed} engine={engineWordsOf({})} now={() => now} timeZone="UTC" />
+        </NarrowProvider>,
+      );
+      const table = root.querySelector('[data-part="runs-table"]');
+      expect(table?.querySelector('[aria-busy="true"]')).not.toBeNull();
+      expect(table?.textContent).not.toContain("No runs yet");
+    });
+
+    it("doesn't say No runs yet when listing the sources failed", () => {
+      const feed = { ...feedOf([]), state: { ...feedOf([]).state, error: new Error("no answer") } };
+      const root = render(
+        <NarrowProvider narrow={false}>
+          <RunsAppView feed={feed} engine={engineWordsOf({})} now={() => now} timeZone="UTC" />
+        </NarrowProvider>,
+      );
+      const table = root.querySelector('[data-part="runs-table"]');
+      expect(table?.querySelector("h2")?.textContent).toBe("All runs");
+      expect(table?.textContent).not.toContain("No runs yet");
+      expect(table?.querySelector('[aria-busy="true"]')).toBeNull();
+    });
+
     it("counts a run opened from the table, so its failure leaves Failed in the list", () => {
       const root = showView([failedRow]);
       const listHeadings = () =>
