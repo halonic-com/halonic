@@ -9,7 +9,14 @@ import {
 } from "../card-fixtures.ts";
 import { type AnswerClicks, answeredAs, cardStep } from "../card-step.ts";
 import type { StepContext, StepOutcome } from "../runner.ts";
-import { buttonNamed, clickXPathWhenShown, lastWords, radioNamed, xpathString } from "../screen.ts";
+import {
+  buttonNamed,
+  clickXPathOrWhyNot,
+  clickXPathWhenShown,
+  lastWords,
+  radioNamed,
+  xpathString,
+} from "../screen.ts";
 import { buttonLabels, screenText, words } from "../words.ts";
 import { lookingAtCheckboxWords } from "./checkbox-words.ts";
 
@@ -19,11 +26,11 @@ export const rejectReason = "Click test: the Acme plan needs a date.";
 /** Clicks the button named `label` in the card, or fails as `NO_BUTTON`. */
 function press(label: string): AnswerClicks {
   return async (context, card) => {
-    if (await clickXPathWhenShown(context, `${card}${buttonNamed(label)}`, 10_000)) {
-      return { passed: true };
-    }
+    const whyNot = await clickXPathOrWhyNot(context, `${card}${buttonNamed(label)}`, 10_000);
+    if (whyNot === undefined) return { passed: true };
+    // The page text alone can't tell a missing button from one the click can't reach (HAL-21192).
     const text = await context.driver.pageText().catch(() => "");
-    return { passed: false, code: "NO_BUTTON", note: `No ${label}. ${lastWords(text)}` };
+    return { passed: false, code: "NO_BUTTON", note: `No ${label}: ${whyNot} ${lastWords(text)}` };
   };
 }
 
@@ -159,7 +166,7 @@ export const cardCheckbox = cardStep({
 export const cardVerdicts = cardStep({
   id: "card-verdicts",
   title: "Cards: item verdicts are given per item in the Inbox and the Messenger",
-  requirements: listCardRequirements,
+  requirements: [...listCardRequirements, "inbox.card-bar-reach"],
   fixture: verdictsCard,
   clicks: {
     Inbox: pickThenSubmit([answerRadio("teaser", "Approve"), answerRadio("recap", "Defer")]),
