@@ -175,15 +175,19 @@ export async function followWorkflow(
       ...(sandboxChecked === undefined ? {} : { sandboxChecked }),
     });
   } catch (error) {
-    // `serve` holds the engine: it starts the run, which shows in the phone's Inbox (HAL-19396).
-    const run = { workflow, input: runInput, options: input.options, typedDir };
+    // `serve` holds the engine: it starts the run, which shows in the phone's Inbox (HAL-19396),
+    // with the lines this run would have given first, the engine's sandbox check among them.
+    const warnings = async () =>
+      runWarnings(
+        changesNotLive,
+        localOnlySaved,
+        sandboxChecked ?? (await checkEngineRuns(setup, target)),
+      );
+    const run = { workflow, input: runInput, options: input.options, typedDir, warnings };
     return { handedToServe: await startInServe(error, setup, dir, run) };
   }
   // Before the run's heading, and again first in the result, as print-ahead lines are.
-  const warnings: Phrase[] = [
-    ...(changesNotLive ? [runMessages.changesNotLive(localOnlySaved).phrase] : []),
-    ...engine.placed.map(placedWarning),
-  ];
+  const warnings = runWarnings(changesNotLive, localOnlySaved, engine.placed);
   for (const line of warnings) context.printAhead(line);
   // One clock for the lines printed while the run goes and the result that repeats them.
   const clock = setup.clock();
@@ -244,6 +248,18 @@ export async function followWorkflow(
     workspace,
     hubId: workflow.hubId,
   };
+}
+
+/** The `!` lines before a run: saved changes that aren't live, and each agent's place (`cli.sandbox-gate`). */
+function runWarnings(
+  changesNotLive: boolean,
+  localOnlySaved: boolean,
+  placed: readonly PlacedAgent[],
+): Phrase[] {
+  return [
+    ...(changesNotLive ? [runMessages.changesNotLive(localOnlySaved).phrase] : []),
+    ...placed.map(placedWarning),
+  ];
 }
 
 /** What a run that wasn't stopped ended with: its result, and the run, for a caller that looks at how it ended. */

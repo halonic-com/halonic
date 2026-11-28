@@ -82,8 +82,11 @@ While `halonic serve` holds the engine, `halonic run` doesn't open one: `startIn
 (`src/commands/run/via-serve.ts`) asks `serve` over its console channel to start the run on its
 engine, so the run shows in the phone's Inbox, and `run` prints the run's id. `serve` answers that
 request in `src/commands/serve/serve-run-start.ts`, with the trust gate and executor of its own
-start route. With `--event`, `--harness` or `--follow`, or no console to reach, `run` keeps the
-lock's refusal (`cli.local-engine-lock`).
+start route; only a sentence of Halonic's own checks goes back, any other failure stays in serve's
+`--debug` lines. `run` prints the `!` lines it would print before a run of its own first. A
+request over the console's 4 KB is refused with a sentence that says so. With `--event`,
+`--harness` or `--follow`, or no console to reach, `run` keeps the lock's refusal
+(`cli.local-engine-lock`).
 
 `halonic routines watch` passes `openWorkspaceEngine` an `onStuck`, so a stuck step is
 reported and the watch goes on; without it, as for `run` and `runs send`, the step's last error

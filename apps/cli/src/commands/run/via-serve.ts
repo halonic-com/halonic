@@ -9,6 +9,7 @@ import { KindedError } from "@halonicjs/std";
 import { type CommandInput, type CommandResult, OwnLineError } from "../../command.ts";
 import { engineHolders } from "../../engine-lock.ts";
 import { exitCode } from "../../exit-code.ts";
+import type { Phrase } from "../../messages/phrase.ts";
 import { runViaServeMessages } from "../../messages/run-via-serve.ts";
 import { printable } from "../../output/printable.ts";
 import type { SandboxGateRun } from "../../sandbox-gate.ts";
@@ -24,6 +25,13 @@ export interface RunForServe {
   readonly options: CommandInput["options"];
   /** The user's own `--dir`, for the suggested command. */
   readonly typedDir: string | undefined;
+  /**
+   * The lines `run` gives before a run it starts itself, such as saved changes that aren't live
+   * (`cli.run-live-version`) or an agent without the sandbox (`cli.sandbox-gate`): a run `serve`
+   * starts reads the same version, so they hold for it too. Worked out only for a run `serve`
+   * starts, before it starts, so an agent the sandbox refuses starts nothing.
+   */
+  warnings(): Promise<readonly Phrase[]>;
 }
 
 /** A run `serve` started: `run` follows nothing, and its result says where the run went. */
@@ -35,12 +43,21 @@ export interface HandedToServe {
 const followedHereOnly = ["event", "harness", "follow"] as const;
 
 /**
+ * The most bytes one console request may have, its line end included, as the console socket
+ * reads it (`runtime.console-socket`); a longer one is dropped without an answer.
+ */
+export const consoleRequestLimit = 4096;
+
+/**
  * Has the running `serve` start the run when `refusal`, from opening the engine, says `serve`
  * holds its lock, and gives the lines that say so: exit 0 with the run's id.
  *
  * @throws refusal itself when another command holds the lock, the run takes an option only a run
- *   followed here can (`--event`, `--harness`, `--follow`), or `serve`'s console can't be reached
- * @throws OwnLineError `conflict` when `serve` refused the start; nothing ran
+ *   followed here can (`--event`, `--harness`, `--follow`), `serve`'s console can't be reached,
+ *   or that `serve` doesn't know the request
+ * @throws OwnLineError `conflict` when the input is too big to hand over; nothing ran
+ * @throws OwnLineError `conflict` when `serve` refused the start, `unavailable` when it failed to
+ *   start it; nothing ran
  */
 export async function startInServe(
   refusal: unknown,
@@ -53,9 +70,10 @@ export async function startInServe(
     return value !== undefined && value !== false;
   });
   if (!heldByServe(refusal) || followedHere) throw refusal;
+  const warnings = await run.warnings();
   const answer = await askToStart(setup, dir, run).catch((error: unknown) => {
     // No console to reach, as on Windows: the lock's refusal says what to do.
-    if (error instanceof KindedError) throw refusal;
+    if (error instanceof KindedError && !(error instanceof OwnLineError)) throw refusal;
     throw error;
   });
   const runId = answer["runId"];
@@ -64,6 +82,7 @@ export async function startInServe(
     return {
       exitCode: exitCode.ok,
       lines: [
+        ...warnings,
         runViaServeMessages.started(shown).phrase,
         runViaServeMessages.seeIt(shown, run.typedDir).phrase,
       ],
@@ -83,6 +102,11 @@ function heldByServe(refusal: unknown): boolean {
   );
 }
 
+/**
+ * Sends the start to `serve`.
+ *
+ * @throws OwnLineError `conflict` when the request is longer than the console takes
+ */
 async function askToStart(
   setup: RunSetup,
   dir: OpenWorkspaceDir,
@@ -90,14 +114,34 @@ async function askToStart(
 ): Promise<ServeAnswer> {
   const { hubId, workflowId } = run.workflow;
   const request = { op: "start-run", hubId, workflowId, input: run.input };
+  // The line end counts too, as the socket reads it.
+  const bytes = new TextEncoder().encode(`${JSON.stringify(request)}\n`).length;
+  if (bytes > consoleRequestLimit) {
+    throw new OwnLineError(
+      "conflict",
+      runViaServeMessages.inputTooBig(consoleRequestLimit / 1024),
+      runViaServeMessages.inputTooBigFix(),
+    );
+  }
   return await askServe(setup, await consolePlace(setup, dir), request);
 }
 
-/** Why `serve` didn't start the run, in its own words when it gave them. */
+/**
+ * Why `serve` didn't start the run: its refusal in its own sentence, which only ever comes from
+ * Halonic's own checks; any other failure is only in `serve`'s `--debug` lines.
+ */
 function notStarted(answer: ServeAnswer): OwnLineError {
   const message = answer["message"];
-  if (answer["reason"] !== "not-found" && typeof message === "string") {
+  if (answer["reason"] === "not-found") {
+    return new OwnLineError("conflict", runViaServeMessages.notInServe());
+  }
+  if (typeof message === "string") {
     return new OwnLineError("conflict", runViaServeMessages.notStarted(printable(message)));
   }
-  return new OwnLineError("conflict", runViaServeMessages.notInServe());
+  // Not `internal`: its generic line points at this command's `--debug`, and the cause is in serve's.
+  return new OwnLineError(
+    "unavailable",
+    runViaServeMessages.startFailed(),
+    runViaServeMessages.startFailedFix(),
+  );
 }

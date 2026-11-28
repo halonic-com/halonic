@@ -5,6 +5,7 @@
 
 import type { TrustGate } from "@halonicjs/host-server";
 import { isRunTargetNotFound, type RunExecutor } from "@halonicjs/ports";
+import { KindedError } from "@halonicjs/std";
 import { printable } from "../../output/printable.ts";
 
 /** The console request that starts a run: the workflow by its hub, and the run's input. */
@@ -31,6 +32,7 @@ export interface ServedRunStarts {
 export async function answerStartRun(
   starts: ServedRunStarts,
   request: unknown,
+  logError: (error: unknown) => void,
 ): Promise<Readonly<Record<string, unknown>> | null> {
   if (!isStartRun(request)) return null;
   const decision = await starts.trust.check();
@@ -43,14 +45,22 @@ export async function answerStartRun(
     return { ok: true, runId: run.id };
   } catch (error) {
     if (isRunTargetNotFound(error)) return { ok: false, reason: "not-found" };
-    // Why it didn't start, such as nothing live or a sandbox that can't start: `run` shows it.
-    const message = error instanceof Error ? error.message : String(error);
-    return { ok: false, reason: "not-started", message: printable(message) };
+    // Only a sentence Halonic's own checks wrote, such as a sandbox that can't start, goes back
+    // to `run`; any other text stays in `serve`'s `--debug` lines.
+    if (error instanceof KindedError) {
+      return { ok: false, reason: "not-started", message: printable(error.message) };
+    }
+    logError(error);
+    return { ok: false, reason: "not-started" };
   }
 }
 
+/** The fields of a {@link StartRunRequest}; a request with any other is the device console's to refuse. */
+const startRunFields = new Set(["op", "hubId", "workflowId", "input"]);
+
 function isStartRun(request: unknown): request is StartRunRequest {
   if (typeof request !== "object" || request === null) return false;
+  if (Object.keys(request).some((key) => !startRunFields.has(key))) return false;
   const { op, hubId, workflowId, input } = request as Partial<Record<string, unknown>>;
   return (
     op === "start-run" &&

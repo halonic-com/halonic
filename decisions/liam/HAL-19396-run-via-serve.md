@@ -15,8 +15,11 @@ shows in the phone's Inbox, and `run` ends with exit 0 and the run's id.
 holds the lock. It now names that exception and keeps the refusal when the
 lock names another command, when `run` has `--event`, `--harness` or
 `--follow` (they need the run followed in the terminal), and when the
-console can't be reached or doesn't know the request. Its examples gain a
-`serve` case for each; the existing examples and tests stay as they were.
+console can't be reached or doesn't know the request. It also says what
+`run` prints when serve refuses or fails the start, and refuses an input
+over the console's 4 KB with a sentence that says why. Its examples gain a
+started run and an `--event` refusal; the existing examples and tests stay
+as they were.
 
 The user sees a run start instead of a refusal while `serve` runs.
 

@@ -80,14 +80,14 @@ export async function openServeConsole(
     secrets: context.secrets,
   });
   const transport = setup.console ?? socketConsole;
+  // A failed console request goes to `--debug`, as a failed HTTP request does.
+  const logError = (error: unknown): void =>
+    context.debug(serveMessages.requestFailed(messageOf(error)).phrase);
   // A run `halonic run` hands over starts here; every other request is the device console's.
   const answer = async (request: unknown): Promise<unknown> =>
-    (await answerStartRun(runStarts, request)) ?? (await console.answer(request));
+    (await answerStartRun(runStarts, request, logError)) ?? (await console.answer(request));
   try {
     const place = await consolePlace(setup, dir);
-    // A failed console request goes to `--debug`, as a failed HTTP request does.
-    const logError = (error: unknown): void =>
-      context.debug(serveMessages.requestFailed(messageOf(error)).phrase);
     const open = await transport.listen(place, answer, logError);
     return { warning: null, close: () => open.close() };
   } catch (error) {
