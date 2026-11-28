@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { ToastStore } from "@halonicjs/studio-kit";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -25,6 +26,49 @@ const acmeFiles = ["src/checkout/orders.ts", "src/checkout/refunds.ts", "README.
 function withProblems(problems: boolean) {
   const marks = new Map(problems ? [["src/checkout/refunds.ts", { errors: 1 }]] : []);
   return { host: { list: async () => listing(acmeFiles, marks) } };
+}
+
+/**
+ * A workspace that changes: `refunds.ts` has an error until a rename or a delete, and the Undo the
+ * toast keeps brings the file back without one, so only All can show its row.
+ */
+function changingWithProblem(): Partial<FilesHost> {
+  let paths = acmeFiles;
+  let marks = new Map([["src/checkout/refunds.ts", { errors: 1 }]]);
+  let notify = () => {};
+  const change = (next: string[]) => {
+    const before = paths;
+    paths = next;
+    marks = new Map();
+    notify();
+    return async () => {
+      paths = before;
+      notify();
+    };
+  };
+  return {
+    list: async () => listing(paths, marks),
+    subscribe: (listener) => {
+      notify = listener;
+      return () => {};
+    },
+    rename: async (from, to) => {
+      const undo = change(paths.map((path) => (path === from ? to : path)));
+      return { places: 0, owners: [], undo };
+    },
+    remove: async (path) => {
+      const undo = change(paths.filter((other) => other !== path));
+      return { places: 0, undo };
+    },
+  };
+}
+
+/** Picks the Undo of the first toast, as a person does. */
+async function undoFirstToast(toasts: { show: ReturnType<typeof vi.fn> }): Promise<void> {
+  await act(async () => {
+    toasts.show.mock.calls[0]?.[0].action.onClick();
+  });
+  await settled();
 }
 
 /** The chip with the label, by its radio. */
@@ -150,6 +194,43 @@ verifies("files.code-list-chips", () => {
 
     expect(chip(page, "All").checked).toBe(true);
     expect(document.activeElement).toBe(rowNamed(page, "src/checkout/refund.ts"));
+  });
+
+  it("turns All on after a rename's Undo, so the row takes the focus without a problem", async () => {
+    const toasts = { show: vi.fn() };
+    const shown = { host: changingWithProblem(), toasts: toasts as unknown as ToastStore };
+    const { page } = await showCodePage(shown);
+    await pick(page, "Problems");
+    await openFolders(page, "src", "src/checkout");
+    await openInPane(page, "src/checkout/refunds.ts");
+    await key(rowNamed(page, "src/checkout/refunds.ts"), "F2");
+    const field = rowNamed(page, "src/checkout/refunds.ts").querySelector("input");
+    await typeInto(field, "refund.ts");
+    await key(field, "Enter");
+    // The rename itself turned All on, so Problems goes back on before the Undo.
+    await pick(page, "Problems");
+
+    await undoFirstToast(toasts);
+
+    expect(chip(page, "All").checked).toBe(true);
+    expect(document.activeElement).toBe(rowNamed(page, "src/checkout/refunds.ts"));
+  });
+
+  it("turns All on after a delete's Undo, so the row takes the focus without a problem", async () => {
+    const toasts = { show: vi.fn() };
+    const shown = { host: changingWithProblem(), toasts: toasts as unknown as ToastStore };
+    const { page } = await showCodePage(shown);
+    await pick(page, "Problems");
+    await openFolders(page, "src", "src/checkout");
+    const row = rowNamed(page, "src/checkout/refunds.ts");
+    act(() => row.click());
+    await key(row, "Delete");
+    expect(chip(page, "Problems").checked).toBe(true);
+
+    await undoFirstToast(toasts);
+
+    expect(chip(page, "All").checked).toBe(true);
+    expect(document.activeElement).toBe(rowNamed(page, "src/checkout/refunds.ts"));
   });
 
   it("moves Go to Files to the line that says no file has a problem", async () => {

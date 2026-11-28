@@ -53,7 +53,9 @@ export interface FilesSidebarViewProps {
   readonly chips?: ReactNode;
   /** Which files the tree lists, as the chips say (`files.code-list-chips`); all by default. */
   readonly filter?: TreeFilter;
-  /** Called when a row the filter may hide must show, such as a renamed file: the chips show all. */
+  /**
+   * Called when a row the filter may hide must show, such as a renamed file: the chips show all.
+   */
   readonly showAll?: () => void;
 }
 
