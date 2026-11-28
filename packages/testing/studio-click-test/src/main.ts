@@ -23,6 +23,7 @@ import { startPaperclipBoard } from "./paperclip-board.ts";
 import { requirementFiles } from "./requirement-files.ts";
 import { allPassed, type LeftOut, resultsMarkdown } from "./results.ts";
 import { runSteps, type StepContext } from "./runner.ts";
+import { pressShellDialog } from "./shell-dialog.ts";
 import { clickTestSteps } from "./steps.ts";
 import { seedPaperclip, testPaperclip } from "./test-paperclip.ts";
 import { type Driver, openSession } from "./webdriver.ts";
@@ -106,6 +107,7 @@ async function contextFor(current: Driver): Promise<StepContext> {
     openShortcut,
     mainWindow,
     approveSignIn: () => board.approveSignIn(30_000, sleep),
+    pressShellDialog,
     paperclip,
   };
 }

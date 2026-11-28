@@ -28,6 +28,15 @@ export interface StepContext {
    * started there. Resolves to why it couldn't, or undefined once approved.
    */
   readonly approveSignIn: () => Promise<string | undefined>;
+  /**
+   * Presses `button` in a native dialog the shell shows, titled `dialog`, which WebDriver can't
+   * reach, waiting at most `waitMs` for it. Resolves to why it couldn't, or undefined once pressed.
+   */
+  readonly pressShellDialog: (
+    dialog: string,
+    button: string,
+    waitMs: number,
+  ) => Promise<string | undefined>;
   /** The throwaway Paperclip's seeded records, read through its API to check a click landed. */
   readonly paperclip: TestPaperclip;
 }
