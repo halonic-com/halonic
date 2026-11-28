@@ -159,6 +159,7 @@ export const exportedEntryPoints: readonly string[] = [
   "packages/studio/features/remote/src/phone/client.ts",
   "packages/studio/features/remote/src/phone/index.ts",
   "packages/studio/kit/src/app-logo/app-glyphs.ts",
+  "packages/studio/kit/src/list-column/list-column.ts",
   "packages/studio/kit/src/settle/settle.tsx",
   "packages/studio/kit/src/theme-font.css",
   "packages/studio/kit/src/theme.css",
