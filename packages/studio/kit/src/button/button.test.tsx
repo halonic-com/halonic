@@ -3,7 +3,7 @@ import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { fakePopover, restorePopover } from "../test/popover.ts";
 import { click, render, unmountAll } from "../test/render.tsx";
-import { Button, type ButtonProps } from "./button.tsx";
+import { Button, type ButtonProps, type ButtonVariant } from "./button.tsx";
 
 // An unavailable button's reason shows as a tooltip once focused a moment, so a slow run reaches it.
 beforeEach(() => {
@@ -291,6 +291,25 @@ verifies("kit.button-unavailable", () => {
     expect(resting?.className).toContain("invisible");
     expect(busyCopy?.className).not.toContain("invisible");
     expect(busyCopy?.querySelector("svg.animate-spin")).not.toBeNull();
+  });
+
+  it("with a busyLabel, starts a ghost button's copies at its edge and centres the others", () => {
+    const copiesOf = (variant: ButtonVariant) => {
+      const { container } = render(
+        <Button variant={variant} busyLabel="Trying again…">
+          Try again
+        </Button>,
+      );
+      const cell = container.querySelector("button")?.firstElementChild as HTMLElement;
+      return Array.from(cell.children) as HTMLElement[];
+    };
+    for (const copy of copiesOf("ghost")) {
+      expect(copy.className).toContain("justify-start");
+      expect(copy.className).not.toContain("justify-center");
+    }
+    for (const copy of copiesOf("primary")) {
+      expect(copy.className).toContain("justify-center");
+    }
   });
 
   it("with a busyName, screen readers hear it while busy and the words otherwise", () => {

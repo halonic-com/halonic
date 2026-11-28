@@ -253,7 +253,16 @@ const largeIconSlot = "phone:size-icon-md";
 
 /** One grid cell: the resting and the busy copy lie on top of each other in it. */
 const busyCell = "inline-grid";
-const busyCopy = "col-start-1 row-start-1 inline-flex items-center justify-center gap-1.5";
+const busyCopy = "col-start-1 row-start-1 inline-flex items-center gap-1.5";
+
+/**
+ * Where the copies sit in their cell. A ghost button has no fill at rest, so its words are what
+ * lines up with the text beside it: they start where they would without a `busyLabel`. A filled or
+ * outlined button shows its box, so its words stay centred in it.
+ */
+function busyCopyAlign(variant: ButtonVariant): string {
+  return variant === "ghost" ? "justify-start" : "justify-center";
+}
 
 /**
  * The kit's button: a native `<button>`, `type="button"` unless it submits a form. With `icon`
@@ -364,13 +373,14 @@ function ButtonBody({ props, busy, iconClasses }: ButtonBodyProps) {
   }
   // Both copies always take up room; the one not in use is `invisible`, so it only sets the
   // width and screen readers skip it.
+  const copy = `${busyCopy} ${busyCopyAlign(props.variant ?? "secondary")}`;
   return (
     <span className={busyCell}>
-      <span className={`${busyCopy} ${busy ? "invisible" : ""}`.trim()}>
+      <span className={`${copy} ${busy ? "invisible" : ""}`.trim()}>
         {iconBox(props.icon)}
         {props.children}
       </span>
-      <span className={`${busyCopy} ${busy ? "" : "invisible"}`.trim()}>
+      <span className={`${copy} ${busy ? "" : "invisible"}`.trim()}>
         {iconBox(<Spinner />)}
         {props.busyLabel}
       </span>
