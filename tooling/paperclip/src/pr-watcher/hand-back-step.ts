@@ -1,7 +1,7 @@
 import { reviewerName } from "../reviewer-paths-who.ts";
 import { type CloseGuards, guardDone } from "./close-guards.ts";
 import { branchesOwner, type Decision, decide, type Memory, type PullFacts } from "./decide.ts";
-import { type HandBack, handBackMessage, handBackOf } from "./hand-back.ts";
+import { type HandBack, handBackMessage, handBackOf, standingVerdicts } from "./hand-back.ts";
 import { readMemory } from "./memory.ts";
 import { doneMessage } from "./messages.ts";
 import type { Paperclip, TaskRow } from "./paperclip.ts";
@@ -46,9 +46,14 @@ export async function handBackStep(
   if (back === undefined) {
     return "none";
   }
-  let also: readonly string[] = [];
+  // The other pull requests' standing verdicts are marked with this one, so
+  // none of them hands the task back again later.
+  let also = standingVerdicts(reviewer, pulls).filter(
+    (key) => key !== back.key && !memory.reported.has(key),
+  );
   if (back.why === "merged") {
-    // Before the reported check: a merge handed back earlier still closes once nothing keeps it open.
+    // Before the reported check: a merge handed back earlier still closes
+    // once nothing keeps it open.
     const decision = await decideAsAuthor(options, task, who.author, pulls, memory);
     if (decision.kind === "done") {
       return closeTask(options, task, decision);

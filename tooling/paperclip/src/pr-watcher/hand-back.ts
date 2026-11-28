@@ -20,8 +20,7 @@ export interface HandBack {
 
 /**
  * Whether the reviewer's newest finding still stands on the head: by
- * `answered.ts`'s rule, only a head the author committed after it answers
- * it, not one GitHub committed (a merge of the base branch).
+ * `paperclip.pr-watcher-hand-back`, any head committed after it answers it.
  */
 function findingOnHead(pull: PullFacts, reviewer: string): boolean {
   const review = pull.latestReview;
@@ -29,11 +28,7 @@ function findingOnHead(pull: PullFacts, reviewer: string): boolean {
     return false;
   }
   const committed = pull.headCommittedAt;
-  const answered =
-    committed !== undefined &&
-    Date.parse(committed) > Date.parse(review.at) &&
-    pull.headCommittedByGitHub !== true;
-  return !answered;
+  return !(committed !== undefined && Date.parse(committed) > Date.parse(review.at));
 }
 
 function verdictOf(pull: PullFacts, reviewer: string): HandBack | undefined {
@@ -78,6 +73,13 @@ export function handBackOf(
     }
   }
   return undefined;
+}
+
+/** The keys of the holder's verdicts on every open pull request's head, reported or not. */
+export function standingVerdicts(reviewer: string, pulls: readonly PullFacts[]): string[] {
+  return pulls
+    .filter((pull) => pull.state === "open")
+    .flatMap((pull) => verdictOf(pull, reviewer)?.key ?? []);
 }
 
 function keyed(pull: PullFacts, why: HandBack["why"], verdict: string): HandBack {

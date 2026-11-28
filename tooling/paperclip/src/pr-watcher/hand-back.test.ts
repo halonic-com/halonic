@@ -147,7 +147,7 @@ verifies("paperclip.pr-watcher-hand-back", () => {
 
   test("gives a task back for a finding on its second pull request after the first one's approval", async () => {
     const earlier = watcherComment("halonic-com/halonic#5701 5701aaa back to author approved");
-    const finding = { id: "i3", at: "2026-11-24T16:30:00Z", by: "Julian" };
+    const finding = { id: "i3", at: "2026-11-24T16:50:00Z", by: "Julian" };
     const run = twoPulls(
       { approvals: [{ by: "Julian", head: "5701aaa" }] },
       { head: oldHead, latestReview: finding },
@@ -159,10 +159,26 @@ verifies("paperclip.pr-watcher-hand-back", () => {
     ]);
   });
 
-  test("gives a task back after a finding when GitHub committed the head after it", async () => {
-    const finding = { id: "i1", at: "2026-11-24T14:00:00Z", by: "Julian" };
-    const run = watcher({ latestReview: finding, headCommittedByGitHub: true });
-    expect(await run.run()).toMatchObject({ handedBack: 1, failed: [] });
+  test("leaves a landed task it gave back after the merge with Julian while a child task is open", async () => {
+    const earlier = watcherComment("halonic-com/halonic#5701 5701aaa back to author merged");
+    const held = task(5701, agents.julian, { branch: mateoBranch, openChildren: true });
+    const run = watcher(merged, held, { "task-5701": [earlier] });
+    expect(await run.run()).toMatchObject({ done: 0, handedBack: 0, failed: [] });
+    expect(run.handoffs).toEqual([]);
+  });
+
+  test("marks every pull request's verdict in one hand-back, so a later pass doesn't give it back again", async () => {
+    const approved = { approvals: [{ by: "Julian", head: "5701aaa" }] };
+    const finding = {
+      head: oldHead,
+      latestReview: { id: "i3", at: "2026-11-24T16:30:00Z", by: "Julian" },
+    };
+    const first = twoPulls(approved, finding, []);
+    expect(await first.run()).toMatchObject({ handedBack: 1, failed: [] });
+    // Julian picks the task up again without a new verdict: it stays with him.
+    const later = twoPulls(approved, finding, first.comments["task-5701"] ?? []);
+    expect(await later.run()).toMatchObject({ handedBack: 0, failed: [] });
+    expect(later.handoffs).toEqual([]);
   });
 });
 
