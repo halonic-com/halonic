@@ -3,6 +3,10 @@ import type { EditorReviewPartFacts } from "@halonicjs/studio-code-editor";
 /** The words the file tree shows (microcopy for the Files frames). */
 export const filesWords = {
   treeLabel: "Files",
+  /** Code's page: its title over the tree, and the content pane while no file is open. */
+  codeTitle: "Code",
+  noFileTitle: "No file open",
+  noFileDescription: "Pick a file in the list to open it.",
   /** The search field above the tree: its name and what the empty field says. */
   search: "Search files",
   /** Under the search field while it holds text: how many files match. */

@@ -8,7 +8,14 @@ import {
   useWriteClipboard,
 } from "@halonicjs/studio-kit";
 import { errorReasonFor, type WorkspaceContext } from "@halonicjs/studio-shell";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { copyPath } from "../copy-path.ts";
 import { FILE_KIND, fileItem, fileName } from "../file-item.ts";
 import { FilesHostService, type FilesListing } from "../files-host.ts";
@@ -29,6 +36,8 @@ import { useTreeSearch } from "./use-tree-search.ts";
 /** What the sidebar's Files view gets: the context of the feature that added it. */
 export interface FilesSidebarViewProps {
   readonly context: WorkspaceContext;
+  /** The page's title on the + button's line, as Code's list column has it; the sidebar has none. */
+  readonly title?: string;
 }
 
 type Loaded =
@@ -38,12 +47,33 @@ type Loaded =
 
 const skeletonWidths = ["1/2", "2/3", "2/5", "3/5"] as const;
 
+/** The + button's line, with the page's title at its start when it has one. */
+function TitleLine({
+  title,
+  children,
+}: {
+  readonly title: string | undefined;
+  readonly children: ReactNode;
+}) {
+  if (title === undefined) {
+    return <div className="flex items-center justify-end px-2.5 pt-1">{children}</div>;
+  }
+  return (
+    <div className="flex items-center justify-between px-2.5 pt-1">
+      <h1 tabIndex={-1} className="ps-2.5 text-title">
+        {title}
+      </h1>
+      {children}
+    </div>
+  );
+}
+
 /**
  * The Files view in the sidebar: the workspace's file tree, with the loading, can't-load and empty
  * states. It lists again whenever the host says a file or a mark changed, and keeps the opened
  * folders and the focused row while it does.
  */
-export function FilesSidebarView({ context }: FilesSidebarViewProps) {
+export function FilesSidebarView({ context, title }: FilesSidebarViewProps) {
   const host = context.services.get(FilesHostService);
   const [loaded, setLoaded] = useState<Loaded>({ kind: "loading" });
   const [state, setState] = useState<TreeState>(emptyTreeState);
@@ -341,7 +371,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
   );
   return (
     <div className="flex min-h-0 flex-col">
-      <div className="flex items-center justify-end px-2.5 pt-1">
+      <TitleLine title={title}>
         <Button
           ref={addButton}
           variant="ghost"
@@ -350,7 +380,7 @@ export function FilesSidebarView({ context }: FilesSidebarViewProps) {
           label={filesWords.newFile}
           onClick={startAdding}
         />
-      </div>
+      </TitleLine>
       <div className="px-5 pt-1 pb-2">
         <SearchField
           label={filesWords.search}
