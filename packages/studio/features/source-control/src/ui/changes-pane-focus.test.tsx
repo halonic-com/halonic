@@ -84,6 +84,18 @@ verifies("source-control.list-column", () => {
       expect(reason?.classList.contains("basis-full")).toBe(true);
     });
 
+    it("stacks an item's tiles by the pane's width, side by side only where three fit", async () => {
+      const { root } = await openColumnsPage({ changes: [agentChange], left });
+      await press(root, "Continue");
+      const choices = pane(root)?.querySelector("section");
+      expect(choices?.classList.contains("@container")).toBe(true);
+      const tiles = choices?.querySelector('[aria-label="x.md"] > div.flex.gap-4');
+      expect([...(tiles?.classList ?? [])]).toEqual(
+        expect.arrayContaining(["flex-col", "@lg:flex-row", "@lg:items-stretch"]),
+      );
+      expect(tiles?.classList.contains("flex-row")).toBe(false);
+    });
+
     it("puts the choices aside, with Continue, when a row is opened while they show", async () => {
       const { root } = await openColumnsPage({ changes: [agentChange], left });
       await press(root, "Continue");

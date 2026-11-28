@@ -136,7 +136,8 @@ export function MergeChoices({
     );
   }
   return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-3">
+    // The choices' container: an item's tiles stack when the pane is too narrow for three.
+    <section aria-labelledby={titleId} className="@container flex flex-col gap-3">
       <h2 id={titleId} ref={heading} tabIndex={-1} className="text-title focus-ring">
         {mergeWords.heading}
       </h2>
@@ -225,7 +226,10 @@ function ItemChoice({
     <section aria-label={item.path} className="flex flex-col gap-2">
       <ItemHeading className="text-label break-all">{item.path}</ItemHeading>
       <Changes changes={changes} />
-      <div className={`flex gap-4 ${phone ? "flex-col" : "flex-row items-stretch"}`}>
+      {/* Side by side only where the pane holds three, 512px or more: by its width, not the window's. */}
+      <div
+        className={`flex gap-4 ${phone ? "flex-col" : "flex-col @lg:flex-row @lg:items-stretch"}`}
+      >
         <Tile
           title={mergeWords.yours}
           text={item.mine}
