@@ -69,7 +69,7 @@ import {
   studioPageIsBuilt,
 } from "./no-studio-page.ts";
 import { serveRequestLog } from "./request-log.ts";
-import { type ConsoleTransport, openServeConsole, type ServeConsole } from "./serve-console.ts";
+import { openServeConsole, type ServeConsole } from "./serve-console.ts";
 import { openServePaperclip } from "./serve-paperclip.ts";
 import { ServePaperclipTools } from "./serve-paperclip-tools.ts";
 import { type ServedRoutines, servedRoutines } from "./serve-routines.ts";
@@ -96,8 +96,6 @@ export interface ServeSetup extends RunSetup {
    * command by default, and none when only `studioFolder` is given.
    */
   readonly studioApp?: string;
-  /** How `serve` offers its console to `serve pair` and `serve devices`; the Unix socket by default. */
-  readonly console?: ConsoleTransport;
   /** The `fetch` the Paperclip providers and the `paperclip` connector send with; the global one by default. */
   readonly paperclipFetch?: typeof fetch;
 }
@@ -250,9 +248,12 @@ async function serveVersions(
     });
     servePort = server.port;
     try {
-      // The console for `serve pair` and `serve devices`, over the engine's own coordination;
-      // open before the "Serving" line, so both commands work once it shows.
-      const deviceConsole = await openServeConsole(context, setup, dir, engine);
+      // The console for `serve pair`, `serve devices` and the runs `run` hands over, over the
+      // engine's own coordination; open before the "Serving" line, so they work once it shows.
+      const deviceConsole = await openServeConsole(context, setup, dir, engine, {
+        executor: startsOnLiveVersion(engine.executor, () => versions.routines.runVersion()),
+        trust: workspaceTrustGate(dir, setup.trust(), () => versions.liveVersion()),
+      });
       try {
         await printServing(context, setup, versions, deviceConsole, {
           name: printable(workspaceNameOf(workspace, dir)),

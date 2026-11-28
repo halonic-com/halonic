@@ -78,6 +78,13 @@ Ctrl C into what stopping meant ("The run 01jd8q was cancelled after the step Cl
 rethrows a stuck step's last error. `halonic run` and `halonic runs send` both use them, so there
 is one engine opener.
 
+While `halonic serve` holds the engine, `halonic run` doesn't open one: `startInServe`
+(`src/commands/run/via-serve.ts`) asks `serve` over its console channel to start the run on its
+engine, so the run shows in the phone's Inbox, and `run` prints the run's id. `serve` answers that
+request in `src/commands/serve/serve-run-start.ts`, with the trust gate and executor of its own
+start route. With `--event`, `--harness` or `--follow`, or no console to reach, `run` keeps the
+lock's refusal (`cli.local-engine-lock`).
+
 `halonic routines watch` passes `openWorkspaceEngine` an `onStuck`, so a stuck step is
 reported and the watch goes on; without it, as for `run` and `runs send`, the step's last error
 stops the command. A routine the watch starts whose saved changes aren't live yet gets the line
