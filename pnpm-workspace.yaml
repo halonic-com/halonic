@@ -47,9 +47,11 @@ catalog:
   quickjs-emscripten-core: 0.32.0
   react: ^19.3.1
   react-dom: ^19.3.1
+  sharp: 0.35.5
   tailwindcss: ^4.3.4
   turbo: ^2.11.10
   typescript: ^7.0.2
+  undici: 7.30.2
   vite: ^8.3.5
   vitest: ^5.1.0
   yaml: 2.9.1
@@ -104,10 +106,12 @@ linkWorkspacePackages: true
 # pnpm 12 (savePrefix and saveExact don't apply to rolling).
 saveWorkspaceProtocol: rolling
 
-# Security override, allowed only through tooling/check/overrides-allowed.json
-# (HAL-1928). Value must equal the catalog version of zod.
+# Security overrides, allowed only through tooling/check/overrides-allowed.json
+# (HAL-1928, HAL-20858). Each value must equal the catalog version of its child.
 overrides:
   "@anthropic-ai/sandbox-runtime>zod": 4.6.7
+  "miniflare>sharp": 0.35.5
+  "miniflare>undici": 7.30.2
 patchedDependencies:
   "@anthropic-ai/sandbox-runtime@0.0.82": patches/@anthropic-ai__sandbox-runtime@0.0.82.patch
   "@changesets/git@4.0.1": patches/@changesets__git@4.0.1.patch
