@@ -44,8 +44,11 @@ export interface SignInNeedsOptions {
   readonly contextFor: (featureId: string) => WorkspaceContext;
   readonly channel: SignInChannel;
   readonly timers: Pick<AnnouncerTimers, "now">;
-  /** Opens a sign-in's approval page in the browser. */
-  readonly openExternal: (url: string) => void;
+  /**
+   * Opens a sign-in's approval page in the browser. A rejection fails the sign-in: no browser
+   * opened, so the row mustn't wait for an approval that can't come.
+   */
+  readonly openExternal: (url: string) => Promise<void>;
   /** Where errors go; `console.error` by default. */
   readonly log?: (message: string, error: unknown) => void;
 }
@@ -134,7 +137,7 @@ export class SignInNeeds {
     try {
       const attempt = await signIn.start(this.options.contextFor(signIn.featureId), needId);
       if (attempt.approvalUrl !== undefined) {
-        this.options.openExternal(attempt.approvalUrl);
+        await this.options.openExternal(attempt.approvalUrl);
       }
       this.setProgress(key, { kind: "waiting", phrase: attempt.phrase });
       outcome = await attempt.finished;

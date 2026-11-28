@@ -84,7 +84,7 @@ function needs(
     channel?: SignInChannel;
     timers?: FakeTimers;
     log?: () => void;
-    openExternal?: (url: string) => void;
+    openExternal?: (url: string) => Promise<void>;
   } = {},
 ): SignInNeeds {
   const result = new SignInNeeds({
@@ -93,7 +93,7 @@ function needs(
     contextFor: () => context,
     channel: options.channel ?? new FakeChannelHub().channel(),
     timers: options.timers ?? new FakeTimers(),
-    openExternal: options.openExternal ?? (() => undefined),
+    openExternal: options.openExternal ?? (async () => undefined),
     log: options.log ?? (() => undefined),
   });
   result.start();
@@ -211,7 +211,9 @@ verifies("shell.sign-in-needed", () => {
         const opened: string[] = [];
         const inbox = needs("inbox", [contribution], {
           channel: hub.channel(),
-          openExternal: (url) => opened.push(url),
+          openExternal: async (url) => {
+            opened.push(url);
+          },
         });
         const messenger = needs("messenger", [contribution], { channel: hub.channel() });
         const shownIn = (window: SignInNeeds) => [

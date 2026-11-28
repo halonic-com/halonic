@@ -189,4 +189,65 @@ verifies("shell.sign-in-needed", () => {
     expect(element.textContent).toContain("Check that it shows: blue-otter");
     expect(watches).toBe(1);
   });
+
+  it("says the sign-in didn't finish when the browser won't open, and keeps Sign in active (HAL-21251)", async () => {
+    signedOut = [{ id: "acme-team", name: "Acme team" }];
+    const neverFinishes: SignInContribution = {
+      ...paperclip,
+      start: async () => ({
+        phrase: "blue-otter",
+        approvalUrl: "https://paperclip.acme.test/approve",
+        finished: new Promise(() => undefined),
+      }),
+    };
+    const [signIn] = createShell({
+      features: [
+        defineFeature({
+          id: "acme",
+          title: "Acme",
+          register: (studio) => studio.signIns.add(neverFinishes),
+        }),
+      ],
+    }).contributions.signIns.list();
+    if (signIn === undefined) throw new Error("Acme added no sign-in.");
+    const quiet: SignInChannel = {
+      post: () => undefined,
+      subscribe: () => () => undefined,
+      close: () => undefined,
+    };
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const element = document.createElement("div");
+    document.body.append(element);
+    elements.push(element);
+    const root = createRoot(element);
+    unmounts.push(() => root.unmount());
+    await act(async () => {
+      root.render(
+        <OpenExternalProvider openExternal={() => Promise.reject(new Error("No browser."))}>
+          <SignInPrompt
+            window="inbox"
+            appTitle="Inbox"
+            signIns={[signIn]}
+            contextFor={() => ({}) as WorkspaceContext}
+            workspace={{}}
+            channel={() => quiet}
+          />
+        </OpenExternalProvider>,
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await act(async () => element.querySelector<HTMLButtonElement>("dialog button")?.click());
+    await vi.waitFor(() =>
+      expect(element.querySelector('[role="alert"]')?.textContent).toBe(
+        "That sign-in didn't finish. Try again.",
+      ),
+    );
+    const button = element.querySelector("dialog button");
+    expect(button?.getAttribute("aria-busy")).toBeNull();
+    expect(button?.getAttribute("aria-label")).toBe("Sign in: Paperclip, Acme team");
+    expect(element.textContent).not.toContain("Approve the sign-in in your browser.");
+    expect(logged).toHaveBeenCalledWith("Couldn't open the sign-in page.", expect.any(Error));
+    logged.mockRestore();
+  });
 });
