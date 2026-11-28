@@ -332,8 +332,8 @@ changes. An `xs` button stays on one line, so the status bar keeps its height.
 **At the edge of a scrolling box**, the box clips a ring drawn outside the button, so the button
 takes `ring="inset"` and draws the same ring inside itself (`focus-ring-inset`,
 `kit.button-ring-inset`). Three buttons use it today: one in the last column of a scrolling
-grid (a collection record's ⋮), and two pulled out to the box's edge so their label starts where
-the text above starts: the Library's Try again under its stale-list line, pulled 13px into the
+grid (a collection record's ⋮), and two pulled out to the box's edge so their labels start where
+the text above them starts: the Library's Try again under its stale-list line, pulled 13px into the
 16px padding of the scrolling list column, which leaves 3px where the outer ring needs 4px, and
 Home's Try again under its failure line, whose start padding is the pull itself (13px, 17px on
 touch), so the button's edge sits on the column's edge. Every other button keeps the outer ring.
