@@ -29,8 +29,12 @@ export interface WindowColumnOptions {
   readonly switcher: WorkspaceSwitcherProps | undefined;
   /** The sidebar switch's picked tab and its setter, which the window keeps. */
   readonly view: { readonly selected: string; readonly select: (id: string) => void };
-  /** The column's width and its setter, from `useSidebarWidth().sidebar`. */
-  readonly width: { readonly width: number; readonly onWidthChange: (width: number) => void };
+  /** The column's width, its setter and its reset, from `useSidebarWidth().sidebar`. */
+  readonly width: {
+    readonly width: number;
+    readonly onWidthChange: (width: number) => void;
+    readonly resetWidth: number;
+  };
 }
 
 /** The rail and the list column beside it, ready for the frame's `rail` and `sidebar` slots. */

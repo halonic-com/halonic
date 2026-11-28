@@ -72,7 +72,7 @@ export function IconRail({ entries, tabs, placeOfKind, onSettings, column }: Ico
 
   return (
     <nav
-      aria-label="Places"
+      aria-label="Apps"
       data-icon-rail=""
       className="relative flex h-full w-(--spacing-rail) shrink-0 flex-col items-center gap-1 pb-0.5"
     >

@@ -162,12 +162,12 @@ verifies("shell.rail", () => {
   });
 
   describe("drawing", () => {
-    it("names the rail Places and puts Settings last", () => {
+    it("names the rail Apps and puts Settings last", () => {
       const rail = renderRail();
       const names = [...rail.container.querySelectorAll("nav [aria-label]")].map((element) =>
         element.getAttribute("aria-label"),
       );
-      expect(rail.container.querySelector("nav")?.getAttribute("aria-label")).toBe("Places");
+      expect(rail.container.querySelector("nav")?.getAttribute("aria-label")).toBe("Apps");
       expect(names).toEqual(["Home", "Library", "Messenger", "Inbox", "Settings"]);
     });
 

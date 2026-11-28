@@ -163,7 +163,7 @@ verifies("studio.served-wait-context", () => {
         const inbox =
           host.name === "phone"
             ? shown('nav[aria-label="Places"] a', /Inbox/)
-            : shown('nav[aria-label="Places"] li button[aria-label^="Inbox"]', /.*/);
+            : shown('nav[aria-label="Apps"] li button[aria-label^="Inbox"]', /.*/);
         (await inbox).click();
         // Home stays drawn behind the Inbox, so its Needs you row is left out.
         const inboxRow = 'main table:not([aria-label="Needs you"]) [role=gridcell]';

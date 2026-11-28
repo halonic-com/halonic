@@ -107,7 +107,7 @@ async function settle() {
 }
 
 function railSettings(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('nav[aria-label="Places"] [aria-label="Settings"]');
+  return document.querySelector<HTMLElement>('nav[aria-label="Apps"] [aria-label="Settings"]');
 }
 
 /** Opens Settings from the rail's Settings button, with a key, as a keyboard user does. */

@@ -65,6 +65,8 @@ export interface StudioSidebarProps {
   readonly width?: number | undefined;
   /** Called with the width the resize edge sets, when the window keeps it. */
   readonly onWidthChange?: ((width: number) => void) | undefined;
+  /** What Enter and a double-click on the edge go back to, when the window keeps the width. */
+  readonly resetWidth?: number | undefined;
 }
 
 /**
@@ -141,6 +143,7 @@ export function StudioSidebar(props: StudioSidebarProps) {
         sidebarId={sidebarId}
         onResize={setWidth}
         onResizeEnd={setWidth}
+        reset={props.resetWidth}
       />
     </>
   );

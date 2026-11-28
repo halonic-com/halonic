@@ -346,7 +346,7 @@ verifies("shell.settings-window", () => {
 
 verifies("shell.sidebar-settings", () => {
   function railSettings(): HTMLElement | null {
-    return document.querySelector<HTMLElement>('nav[aria-label="Places"] [aria-label="Settings"]');
+    return document.querySelector<HTMLElement>('nav[aria-label="Apps"] [aria-label="Settings"]');
   }
 
   it("opens Settings from the rail on the section shown last", async () => {

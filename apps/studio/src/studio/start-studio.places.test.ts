@@ -98,7 +98,7 @@ const placeLinks = (root: HTMLElement) => [
 
 /** The rail's entries, Settings left out: it sits apart, outside the list. */
 const railEntries = (root: HTMLElement) => [
-  ...root.querySelectorAll<HTMLButtonElement>('nav[aria-label="Places"] li button'),
+  ...root.querySelectorAll<HTMLButtonElement>('nav[aria-label="Apps"] li button'),
 ];
 
 const stopped = (root: HTMLElement) =>
