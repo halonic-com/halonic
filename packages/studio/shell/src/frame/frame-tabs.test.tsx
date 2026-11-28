@@ -73,6 +73,15 @@ verifies("shell.frame", () => {
     expect(panel?.className.split(" ")).not.toContain("rounded-ss-none");
   });
 
+  it("clips the tab row across only in a wide window, so the folded button's focus ring stays whole", () => {
+    const container = renderFrame();
+    const row = container.querySelector("[data-panel-tabs]");
+    expect(row?.className.split(" ")).toContain("overflow-x-clip");
+
+    act(() => media.resize(800));
+    expect(row?.className.split(" ")).not.toContain("overflow-x-clip");
+  });
+
   it("shows no tabs on a phone", () => {
     const container = renderFrame();
     act(() => media.resize(390));

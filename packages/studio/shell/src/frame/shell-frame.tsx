@@ -309,9 +309,14 @@ function FramedContent(props: {
     >
       {tabs ? (
         // On the frame, so an inactive tab's hover fill shows and the active tab, the panel's
-        // fill, joins the panel under it (the approved mockup, v26 on HAL-20617). Clipped across,
-        // so the active first tab's start curve doesn't spill onto the frame beside the panel.
-        <div data-panel-tabs="" className="flex shrink-0 items-end gap-0.5 overflow-x-clip pt-1">
+        // fill, joins the panel under it (the approved mockup, v26 on HAL-20617). In a wide window
+        // it's clipped across, so the active first tab's start curve doesn't spill onto the frame
+        // beside the panel; folded, there's no curve, and a clip would cut the button's focus ring.
+        // As high folded as with the tabs, so the panel doesn't move when the window narrows.
+        <div
+          data-panel-tabs=""
+          className={`flex min-h-9.5 shrink-0 items-end gap-0.5 pt-1 ${squareCorner ? "overflow-x-clip" : ""}`}
+        >
           {frame.tabs}
         </div>
       ) : null}

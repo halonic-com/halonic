@@ -12,7 +12,7 @@ Tests changed to follow:
 - `frame-tabs.test.tsx`: the first test checked the tabs were inside the framed panel; it now checks they are outside the element with the panel's fill, on no fill of their own, right before the panel with no inset, and that the panel holds `main`.
 - `shell-frame-sidebar.test.tsx`: the 8px beside the sidebar was checked on the framed panel; it is now checked on the column that holds the tabs and the panel, which moved the margin there, and that column has no fill either. The panel's corners, line and fill are still checked on the panel.
 - `studio-window.test.tsx`'s window test checked the tabs were in the framed panel; it now checks they are in the tab row and not in the panel.
-- `e2e/rail-frame.spec.ts`: the rail's first button is level with the top of the column that holds the tabs and the panel (where the panel's top was before), rather than with the panel's top, which now sits under the tabs. A new browser test checks the tab row has no fill, and the active tab's fill is the panel's and differs from the frame's.
+- `e2e/rail-frame.spec.ts`: the rail's first button is level with the top of the column that holds the tabs and the panel (where the panel's top was before), rather than with the panel's top, which now sits under the tabs. New browser tests check the tab row has no fill, the active tab's fill is the panel's and differs from the frame's, and the panel's top stays put when the window narrows and the tabs fold.
 
 No test was skipped or weakened.
 

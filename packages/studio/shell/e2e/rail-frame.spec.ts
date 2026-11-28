@@ -94,6 +94,16 @@ test("at 1280px the tabs sit on the frame, so the active tab's fill differs from
   expect(activeTab).not.toBe(frame);
 });
 
+test("the framed panel's top stays put when the window narrows and the tabs fold", async ({
+  page,
+}) => {
+  await openWindow(page, wide);
+  const wideTop = (await box(page.locator("[data-framed-panel]"))).y;
+  await page.setViewportSize(narrow);
+  await expect(page.getByRole("tab")).toHaveCount(0);
+  expect((await box(page.locator("[data-framed-panel]"))).y).toBe(wideTop);
+});
+
 test("at 640px the Places button sits on the rail's axis", async ({ page }) => {
   await openWindow(page, narrow);
   const places = await box(page.locator("header").getByRole("button", { name: "Places" }));
