@@ -10,6 +10,7 @@ import {
   inboxQuestionsMax,
   questionsAnswerFits,
 } from "@halonicjs/ports";
+import { approvalWords } from "./approval-words.ts";
 import { asList, asRecords, field, type JsonRecord, text } from "./json.ts";
 import type { PaperclipRequestName } from "./requests.ts";
 
@@ -80,7 +81,16 @@ export function listCardQuestions(
   prompt: string,
 ): InboxQuestion[] {
   if (kind === "request_item_verdicts") {
-    const verdicts = verdictsOf(payload).map((id) => ({ id, label: verdictLabels[id] ?? id }));
+    const needReason = reasonVerdicts(payload);
+    const verdicts = verdictsOf(payload).map((id): InboxItemOption => {
+      const label = verdictLabels[id] ?? id;
+      // A verdict that needs a reason asks for it as a Reject button's note does (HAL-20649);
+      // any other one has no words of ours, so apps label its field with the verdict.
+      if (!needReason.includes(id)) return { id, label };
+      return id === "reject"
+        ? { id, label, noteRequired: true, noteLabel: approvalWords.rejectReason }
+        : { id, label, noteRequired: true };
+    });
     const items = openVerdictItems(payload, result).slice(0, inboxQuestionsMax);
     return labelled(items, "id", "label").map((item) => ({
       id: item.id,

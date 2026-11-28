@@ -1,6 +1,8 @@
 import { useId, useState } from "react";
 import { Button } from "../button/button.tsx";
 import { Checkbox } from "../checkbox/checkbox.tsx";
+import { Field } from "../field/field.tsx";
+import { TextArea } from "../input/text-area.tsx";
 import { RadioGroup, type RadioOption } from "../radio/radio-group.tsx";
 import { type MarkdownInline, readMarkdown } from "../text/markdown.ts";
 import { calendarDay } from "../text/waiting-time.ts";
@@ -9,13 +11,14 @@ import {
   type FormAnswer,
   type FormQuestion,
   formAnswers,
+  noteOptionOf,
 } from "./question-answers.ts";
 
 /** The words the form shows. */
 export const questionFormWords = {
   submit: "Submit",
   optional: "(optional)",
-  /** Why Submit is off while a required question has no pick. */
+  /** Why Submit is off while a required question has no pick, or a pick has no note it needs. */
   answerEach: "Answer each question to submit.",
   answered: (day: string) => `Answered ${day}`,
   /** Takes back the pick on an optional one-pick question. */
@@ -48,12 +51,15 @@ export interface QuestionFormProps {
 }
 
 type Picked = ReadonlyMap<string, ReadonlySet<string>>;
+type Notes = ReadonlyMap<string, string>;
 
 /**
  * A card's questions as a form: each prompt a `fieldset` and `legend`, its options radios for a
  * `single` question and checkboxes for a `multiple` one, then **Submit**, off until every required
  * question has a pick. An optional `single` question's pick can be taken back with **Clear
- * answer**. Once `answered`, the picks stay ticked, every control is off and greyed,
+ * answer**. A pick that takes a note, such as a Reject that needs its reason, shows a field for it
+ * under the question; Submit stays off while a needed note is blank, and picking another option
+ * drops what was written. Once `answered`, the picks stay ticked, every control is off and greyed,
  * and "Answered 24 Nov" takes Submit's place.
  *
  * @example
@@ -67,14 +73,23 @@ export function QuestionForm({
   unavailable,
 }: QuestionFormProps) {
   const [picking, setPicking] = useState<Picked>(new Map());
+  const [writing, setWriting] = useState<Notes>(new Map());
   const answeredId = useId();
   const hintId = useId();
   const picked = answered === undefined ? picking : pickedFrom(answered.answers);
   const readOnly = answered === undefined ? undefined : { reason: answered.reason ?? answeredId };
-  const ready = everyRequiredPicked(questions, picked);
+  const notes = answered === undefined ? writing : notesFrom(answered.answers);
+  const ready = everyRequiredPicked(questions, picked, notes);
 
-  const pick = (question: string, options: ReadonlySet<string>) => {
-    setPicking((before) => new Map(before).set(question, options));
+  const pick = (question: FormQuestion, options: ReadonlySet<string>) => {
+    // A note belongs to the pick it was written for, so another pick never sends it.
+    if (noteOptionOf(question, picking.get(question.id)) !== noteOptionOf(question, options)) {
+      setWriting((before) => withoutKey(before, question.id));
+    }
+    setPicking((before) => new Map(before).set(question.id, options));
+  };
+  const write = (question: string, note: string) => {
+    setWriting((before) => new Map(before).set(question, note));
   };
 
   return (
@@ -84,7 +99,7 @@ export function QuestionForm({
       onSubmit={(event) => {
         event.preventDefault();
         if (ready && answered === undefined && unavailable === undefined && !busy) {
-          onSubmit(formAnswers(questions, picked));
+          onSubmit(formAnswers(questions, picked, notes));
         }
       }}
     >
@@ -93,8 +108,10 @@ export function QuestionForm({
           key={question.id}
           question={question}
           chosen={picked.get(question.id) ?? new Set()}
+          note={notes.get(question.id) ?? ""}
           readOnly={readOnly}
-          onPick={(options) => pick(question.id, options)}
+          onPick={(options) => pick(question, options)}
+          onWrite={(note) => write(question.id, note)}
         />
       ))}
       {answered === undefined ? null : <AnsweredLine id={answeredId} answered={answered} />}
@@ -135,18 +152,26 @@ function AnsweredLine({
   );
 }
 
-/** One question: its prompt as the legend, then a radio or a checkbox per option. */
+/**
+ * One question: its prompt as the legend, then a radio or a checkbox per option, then the note
+ * field of a pick that takes one.
+ */
 function QuestionFieldset({
   question,
   chosen,
+  note,
   readOnly,
   onPick,
+  onWrite,
 }: {
   readonly question: FormQuestion;
   readonly chosen: ReadonlySet<string>;
+  readonly note: string;
   readonly readOnly: { readonly reason: string } | undefined;
   readonly onPick: (options: ReadonlySet<string>) => void;
+  readonly onWrite: (note: string) => void;
 }) {
+  const noteOption = noteOptionOf(question, chosen);
   return (
     // On a phone or touch screen the rows are tall enough on their own, as in the radio stack.
     <fieldset
@@ -172,6 +197,19 @@ function QuestionFieldset({
             {option.label}
           </Checkbox>
         ))
+      )}
+      {noteOption === undefined ? null : (
+        <Field
+          label={noteOption.noteLabel ?? noteOption.label}
+          required={noteOption.noteRequired === true}
+        >
+          <TextArea
+            value={note}
+            minRows={2}
+            readOnly={readOnly !== undefined}
+            onChange={(event) => onWrite(event.target.value)}
+          />
+        </Field>
       )}
     </fieldset>
   );
@@ -239,6 +277,21 @@ function SingleChoice({
 
 function pickedFrom(answers: readonly FormAnswer[]): Picked {
   return new Map(answers.map((each) => [each.question, new Set(each.options)]));
+}
+
+function notesFrom(answers: readonly FormAnswer[]): Notes {
+  return new Map(
+    answers.flatMap((each) =>
+      each.text === undefined ? [] : [[each.question, each.text] as const],
+    ),
+  );
+}
+
+function withoutKey(notes: Notes, question: string): Notes {
+  if (!notes.has(question)) return notes;
+  const next = new Map(notes);
+  next.delete(question);
+  return next;
 }
 
 function toggled(chosen: ReadonlySet<string>, option: string, on: boolean): ReadonlySet<string> {

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { verifies } from "@halonicjs/testing-spec";
+import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { click, render, unmountAll } from "../test/render.tsx";
 import { answerLabels, type FormQuestion } from "./question-answers.ts";
@@ -220,6 +221,88 @@ verifies("kit.question-form-clear", () => {
 
       await click(submit(container));
       expect(onSubmit).toHaveBeenCalledWith([{ question: "repo", options: ["separate"] }]);
+    });
+  });
+});
+
+const verdicts: readonly FormQuestion[] = [
+  {
+    id: "intro",
+    prompt: "Intro page",
+    selection: "single",
+    required: false,
+    options: [
+      { id: "approve", label: "Approve" },
+      {
+        id: "reject",
+        label: "Reject",
+        noteRequired: true,
+        noteLabel: "Why are you rejecting this?",
+      },
+    ],
+  },
+];
+
+function type(field: HTMLTextAreaElement, value: string) {
+  act(() => {
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(field), "value")?.set?.call(field, value);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+verifies("kit.question-form-note", () => {
+  describe("QuestionForm", () => {
+    it("asks for the note a pick needs, and sends it with that pick", async () => {
+      const onSubmit = vi.fn();
+      const { container } = render(<QuestionForm questions={verdicts} onSubmit={onSubmit} />);
+      expect(container.querySelector("textarea")).toBeNull();
+
+      await click(labelled(container, "Reject"));
+      const note = container.querySelector("textarea");
+      if (note === null) throw new Error("no note field");
+      expect(container.textContent).toContain("Why are you rejecting this?");
+      expect(submit(container).getAttribute("aria-disabled")).toBe("true");
+      expect(container.textContent).toContain("Answer each question to submit.");
+
+      type(note, "  Add the install step ");
+      expect(submit(container).getAttribute("aria-disabled")).not.toBe("true");
+      await click(submit(container));
+      expect(onSubmit).toHaveBeenCalledWith([
+        { question: "intro", options: ["reject"], text: "Add the install step" },
+      ]);
+    });
+
+    it("drops the note once another option is picked, so it is never sent", async () => {
+      const onSubmit = vi.fn();
+      const { container } = render(<QuestionForm questions={verdicts} onSubmit={onSubmit} />);
+      await click(labelled(container, "Reject"));
+      const note = container.querySelector("textarea");
+      if (note === null) throw new Error("no note field");
+      type(note, "Add the install step");
+
+      await click(labelled(container, "Approve"));
+      expect(container.querySelector("textarea")).toBeNull();
+      await click(submit(container));
+      expect(onSubmit).toHaveBeenCalledWith([{ question: "intro", options: ["approve"] }]);
+
+      await click(labelled(container, "Reject"));
+      expect(container.querySelector("textarea")?.value).toBe("");
+    });
+
+    it("once answered, shows the note it was sent with, read-only", () => {
+      const { container } = render(
+        <QuestionForm
+          questions={verdicts}
+          answered={{
+            answers: [{ question: "intro", options: ["reject"], text: "Add the install step" }],
+            at: new Date(2026, 10, 24),
+          }}
+          onSubmit={vi.fn()}
+        />,
+      );
+      const note = container.querySelector("textarea");
+      expect(note?.value).toBe("Add the install step");
+      expect(note?.readOnly).toBe(true);
     });
   });
 });
