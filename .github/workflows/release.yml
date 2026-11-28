@@ -18,9 +18,11 @@
 #
 # What gates a real run (board, 25 Nov 2026, AGENTS.md "Releases below 0.9"):
 # the `release`, `npm-publish` and `npm-publish-cli` environments have no
-# required reviewer, only branch and tag rules: they accept `v0.[0-8].*` tags,
-# the `release/0.[0-8].*` and `release/halonic-0.[0-8].*` branches, and `main`
-# (`release` and `npm-publish` only).
+# required reviewer, only branch and tag rules:
+# - `release` allows `main` and `v0.[0-8].*` tags;
+# - `npm-publish` allows `main`, `release/0.[0-8].*` and
+#   `release/halonic-0.[0-8].*`;
+# - `npm-publish-cli` allows `v0.[0-8].*` tags only.
 # A version staged on npm still needs a person to approve it there with 2FA.
 # Before any 0.9 release, a reviewed environment must exist again.
 #
@@ -60,7 +62,7 @@
 # draft release exists, the npm-cli job stages the exact `cli-package`
 # tarball the build job checked, with `--tag latest`, so the tag doesn't
 # depend on the 1.0.0 placeholder staying deprecated (tooling/publish/README.md). It runs in the
-# `npm-publish-cli` environment, which allows `v*` tags only, and npm trusts
+# `npm-publish-cli` environment, which allows `v0.[0-8].*` tags only, and npm trusts
 # this workflow's identity (OIDC) for `halonic`: no npm token exists. The
 # trusted publisher allows `npm stage publish` only, so the version is not
 # public until a person approves it on npmjs.com (2FA). Dry runs skip the job.
