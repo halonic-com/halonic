@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20776 (the kit owner's look check of the new design's chat parts); Liam signs this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:LLWiCIG3Oqwa6OKykBmIynlaWsc5SPLDHRtV3bq6dxXrj89Gn1cy3iWRTJlPLRdK94vUrvBZs9kA9RtdV6HEBQ==
 - Task: HAL-20763
 
 ## What changes
