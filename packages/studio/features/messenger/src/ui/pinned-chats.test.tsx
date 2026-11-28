@@ -124,9 +124,13 @@ verifies("messenger.pinned-chats", () => {
     expect(pageSaid(page)).toBe("Chat unpinned.");
     await chatMenu(page, "Chief", "Pin chat");
     expect(pageSaid(page)).toBe("Chat pinned.");
-    expect(byText(page, "[data-page-status] span", "Chat pinned.")).not.toBe(pinnedSpan);
+    const repinnedSpan = byText(page, "[data-page-status] span", "Chat pinned.");
+    expect(repinnedSpan).not.toBe(pinnedSpan);
+    await openChat(page, "Mara");
+    await chatMenu(page, "Mara", "Pin chat");
+    expect(byText(page, "[data-page-status] span", "Chat pinned.")).not.toBe(repinnedSpan);
 
-    for (const name of ["Mara", "Kim", "Leo"]) {
+    for (const name of ["Kim", "Leo"]) {
       await openChat(page, name);
       await chatMenu(page, name, "Pin chat");
     }
@@ -156,6 +160,19 @@ verifies("messenger.pinned-chats", () => {
 
     expect(page.textContent).not.toContain("You can pin up to 3 chats.");
     expect(rowNames(page).slice(0, 3)).toEqual(["Mara", "Kim", "Chief"]);
+  });
+
+  it("reads only the new line after Leave then Pin chat, not the Leave result again", async () => {
+    const page = await openMessenger(acmeWithChannel());
+    await leaveChannel(page, "Design");
+    const leftSpan = byText(page, "[data-page-status] span", "You left Design.");
+    await openChat(page, "Mara");
+    await chatMenu(page, "Mara", "Pin chat");
+
+    const status = page.querySelector("[data-page-status]");
+    expect(status?.getAttribute("aria-atomic")).toBe("false");
+    expect(byText(page, "[data-page-status] span", "You left Design.")).toBe(leftSpan);
+    expect(byText(page, "[data-page-status] span", "Chat pinned.")).toBeTruthy();
   });
 
   it("after Leave, focuses the row that took the channel's place in the order shown", async () => {

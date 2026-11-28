@@ -52,7 +52,10 @@ export function useChatPinning(
       if (wasPinned) pins.unpin(chat);
       setFull((last) => ({ shown: wasFull, count: last.count + (wasFull ? 1 : 0) }));
       const what = wasPinned ? "unpinned" : "pinned";
-      setDone((last) => ({ what: wasFull ? undefined : what, count: last.count + 1 }));
+      setDone((last) => ({
+        what: wasFull ? undefined : what,
+        count: last.count + (wasFull ? 0 : 1),
+      }));
       setPinned(pins.list());
     };
     return {

@@ -223,7 +223,8 @@ function PageStatus({
 }) {
   const sayPinsFull = pinning.full && !silent && pinning.fullCount !== toasted;
   return (
-    <p role="status" className="sr-only" data-page-status>
+    // Not atomic: the region keeps earlier lines, so only the newly keyed line is read.
+    <p role="status" aria-atomic="false" className="sr-only" data-page-status>
       <span key={said.count}>{said.text}</span>
       <span key={`pin-${pinning.doneCount}`}>{pinWords(pinning.done)}</span>
       <span key={`pins-${pinning.fullCount}`}>{sayPinsFull ? messengerWords.pinsFull : ""}</span>
