@@ -61,7 +61,7 @@ export const catalogEntries = {
   },
   "github/approve-deployment": {
     definition: githubApproveDeployment,
-    sourceHash: "41a732e369d111bac2a313b7745eec3736d4c73efaa7ce0c3d11003f1070ca13",
+    sourceHash: "6c6c6bcb6fbaa2aeccbbf551e60564fe44312970e31a136710647ef249dbbda7",
   },
   "github/change-branch-protection": {
     definition: githubChangeBranchProtection,

@@ -20,7 +20,10 @@ const runPage = "https://github.com/{owner}/{repo}/actions/runs/{run_id}";
  * it is the `environment_id` the approval sends, so the name the preview
  * shows comes from the same read as the id GitHub gets, never from the
  * request (option b of Liam's approval on HAL-17522: a body field can't take
- * a kept value). There is no check on `pending_deployments`: its answer is a
+ * a kept value). For a run from a fork's pull request, `head_branch` is the
+ * fork's branch, named by whoever opened it, so the preview names the fork
+ * the commit is in (HAL-21176) rather than refusing: approving a fork's run
+ * can be what the user wants, as long as they can see it is one. There is no check on `pending_deployments`: its answer is a
  * list `keep` can't read, and GitHub refuses the approval with a 422 for an
  * environment the run isn't waiting on.
  */
@@ -43,7 +46,13 @@ export const definition: StepperDefinition<DeploymentParameters> = {
     {
       kind: "check",
       path: runPath,
-      keep: ["status", "head_sha", "head_branch", "triggering_actor.login"],
+      keep: [
+        "status",
+        "head_sha",
+        "head_branch",
+        "head_repository.full_name",
+        "triggering_actor.login",
+      ],
       requires: [
         {
           name: "status",
@@ -106,7 +115,7 @@ export const definition: StepperDefinition<DeploymentParameters> = {
   preview: (parameters, current = {}) => {
     const run = `run ${parameters["run_id"]} of ${parameters["owner"]}/${parameters["repo"]}`;
     return [
-      runSentence(run, current),
+      runSentence(run, parameters, current),
       environmentSentence(parameters, current),
       approval(run, parameters, current),
     ];
@@ -114,7 +123,7 @@ export const definition: StepperDefinition<DeploymentParameters> = {
 };
 
 /** The run as GitHub answered it, or what the check will read. */
-function runSentence(run: string, current: Kept): string {
+function runSentence(run: string, parameters: DeploymentParameters, current: Kept): string {
   const commit = current["head_sha"];
   const branch = current["head_branch"];
   const actor = current["triggering_actor.login"];
@@ -122,22 +131,48 @@ function runSentence(run: string, current: Kept): string {
     return `Reads ${run} on GitHub. It stops unless the run is still waiting for approval, on the commit the request names.`;
   }
   const who = typeof actor === "string" ? `, started by \`${actor}\`` : "";
-  return `${capitalised(run)}: commit \`${commit.slice(0, 7)}\` on \`${branch}\`${who}.`;
+  const where = repositorySuffix(parameters, current["head_repository.full_name"]);
+  return `${capitalised(run)}: commit \`${commit.slice(0, 7)}\` on \`${branch}\`${where}${who}.`;
+}
+
+/**
+ * Nothing when the commit is in the request's own repository; otherwise the
+ * repository it is in, since a fork's `main` isn't the repository's `main`.
+ * GitHub answers no head repository for a fork that has since been deleted.
+ */
+function repositorySuffix(parameters: DeploymentParameters, headRepository: unknown): string {
+  if (typeof headRepository !== "string") return " of a repository GitHub didn't name";
+  // Owner and repository names are case-insensitive on GitHub; the answer has their own case.
+  const requested = `${parameters["owner"]}/${parameters["repo"]}`.toLowerCase();
+  return headRepository.toLowerCase() === requested ? "" : ` of the fork \`${headRepository}\``;
+}
+
+/**
+ * GitHub's name for the environment, but only when GitHub's id for it is the
+ * one the approval sends; after a mismatch the name belongs to another id.
+ */
+function matchedName(parameters: DeploymentParameters, current: Kept): string | undefined {
+  const name = current["name"];
+  return typeof name === "string" && current["id"] === parameters["environment_id"]
+    ? name
+    : undefined;
 }
 
 /** The environment by the name GitHub answered, never the request's. */
 function environmentSentence(parameters: DeploymentParameters, current: Kept): string {
-  const name = current["name"];
   const id = parameters["environment_id"];
-  return typeof name === "string"
-    ? `Environment \`${name}\` (id ${id}).`
-    : `Reads the environment the request names, and stops unless GitHub's id for it is ${id}.`;
+  const name = matchedName(parameters, current);
+  if (name !== undefined) return `Environment \`${name}\` (id ${id}).`;
+  const answered = current["name"];
+  if (typeof answered === "string" && typeof current["id"] === "number") {
+    return `GitHub's environment \`${answered}\` has id ${current["id"]}, not ${id}, the id this request approves.`;
+  }
+  return `Reads the environment the request names, and stops unless GitHub's id for it is ${id}.`;
 }
 
 function approval(run: string, parameters: DeploymentParameters, current: Kept): string {
-  const name = current["name"];
-  const environment =
-    typeof name === "string" ? `\`${name}\`` : `id ${parameters["environment_id"]}`;
+  const name = matchedName(parameters, current);
+  const environment = name === undefined ? `id ${parameters["environment_id"]}` : `\`${name}\``;
   return `Approves ${run} for the environment ${environment}. This starts the deployment and can't be undone.`;
 }
 
