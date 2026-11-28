@@ -1071,7 +1071,7 @@ that fails to load leaves its heading and the list working.
 Settings opens over the window (`shell.settings-window`): the context the window gives views and
 commands has `openSettings(sectionId?)`, the `settings.open` of flow-settings, and
 `settingsSections`, the id and title of each section features added, so Ctrl K offers only those.
-The sidebar's **Settings** row, last under a divider, opens it too (`shell.sidebar-settings`), and
+The rail's **Settings** button, at its bottom, opens it too (`shell.sidebar-settings`), and
 the desktop app opens it on Mod , as well; Mod , while it is open puts the focus back on the current
 section's row. The window draws `SettingsDialog` with `contributions.settings.list()`, places it
 as the app's or the served Studio's, and remembers the section shown last for the next opening

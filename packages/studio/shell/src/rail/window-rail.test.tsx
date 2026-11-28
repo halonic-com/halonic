@@ -66,8 +66,20 @@ const rail = createShell({
 /** The sidebar's places in its order: `routines` is a place no entry holds. */
 const places = ["home", "inbox", "agents", "routines", "library", "runs", "team"];
 
-function Harness({ tabs, source }: { readonly tabs: TabSet; readonly source?: FolderFactsSource }) {
-  const parts = useWindowRailParts({ rail, source, tabs, placeOfKind: () => undefined });
+interface HarnessProps {
+  readonly tabs: TabSet;
+  readonly source?: FolderFactsSource;
+  readonly onSettings: () => void;
+}
+
+function Harness({ tabs, source, onSettings }: HarnessProps) {
+  const parts = useWindowRailParts({
+    rail,
+    source,
+    tabs,
+    placeOfKind: () => undefined,
+    onSettings,
+  });
   const listed = places.filter((place) => !parts.leftOut.has(place));
   return (
     <>
@@ -83,9 +95,17 @@ function Harness({ tabs, source }: { readonly tabs: TabSet; readonly source?: Fo
 
 function renderWindowRail(source?: FolderFactsSource) {
   const tabs = new TabSet();
-  const container = render(<Harness tabs={tabs} {...(source === undefined ? {} : { source })} />);
+  const settingsOpened: string[] = [];
+  const container = render(
+    <Harness
+      tabs={tabs}
+      onSettings={() => settingsOpened.push("settings")}
+      {...(source === undefined ? {} : { source })}
+    />,
+  );
   return {
     tabs,
+    settingsOpened,
     shown: () =>
       [...container.querySelectorAll("nav li [aria-label]")].map((button) =>
         button.getAttribute("aria-label"),
@@ -135,6 +155,14 @@ verifies("shell.rail-frame", () => {
       expect(window.listed()).toEqual(["routines", "team"]);
       act(() => window.tabs.openHere({ key: "inbox", title: "Inbox" }));
       expect(window.selected()).toEqual(["Inbox"]);
+    });
+
+    it("opens Settings from the rail's bottom, without selecting it or moving the tab", () => {
+      const window = renderWindowRail();
+      window.click("Settings");
+      expect(window.settingsOpened).toEqual(["settings"]);
+      expect(window.selected()).toEqual(["Home"]);
+      expect(currentLocation(window.tabs.active).key).toBe("home");
     });
 
     it("selects an entry whose page it opens", () => {

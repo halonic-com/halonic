@@ -106,14 +106,13 @@ async function settle() {
   });
 }
 
-function placesButton(): HTMLElement | null {
-  return document.querySelector<HTMLElement>('button[aria-label="Places"]');
+function railSettings(): HTMLElement | null {
+  return document.querySelector<HTMLElement>('nav[aria-label="Places"] [aria-label="Settings"]');
 }
 
-/** Opens the Places drawer and Settings from its Settings row, with a key, as a keyboard user does. */
-async function openSettingsFromDrawer() {
-  act(() => placesButton()?.click());
-  const row = document.querySelector<HTMLElement>('nav[aria-label="Places"] > button');
+/** Opens Settings from the rail's Settings button, with a key, as a keyboard user does. */
+async function openSettingsFromRail() {
+  const row = railSettings();
   act(() => row?.focus());
   act(() => row?.click());
   await settle();
@@ -121,9 +120,9 @@ async function openSettingsFromDrawer() {
 }
 
 verifies("shell.sidebar-settings", () => {
-  it("gives the focus to Places on Escape in a narrow window, where the row is in the closed drawer", async () => {
+  it("gives the focus back to the rail's Settings button on Escape in a narrow window", async () => {
     await renderWindow();
-    await openSettingsFromDrawer();
+    await openSettingsFromRail();
 
     act(() => {
       document
@@ -133,12 +132,12 @@ verifies("shell.sidebar-settings", () => {
     await settle();
 
     expect(document.querySelector("dialog[open]")).toBeNull();
-    expect(document.activeElement).toBe(placesButton());
+    expect(document.activeElement).toBe(railSettings());
   });
 
-  it("gives the focus to the h1 of a page a section opens, once drawn, not to Places (C383 SP1)", async () => {
+  it("gives the focus to the h1 of a page a section opens, once drawn, not to Settings' opener (C383 SP1)", async () => {
     await renderWindow();
-    await openSettingsFromDrawer();
+    await openSettingsFromRail();
 
     act(() => document.querySelector<HTMLElement>("dialog .weather")?.click());
     await settle();

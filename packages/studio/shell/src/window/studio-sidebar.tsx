@@ -29,6 +29,11 @@ export interface StudioSidebarProps {
    * sidebar subscribes to the signals again each time.
    */
   readonly places: readonly Registered<PlaceContribution>[];
+  /**
+   * The places the list column leaves out, because another rail entry holds them: the window's
+   * `useWindowRailParts().leftOut` (`shell.rail-frame`). Without it, every place shows.
+   */
+  readonly leftOut?: ReadonlySet<string> | undefined;
   readonly tabs: TabSet;
   readonly announcer: Announcer;
   readonly platform: KeyboardPlatform;
@@ -87,7 +92,10 @@ export function StudioSidebar(props: StudioSidebarProps) {
     useCallback((listener) => tabs.subscribe(listener), [tabs]),
     () => tabs.state,
   );
-  const places = useShownPlaces(props.places, contextFor);
+  // Every place stays subscribed, so a place that comes back into the column has its signal.
+  const shown = useShownPlaces(props.places, contextFor);
+  const leftOut = props.leftOut;
+  const places = leftOut === undefined ? shown : shown.filter(({ id }) => !leftOut.has(id));
 
   return (
     <>

@@ -345,24 +345,25 @@ verifies("shell.settings-window", () => {
 });
 
 verifies("shell.sidebar-settings", () => {
-  function sidebarSettings(): HTMLElement | null {
-    return document.querySelector<HTMLElement>('nav[aria-label="Places"] > button');
+  function railSettings(): HTMLElement | null {
+    return document.querySelector<HTMLElement>('nav[aria-label="Places"] [aria-label="Settings"]');
   }
 
-  it("opens Settings from the sidebar on the section shown last", async () => {
+  it("opens Settings from the rail on the section shown last", async () => {
     await renderWindow();
     await pressKeys({ key: ",", code: "Comma", ctrlKey: true });
     await click(rowNamed("Formats"));
     await closeSettings();
 
-    await click(sidebarSettings());
+    await click(railSettings());
 
     expect(shownSection()).toBe("Formats");
+    expect(document.querySelector('nav[aria-label="Places"] > button')).toBeNull();
   });
 
-  it("gives the focus back to the row when Settings closes", async () => {
+  it("gives the focus back to the rail's Settings button when Settings closes", async () => {
     await renderWindow();
-    const row = sidebarSettings();
+    const row = railSettings();
     act(() => row?.focus());
 
     await click(row);

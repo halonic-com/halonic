@@ -1,4 +1,4 @@
-import { type ReactNode, useCallback, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useMemo, useSyncExternalStore } from "react";
 import type { Registered } from "../points/point-store.ts";
 import {
   type FolderFacts,
@@ -54,7 +54,8 @@ export function useWindowRail(
     [source],
   );
   const facts = useSyncExternalStore(subscribe, () => source?.facts ?? workspaceProjectFacts);
-  const every = everyEntry(rail, facts);
+  // Every entry asks the rail once per entry, so it is read again only when the facts change.
+  const every = useMemo(() => everyEntry(rail, facts), [rail, facts]);
   const kept = selectedRailEntry(every, currentLocation(tabs.active), placeOfKind);
   const entries = rail.shown(facts, kept);
   const column = useRailColumn(entries, tabs, placeOfKind);
@@ -68,34 +69,40 @@ export interface WindowRailOptions {
   readonly source: FolderFactsSource | undefined;
   readonly tabs: TabSet;
   readonly placeOfKind: PlaceOfKind;
+  /** Opens Settings, from the rail's Settings button: the window's `openSettings`. */
+  readonly onSettings: () => void;
 }
 
 /** The window's rail, ready to place: the rail and what the sidebar beside it lists. */
 export interface WindowRailParts {
   /** The `IconRail`, for the frame's `rail` slot. */
   readonly element: ReactNode;
-  /**
-   * The places other entries hold, which the list column beside the rail leaves out. The window
-   * hands them to the sidebar once the places list gives way to the column (P3, the next PR).
-   */
+  /** The places other entries hold, which the list column beside the rail leaves out. */
   readonly leftOut: ReadonlySet<string>;
 }
 
 /**
  * The rail in the window (`shell.rail-frame`): the entries the folder shows and the selection the
- * rail and the list column share. Settings stays the sidebar's last row for now, so the rail
- * doesn't show it a second time.
+ * rail and the list column share, with Settings at the rail's bottom.
  *
  * @example
  * const rail = useWindowRailParts({ rail: contributions.rail, source: workspace.folderFacts,
- *   tabs, placeOfKind });
+ *   tabs, placeOfKind, onSettings: openSettings });
  * <ShellFrame rail={rail.element} sidebar={<StudioSidebar … />} … />
  */
 export function useWindowRailParts(options: WindowRailOptions): WindowRailParts {
   const { tabs, placeOfKind } = options;
   const { entries, every, column } = useWindowRail(options.rail, options.source, tabs, placeOfKind);
   return {
-    element: <IconRail entries={entries} tabs={tabs} placeOfKind={placeOfKind} column={column} />,
+    element: (
+      <IconRail
+        entries={entries}
+        tabs={tabs}
+        placeOfKind={placeOfKind}
+        onSettings={options.onSettings}
+        column={column}
+      />
+    ),
     leftOut: placesOfOtherEntries(every, column.selected),
   };
 }
