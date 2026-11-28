@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest";
 import { button, type FakeStudio, fakeStudio } from "./fake-studio.test-helper.ts";
 import { closeWorkspace } from "./steps/close-workspace.ts";
 import { demoWorkspace, switcherXpath } from "./steps/demo-workspace.ts";
-import { tabXpath, windowTabs } from "./steps/window-tabs.ts";
+import {
+  activeTabXpath,
+  framedPanelXpath,
+  frameXpath,
+  tabXpath,
+  windowTabs,
+} from "./steps/window-tabs.ts";
 import { clickTestSteps } from "./steps.ts";
 import { keys } from "./webdriver.ts";
 import { basicsText, buttonLabels, closeSettingsLabel } from "./words.ts";
@@ -27,10 +33,18 @@ function studioOnDemo(menu: string): FakeStudio {
   return studio;
 }
 
+/** The tabs on the frame: the active tab has the panel's white, the frame under them its blue. */
+function drawTabsOnFrame(studio: FakeStudio): void {
+  studio.backgrounds.set(activeTabXpath, "rgb(255, 255, 255)");
+  studio.backgrounds.set(framedPanelXpath, "rgb(255, 255, 255)");
+  studio.backgrounds.set(frameXpath, "rgb(224, 234, 255)");
+}
+
 /** A tab strip with one tab, where each window key changes the count as `counts` says. */
 function studioWithTabs(counts: { newTab: number; close: number; reopen: number }): FakeStudio {
   const studio = fakeStudio("Home");
   studio.elements.set(tabXpath, 1);
+  drawTabsOnFrame(studio);
   const set = (count: number) => () => studio.elements.set(tabXpath, count);
   button(studio, "main", buttonLabels.newTab.text, set(counts.newTab));
   button(studio, "main", keys.escape);
@@ -138,8 +152,29 @@ verifies("studio-click-test.basics-steps", () => {
       });
       const studio = fakeStudio("Home");
       studio.elements.set(tabXpath, 1);
+      drawTabsOnFrame(studio);
       await expect(windowTabs.run(studio.context)).resolves.toMatchObject({
         code: "NO_NEW_TAB_BUTTON",
+      });
+    });
+
+    it("fails as TABS_NOT_ON_FRAME, naming the three fills, when the tabs sit inside the panel", async () => {
+      const studio = studioWithTabs({ newTab: 2, close: 1, reopen: 2 });
+      // The tabs' ground is the panel's white, as before HAL-21209: the active tab doesn't stand out.
+      studio.backgrounds.set(frameXpath, "rgb(255, 255, 255)");
+      await expect(windowTabs.run(studio.context)).resolves.toEqual({
+        passed: false,
+        code: "TABS_NOT_ON_FRAME",
+        note: "It ran in a 1280 × 800 window. Active tab rgb(255, 255, 255), framed panel rgb(255, 255, 255), frame under the strip rgb(255, 255, 255).",
+      });
+      expect(studio.clicks).toEqual([]);
+    });
+
+    it("fails as TABS_NOT_ON_FRAME when the active tab hasn't the panel's fill", async () => {
+      const studio = studioWithTabs({ newTab: 2, close: 1, reopen: 2 });
+      studio.backgrounds.set(activeTabXpath, "rgba(0, 0, 0, 0)");
+      await expect(windowTabs.run(studio.context)).resolves.toMatchObject({
+        code: "TABS_NOT_ON_FRAME",
       });
     });
   });

@@ -2,7 +2,7 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 
 /**
  * The rail is the window's first 64px, its 40px buttons 12px in and 4px apart, the first level
- * with the framed panel's top and Settings 10px above the window's bottom edge; the title bar's
+ * with the top of the column that holds the tabs and the framed panel, and Settings 10px above the window's bottom edge; the title bar's
  * mark sits on the rail's axis with the words 8px after it, and in a narrow window the Places
  * button does (the approved mockup, v26 on HAL-20617; HAL-20946, look check HAL-20960). jsdom has
  * no layout, so a real browser measures the boxes.
@@ -89,9 +89,18 @@ test("at 1280px the tabs sit on the frame, so the active tab's fill differs from
     locator.evaluate((element) => getComputedStyle(element).backgroundColor);
   const frame = await fill(page.locator("[data-layout]"));
   const activeTab = await fill(page.getByRole("tab", { selected: true }));
-  expect(await fill(page.locator("[data-panel-tabs]"))).toBe("rgba(0, 0, 0, 0)");
+  // What shows under the tabs: the fill of the row's nearest ancestor that has one. Inside the
+  // framed panel, as before HAL-21209, that was the panel's own fill.
+  const ground = await page.locator("[data-panel-tabs]").evaluate((row) => {
+    for (let element = row.parentElement; element !== null; element = element.parentElement) {
+      const background = getComputedStyle(element).backgroundColor;
+      if (background !== "rgba(0, 0, 0, 0)") return background;
+    }
+    return "none";
+  });
+  expect(ground).toBe(frame);
   expect(activeTab).toBe(await fill(page.locator("[data-framed-panel]")));
-  expect(activeTab).not.toBe(frame);
+  expect(activeTab).not.toBe(ground);
 });
 
 test("the framed panel's top stays put when the window narrows and the tabs fold", async ({

@@ -22,8 +22,9 @@ export interface WindowTabViewProps {
  * An inactive tab has no fill, so the frame shows through; hovered, it takes `bg-tab-hover`. A
  * 1px line separates two inactive tabs, hidden next to the active or a hovered tab. The active
  * tab is the `surface` with a border on three sides, 1px taller so it covers the panel's top
- * border, with the 2px halo line along its top and two 8px curves at its foot where it joins the
- * panel.
+ * border between its side lines, with the 2px halo line along its top. Its side lines run straight
+ * down into the panel's top line, so the outline has no gap where the tab meets the panel (the
+ * approved mockup, v26 on HAL-20617; HAL-21213).
  */
 const tabClasses = {
   common: [
@@ -40,13 +41,6 @@ const tabClasses = {
     "z-10 -mb-px h-[35px] border border-b-0 border-border bg-surface font-medium text-fg",
     "forced-colors:border-[CanvasText]",
   ].join(" "),
-} as const;
-
-/** The two 8px inward curves at the active tab's foot, filled with `surface` outside a circle. */
-const footCurve = "pointer-events-none absolute bottom-0 size-2";
-const footCurves = {
-  start: `${footCurve} -start-2 bg-[radial-gradient(circle_at_0_0,transparent_8px,var(--color-surface)_8px)]`,
-  end: `${footCurve} -end-2 bg-[radial-gradient(circle_at_100%_0,transparent_8px,var(--color-surface)_8px)]`,
 } as const;
 
 /**
@@ -95,14 +89,10 @@ export function WindowTabView(props: WindowTabViewProps) {
       onClick={props.onActivate}
     >
       {active ? (
-        <>
-          <span
-            aria-hidden="true"
-            className="absolute inset-x-0 -top-px h-0.5 rounded-t-sm bg-halo-line forced-colors:bg-[Highlight]"
-          />
-          <span aria-hidden="true" className={footCurves.start} />
-          <span aria-hidden="true" className={footCurves.end} />
-        </>
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 -top-px h-0.5 rounded-t-sm bg-halo-line forced-colors:bg-[Highlight]"
+        />
       ) : null}
       {icon === undefined ? null : (
         <span
