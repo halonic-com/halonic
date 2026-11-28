@@ -13,7 +13,7 @@ export type ChatAvatarSize = Extract<AvatarSize, "sidebar" | "header">;
 /**
  * How a channel's two tiles sit in the picture's square: each tile's size, the square's classes,
  * and the mask that cuts a 2px gap out of the tile behind around the one in front, so the gap
- * shows whatever the row's fill is (the window's frame, a hovered row, the header's panel).
+ * shows whatever the row's fill is (the list column's panel, a hovered row, the header's panel).
  * The front tile's centre, seen from the back tile's top left, is at `centre`; its radius plus the
  * gap is `gap`. In a list row the header's 40px pair sits centred in the row's 48px place
  * (HAL-20675): two 28px tiles at the corners of a 48px square would no longer overlap.

@@ -148,3 +148,36 @@ verifies("messenger.activity-widths", () => {
     });
   });
 });
+
+/** An element's whole classes, so `border` doesn't match `border-s`. */
+function classesOf(element: Element | null): string[] {
+  return element?.className.split(" ") ?? [];
+}
+
+verifies("messenger.framed-list", () => {
+  it("draws the sheet with a start line only, inside the page's framed panel", async () => {
+    mediumWindow();
+    const { messaging, activity } = acme();
+    const page = await openMessenger(messaging, [], false, now, activity);
+    await openChat(page, "Chief");
+    await press(button(page));
+    const classes = classesOf(panel(page));
+    expect(classes.filter((name) => name.startsWith("border"))).toEqual([
+      "border-s",
+      "border-border",
+    ]);
+    expect(classes).toContain("bg-app-panel");
+    expect(classes).not.toContain("rounded-lg");
+  });
+
+  it("draws the panel in the chat's place with no line at its edges", async () => {
+    const { messaging, activity } = acme();
+    const page = await openMessenger(messaging, [], true, now, activity);
+    await openChat(page, "Chief");
+    await press(button(page));
+    const classes = classesOf(panel(page));
+    expect(classes).toContain("bg-app-panel");
+    expect(classes.filter((name) => name.startsWith("border"))).toEqual([]);
+    expect(classes).not.toContain("rounded-lg");
+  });
+});

@@ -36,11 +36,11 @@ export function ListHeader({ phone, onePane, newRequest }: ListHeaderProps) {
 }
 
 /**
- * The Inbox's two panes. In its own window (`framed`) they are the kit's framed sidebar, as the
- * Messenger's and Studio's (`inbox.framed-sidebar`): the list on the window's frame and the item
- * on a framed panel 8px beside it, and the page is the window's `main`, since the window draws no
- * panel. In Studio's window, whose framed panel the page already sits on, the two panes sit side
- * by side with the list's line between them.
+ * The Inbox's two panes. In its own window (`framed`) they are the kit's framed sidebar, as
+ * Studio's (`inbox.framed-sidebar`): the list on the window's frame and the item on a framed panel
+ * 8px beside it, and the page is the window's `main`, since the window draws no panel. In Studio's
+ * window, whose framed panel the page already sits on, the two panes sit side by side with the
+ * list's line between them.
  */
 export function InboxPanes({
   framed,
@@ -73,7 +73,7 @@ export function listPaneClass(onePane: boolean, itemOpen: boolean, framed = fals
   return `${itemOpen ? "hidden" : "flex"} w-full flex-col`;
 }
 
-/** The list's scrolling rows. On the window's frame they end 8px from the framed panel, as the Messenger's do. */
+/** The list's scrolling rows. On the window's frame they end 8px from the framed panel. */
 export function listScrollClass(framed: boolean): string {
   return framed
     ? "min-h-0 flex-1 overflow-y-auto ps-2 pb-4"

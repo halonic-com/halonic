@@ -1,7 +1,7 @@
 import { createElement, type ReactNode, type Ref } from "react";
 
 /**
- * The window a {@link FramedPanel} sits in: a focused app's (Messenger, Inbox), white or slate-900
+ * The window a {@link FramedPanel} sits in: a focused app's (Inbox), white or slate-900
  * on the slate frame, or Studio's, the page's `surface` on the halo.
  */
 export type FramedPanelTone = "app" | "studio";
@@ -12,7 +12,7 @@ const toneClass: Record<FramedPanelTone, string> = {
 };
 
 /**
- * The framed panel's edge, without its fill: 12px corners and a 1px line, which forced colours
+ * The framed panel's edge, without its fill: 16px corners and a 1px line, which forced colours
  * draw in `CanvasText`, so the panel's edge stays visible there (`kit.framed-sidebar`).
  */
 const framedPanelEdgeClass = "overflow-hidden rounded-lg border border-border";
@@ -34,7 +34,7 @@ export interface SidebarFrameProps {
 }
 
 /**
- * The framed sidebar the Messenger, the Inbox and Studio share (`kit.framed-sidebar`, HAL-19923):
+ * The framed sidebar the Inbox and Studio share (`kit.framed-sidebar`, HAL-19923):
  * the sidebar on the window's frame and, 8px beside it, the content on its own framed panel.
  *
  * @example
@@ -63,7 +63,7 @@ export interface FramedPanelProps {
 
 /**
  * The framed panel beside a {@link SidebarFrame}'s sidebar: a column that fills the room left,
- * with 12px corners, a 1px line and the window's panel fill.
+ * with 16px corners, a 1px line and the window's panel fill.
  *
  * @example
  * <FramedPanel as="main" ref={chat}>…</FramedPanel>
