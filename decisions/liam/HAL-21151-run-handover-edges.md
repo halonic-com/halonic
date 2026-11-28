@@ -2,6 +2,7 @@
 
 - Approval: /HAL/issues/HAL-21151 (Julian's review of #6949; point 3 decided by Liam on the task; the signature is the reviewer's, since Liam wrote the pull request)
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:pZnX5RKhiN7FRKk5uln+Rr3bDglFsshrJboRLhIEATXAdFub3yZfCMU5pHqXQbNpB2XkxVj1K833nHZolPo3Bg==
 
 Julian's review of the hand-over (#6949) found three edges where `halonic
 run` told the person the wrong thing, and none of them lets anything run
