@@ -2,9 +2,11 @@
 import { FakeAgentMessaging } from "@halonicjs/testing-contracts";
 import { verifies } from "@halonicjs/testing-spec";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { Messenger } from "../messenger.ts";
 import { button, openDialog, polyfillModals } from "../test-support/modal.ts";
 import { byText, openChat, openMessenger, press, pressKey, typeIn } from "../test-support/page.tsx";
 import { unmountAll } from "../test-support/render.tsx";
+import { isGoneFrom } from "./use-chat-pins.tsx";
 
 beforeEach(polyfillModals);
 afterEach(() => {
@@ -188,5 +190,20 @@ verifies("messenger.pinned-chats", () => {
 
     expect(page.querySelector("[data-pinned-chats]")).toBeNull();
     expect(rowNames(page)).toEqual(["Mara", "Chief"]);
+  });
+
+  it("counts a pin as gone only when its source is online and lists chats without it", async () => {
+    const messaging = new FakeAgentMessaging();
+    const acme = messaging.addSource({ label: "Paperclip · Acme" });
+    const beta = messaging.addSource({ label: "Paperclip · Beta" });
+    const empty = messaging.addSource({ label: "Paperclip · Empty" });
+    messaging.addConversation(messaging.addAgent(acme.id, { name: "Chief" }).id);
+    messaging.addConversation(messaging.addAgent(beta.id, { name: "Kim" }).id);
+    messaging.goOffline(beta.id);
+    const rows = await new Messenger(messaging).rows();
+
+    expect(isGoneFrom(rows, { source: acme.id, conversation: "left-channel" })).toBe(true);
+    expect(isGoneFrom(rows, { source: beta.id, conversation: "left-channel" })).toBe(false);
+    expect(isGoneFrom(rows, { source: empty.id, conversation: "left-channel" })).toBe(false);
   });
 });

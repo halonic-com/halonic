@@ -26,11 +26,11 @@ export interface ChatPins {
   /** The pinned chats, the most recently pinned first. */
   list(): readonly PinnedChat[];
   /**
-   * Pins a chat first. Only pins whose chats `isListed` count: with {@link pinLimit} of those,
-   * the pins stay as they are and it says `full`; otherwise the new pin takes the place of the
-   * oldest pin whose chat isn't listed (one the person left, say), if there's no room for it.
+   * Pins a chat first. Only pins whose chats aren't `isGone` count: with {@link pinLimit} of
+   * those, the pins stay as they are and it says `full`; otherwise the new pin takes the place of
+   * the oldest gone pin (a channel the person left, say), if there's no room for it.
    */
-  pin(chat: PinnedChat, isListed?: (pin: PinnedChat) => boolean): PinResult;
+  pin(chat: PinnedChat, isGone?: (pin: PinnedChat) => boolean): PinResult;
   /** Unpins a chat; nothing happens when it isn't pinned. */
   unpin(chat: PinnedChat): void;
 }
@@ -57,17 +57,13 @@ export class StoredChatPins implements ChatPins {
     return this.#fresh();
   }
 
-  pin(chat: PinnedChat, isListed: (pin: PinnedChat) => boolean = () => true): PinResult {
+  pin(chat: PinnedChat, isGone: (pin: PinnedChat) => boolean = () => false): PinResult {
     const pins = this.#fresh();
     if (pins.some((each) => same(each, chat))) return "pinned";
-    if (pins.filter(isListed).length >= pinLimit) return "full";
+    if (pins.filter((each) => !isGone(each)).length >= pinLimit) return "full";
+    // Fewer than the limit count, so a gone pin makes the room.
     const next = [chat, ...pins];
-    while (next.length > pinLimit) {
-      next.splice(
-        next.findLastIndex((each) => !isListed(each)),
-        1,
-      );
-    }
+    while (next.length > pinLimit) next.splice(next.findLastIndex(isGone), 1);
     this.#write(next);
     return "pinned";
   }
