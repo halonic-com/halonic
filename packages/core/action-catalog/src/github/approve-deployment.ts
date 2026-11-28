@@ -23,9 +23,11 @@ const runPage = "https://github.com/{owner}/{repo}/actions/runs/{run_id}";
  * a kept value). For a run from a fork's pull request, `head_branch` is the
  * fork's branch, named by whoever opened it, so the preview names the fork
  * the commit is in (HAL-21176) rather than refusing: approving a fork's run
- * can be what the user wants, as long as they can see it is one. There is no check on `pending_deployments`: its answer is a
- * list `keep` can't read, and GitHub refuses the approval with a 422 for an
- * environment the run isn't waiting on.
+ * can be what the user wants, as long as they can see it is one. The
+ * approval's own line names the fork too (HAL-21205), since the dialog that
+ * confirms the irreversible step shows that line alone. There is no check on
+ * `pending_deployments`: its answer is a list `keep` can't read, and GitHub
+ * refuses the approval with a 422 for an environment the run isn't waiting on.
  */
 export const definition: StepperDefinition<DeploymentParameters> = {
   id: "github.approve-deployment",
@@ -127,24 +129,30 @@ function runSentence(run: string, parameters: DeploymentParameters, current: Kep
   const commit = current["head_sha"];
   const branch = current["head_branch"];
   const actor = current["triggering_actor.login"];
-  if (typeof commit !== "string" || typeof branch !== "string") {
+  if (typeof commit !== "string") {
     return `Reads ${run} on GitHub. It stops unless the run is still waiting for approval, on the commit the request names.`;
   }
+  // GitHub's schema allows a null `head_branch`; the commit and its repository still matter.
+  const on = typeof branch === "string" ? ` on \`${branch}\`` : "";
+  const repository = headRepository(parameters, current);
+  const where = repository === undefined ? "" : ` of ${repository}`;
   const who = typeof actor === "string" ? `, started by \`${actor}\`` : "";
-  const where = repositorySuffix(parameters, current["head_repository.full_name"]);
-  return `${capitalised(run)}: commit \`${commit.slice(0, 7)}\` on \`${branch}\`${where}${who}.`;
+  return `${capitalised(run)}: commit \`${commit.slice(0, 7)}\`${on}${where}${who}.`;
 }
 
 /**
- * Nothing when the commit is in the request's own repository; otherwise the
- * repository it is in, since a fork's `main` isn't the repository's `main`.
- * GitHub answers no head repository for a fork that has since been deleted.
+ * Nothing when the commit is in the request's own repository, or before the
+ * run check has read it; otherwise the repository it is in, since a fork's
+ * `main` isn't the repository's `main`. GitHub answers no head repository for
+ * a fork that has since been deleted.
  */
-function repositorySuffix(parameters: DeploymentParameters, headRepository: unknown): string {
-  if (typeof headRepository !== "string") return " of a repository GitHub didn't name";
+function headRepository(parameters: DeploymentParameters, current: Kept): string | undefined {
+  if (typeof current["head_sha"] !== "string") return undefined;
+  const answered = current["head_repository.full_name"];
+  if (typeof answered !== "string") return "a repository GitHub didn't name";
   // Owner and repository names are case-insensitive on GitHub; the answer has their own case.
   const requested = `${parameters["owner"]}/${parameters["repo"]}`.toLowerCase();
-  return headRepository.toLowerCase() === requested ? "" : ` of the fork \`${headRepository}\``;
+  return answered.toLowerCase() === requested ? undefined : `the fork \`${answered}\``;
 }
 
 /**
@@ -170,10 +178,13 @@ function environmentSentence(parameters: DeploymentParameters, current: Kept): s
   return `Reads the environment the request names, and stops unless GitHub's id for it is ${id}.`;
 }
 
+/** The approval, naming a fork's commit, since the confirming dialog shows only this line. */
 function approval(run: string, parameters: DeploymentParameters, current: Kept): string {
   const name = matchedName(parameters, current);
   const environment = name === undefined ? `id ${parameters["environment_id"]}` : `\`${name}\``;
-  return `Approves ${run} for the environment ${environment}. This starts the deployment and can't be undone.`;
+  const repository = headRepository(parameters, current);
+  const fork = repository === undefined ? "" : `, a commit of ${repository},`;
+  return `Approves ${run}${fork} for the environment ${environment}. This starts the deployment and can't be undone.`;
 }
 
 const capitalised = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
