@@ -3,6 +3,7 @@
 - Task: HAL-20788 (from the post-merge words and a11y check on HAL-20783, for #6826)
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20788 (the CTO: approved on head `3ec3236`)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:kW820w0G1BVcjGkJKjRc9Uwj0Ht0GhBjc4OEcVmtZasVDWLA12VWYKpMZ2SWnMg9qgFSgE1kPq9+Nopjxcr3Bg==
 
 ## What changes
 
