@@ -4,7 +4,7 @@
 - Since: unreleased
 - Source: stream HAL-17488 (user-only action steppers); architecture note on HAL-17491, rows C1 and C5; Julian's security sign-off of #6728 (HAL-20401); Liam's plan OK on HAL-21110
 
-If a request for `paperclip.bind-secret@1` names a `variable` that changes what an agent's run does, then the action-catalog package shall refuse its parameters. The names on row C5's deny list are `PATH`, `NODE_OPTIONS`, `NODE_EXTRA_CA_CERTS`, `BASH_ENV` and `ENV`; a name that starts with `LD_`, `DYLD_`, `GIT_`, `PAPERCLIP_`, `PYTHON` or `SSL_CERT_`; and a name that ends with `_PROXY`, `_BASE_URL`, `_API_URL`, `_CA_BUNDLE`, `_ENDPOINT` or `_HOST`.
+If a request for `paperclip.bind-secret@1` names a `variable` on the deny list, then the action-catalog package shall refuse its parameters. The deny list is row C5's list, extended in the security review of #6980: the names `PATH`, `NODE_OPTIONS`, `NODE_EXTRA_CA_CERTS`, `NODE_TLS_REJECT_UNAUTHORIZED`, `BASH_ENV`, `ENV`, `GOPROXY`, `PIP_INDEX_URL`, `PIP_EXTRA_INDEX_URL`, `UV_INDEX_URL`, `UV_DEFAULT_INDEX`, `OPENAI_API_BASE`, `CLAUDE_CODE_SHELL_PREFIX`, `EDITOR`, `VISUAL`, `BROWSER`, `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS`, `PERL5OPT`, `RUBYOPT`, `BUN_OPTIONS`, `HOME`, `XDG_CONFIG_HOME`, `CLAUDE_CONFIG_DIR` and `CODEX_HOME`; a name that starts with `LD_`, `DYLD_`, `GIT_`, `PAPERCLIP_`, `PYTHON`, `SSL_CERT_`, `NPM_CONFIG_` or `AWS_ENDPOINT_URL`; and a name that ends with `_PROXY`, `_BASE_URL`, `_API_URL`, `_CA_BUNDLE`, `_ENDPOINT` or `_HOST`.
 
 The secret's own `name` shall keep the plain secret-name pattern, since it never becomes an environment variable by itself.
 

@@ -75,8 +75,31 @@ verifies("action-catalog.paperclip-bind-secret", () => {
   });
 });
 
-/** One name for each entry of row C5's deny list, and the entry it falls under. */
+/** One name for each entry of the deny list, and the entry it falls under. */
 const deniedVariables = [
+  ["NPM_CONFIG_*", "NPM_CONFIG_REGISTRY"],
+  ["GOPROXY", "GOPROXY"],
+  ["PIP_INDEX_URL", "PIP_INDEX_URL"],
+  ["PIP_EXTRA_INDEX_URL", "PIP_EXTRA_INDEX_URL"],
+  ["UV_INDEX_URL", "UV_INDEX_URL"],
+  ["UV_DEFAULT_INDEX", "UV_DEFAULT_INDEX"],
+  ["OPENAI_API_BASE", "OPENAI_API_BASE"],
+  ["AWS_ENDPOINT_URL*", "AWS_ENDPOINT_URL"],
+  ["AWS_ENDPOINT_URL*", "AWS_ENDPOINT_URL_S3"],
+  ["CLAUDE_CODE_SHELL_PREFIX", "CLAUDE_CODE_SHELL_PREFIX"],
+  ["EDITOR", "EDITOR"],
+  ["VISUAL", "VISUAL"],
+  ["BROWSER", "BROWSER"],
+  ["JAVA_TOOL_OPTIONS", "JAVA_TOOL_OPTIONS"],
+  ["JDK_JAVA_OPTIONS", "JDK_JAVA_OPTIONS"],
+  ["PERL5OPT", "PERL5OPT"],
+  ["RUBYOPT", "RUBYOPT"],
+  ["BUN_OPTIONS", "BUN_OPTIONS"],
+  ["NODE_TLS_REJECT_UNAUTHORIZED", "NODE_TLS_REJECT_UNAUTHORIZED"],
+  ["HOME", "HOME"],
+  ["XDG_CONFIG_HOME", "XDG_CONFIG_HOME"],
+  ["CLAUDE_CONFIG_DIR", "CLAUDE_CONFIG_DIR"],
+  ["CODEX_HOME", "CODEX_HOME"],
   ["*_PROXY", "HTTPS_PROXY"],
   ["*_BASE_URL", "ANTHROPIC_BASE_URL"],
   ["*_API_URL", "OPENAI_API_URL"],
@@ -112,6 +135,8 @@ verifies("action-catalog.paperclip-bind-variable", () => {
         "PATHFINDER_KEY",
         "HOSTNAME_KEY",
         "ENVIRONMENT_NAME",
+        "HOME_ASSISTANT_TOKEN",
+        "EDITOR_KEY",
       ]) {
         expect(parse(definition.parameters, { ...parameters, variable }).ok).toBe(true);
       }
