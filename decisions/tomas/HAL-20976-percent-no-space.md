@@ -3,6 +3,7 @@
 - Task: HAL-20976 (from the words check on HAL-20969)
 - Approval: the words check on HAL-20969 asked for this change on HAL-20976; the package owner approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:8Iav8aXIa90GiYCXh7hgxemLo73tMlOY0D0AauciycYu9TnjdmW2wrzdS46EoBnXNMDjezqHr/I8YfCF8N6vBg==
 
 ## What changes
 
