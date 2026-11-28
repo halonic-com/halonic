@@ -2,6 +2,7 @@
 
 - Approval: https://paperclip.halonic.com/HAL/issues/HAL-20974 (the words check of HAL-20969 asked for this wording; no further words check needed)
 - Kind: user-visible
+- Signature: ed25519:sha256:H_TEiCBwniz-xuAw0H_8Qyq9EdLD-LQUeUHvFk2fKeM:G67wuGb/BqSE8Wllb2xwUAYTUzOrruK0gBQ17saukjXlP1SVDLcS9JdTQ/lnlZpLqXki+dr729QC8jZRgF2eAg==
 
 ## What changes
 
