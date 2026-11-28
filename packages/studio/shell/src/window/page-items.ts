@@ -61,3 +61,15 @@ export class PageItems {
     };
   }
 }
+
+/** Each tab set's page items, made once, so a render run twice doesn't subscribe a second store. */
+const pageItemsByTabs = new WeakMap<TabSet, PageItems>();
+
+/** The page items of `tabs`: the same store for as long as the tab set lives. */
+export function pageItemsOf(tabs: TabSet): PageItems {
+  const kept = pageItemsByTabs.get(tabs);
+  if (kept !== undefined) return kept;
+  const made = new PageItems(tabs);
+  pageItemsByTabs.set(tabs, made);
+  return made;
+}

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { currentLocation, type TabSet } from "../tabs/tab-set.ts";
 import type { ActiveItemSource, ShownTitleSource } from "../workspace-context.ts";
 import { activeItemOf } from "./active-item.ts";
-import { PageItems } from "./page-items.ts";
+import { type PageItems, pageItemsOf } from "./page-items.ts";
 
 /**
  * What the active tab shows, as the window gives it to the desktop's features: its item, or the
@@ -36,7 +36,7 @@ export function useShownReaders(
   // After the render that moved the phone, so a listener reads the new name.
   useEffect(() => phone.show(phoneTitle), [phone, phoneTitle]);
   return useMemo(() => {
-    const pageItems = new PageItems(tabs);
+    const pageItems = pageItemsOf(tabs);
     return {
       desktop: tabReadersOf(tabs, pageItems),
       phone: { shownTitle: phone.source },

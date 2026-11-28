@@ -155,7 +155,8 @@ export function RunsAppView({
 
 /**
  * Names the open run to the shell while the content pane draws it (`drawn`), so the status bar
- * follows it (`shell.page-item`).
+ * follows it (`shell.page-item`), and `null` whenever it draws none, a fresh page too. No clear on
+ * unmount: the shell drops the item when the tab leaves the place or closes.
  */
 function useShownRun(
   open: RunItem | undefined,
@@ -163,11 +164,7 @@ function useShownRun(
   setPageItem: RunsAppViewProps["setPageItem"],
 ) {
   const shown = drawn ? open : undefined;
-  useEffect(() => {
-    if (shown === undefined || setPageItem === undefined) return;
-    setPageItem(shown);
-    return () => setPageItem(null);
-  }, [shown, setPageItem]);
+  useEffect(() => setPageItem?.(shown ?? null), [shown, setPageItem]);
 }
 
 /** Whether listing the sources, or a source's last read, failed. */

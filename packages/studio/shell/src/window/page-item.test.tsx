@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { verifies } from "@halonicjs/testing-spec";
-import { act, useEffect } from "react";
+import { act, useEffect, useState } from "react";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { defineFeature } from "../feature.ts";
 import { createShell } from "../shell.ts";
@@ -82,11 +82,32 @@ verifies("shell.page-item", () => {
     expect(heard.count).toBe(3);
   });
 
-  it("is null after the page clears it, and a late clear from a place left keeps the new one", () => {
-    const { tabs, pageItems, source, runsTab } = onRuns();
+  it("is null after the page clears it, and tells a listener", () => {
+    const { pageItems, source, heard, runsTab } = onRuns();
     pageItems.set(runsTab, runs.key, r1);
+
     pageItems.set(runsTab, runs.key, null);
+
     expect(source.get()).toBeNull();
+    expect(heard.count).toBe(2);
+  });
+
+  it("keeps no item for a tab that closed or left the place", () => {
+    const { tabs, pageItems, runsTab } = onRuns();
+    pageItems.set(runsTab, runs.key, r1);
+    tabs.close(runsTab);
+    expect(pageItems.of(runsTab)).toBeUndefined();
+
+    tabs.openHere(runs);
+    const reopened = tabs.state.activeId;
+    pageItems.set(reopened, runs.key, r1);
+    tabs.openHere(agents);
+
+    expect(pageItems.of(reopened)).toBeUndefined();
+  });
+
+  it("keeps the new item when a place the tab left clears late", () => {
+    const { tabs, pageItems, source, runsTab } = onRuns();
 
     tabs.openHere(agents);
     pageItems.set(runsTab, agents.key, r1);
@@ -95,15 +116,17 @@ verifies("shell.page-item", () => {
     expect(source.get()).toEqual(r1);
   });
 
-  it("reaches a place's view in a desktop tab, and closing the page clears it", async () => {
+  it("reaches a place's view in a desktop tab, whose clear the status bar hears", async () => {
     const seen: { context?: WorkspaceContext } = {};
     function RunsView({ context }: { context: WorkspaceContext }) {
       const { setPageItem } = context;
-      useEffect(() => {
-        setPageItem?.(r1);
-        return () => setPageItem?.(null);
-      }, [setPageItem]);
-      return <h1>Runs</h1>;
+      const [open, setOpen] = useState(true);
+      useEffect(() => setPageItem?.(open ? r1 : null), [open, setPageItem]);
+      return (
+        <button type="button" onClick={() => setOpen(false)}>
+          {"Close the run"}
+        </button>
+      );
     }
     const feature = defineFeature({
       id: "runs",
@@ -144,8 +167,16 @@ verifies("shell.page-item", () => {
     expect(seen.context?.activeItem?.get()).toEqual(r1);
     expect(seen.context?.setPageItem).toBeUndefined();
     expect(seen.context?.shown?.()).toEqual({ place: "runs" });
-    act(() => workspace.tabs.close(workspace.tabs.state.activeId));
+    const heard = { count: 0 };
+    seen.context?.activeItem?.subscribe(() => {
+      heard.count += 1;
+    });
+    const close = [...document.querySelectorAll("button")].find(
+      (button) => button.textContent === "Close the run",
+    );
+    act(() => close?.click());
 
     expect(seen.context?.activeItem?.get()).toBeNull();
+    expect(heard.count).toBe(1);
   });
 });

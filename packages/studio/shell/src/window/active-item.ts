@@ -17,9 +17,10 @@ function sameItem(left: ItemRef | null, right: ItemRef | null): boolean {
  * The item the active tab shows, as `WorkspaceContext.activeItem` gives it: its `ItemRef`, or
  * `null` when the active tab shows Home, a place or a search. A place whose page shows an item
  * inside it (`pageItems`, `shell.page-item`) gives that item while the tab still shows that place.
- * `get` returns the same reference until the item changes, so `useSyncExternalStore(subscribe, get)`
- * can read it. A listener hears only a change of item, not a tab switch between two tabs on the
- * same item, a rename or a move in history that lands on the same item.
+ * `get` returns the same reference until the item changes, so
+ * `useSyncExternalStore(subscribe, get)` can read it. A listener hears only a change of item, not a
+ * tab switch between two tabs on the same item, a rename or a move in history that lands on the
+ * same item.
  */
 export function activeItemOf(tabs: TabSet, pageItems?: PageItems): ActiveItemSource {
   let last: ItemRef | null = null;
