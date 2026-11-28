@@ -38,11 +38,12 @@ export interface IconRailProps {
 
 /**
  * The icon rail on the window's left edge (`shell.rail`, build plan P3 on HAL-20617): a 64px
- * column on the frame, one `RailButton` per entry, Settings apart at the bottom. The entry that
- * holds the active tab is selected, so the selection follows a tab click, Back, a search result
- * or a link as well as a click here. A click opens the entry's page in the active tab and moves
- * the focus to the page's `h1`; a click on the selected entry, or on one with no page yet, leaves
- * the tab as it is. Settings opens its dialog over the page and is never selected. The one white
+ * column on the frame, one `RailButton` per entry, 4px apart, the first level with the framed
+ * panel's top and Settings apart at the bottom, 10px above the window's edge with the frame's 8px
+ * (the approved mockup, v26 on HAL-20617). The entry that holds the active tab is selected, so
+ * the selection follows a tab click, Back, a search result or a link as well as a click here. A
+ * click opens the entry's page in the active tab and moves the focus to the page's `h1`; a click
+ * on the selected entry, or on one with no page yet, leaves the tab as it is. Settings opens its dialog over the page and is never selected. The one white
  * dot rests on the selected entry and travels to a newly selected one (`RailDot`).
  *
  * Ctrl-click, Cmd-click and middle-click into a new tab, and links in place of buttons, come with
@@ -72,9 +73,10 @@ export function IconRail({ entries, tabs, placeOfKind, onSettings, column }: Ico
   return (
     <nav
       aria-label="Places"
-      className="relative flex h-full w-(--spacing-rail) shrink-0 flex-col items-center gap-2 py-2"
+      data-icon-rail=""
+      className="relative flex h-full w-(--spacing-rail) shrink-0 flex-col items-center gap-1 pb-0.5"
     >
-      <ul className="flex flex-col items-center gap-2">
+      <ul className="flex flex-col items-center gap-1">
         {apps.map((entry) => (
           <li key={entry.id}>
             <RailButton
