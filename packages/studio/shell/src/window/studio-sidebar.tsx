@@ -15,8 +15,9 @@ import { SidebarSearch } from "../sidebar/sidebar-search.tsx";
 import { SidebarViews } from "../sidebar/sidebar-views.tsx";
 import { SIDEBAR_DEFAULT_WIDTH } from "../sidebar/sidebar-width.ts";
 import { WorkspaceSwitcher, type WorkspaceSwitcherProps } from "../sidebar/workspace-switcher.tsx";
-import type { TabSet } from "../tabs/tab-set.ts";
+import { currentLocation, type TabSet } from "../tabs/tab-set.ts";
 import type { WorkspaceContext } from "../workspace-context.ts";
+import { PlaceListColumn, placeWithListAt } from "./place-list-column.tsx";
 import { useShownPlaces } from "./shown-places.ts";
 
 const noViews: readonly Registered<SidebarViewContribution>[] = [];
@@ -34,6 +35,12 @@ export interface StudioSidebarProps {
    * `useWindowRailParts().leftOut` (`shell.rail-frame`). Without it, every place shows.
    */
   readonly leftOut?: ReadonlySet<string> | undefined;
+  /**
+   * Whether the sidebar shows the place's own list, in place of the places and the views, while
+   * the active tab is on a place that has one (`shell.rail-frame`). The window sets it from 900px;
+   * the Places drawer keeps the places.
+   */
+  readonly placeLists?: boolean | undefined;
   readonly tabs: TabSet;
   readonly announcer: Announcer;
   readonly platform: KeyboardPlatform;
@@ -98,6 +105,10 @@ export function StudioSidebar(props: StudioSidebarProps) {
   const shown = useShownPlaces(props.places, contextFor);
   const leftOut = props.leftOut;
   const places = leftOut === undefined ? shown : shown.filter(({ id }) => !leftOut.has(id));
+  const listed =
+    props.placeLists === true
+      ? placeWithListAt(props.places, currentLocation(tabs.active).key)
+      : undefined;
 
   return (
     <>
@@ -107,31 +118,41 @@ export function StudioSidebar(props: StudioSidebarProps) {
           <SidebarSearch platform={props.platform} onOpen={props.onSearch} />
         </div>
         {/* Only the places or the picked view scroll, inside the sidebar; the switcher, Search,
-            the Studio | Files switch and the footer stay put (`shell.sidebar-scroll`). */}
-        <SidebarViews
-          views={props.views ?? noViews}
-          contextFor={contextFor}
-          selected={props.selectedView}
-          onSelect={props.onSelectView}
-          places={
-            <PlacesList
-              places={places}
-              tabs={tabs}
-              announcer={props.announcer}
-              onSettings={props.onSettings}
-              help={props.help}
-            />
-          }
-          settings={
-            <PlacesList
-              places={[]}
-              tabs={tabs}
-              announcer={props.announcer}
-              onSettings={props.onSettings}
-              help={props.help}
-            />
-          }
-        />
+            the Studio | Files switch and the footer stay put (`shell.sidebar-scroll`). A place's
+            own list scrolls itself. */}
+        {listed === undefined ? (
+          <SidebarViews
+            views={props.views ?? noViews}
+            contextFor={contextFor}
+            selected={props.selectedView}
+            onSelect={props.onSelectView}
+            places={
+              <PlacesList
+                places={places}
+                tabs={tabs}
+                announcer={props.announcer}
+                onSettings={props.onSettings}
+                help={props.help}
+              />
+            }
+            settings={
+              <PlacesList
+                places={[]}
+                tabs={tabs}
+                announcer={props.announcer}
+                onSettings={props.onSettings}
+                help={props.help}
+              />
+            }
+          />
+        ) : (
+          <PlaceListColumn
+            place={listed}
+            tabs={tabs}
+            tabId={tabs.active.id}
+            context={contextFor(listed.featureId)}
+          />
+        )}
         {props.footer === undefined ? null : (
           <div data-sidebar-footer="" className="flex shrink-0 flex-col ps-2 pb-2">
             <StatusBarItems items={footerItems(props.footer)} contextFor={contextFor} />

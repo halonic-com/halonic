@@ -85,3 +85,22 @@ test("at 640px the Places button sits on the rail's axis", async ({ page }) => {
   const places = await box(page.locator("header").getByRole("button", { name: "Places" }));
   expect(places.x + places.width / 2).toBe(railAxis);
 });
+
+test("at 1280px on a place with its own list, one list column sits between the rail and the panel", async ({
+  page,
+}) => {
+  await page.setViewportSize(wide);
+  await page.goto("/rail-frame.html?place=changes");
+  const lists = page.locator("[data-changes-list]");
+  await expect(lists.first()).toBeVisible();
+  await expect(lists).toHaveCount(1);
+  await expect(page.locator('nav[aria-label="Places"]')).toHaveCount(0);
+  const column = await box(page.locator('[data-place-list="changes"]'));
+  const panel = await box(page.locator("[data-framed-panel]"));
+  expect(column.x).toBeGreaterThanOrEqual(64);
+  expect(column.width).toBeLessThanOrEqual(380);
+  expect(panel.x).toBeGreaterThanOrEqual(column.x + column.width);
+  // The page has the rest of the window: the Changes merge tiles need 32rem beside each other.
+  expect(panel.width).toBeGreaterThanOrEqual(780);
+  expect(await box(lists.first())).toMatchObject({ x: column.x });
+});

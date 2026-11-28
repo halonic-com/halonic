@@ -1,6 +1,7 @@
 import type { MenuEntry } from "@halonicjs/studio-kit";
 import { type ReactNode, useMemo } from "react";
 import type { Announcer } from "../announcer/announcer.ts";
+import { useNarrowWindow } from "../frame/frame-effects.ts";
 import type { PlaceContribution, SidebarViewContribution } from "../points/frame.ts";
 import type { KeyboardPlatform } from "../points/keybindings.ts";
 import type { Registered } from "../points/point-store.ts";
@@ -45,7 +46,8 @@ export interface WindowColumn {
 
 /**
  * The window's rail and list column (`shell.rail-frame`): the rail with Settings at its bottom,
- * and the sidebar listing the selected entry's places and those no entry holds.
+ * and the sidebar listing the selected entry's places and those no entry holds, or, from 900px,
+ * the own list of the place the active tab shows.
  *
  * @example
  * const column = useWindowColumn({ contributions, workspace, placeOfKind, places, … });
@@ -61,6 +63,8 @@ export function useWindowColumn(options: WindowColumnOptions): WindowColumn {
     placeOfKind: options.placeOfKind,
     onSettings: options.onSettings,
   });
+  // From 900px the column shows a place's own list; the Places drawer under it keeps the places.
+  const narrow = useNarrowWindow();
   const views: readonly Registered<SidebarViewContribution>[] = useMemo(
     () => contributions.sidebarViews.list(),
     [contributions],
@@ -71,6 +75,7 @@ export function useWindowColumn(options: WindowColumnOptions): WindowColumn {
       <StudioSidebar
         places={options.places}
         leftOut={rail.leftOut}
+        placeLists={!narrow}
         views={views}
         selectedView={options.view.selected}
         onSelectView={options.view.select}

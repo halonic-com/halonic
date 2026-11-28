@@ -58,6 +58,13 @@ reader hears after the name. `showPlace` gives what the sidebar shows, with noth
 (`shell.sidebar-places`). A signal that changes on its own, such as the Runs dot, also gives
 `subscribeSignal`, and the sidebar reads it again each time it is told (`shell.place-signal-changes`).
 
+A place that lists its own items, such as Changes, also gives a `listColumn` view. From 900px the
+window draws it in its list column, in place of the places, so the window has one list column
+(`shell.rail-frame`). The list column's view gets `PlaceSlotProps` (`context`, `open`, `setOpen`),
+and the place's page gets `PlaceListPageProps`: the same `open` and `setOpen`, which the shell keeps for
+each tab, and `listInFrame`. While `listInFrame` is `false`, under 900px or on a phone, the page draws
+the same list view itself, one pane at a time.
+
 Home's sections come from features the same way, through `home.addCard`, naming one of the fixed
 sections (`homeSections`: Problems, Get set up, Needs you, Recent runs, Spend, Cards). The shell shows them in that order
 under the `h1` "Home", each a region named by its heading from `homeSectionTitles`, and leaves out a
