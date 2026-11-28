@@ -6,7 +6,7 @@ import { CloseIcon } from "../icons/close-icon.tsx";
 import { InfoIcon } from "../icons/info-icon.tsx";
 import { RunningIcon } from "../icons/running-icon.tsx";
 import { WarningIcon } from "../icons/warning-icon.tsx";
-import type { Toast, ToastTone } from "./toast-store.ts";
+import type { Toast, ToastAction, ToastTone } from "./toast-store.ts";
 
 /** Success and info close after 5s, or 10s with an action (23 A13); the rest stay until closed. */
 export const TOAST_CLOSES_AFTER_MS = 5000;
@@ -103,23 +103,7 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
             <p className="text-small text-fg-muted">{toast.text}</p>
           )}
         </div>
-        {[toast.action, toast.secondAction].map((action) =>
-          action === undefined ? null : (
-            <button
-              key={action.label}
-              type="button"
-              className={`max-w-full flex-none ${actionButton}`}
-              onClick={() => {
-                action.onClick();
-                if (action.keepOpen !== true) {
-                  setLeaving(true);
-                }
-              }}
-            >
-              {action.label}
-            </button>
-          ),
-        )}
+        <Actions actions={[toast.action, toast.secondAction]} onClose={() => setLeaving(true)} />
       </div>
       <div className="flex -my-1 -mr-1 touch:-mt-2.5 touch:-mr-2.5 touch:-mb-2.5 phone:-mt-3 phone:-mr-3 phone:-mb-3">
         <Button
@@ -132,6 +116,40 @@ export function ToastCard({ toast, waiting, onClosed }: ToastCardProps) {
       </div>
     </div>
   );
+}
+
+/**
+ * One action sits on the title line. Two pills don't both fit there in a 360px card, so they share
+ * a group that always takes its own row under the text, side by side and `action` first, rather
+ * than ending up in opposite corners.
+ */
+function Actions({
+  actions,
+  onClose,
+}: {
+  readonly actions: readonly (ToastAction | undefined)[];
+  readonly onClose: () => void;
+}) {
+  const shown = actions.filter((action) => action !== undefined);
+  const buttons = shown.map((action) => (
+    <button
+      key={action.label}
+      type="button"
+      className={`max-w-full flex-none ${actionButton}`}
+      onClick={() => {
+        action.onClick();
+        if (action.keepOpen !== true) {
+          onClose();
+        }
+      }}
+    >
+      {action.label}
+    </button>
+  ));
+  if (shown.length < 2) {
+    return buttons;
+  }
+  return <div className="flex basis-full flex-wrap gap-x-2 gap-y-5">{buttons}</div>;
 }
 
 function lifetime(toast: Toast): number | null {

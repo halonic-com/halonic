@@ -196,6 +196,28 @@ verifies("kit.toast", () => {
     expect(action.className).toContain("phone:hit-touch");
   });
 
+  it("keeps two actions together on their own row under the text, the first one first", () => {
+    const { container } = render(<ToastRegion store={store} />);
+    show({
+      tone: "danger",
+      title: "Couldn't save the workflow",
+      text: "The engine isn't answering.",
+      action: { label: "Try again", onClick: vi.fn() },
+      secondAction: { label: "Open the engine's log", onClick: vi.fn() },
+    });
+    const first = button(container, "Try again");
+    const second = button(container, "Open the engine's log");
+    const group = first.parentElement;
+    expect(second.parentElement).toBe(group);
+    expect(group?.firstElementChild).toBe(first);
+    // Both pills carry the 6px pull, so 20px of row gap less 12px leaves 8px between wrapped rows,
+    // and on touch their hit areas meet in that gap instead of the second covering the first.
+    expect(group?.className).toContain("flex basis-full flex-wrap gap-x-2 gap-y-5");
+    expect(group?.parentElement?.className).toContain("flex-wrap items-start");
+    // The pills keep their 6px pull, so the outer row gap still leaves 8px under the text.
+    expect(first.className).toContain("-my-1.5");
+  });
+
   describe("focus", () => {
     it("goes to the newest toast's first button, and back where it was when that one closes", async () => {
       const { container } = render(
