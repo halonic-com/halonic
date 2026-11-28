@@ -30,12 +30,23 @@ const nameLimit = 32;
 /**
  * The name a row shows: cut in the middle to the room its row has, so its start and its end stay in
  * sight at any depth, or at `nameLimit` characters until the room is measured.
+ *
+ * @param isOpenFile - whether the row is the file in the active tab
  */
-function shownName(node: TreeNode, { room, widthOf }: NameRoom): string {
-  const width = room.get(node.path);
+function shownName(node: TreeNode, nameRoom: NameRoom, isOpenFile: boolean): string {
+  // The open file's name is in medium weight, which is wider: it is cut at its own widths.
+  const widthOf = isOpenFile ? nameRoom.openWidthOf : nameRoom.widthOf;
+  const width = nameRoom.room.get(node.path);
   if (width === undefined || widthOf === undefined) return cutInMiddle(node.name, nameLimit);
   return cutToWidth(node.name, width, widthOf);
 }
+
+/**
+ * A tree row in the list column (requirement `files.ui.tree-rows`): at least 36px high with 8px
+ * corners, 10px inside the column's edges through the tree's own padding.
+ */
+const treeRowClasses =
+  "group flex min-h-9 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-surface-muted aria-selected:text-body-strong aria-selected:not-focus-visible:selected-forced";
 
 /** The file a menu is open for, with where it opened. */
 interface RowMenu extends ContextMenuTarget {
@@ -152,7 +163,7 @@ export function FilesTree({
 }: FilesTreeProps) {
   const rows = useMemo(() => visibleRows(roots, state.expanded), [roots, state.expanded]);
   const tree = useRef<HTMLDivElement>(null);
-  const nameRoom = useNameRoom(tree, rows);
+  const nameRoom = useNameRoom(tree, rows, activePath);
   // The row that takes the Tab stop: the focused one, or the first while nothing is focused.
   const stop = rows.some((row) => row.node.path === state.focus) ? state.focus : rows[0]?.node.path;
   const focusing = useRef(false);
@@ -244,7 +255,7 @@ export function FilesTree({
       ref={tree}
       role="tree"
       aria-label={filesWords.treeLabel}
-      className="grid"
+      className="grid px-2.5"
       onKeyDown={onKeyDown}
     >
       <ContextMenu
@@ -257,7 +268,7 @@ export function FilesTree({
         const { node } = row;
         const open = node.kind === "folder" && state.expanded.has(node.path);
         const label = marksLabel(node);
-        const shown = shownName(node, nameRoom);
+        const shown = shownName(node, nameRoom, node.path === activePath);
         return (
           <Fragment key={node.path}>
             {/* biome-ignore lint/a11y/useKeyWithClickEvents: keys are handled by the tree */}
@@ -274,10 +285,12 @@ export function FilesTree({
               // The marks are not read along with the name field while it is edited.
               aria-description={descriptionOf(node, label, renaming?.path)}
               // A row never grows past the tree: the name gives way, so the marks and ⋮ stay in
-              // sight. In high contrast both marks are outlines: the open file's steps aside while
-              // the row has keyboard focus, so the focus outline shows.
-              className={`group flex min-h-8 w-full min-w-0 cursor-pointer items-center gap-1 rounded-sm pr-2 text-body text-fg hover:bg-surface-muted focus-ring-inset aria-selected:bg-accent-soft aria-selected:not-focus-visible:selected-forced`}
-              style={{ paddingLeft: `${row.depth * 16 + 4}px` }}
+              // sight. The row under the pointer and the open file's share one fill, as the list
+              // rows of the two-column layout do, so the open file's name is also in medium
+              // weight (`files.ui.tree-rows`). In high contrast both marks are outlines: the open
+              // file's steps aside while the row has keyboard focus, so the focus outline shows.
+              className={treeRowClasses}
+              style={{ paddingLeft: `${row.depth * 16 + 8}px` }}
               onClick={(event) => {
                 event.stopPropagation();
                 activate(row);

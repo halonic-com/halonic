@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { WorkspaceContext } from "@halonicjs/studio-shell";
 import { verifies } from "@halonicjs/testing-spec";
 import { act } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -32,17 +33,36 @@ function resize(name: number): void {
   });
 }
 
-/** A canvas that draws every character `drawn.ch` wide, or none, as where text can't be measured. */
+/**
+ * A canvas that draws every character `drawn.ch` wide, and a fifth wider in medium weight (500), as
+ * a real font does; or no canvas, as where text can't be measured.
+ */
 function fakeContext() {
   if (!drawn.canvas) return null;
   return {
     font: "10px sans-serif",
-    measureText: (text: string) => ({ width: text.length * drawn.ch }),
+    measureText(text: string) {
+      const wider = this.font.includes(" 500 ") ? 1.2 : 1;
+      return { width: text.length * drawn.ch * wider };
+    },
   };
+}
+
+/** The names' style as the theme gives it, which jsdom has no stylesheet for: 500 in the open file's row. */
+function fakeStyle(element: Element): CSSStyleDeclaration {
+  const open = element.closest('[aria-selected="true"]') !== null;
+  return {
+    fontStyle: "normal",
+    fontWeight: open ? "500" : "400",
+    fontSize: "14px",
+    fontFamily: "Inter",
+    letterSpacing: "normal",
+  } as CSSStyleDeclaration;
 }
 
 beforeEach(() => {
   Object.assign(drawn, { ch: 7.5, name: 120, canvas: true });
+  Object.assign(tab, { active: "", changed: () => {} });
   vi.stubGlobal("ResizeObserver", FakeResizeObserver);
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
     this: HTMLElement,
@@ -67,13 +87,36 @@ const monthly = "monthly-numbers-for-the-finance-team-and-board.routine.yaml";
 const weekly = "weekly-report.routine.yaml";
 const weeklyWorkflow = "weekly-report.workflow.yaml";
 
-/** The Files sidebar with the routines folder open, five levels deep, as in Acme. */
-async function showRoutines(): Promise<HTMLElement> {
-  const paths = [quarterly, monthly, weekly].map((name) => `${routines}/${name}`);
+/** The file in the active tab, which a test changes with `openFile`. */
+const tab = { active: "", changed: () => {} };
+
+function openFile(path: string): void {
+  tab.active = path;
+  act(() => tab.changed());
+}
+
+/** The Files sidebar over `paths`, with the active tab's file from `tab`. */
+async function showFiles(paths: string[]): Promise<HTMLElement> {
   const host = contextHost();
-  host.list = async () => listing([...paths, `hubs/acme/workflows/${weeklyWorkflow}`]);
-  const page = render(<FilesSidebarView context={contextOf(host)} />);
+  host.list = async () => listing(paths);
+  const activeItem = {
+    get: () => (tab.active === "" ? null : { kind: "file", hub: "workspace", id: tab.active }),
+    subscribe: (listener: () => void) => {
+      tab.changed = listener;
+      return () => {};
+    },
+  };
+  const context = { ...contextOf(host), activeItem } as unknown as WorkspaceContext;
+  const page = render(<FilesSidebarView context={context} />);
   await settled();
+  return page;
+}
+
+/** The Files sidebar with the routines folder open, five levels deep, as in Acme. */
+async function showRoutines(active = ""): Promise<HTMLElement> {
+  tab.active = active;
+  const paths = [quarterly, monthly, weekly].map((name) => `${routines}/${name}`);
+  const page = await showFiles([...paths, `hubs/acme/workflows/${weeklyWorkflow}`]);
   for (const folder of ["hubs", "hubs/acme", "hubs/acme/workflows", routines]) {
     act(() => rowNamed(page, folder).click());
   }
@@ -118,5 +161,59 @@ verifies("files.ui.tree-view", () => {
     const name = nameIn(rowNamed(page, `${routines}/${quarterly}`));
     expect(name?.textContent).toHaveLength(32);
     expect(name?.className).toContain("truncate");
+  });
+});
+
+verifies("files.ui.tree-search", () => {
+  it("doesn't measure the names again when only the focus moves during a search", async () => {
+    const page = await showRoutines();
+    const input = page.querySelector<HTMLInputElement>('input[type="search"]');
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      set?.call(input, "routine");
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await settled();
+    const measured = vi.mocked(HTMLElement.prototype.getBoundingClientRect).mock.calls.length;
+    const stop = () => page.querySelector<HTMLElement>('[role="treeitem"][tabindex="0"]');
+    const before = stop();
+    act(() => {
+      before?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
+    });
+    await settled();
+    expect(stop()).not.toBe(before);
+    expect(vi.mocked(HTMLElement.prototype.getBoundingClientRect).mock.calls.length).toBe(measured);
+  });
+});
+
+verifies("files.ui.tree-rows", () => {
+  it("cuts the open file's name at its medium weight's widths, so its end stays in sight", async () => {
+    vi.spyOn(window, "getComputedStyle").mockImplementation(fakeStyle);
+    const page = await showRoutines(`${routines}/${quarterly}`);
+    const open = rowNamed(page, `${routines}/${quarterly}`);
+    expect(open.getAttribute("aria-selected")).toBe("true");
+    // 120px holds 16 characters in regular weight, and 13 in medium.
+    expect(nameIn(open)?.textContent).toBe("quarte…e.yaml");
+    expect(nameIn(open)?.title).toBe(quarterly);
+    expect(nameIn(rowNamed(page, `${routines}/${monthly}`))?.textContent).toBe("monthly…ine.yaml");
+  });
+
+  it("cuts a name again when its file becomes the open one while its row shows", async () => {
+    vi.spyOn(window, "getComputedStyle").mockImplementation(fakeStyle);
+    const page = await showRoutines();
+    const row = rowNamed(page, `${routines}/${quarterly}`);
+    expect(nameIn(row)?.textContent).toBe("quarter…ine.yaml");
+    openFile(`${routines}/${quarterly}`);
+    expect(row.getAttribute("aria-selected")).toBe("true");
+    expect(nameIn(row)?.textContent).toBe("quarte…e.yaml");
+  });
+
+  it("keeps the other names at regular weight's widths when the open file is the first row", async () => {
+    vi.spyOn(window, "getComputedStyle").mockImplementation(fakeStyle);
+    tab.active = monthly;
+    const page = await showFiles([monthly, quarterly]);
+    expect(page.querySelector('[role="treeitem"]')).toBe(rowNamed(page, monthly));
+    expect(nameIn(rowNamed(page, monthly))?.textContent).toBe("monthl…e.yaml");
+    expect(nameIn(rowNamed(page, quarterly))?.textContent).toBe("quarter…ine.yaml");
   });
 });
