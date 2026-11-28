@@ -2,6 +2,7 @@
 
 - Approval: Paperclip task HAL-20663, with Liam's choice of option A on HAL-20893; Liam approves this note in review
 - Kind: user-visible
+- Signature: ed25519:sha256:s6QbTuo7EHJ-9JxW-RnqP0pi0Jq_Jkrdog_YTzYt1lI:Pxb335BraILZTzrc9WPkRtA211MR/PVRUs039hJA5EFt5TVpanh+P6x0BfYdfzJPT6OIv81GJ4fvO+pTnhcqAg==
 
 Two follow-ups to the sign-in window of #6814.
 
