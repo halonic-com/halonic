@@ -125,9 +125,7 @@ impl Clock for FixedClock {
         NOW
     }
 
-    fn pause(&self, _seconds: u64) -> impl Future<Output = ()> + Send {
-        async {}
-    }
+    async fn pause(&self, _seconds: u64) {}
 }
 
 /// A keychain with the connection `acme` and, unless `signed_in` is false,
