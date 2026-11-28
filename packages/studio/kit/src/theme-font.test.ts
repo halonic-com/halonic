@@ -41,6 +41,14 @@ verifies("kit.inter-font", () => {
       }
     });
 
+    it("loads Inter on the states page too, so its screenshots match the Studio", async () => {
+      const statesFolder = path.join(import.meta.dirname, "../states");
+      const entry = await readFile(path.join(statesFolder, "states.css"), "utf8");
+      const faces = fontFaces(await buildCss([], entry, statesFolder));
+      const inter = faces.filter((face) => face.get("font-family") === '"Inter Variable"');
+      expect(inter.map((face) => face.get("font-style")).sort()).toEqual(["italic", "normal"]);
+    });
+
     it("leaves the font files out of the theme alone, so the phone's connect page stays small", async () => {
       expect(fontFaces(await buildCss([]))).toEqual([]);
     });

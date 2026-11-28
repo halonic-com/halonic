@@ -14,6 +14,8 @@
 
 @import "tailwindcss";
 @import "../src/theme.css";
+/* Inter, as the desktop Studio loads it, so the page's screenshots show the app's typeface. */
+@import "../src/theme-font.css";
 
 @source "../src";
 @source "../states";
